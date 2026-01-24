@@ -1,7 +1,10 @@
-﻿<template>
+<template>
   <aside class="device-sidebar">
     <!-- 标题 -->
     <div class="sidebar-header">
+      <el-icon :size="20">
+        <List />
+      </el-icon>
       <h3 class="sidebar-title">设备列表</h3>
     </div>
 
@@ -11,7 +14,7 @@
         <!-- 车间搜索 -->
         <div class="search-item">
           <el-input v-model="workshopSearchText" placeholder="搜索车间" size="small" clearable @focus="handleWorkshopFocus"
-            @blur="handleWorkshopBlur" @clear="clearWorkshopSearch" class="custom-search-input">
+            @blur="handleWorkshopBlur" @clear="clearWorkshopSearch">
             <template #prefix>
               <el-icon>
                 <Search />
@@ -35,7 +38,7 @@
         <div class="search-item">
           <el-input v-model="deviceSearchText" placeholder="搜索设备" size="small" clearable
             :disabled="!deviceTreeData.length" @focus="handleDeviceFocus" @blur="handleDeviceBlur"
-            @clear="clearDeviceSearch" class="custom-search-input">
+            @clear="clearDeviceSearch">
             <template #prefix>
               <el-icon>
                 <Search />
@@ -65,13 +68,6 @@
           :default-expanded-keys="expandedKeys" node-key="id" highlight-current @node-click="handleNodeClick">
           <template #default="{ node, data }">
             <div class="tree-node" :data-type="data.type">
-              <!-- 自定义展开图标 -->
-              <el-icon v-if="node.childNodes && node.childNodes.length > 0" class="expand-icon no-select"
-                @mousedown.prevent @click.stop="handleExpandIconClick(node)">
-                <arrow-down v-if="node.expanded" />
-                <arrow-right v-else />
-              </el-icon>
-
               <!-- 图标 -->
               <div class="node-icon">
                 <el-icon v-if="data.type === 'factory'">
@@ -91,7 +87,7 @@
               <!-- 名称 -->
               <span class="node-label">{{ node.label }}</span>
 
-              <!-- <span v-if="(data.type === 'factory' || data.type === 'workshop') && data.deviceCount" class="node-count">
+              <span v-if="(data.type === 'factory' || data.type === 'workshop') && data.deviceCount" class="node-count">
                 <el-tag size="small" type="info">
                   {{ data.deviceCount }}台
                 </el-tag>
@@ -101,7 +97,7 @@
                 <el-tag size="small" type="info">
                   {{ data.pointCount }}点
                 </el-tag>
-              </span> -->
+              </span>
             </div>
           </template>
         </el-tree>
@@ -122,9 +118,7 @@ import {
   Cpu,
   Location,
   Search,
-  Loading,
-  ArrowRight,
-  ArrowDown
+  Loading
 } from '@element-plus/icons-vue'
 
 import { useDebounce } from '@/composables/useDebounce'
@@ -562,11 +556,6 @@ const toggleNode = (node: Node) => {
   }
 }
 
-const handleExpandIconClick = (node: Node) => {
-  // 阻止节点选中，只执行展开/收起操作
-  node.expanded ? node.collapse() : node.expand()
-}
-
 const handleNodeClick = (data: DeviceNode, node: Node) => {
   if (data.type === 'factory' || data.type === 'workshop') {
     if (node.expanded) {
@@ -636,11 +625,11 @@ watch(displayTreeData, () => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: url('@/assets/images/background/设备列表背景.png') no-repeat center center;
-  background-size: 100% 100%;
+  background: olive;
 
   .sidebar-header {
     padding: 20px 20px 16px;
+    border-bottom: 1px solid #f0f0f0;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -667,35 +656,12 @@ watch(displayTreeData, () => {
         flex: 1;
         position: relative;
 
-        .custom-search-input {
-          :deep(.el-input__wrapper) {
-            background: url('@/assets/images/background/搜索框背景.png') no-repeat center center;
-            background-size: 100% 100%;
-            border-radius: 4px;
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-            border: none;
-
-            // 修改输入框内部文字颜色，使其在浅色背景上更易读
-            .el-input__inner {
-              color: white;
-              background: transparent;
-            }
-
-            // 搜索图标颜色
-            .el-input__prefix {
-              color: white;
-            }
-          }
-        }
-
         .dropdown-menu {
           position: absolute;
           top: 100%;
           left: 0;
           right: 0;
-          background-color: #0b44a3;
-          border: 1px solid #0558a8;
-          border-top: none;
+          border: 1px solid #e4e7ed;
           box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
           z-index: 2000;
           margin-top: 4px;
@@ -706,14 +672,17 @@ watch(displayTreeData, () => {
             padding: 8px 12px;
             cursor: pointer;
             transition: background-color 0.2s;
-            font-size: clamp(10px, 1.5vw, 12px);
+            font-size: clamp(12px, 2vw, 14px);
             /* 响应式字体大小 */
             display: flex;
             align-items: center;
-            color: white;
 
             &:hover {
-              background-color: #1a5fb4;
+              background-color: #f5f7fa;
+            }
+
+            .device-name {
+              font-weight: 500;
             }
 
             .workshop-name {
@@ -729,7 +698,6 @@ watch(displayTreeData, () => {
             text-align: center;
             font-size: clamp(12px, 2vw, 14px);
             /* 响应式字体大小 */
-            color: white;
           }
         }
       }
@@ -746,18 +714,8 @@ watch(displayTreeData, () => {
       flex: 1;
       padding: 10px 20px;
 
-      // .tree-node {
-      //   background: url('@/assets/images/background/厂区背景.png') no-repeat center center !important;
-      //   background-size: 100% 100% !important;
-      // }
-
       :deep(.el-tree) {
         background: transparent;
-
-        // 隐藏默认的展开图标
-        .el-tree-node__expand-icon {
-          display: none;
-        }
 
         .el-tree-node {
           margin: 4px 0;
@@ -765,102 +723,103 @@ watch(displayTreeData, () => {
 
         .el-tree-node__content {
           height: 40px;
-          border-radius: 6px;
           transition: all 0.2s;
           cursor: pointer;
 
           &:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: #f5f7fa;
           }
         }
 
         .el-tree-node.is-current>.el-tree-node__content {
-          background: rgb(103, 157, 215) !important;
+
+          &[data-type="device"],
+          &[data-type="point"] {
+            background: #ecf5ff;
+            border: 1px solid #b3d8ff;
+          }
+
+          &[data-type="factory"],
+          &[data-type="workshop"] {
+            background: transparent;
+            border: none;
+          }
         }
       }
     }
-  }
 
-  .tree-node {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 2px 0;
-    color: #fff;
-
-    .expand-icon {
-      cursor: pointer;
-      transition: transform 0.2s;
-      font-size: 14px;
-      color: #fff;
-    }
-
-    .no-select {
-      user-select: none;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-    }
-
-    // 防止展开图标触发选中
-    :deep(.el-tree-node__content) {
-      .expand-icon {
-        pointer-events: auto;
-      }
-    }
-
-    .node-icon {
+    .tree-node {
       display: flex;
       align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 2px 0;
       color: #fff;
-      flex-shrink: 0;
 
-      .el-icon {
-        font-size: clamp(14px, 2.5vw, 16px);
+      .expand-icon {
+        cursor: pointer;
+        transition: transform 0.2s;
+        font-size: clamp(12px, 2vw, 14px);
         /* 响应式字体大小 */
+        color: #409eff;
+
+        &:hover {
+          color: #1a5fb4;
+        }
+      }
+
+      .node-icon {
+        display: flex;
+        align-items: center;
+        color: #409eff;
+        flex-shrink: 0;
+
+        .el-icon {
+          font-size: clamp(14px, 2.5vw, 16px);
+          /* 响应式字体大小 */
+        }
+      }
+
+      .node-label {
+        flex: 1;
+        font-size: clamp(12px, 2vw, 14px);
+        /* 响应式字体大小 */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .node-count {
+        margin-left: 8px;
+        flex-shrink: 0;
+        color: black;
       }
     }
+  }
+}
 
-    .node-label {
-      flex: 1;
-      font-size: clamp(12px, 2vw, 14px);
-      /* 响应式字体大小 */
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1400px) {
+  .device-sidebar {
+
+    .sidebar-header,
+    .search-area {
+      padding-left: 16px;
+      padding-right: 16px;
     }
 
-    .node-count {
-      margin-left: 8px;
-      flex-shrink: 0;
-      color: black;
+    .tree-scrollbar {
+      padding: 10px 16px;
     }
   }
 }
 </style>
-
-@keyframes rotate {
-from {
-transform: rotate(0deg);
-}
-
-to {
-transform: rotate(360deg);
-}
-}
-
-@media (max-width: 1400px) {
-.device-sidebar {
-
-.sidebar-header,
-.search-area {
-padding-left: 16px;
-padding-right: 16px;
-}
-
-.tree-scrollbar {
-padding: 10px 16px;
-}
-}
-}

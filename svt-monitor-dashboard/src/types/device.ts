@@ -29,6 +29,8 @@ export interface Device {
 // 统计项类型定义
 export interface StatItem {
   title: string;
+  number?: number | string;
+  icon?: any;
 }
 
 // 指标项类型定义

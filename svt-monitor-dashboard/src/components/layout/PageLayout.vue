@@ -30,56 +30,47 @@ import { RouterView } from 'vue-router'
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #f5f7fa;
+  background: url('@/assets/images/background/背景.png') no-repeat center center;
+  background-size: 100vw 100vh;
+  padding: 0 0.7vw 2.4vh 0.7vw;
 
   .main-content {
-    height: calc(100vh - 60px);
+    height: 92vh;
     flex: 1;
     display: flex;
     overflow: hidden;
     min-height: 0;
 
-    /* 设备列表侧边栏容器：永远25%宽度 */
     .device-sidebar-container {
       flex: 0 0 25%;
-      /* 固定25%宽度 */
       min-width: 200px;
-      /* 绝对最小宽度 */
       max-width: 400px;
       height: 100%;
-      background: white;
-      border-right: 1px solid #e0e0e0;
       display: flex;
       flex-direction: column;
+      padding: 15px 0 15px 15px;
 
-      /* 确保DeviceSidebar组件填满容器 */
       >* {
         flex: 1;
         width: 100%;
         height: 100%;
         overflow: hidden;
-        /* 隐藏外层滚动条 */
       }
     }
 
-    /* 内容区域容器：永远75%宽度 */
     .content-wrapper {
       flex: 1;
       display: flex;
       flex-direction: column;
       min-width: 0;
-      /* 关键：允许内容区域收缩 */
       overflow: auto;
 
       .content-area {
         flex: 1;
-        padding: 0 20px;
+        padding: 15px;
         overflow: auto;
-        background: #f5f7fa;
         min-width: 300px;
-        /* 内容区域最小宽度 */
 
-        /* 自定义滚动条 */
         &::-webkit-scrollbar {
           width: 6px;
           height: 6px;
@@ -99,20 +90,16 @@ import { RouterView } from 'vue-router'
   }
 }
 
-/* 极端窄屏处理：添加水平滚动 */
 @media (max-width: 800px) {
   .page-layout {
-    /* 整个布局可以水平滚动 */
     overflow-x: auto;
     overflow-y: hidden;
 
     .main-content {
-      /* 强制保持最小总宽度：设备列表200px + 内容区域300px = 500px */
       min-width: 500px;
 
       .device-sidebar-container {
         flex: 0 0 200px;
-        /* 窄屏时固定为最小宽度 */
       }
 
       .content-wrapper {
@@ -124,12 +111,10 @@ import { RouterView } from 'vue-router'
   }
 }
 
-/* 超窄屏处理 */
 @media (max-width: 500px) {
   .page-layout {
     .main-content {
       min-width: 500px;
-      /* 保持最小总宽度 */
     }
   }
 }

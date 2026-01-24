@@ -1,14 +1,14 @@
 ﻿<template>
   <div v-if="pageType === 'device-detail'">
     <DataPanel :stats="[
-      { title: '设备总数' },
-      { title: '在线设备' },
-      { title: '预警设备' },
-      { title: '报警设备' }
+      { title: '健康设备数', number: 5 },
+      { title: '预警设备数', number: 2 },
+      { title: '监控总设备数', number: 7 },
+      { title: '监测点位数', number: 40 }
     ]" :alarm-title="'设备详情 - 设备ID: ' + deviceId" :metrics="[
-      { title: '振动烈度Top5' },
-      { title: '声音响度Top5' },
-      { title: '温度Top5' }
+      { title: '振动烈度Top5（单位：mm/s）' },
+      { title: '声音响度Top5（单位：dB）' },
+      { title: '温度Top5（单位：℃）' }
     ]">
       <template #alarms>
         <div class="device-metrics">
@@ -21,14 +21,14 @@
 
   <div v-else-if="pageType === 'sound-point'">
     <DataPanel :stats="[
-      { title: '设备总数' },
-      { title: '在线设备' },
-      { title: '预警设备' },
-      { title: '报警设备' }
+      { title: '健康设备数', number: 5 },
+      { title: '预警设备数', number: 2 },
+      { title: '监控总设备数', number: 7 },
+      { title: '监测点位数', number: 40 }
     ]" alarm-title="声音点位监控" :metrics="[
-      { title: '振动烈度Top5' },
-      { title: '声音响度Top5' },
-      { title: '温度Top5' }
+      { title: '振动烈度Top5（单位：mm/s）' },
+      { title: '声音响度Top5（单位：dB）' },
+      { title: '温度Top5（单位：℃）' }
     ]">
       <template #alarms>
         <div v-if="pointId">
@@ -44,14 +44,14 @@
 
   <div v-else-if="pageType === 'vibration-point'">
     <DataPanel :stats="[
-      { title: '点位振动页' },
-      { title: '在线设备' },
-      { title: '预警设备' },
-      { title: '报警设备' }
+      { title: '健康设备数', number: 5 },
+      { title: '预警设备数', number: 2 },
+      { title: '监控总设备数', number: 7 },
+      { title: '监测点位数', number: 40 }
     ]" alarm-title="点位振动页" :metrics="[
-      { title: '振动烈度Top5' },
-      { title: '声音响度Top5' },
-      { title: '温度Top5' }
+      { title: '振动烈度Top5（单位：mm/s）' },
+      { title: '声音响度Top5（单位：dB）' },
+      { title: '温度Top5（单位：℃）' }
     ]">
       <template #alarms>
         <div v-if="pointId">
@@ -67,14 +67,14 @@
 
   <div v-else>
     <DataPanel :stats="[
-      { title: '设备总数' },
-      { title: '在线设备' },
-      { title: '预警设备' },
-      { title: '报警设备' }
+      { title: '健康设备数', number: 5 },
+      { title: '预警设备数', number: 2 },
+      { title: '监控总设备数', number: 7 },
+      { title: '监测点位数', number: 40 }
     ]" alarm-title="页面内容" :metrics="[
-      { title: '振动烈度Top5' },
-      { title: '声音响度Top5' },
-      { title: '温度Top5' }
+      { title: '振动烈度Top5（单位：mm/s）' },
+      { title: '声音响度Top5（单位：dB）' },
+      { title: '温度Top5（单位：℃）' }
     ]">
       <template #alarms>
         <p>This page is under development.</p>
@@ -88,13 +88,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { computed, watch } from 'vue'
 import DataPanel from '@/components/business/DataPanel.vue'
 
-// 重要：不要导入 PageLayout
-// import PageLayout from '@/components/layout/PageLayout.vue'
-
 const route = useRoute()
 const router = useRouter()
 
-// 根据路由确定页面类型
 const pageType = computed(() => {
   if (route.path.includes('device-detail')) return 'device-detail'
   if (route.path.includes('sound-point')) return 'sound-point'
@@ -102,26 +98,21 @@ const pageType = computed(() => {
   return 'default'
 })
 
-// 设备ID（如果是设备详情页）
 const deviceId = computed(() => {
   return route.params.id || '未知设备'
 })
 
-// 点位ID（如果是点位页面）
 const pointId = computed(() => {
   return route.query.pointId || null
 })
 
-// 监听路由变化，确保组件正确更新
 watch(
   () => route.fullPath,
   (newPath, oldPath) => {
     console.log(`路由从 ${oldPath} 变更为 ${newPath}`)
-    // 这里可以添加当路由变化时需要执行的逻辑
   }
 )
 
-// 返回功能
 const goBack = () => {
   router.back()
 }

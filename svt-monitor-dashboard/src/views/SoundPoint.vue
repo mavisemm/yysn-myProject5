@@ -1,13 +1,13 @@
 ﻿<template>
   <DataPanel :stats="[
-    { title: '点位声音页' },
-    { title: '在线设备' },
-    { title: '预警设备' },
-    { title: '报警设备22222' }
+    { title: '健康设备数', number: 5 },
+    { title: '预警设备数', number: 2 },
+    { title: '监控总设备数', number: 7 },
+    { title: '监测点位数', number: 40 }
   ]" alarm-title="点位声音页" :metrics="[
-    { title: '振动烈度Top5' },
-    { title: '声音响度Top5' },
-    { title: '温度Top5' }
+    { title: '振动烈度Top5（单位：mm/s）' },
+    { title: '声音响度Top5（单位：dB）' },
+    { title: '温度Top5（单位：℃）' }
   ]">
     <template #alarms>
       <div v-if="pointId">
@@ -28,15 +28,12 @@ import DataPanel from '@/components/business/DataPanel.vue'
 
 const route = useRoute()
 
-// 使用computed确保响应式更新
 const pointId = computed(() => route.query.pointId)
 
-// 监听路由查询参数变化，确保在点位ID变化时更新内容
 watch(
   () => route.query.pointId,
   (newPointId, oldPointId) => {
     console.log(`点位ID从 ${oldPointId} 变更为 ${newPointId}`)
-    // 这里可以添加当点位ID变化时需要执行的逻辑
   }
 )
 </script>

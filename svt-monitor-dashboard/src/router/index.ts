@@ -1,6 +1,6 @@
 ﻿import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import PageLayout from '@/components/layout/PageLayout.vue' // 导入布局组件
+import PageLayout from '@/components/layout/PageLayout.vue'
 
 const routes: RouteRecordRaw[] = [
   {

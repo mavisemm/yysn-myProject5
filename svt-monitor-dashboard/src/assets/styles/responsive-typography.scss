@@ -1,0 +1,60 @@
+// 响应式字体大小定义
+@use './variables.scss' as vars;
+
+// 字体大小混合宏
+@mixin responsive-font-xs {
+  font-size: vars.$responsive-font-xs;
+}
+
+@mixin responsive-font-sm {
+  font-size: vars.$responsive-font-sm;
+}
+
+@mixin responsive-font-base {
+  font-size: vars.$responsive-font-base;
+}
+
+@mixin responsive-font-md {
+  font-size: vars.$responsive-font-md;
+}
+
+@mixin responsive-font-lg {
+  font-size: vars.$responsive-font-lg;
+}
+
+@mixin responsive-font-xl {
+  font-size: vars.$responsive-font-xl;
+}
+
+@mixin responsive-font-xxl {
+  font-size: vars.$responsive-font-xxl;
+}
+
+// 字体大小CSS类
+.responsive-font-xs {
+  @include responsive-font-xs;
+}
+
+.responsive-font-sm {
+  @include responsive-font-sm;
+}
+
+.responsive-font-base {
+  @include responsive-font-base;
+}
+
+.responsive-font-md {
+  @include responsive-font-md;
+}
+
+.responsive-font-lg {
+  @include responsive-font-lg;
+}
+
+.responsive-font-xl {
+  @include responsive-font-xl;
+}
+
+.responsive-font-xxl {
+  @include responsive-font-xxl;
+}
