@@ -148,7 +148,7 @@ const deviceTreeData = ref<DeviceNode[]>([
         children: [
           {
             id: 'device-101',
-            name: '设备1',
+            name: '设备a',
             type: 'device',
             status: 'normal',
             pointCount: 12,
@@ -160,7 +160,7 @@ const deviceTreeData = ref<DeviceNode[]>([
           },
           {
             id: 'device-102',
-            name: '设备2',
+            name: '设备b',
             type: 'device',
             status: 'warning',
             pointCount: 10,
@@ -171,7 +171,7 @@ const deviceTreeData = ref<DeviceNode[]>([
           },
           {
             id: 'device-103',
-            name: '设备11',
+            name: '设备a',
             type: 'device',
             status: 'normal',
             pointCount: 8,
@@ -192,7 +192,7 @@ const deviceTreeData = ref<DeviceNode[]>([
         children: [
           {
             id: 'device-104',
-            name: '设备1',
+            name: '设备a',
             type: 'device',
             status: 'normal',
             pointCount: 8,
@@ -203,7 +203,7 @@ const deviceTreeData = ref<DeviceNode[]>([
           },
           {
             id: 'device-105',
-            name: '设备3',
+            name: '设备c',
             type: 'device',
             status: 'normal',
             pointCount: 15,
@@ -224,7 +224,7 @@ const deviceTreeData = ref<DeviceNode[]>([
         children: [
           {
             id: 'device-106',
-            name: '设备5',
+            name: '设备e',
             type: 'device',
             status: 'normal',
             pointCount: 9,
@@ -637,7 +637,7 @@ watch(displayTreeData, () => {
 
     .sidebar-title {
       margin: 0;
-      font-size: clamp(16px, 2.5vw, 18px);
+      font-size: clamp(18px, 2.5vw, 24px);
       /* 响应式字体大小 */
       font-weight: 600;
     }

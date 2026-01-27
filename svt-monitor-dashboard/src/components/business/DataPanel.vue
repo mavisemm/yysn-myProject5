@@ -2,12 +2,12 @@
     <div class="dashboard">
         <div class="top-section">
             <DashboardStats :stats="stats" />
-            <AlarmOverview :title="alarmTitle">
+            <AlarmOverview>
                 <slot name="alarms"></slot>
             </AlarmOverview>
         </div>
         <div class="bottom-section">
-            <ThreeMetrics :metrics="metrics">
+            <ThreeMetrics :metrics="metrics" :rankings="rankings">
                 <template v-for="(metric, index) in metrics" #[`metric-${index}`]>
                     <slot :name="'metric-' + index"></slot>
                 </template>
@@ -22,10 +22,15 @@ import DashboardStats from './dashboard/DashboardStats.vue'
 import AlarmOverview from './dashboard/AlarmOverview.vue'
 import ThreeMetrics from './dashboard/ThreeMetrics.vue'
 
+interface RankingItem {
+    deviceName: string;
+    workshopName: string;
+}
+
 interface Props {
     stats: StatItem[];
-    alarmTitle: string;
     metrics: MetricItem[];
+    rankings?: RankingItem[][];
 }
 
 defineProps<Props>();
@@ -39,7 +44,7 @@ defineProps<Props>();
     box-sizing: border-box;
 
     .top-section {
-        flex: 0 0 60%;
+        height: 60%;
         display: flex;
         gap: 15px;
         padding-bottom: 15px;
@@ -47,7 +52,7 @@ defineProps<Props>();
     }
 
     .bottom-section {
-        flex: 0 0 40%;
+        height: 40%;
     }
 }
 </style>

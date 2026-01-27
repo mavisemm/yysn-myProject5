@@ -33,7 +33,7 @@ defineProps<Props>();
     flex: 0 0 calc(40% - 20px);
     overflow: hidden;
     box-sizing: border-box;
-    background: url('@/assets/images/background/数据统计背景.png') no-repeat center center;
+    background: url('@/assets/images/background/首页-数据统计背景.png') no-repeat center center;
     background-size: 100% 100%;
 
     .stats-grid {

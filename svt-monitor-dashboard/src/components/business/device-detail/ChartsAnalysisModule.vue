@@ -1,0 +1,558 @@
+<template>
+    <div class="charts-analysis-module">
+        <div class="charts-grid">
+            <!-- 温度图表 -->
+            <div class="chart-item">
+                <div class="chart-header">
+                    <span class="chart-title">温度随时间变化</span>
+                    <span class="chart-unit">（单位：℃）</span>
+                </div>
+                <div ref="tempChartRef" class="chart"></div>
+            </div>
+
+            <!-- 响度图表 -->
+            <div class="chart-item">
+                <div class="chart-header">
+                    <span class="chart-title">响度随时间变化</span>
+                    <span class="chart-unit">（单位：dB）</span>
+                </div>
+                <div ref="soundChartRef" class="chart"></div>
+            </div>
+
+            <!-- 烈度图表 -->
+            <div class="chart-item">
+                <div class="chart-header">
+                    <span class="chart-title">烈度随时间变化</span>
+                    <span class="chart-unit">（单位：mm/s）</span>
+                </div>
+                <div ref="vibChartRef" class="chart"></div>
+            </div>
+
+            <!-- 趋势分析模块 -->
+            <div class="analysis-item">
+                <div class="module-header">
+                    <h3 class="module-title">趋势分析</h3>
+                </div>
+                <div class="analysis-form">
+                    <el-form label-position="top">
+                        <el-form-item label="点位选择">
+                            <el-select v-model="analysisForm.pointId" placeholder="请选择点位" size="small"
+                                style="width: 100%;">
+                                <el-option v-for="point in pointList" :key="point.id" :label="point.name"
+                                    :value="point.id" />
+                            </el-select>
+                        </el-form-item>
+
+                        <el-form-item label="间隔天数">
+                            <el-input-number v-model="analysisForm.days" :min="1" :max="365" placeholder="输入天数"
+                                size="small" style="width: 100%;" />
+                        </el-form-item>
+
+                        <el-form-item label="时间选择">
+                            <el-date-picker v-model="analysisForm.dateRange" type="daterange" range-separator="至"
+                                start-placeholder="开始日期" end-placeholder="结束日期" size="small" style="width: 100%;" />
+                        </el-form-item>
+
+                        <el-button type="primary" @click="analyzeTrend" style="width: 100%; margin-top: 10px;">
+                            开始分析
+                        </el-button>
+                    </el-form>
+                </div>
+
+                <div class="analysis-result">
+                    <div class="result-header">
+                        <span>分析结果</span>
+                    </div>
+                    <div class="result-content">
+                        <div class="result-row">
+                            <span class="result-label">偏差值：</span>
+                            <span class="result-value">{{ analysisResult.deviation }}</span>
+                        </div>
+                        <div class="result-row">
+                            <span class="result-label">点位名称：</span>
+                            <span class="result-value">{{ analysisResult.pointName }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, nextTick, onUnmounted, watch } from 'vue'
+import { ElForm, ElFormItem, ElSelect, ElOption, ElInputNumber, ElDatePicker, ElButton, ElMessage } from 'element-plus'
+import * as echarts from 'echarts'
+
+// 定义点位信息类型
+interface PointInfo {
+    id: string,
+    name: string,
+    lastAlarmTime: string,
+    alarmType: string,
+    alarmValue: string,
+    hasAlarm: boolean
+}
+
+interface AnalysisResult {
+    deviation: string,
+    pointName: string
+}
+
+// 定义属性
+const props = defineProps<{
+    pointList: PointInfo[]
+}>()
+
+// 图表相关
+const tempChartRef = ref<HTMLDivElement>()
+const soundChartRef = ref<HTMLDivElement>()
+const vibChartRef = ref<HTMLDivElement>()
+
+let tempChart: echarts.ECharts | null = null
+let soundChart: echarts.ECharts | null = null
+let vibChart: echarts.ECharts | null = null
+
+// 趋势分析相关
+const analysisForm = ref({
+    pointId: '',
+    days: 7,
+    dateRange: [] as [Date, Date] | []
+})
+
+const analysisResult = ref<AnalysisResult>({
+    deviation: '0.25',
+    pointName: '进风口位置'
+})
+
+// 初始化图表
+onMounted(() => {
+    nextTick(() => {
+        initTempChart()
+        initSoundChart()
+        initVibChart()
+    })
+})
+
+// 初始化温度图表
+const initTempChart = () => {
+    if (!tempChartRef.value) return
+
+    if (tempChart) {
+        tempChart.dispose()
+    }
+
+    tempChart = echarts.init(tempChartRef.value)
+
+    const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`)
+    const tempData = Array.from({ length: 24 }, () => Math.floor(Math.random() * 50) + 30) // 30-80℃
+
+    const option = {
+        tooltip: {
+            trigger: 'axis'
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            top: '10%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            data: hours,
+            axisLabel: {
+                fontSize: 10,
+                color: '#fff'
+            },
+            axisLine: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            },
+            axisTick: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: '℃',
+            axisLabel: {
+                fontSize: 10,
+                color: '#fff'
+            },
+            axisLine: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            },
+            splitLine: {
+                lineStyle: {
+                    color: 'rgba(255, 255, 255, 0.2)'
+                }
+            }
+        },
+        series: [{
+            data: tempData,
+            type: 'line',
+            smooth: true,
+            itemStyle: {
+                color: '#FF6384'
+            },
+            lineStyle: {
+                color: '#FF6384',
+                width: 2
+            },
+            areaStyle: {
+                color: {
+                    type: 'linear',
+                    x: 0, y: 0, x2: 0, y2: 1,
+                    colorStops: [{
+                        offset: 0, color: 'rgba(255, 99, 132, 0.5)' // color with opacity
+                    }, {
+                        offset: 1, color: 'rgba(255, 99, 132, 0.1)' // color with opacity
+                    }]
+                },
+                opacity: 0.3
+            }
+        }],
+        backgroundColor: 'transparent'
+    }
+
+    tempChart.setOption(option)
+}
+
+// 初始化响度图表
+const initSoundChart = () => {
+    if (!soundChartRef.value) return
+
+    if (soundChart) {
+        soundChart.dispose()
+    }
+
+    soundChart = echarts.init(soundChartRef.value)
+
+    const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`)
+    const soundData = Array.from({ length: 24 }, () => Math.floor(Math.random() * 30) + 50) // 50-80 dB
+
+    const option = {
+        tooltip: {
+            trigger: 'axis'
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            top: '10%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            data: hours,
+            axisLabel: {
+                fontSize: 10,
+                color: '#fff'
+            },
+            axisLine: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            },
+            axisTick: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: 'dB',
+            axisLabel: {
+                fontSize: 10,
+                color: '#fff'
+            },
+            axisLine: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            },
+            splitLine: {
+                lineStyle: {
+                    color: 'rgba(255, 255, 255, 0.2)'
+                }
+            }
+        },
+        series: [{
+            data: soundData,
+            type: 'line',
+            smooth: true,
+            itemStyle: {
+                color: '#36A2EB'
+            },
+            lineStyle: {
+                color: '#36A2EB',
+                width: 2
+            },
+            areaStyle: {
+                color: {
+                    type: 'linear',
+                    x: 0, y: 0, x2: 0, y2: 1,
+                    colorStops: [{
+                        offset: 0, color: 'rgba(54, 162, 235, 0.5)' // color with opacity
+                    }, {
+                        offset: 1, color: 'rgba(54, 162, 235, 0.1)' // color with opacity
+                    }]
+                },
+                opacity: 0.3
+            }
+        }],
+        backgroundColor: 'transparent'
+    }
+
+    soundChart.setOption(option)
+}
+
+// 初始化振动图表
+const initVibChart = () => {
+    if (!vibChartRef.value) return
+
+    if (vibChart) {
+        vibChart.dispose()
+    }
+
+    vibChart = echarts.init(vibChartRef.value)
+
+    const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`)
+    const vibData = Array.from({ length: 24 }, () => (Math.random() * 20).toFixed(1)) // 0-20 mm/s
+
+    const option = {
+        tooltip: {
+            trigger: 'axis'
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            top: '10%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            data: hours,
+            axisLabel: {
+                fontSize: 10,
+                color: '#fff'
+            },
+            axisLine: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            },
+            axisTick: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            }
+        },
+        yAxis: {
+            type: 'value',
+            name: 'mm/s',
+            axisLabel: {
+                fontSize: 10,
+                color: '#fff'
+            },
+            axisLine: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            },
+            splitLine: {
+                lineStyle: {
+                    color: 'rgba(255, 255, 255, 0.2)'
+                }
+            }
+        },
+        series: [{
+            data: vibData,
+            type: 'line',
+            smooth: true,
+            itemStyle: {
+                color: '#FFCE56'
+            },
+            lineStyle: {
+                color: '#FFCE56',
+                width: 2
+            },
+            areaStyle: {
+                color: {
+                    type: 'linear',
+                    x: 0, y: 0, x2: 0, y2: 1,
+                    colorStops: [{
+                        offset: 0, color: 'rgba(255, 206, 86, 0.5)' // color with opacity
+                    }, {
+                        offset: 1, color: 'rgba(255, 206, 86, 0.1)' // color with opacity
+                    }]
+                },
+                opacity: 0.3
+            }
+        }],
+        backgroundColor: 'transparent'
+    }
+
+    vibChart.setOption(option)
+}
+
+// 分析趋势
+const analyzeTrend = () => {
+    // 模拟分析结果
+    analysisResult.value.deviation = (Math.random() * 0.5).toFixed(2)
+    const selectedPoint = props.pointList.find(p => p.id === analysisForm.value.pointId)
+    analysisResult.value.pointName = selectedPoint ? String(selectedPoint.name) : '未知点位'
+
+    ElMessage.success('趋势分析完成')
+}
+
+// 窗口大小改变时，重新调整图表大小
+const resizeCharts = () => {
+    if (tempChart) tempChart.resize()
+    if (soundChart) soundChart.resize()
+    if (vibChart) vibChart.resize()
+}
+
+// 监听窗口大小变化
+window.addEventListener('resize', resizeCharts)
+
+// 组件卸载时清理资源
+onUnmounted(() => {
+    if (tempChart) tempChart.dispose()
+    if (soundChart) soundChart.dispose()
+    if (vibChart) vibChart.dispose()
+
+    window.removeEventListener('resize', resizeCharts)
+})
+</script>
+
+<style lang="scss" scoped>
+.charts-analysis-module {
+    height: 60%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .charts-grid {
+        height: 100%;
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 15px;
+        overflow: hidden;
+
+        .chart-item {
+            background: url('@/assets/images/background/设备详情页-echarts背景.png') no-repeat center center;
+            background-size: 100% 100%;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+
+            .chart-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+
+                .chart-title {
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: white;
+                }
+
+                .chart-unit {
+                    font-size: 12px;
+                    color: #c0c4cc;
+                }
+            }
+
+            .chart {
+                flex: 1;
+            }
+        }
+
+        .analysis-item {
+            background: url('@/assets/images/background/设备详情页-echarts背景.png') no-repeat center center;
+            background-size: 100% 100%;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+
+            .module-header {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 15px;
+
+                .module-title {
+                    margin: 0;
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: white;
+                }
+            }
+
+            .analysis-form {
+                flex: 1;
+                overflow-y: auto;
+
+                .el-form {
+                    .el-form-item {
+                        margin-bottom: 12px;
+
+                        .el-form-item__label {
+                            font-size: 12px;
+                            color: white;
+                        }
+                    }
+                }
+            }
+
+            .analysis-result {
+                margin-top: 15px;
+                padding-top: 15px;
+                border-top: 1px solid #e4e7ed;
+
+                .result-header {
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: white;
+                    margin-bottom: 10px;
+                }
+
+                .result-content {
+                    .result-row {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-bottom: 8px;
+
+                        .result-label {
+                            font-size: 12px;
+                            color: #c0c4cc;
+                        }
+
+                        .result-value {
+                            font-size: 12px;
+                            color: white;
+                            font-weight: 500;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+</style>

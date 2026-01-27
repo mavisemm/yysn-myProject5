@@ -30,7 +30,7 @@ import { RouterView } from 'vue-router'
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: url('@/assets/images/background/背景.png') no-repeat center center;
+  background: url('@/assets/images/background/首页-背景.png') no-repeat center center;
   background-size: 100vw 100vh;
   padding: 0 0.7vw 2.4vh 0.7vw;
 
@@ -42,7 +42,7 @@ import { RouterView } from 'vue-router'
     min-height: 0;
 
     .device-sidebar-container {
-      flex: 0 0 25%;
+      width: 25vw;
       min-width: 200px;
       max-width: 400px;
       height: 100%;
@@ -64,12 +64,14 @@ import { RouterView } from 'vue-router'
       flex-direction: column;
       min-width: 0;
       overflow: auto;
+      height: 100%;
 
       .content-area {
         flex: 1;
         padding: 15px;
         overflow: auto;
         min-width: 300px;
+        height: 100%;
 
         &::-webkit-scrollbar {
           width: 6px;
@@ -99,7 +101,7 @@ import { RouterView } from 'vue-router'
       min-width: 500px;
 
       .device-sidebar-container {
-        flex: 0 0 200px;
+        width: 200px;
       }
 
       .content-wrapper {

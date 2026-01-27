@@ -56,6 +56,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { useDeviceTreeStore } from '@/stores/deviceTree'
 
 import {
   Monitor,
@@ -68,6 +69,8 @@ import {
 
 const router = useRouter()
 const route = useRoute()
+
+const deviceTreeStore = useDeviceTreeStore()
 
 const showHomeButton = computed(() => {
   return route.name === 'DeviceDetail' ||
@@ -89,6 +92,8 @@ const showSoundButton = computed(() => {
 })
 
 const goHome = () => {
+  // 重置设备树状态到初始状态
+  deviceTreeStore.resetDeviceTreeState()
   router.push('/')
 }
 
@@ -171,7 +176,7 @@ const handleLogout = () => {
       font-weight: 500;
 
       &:hover {
-        background: rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.2)
       }
     }
   }

@@ -36,4 +36,5 @@ export interface StatItem {
 // 指标项类型定义
 export interface MetricItem {
   title: string;
+  unit?: string;
 }

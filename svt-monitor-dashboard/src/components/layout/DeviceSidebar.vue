@@ -111,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type Node from 'element-plus/es/components/tree/src/model/node'
@@ -128,120 +128,118 @@ import {
 } from '@element-plus/icons-vue'
 
 import { useDebounce } from '@/composables/useDebounce'
+import { useDeviceTreeStore } from '@/stores/deviceTree'
 
 const router = useRouter()
+
+// 选中设备节点
+const selectDeviceNode = (deviceId: string) => {
+  if (deviceTreeRef.value && deviceTreeRef.value.getNode && deviceTreeRef.value.setCurrentKey) {
+    // 展开所有必要的父节点
+    const expandParentNodes = (nodeId: string) => {
+      try {
+        const node = deviceTreeRef.value.getNode(nodeId)
+        if (node && node.parent && node.parent.key !== undefined) {
+          deviceTreeRef.value.expandNode && deviceTreeRef.value.expandNode(node.parent.key)
+          expandParentNodes(node.parent.key)
+        }
+      } catch (e) {
+        console.warn('展开父节点时出错:', e)
+      }
+    }
+
+    // 查找设备节点并选中
+    const findAndSelectNode = (nodes: DeviceNode[]): boolean => {
+      for (const node of nodes) {
+        if (node.id === deviceId) {
+          // 展开父节点
+          expandParentNodes(node.id)
+          // 选中节点
+          try {
+            deviceTreeRef.value.setCurrentKey(deviceId)
+          } catch (e) {
+            console.warn('设置当前节点时出错:', e)
+          }
+          return true
+        }
+
+        if (node.children) {
+          if (findAndSelectNode(node.children)) {
+            return true
+          }
+        }
+      }
+      return false
+    }
+
+    try {
+      findAndSelectNode(deviceTreeData.value)
+    } catch (e) {
+      console.warn('查找和选中节点时出错:', e)
+    }
+  }
+}
+
+
 
 // ==================== 类型定义 ====================
 import type { DeviceNode, Workshop, Device } from '@/types/device'
 
 // ==================== 状态管理 ====================
-const deviceTreeData = ref<DeviceNode[]>([
-  {
-    id: 'factory-1',
-    name: '主厂区',
-    type: 'factory',
-    status: 'normal',
-    deviceCount: 164,
-    pointCount: 532,
-    children: [
-      {
-        id: 'workshop-1',
-        name: '车间A',
-        type: 'workshop',
-        status: 'normal',
-        deviceCount: 45,
-        pointCount: 180,
-        children: [
-          {
-            id: 'device-101',
-            name: '设备1',
-            type: 'device',
-            status: 'normal',
-            pointCount: 12,
-            workshopName: '车间A',
-            children: [
-              { id: 'point-10101', name: '点位1', type: 'point', status: 'normal' },
-              { id: 'point-10102', name: '点位2', type: 'point', status: 'normal' }
-            ]
-          },
-          {
-            id: 'device-102',
-            name: '设备2',
-            type: 'device',
-            status: 'warning',
-            pointCount: 10,
-            workshopName: '车间A',
-            children: [
-              { id: 'point-10201', name: '点位1', type: 'point', status: 'alarm' }
-            ]
-          },
-          {
-            id: 'device-103',
-            name: '设备11',
-            type: 'device',
-            status: 'normal',
-            pointCount: 8,
-            workshopName: '车间A',
-            children: [
-              { id: 'point-10301', name: '点位1', type: 'point', status: 'normal' }
-            ]
-          }
-        ]
-      },
-      {
-        id: 'workshop-2',
-        name: '车间B',
-        type: 'workshop',
-        status: 'warning',
-        deviceCount: 38,
-        pointCount: 152,
-        children: [
-          {
-            id: 'device-104',
-            name: '设备1',
-            type: 'device',
-            status: 'normal',
-            pointCount: 8,
-            workshopName: '车间B',
-            children: [
-              { id: 'point-10401', name: '点位1', type: 'point', status: 'normal' }
-            ]
-          },
-          {
-            id: 'device-105',
-            name: '设备3',
-            type: 'device',
-            status: 'normal',
-            pointCount: 15,
-            workshopName: '车间B',
-            children: [
-              { id: 'point-10501', name: '点位1', type: 'point', status: 'normal' }
-            ]
-          }
-        ]
-      },
-      {
-        id: 'workshop-3',
-        name: '车间AB',
-        type: 'workshop',
-        status: 'normal',
-        deviceCount: 52,
-        pointCount: 208,
-        children: [
-          {
-            id: 'device-106',
-            name: '设备5',
-            type: 'device',
-            status: 'normal',
-            pointCount: 9,
-            workshopName: '车间AB',
-            children: []
-          }
-        ]
-      }
-    ]
+const deviceTreeStore = useDeviceTreeStore()
+
+// 使用状态管理中的设备树数据
+const deviceTreeData = computed(() => deviceTreeStore.deviceTreeData)
+
+// 监听选中设备ID的变化
+const selectedDeviceId = computed(() => deviceTreeStore.selectedDeviceId)
+
+// 监听选中状态变化并更新树组件
+const updateSelection = async (newId: string | null) => {
+  if (deviceTreeRef.value && deviceTreeRef.value.setCurrentKey) {
+    await nextTick();
+    // 如果newId为null，则清除选中状态；否则设置选中指定的节点
+    if (newId) {
+      deviceTreeRef.value.setCurrentKey(newId);
+    } else {
+      // 清除选中状态
+      deviceTreeRef.value.setCurrentKey(null);
+    }
   }
-])
+}
+
+// 监听展开节点变化，更新树组件状态
+const updateExpansion = async (newKeys: string[]) => {
+  if (newKeys && deviceTreeRef.value && deviceTreeRef.value.setExpandedKeys) {
+    await nextTick();
+    deviceTreeRef.value.setExpandedKeys(newKeys)
+  }
+}
+
+// 在组件挂载后设置监听器
+onMounted(async () => {
+  console.log('设备列表组件已加载')
+
+  // 等待设备树数据加载完成
+  // 由于loadDeviceTreeData在store初始化时已调用，我们只需稍等一下
+  await nextTick();
+
+  // 使用setTimeout确保数据已完全加载
+  setTimeout(() => {
+    const firstWorkshopId = getFirstWorkshopId()
+    if (firstWorkshopId) {
+      deviceTreeStore.setExpandedKeys(['factory-1', firstWorkshopId])
+    } else {
+      deviceTreeStore.setExpandedKeys(['factory-1'])
+    }
+  }, 100);
+
+  // 监听选中状态变化并更新树组件
+  watch(selectedDeviceId, updateSelection, { immediate: true })
+
+  // 监听展开节点变化，更新树组件状态
+  watch(deviceTreeStore.expandedKeys, updateExpansion, { immediate: true })
+})
 
 const workshopSearchText = ref<string>('')
 const deviceSearchText = ref<string>('')
@@ -254,7 +252,9 @@ const debouncedWorkshopSearch = useDebounce(workshopSearchText, 400)
 const debouncedDeviceSearch = useDebounce(deviceSearchText, 400)
 
 const deviceTreeRef = ref<any>(null)
-const expandedKeys = ref<string[]>(['factory-1'])
+
+// 创建一个computed属性来访问store中的expandedKeys
+const expandedKeys = computed(() => deviceTreeStore.expandedKeys)
 
 const treeProps = {
   label: 'name',
@@ -324,7 +324,7 @@ const displayTreeData = computed<DeviceNode[]>(() => {
   const workshopSearch = debouncedWorkshopSearch.value
   const deviceSearch = debouncedDeviceSearch.value
 
-  const fullData = JSON.parse(JSON.stringify(deviceTreeData.value))
+  const fullData = JSON.parse(JSON.stringify(deviceTreeStore.deviceTreeData))
 
   const calculateCounts = (nodes: DeviceNode[]) => {
     nodes.forEach(node => {
@@ -550,7 +550,7 @@ const updateExpandedKeys = () => {
     }
   }
 
-  expandedKeys.value = keys
+  deviceTreeStore.setExpandedKeys(keys)
 }
 
 // ==================== 树操作函数 ====================
@@ -595,17 +595,7 @@ const handleNodeClick = (data: DeviceNode, node: Node) => {
   }
 }
 
-// ==================== 生命周期和监听 ====================
-onMounted(() => {
-  console.log('设备列表组件已加载')
 
-  const firstWorkshopId = getFirstWorkshopId()
-  if (firstWorkshopId) {
-    expandedKeys.value = ['factory-1', firstWorkshopId]
-  } else {
-    expandedKeys.value = ['factory-1']
-  }
-})
 
 watch(
   () => debouncedWorkshopSearch.value,
@@ -636,7 +626,7 @@ watch(displayTreeData, () => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: url('@/assets/images/background/设备列表背景.png') no-repeat center center;
+  background: url('@/assets/images/background/首页-设备列表背景.png') no-repeat center center;
   background-size: 100% 100%;
 
   .sidebar-header {
@@ -648,8 +638,7 @@ watch(displayTreeData, () => {
 
     .sidebar-title {
       margin: 0;
-      font-size: clamp(16px, 2.5vw, 18px);
-      /* 响应式字体大小 */
+      font-size: clamp(22px, 3vw, 26px);
       font-weight: 600;
     }
   }
@@ -669,7 +658,8 @@ watch(displayTreeData, () => {
 
         .custom-search-input {
           :deep(.el-input__wrapper) {
-            background: url('@/assets/images/background/搜索框背景.png') no-repeat center center;
+            height: 30px;
+            background: url('@/assets/images/background/首页-搜索框背景.png') no-repeat center center;
             background-size: 100% 100%;
             border-radius: 4px;
             box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -747,7 +737,7 @@ watch(displayTreeData, () => {
       padding: 10px 20px;
 
       // .tree-node {
-      //   background: url('@/assets/images/background/厂区背景.png') no-repeat center center !important;
+      //   background: url('@/assets/images/background/首页-厂区背景.png') no-repeat center center !important;
       //   background-size: 100% 100% !important;
       // }
 
@@ -792,7 +782,8 @@ watch(displayTreeData, () => {
     .expand-icon {
       cursor: pointer;
       transition: transform 0.2s;
-      font-size: 14px;
+      font-size: clamp(14px, 2.5vw, 16px);
+      /* 响应式字体大小，以16px为基准 */
       color: #fff;
     }
 
@@ -818,14 +809,14 @@ watch(displayTreeData, () => {
 
       .el-icon {
         font-size: clamp(14px, 2.5vw, 16px);
-        /* 响应式字体大小 */
+        /* 响应式字体大小，以16px为基准 */
       }
     }
 
     .node-label {
       flex: 1;
-      font-size: clamp(12px, 2vw, 14px);
-      /* 响应式字体大小 */
+      font-size: clamp(14px, 2.5vw, 16px);
+      /* 响应式字体大小，以16px为基准 */
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
