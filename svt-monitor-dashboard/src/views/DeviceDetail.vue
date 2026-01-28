@@ -25,6 +25,7 @@ import { List } from '@element-plus/icons-vue'
 import DeviceInfoModule from '@/components/business/device-detail/DeviceInfoModule.vue'
 import PointListModule from '@/components/business/device-detail/PointListModule.vue'
 import ChartsAnalysisModule from '@/components/business/device-detail/ChartsAnalysisModule.vue'
+import type { DeviceNode } from '@/types/device'
 
 // 引入点位列表模块类型
 import type { ComponentPublicInstance } from 'vue'
@@ -156,7 +157,7 @@ const analysisResult = ref<AnalysisResult>({
 // 初始化设备数据
 const initDeviceData = () => {
   // 查找当前设备信息和点位数据
-  const findDeviceInTree = (nodes: any[]) => {
+  const findDeviceInTree = (nodes: DeviceNode[]) => {
     if (!deviceId.value) return;
     for (const node of nodes) {
       if (deviceId.value && node.id === deviceId.value && node.type === 'device') {
@@ -165,7 +166,7 @@ const initDeviceData = () => {
 
         // 根据设备的子节点（点位）更新点位列表
         if (node.children && node.children.length > 0) {
-          pointList.value = node.children.map((point: any, index: number) => ({
+          pointList.value = node.children.map((point: DeviceNode, index: number) => ({
             id: String(point.id || ''),
             name: String(point.name || '未知点位'),
             lastAlarmTime: String(point.lastAlarmTime || '2025-12-12 10:30:00'),

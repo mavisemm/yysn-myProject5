@@ -109,7 +109,7 @@ const pointId = computed(() => {
 watch(
   () => route.fullPath,
   (newPath, oldPath) => {
-    console.log(`路由从 ${oldPath} 变更为 ${newPath}`)
+    // console.log(`路由从 ${oldPath} 变更为 ${newPath}`)
   }
 )
 

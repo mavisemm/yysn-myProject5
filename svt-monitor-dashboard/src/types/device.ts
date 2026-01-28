@@ -9,6 +9,10 @@ export interface DeviceNode {
   pointCount?: number
   parentId?: string
   workshopName?: string
+  lastAlarmTime?: string
+  alarmType?: string
+  alarmValue?: string
+  hasAlarm?: boolean
 }
 
 // 车间类型定义

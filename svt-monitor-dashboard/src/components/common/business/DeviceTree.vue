@@ -107,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type Node from 'element-plus/es/components/tree/src/model/node'
@@ -454,8 +454,13 @@ const handleWorkshopFocus = () => {
   showDeviceDropdown.value = false
 }
 
+let workshopBlurTimerId: number | null = null;
+
 const handleWorkshopBlur = () => {
-  setTimeout(() => {
+  if (workshopBlurTimerId) {
+    clearTimeout(workshopBlurTimerId);
+  }
+  workshopBlurTimerId = window.setTimeout(() => {
     showWorkshopDropdown.value = false
   }, 200)
 }
@@ -484,8 +489,13 @@ const handleDeviceFocus = () => {
   showWorkshopDropdown.value = false
 }
 
+let deviceBlurTimerId: number | null = null;
+
 const handleDeviceBlur = () => {
-  setTimeout(() => {
+  if (deviceBlurTimerId) {
+    clearTimeout(deviceBlurTimerId);
+  }
+  deviceBlurTimerId = window.setTimeout(() => {
     showDeviceDropdown.value = false
   }, 200)
 }
@@ -586,7 +596,7 @@ const handleNodeClick = (data: DeviceNode, node: Node) => {
 
 // ==================== 生命周期和监听 ====================
 onMounted(() => {
-  console.log('设备列表组件已加载')
+  // console.log('设备列表组件已加载')
 
   const firstWorkshopId = getFirstWorkshopId()
   if (firstWorkshopId) {
@@ -617,6 +627,19 @@ watch(
 watch(displayTreeData, () => {
   updateExpandedKeys()
 }, { deep: true })
+
+onUnmounted(() => {
+  // 清理定时器
+  if (workshopBlurTimerId) {
+    clearTimeout(workshopBlurTimerId);
+    workshopBlurTimerId = null;
+  }
+
+  if (deviceBlurTimerId) {
+    clearTimeout(deviceBlurTimerId);
+    deviceBlurTimerId = null;
+  }
+})
 </script>
 
 <style lang="scss" scoped>

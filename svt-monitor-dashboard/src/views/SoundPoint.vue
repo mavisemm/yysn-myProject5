@@ -33,7 +33,7 @@ const pointId = computed(() => route.query.pointId)
 watch(
   () => route.query.pointId,
   (newPointId, oldPointId) => {
-    console.log(`点位ID从 ${oldPointId} 变更为 ${newPointId}`)
+    // console.log(`点位ID从 ${oldPointId} 变更为 ${newPointId}`)
   }
 )
 </script>

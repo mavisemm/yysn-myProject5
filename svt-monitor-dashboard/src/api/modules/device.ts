@@ -14,7 +14,7 @@ export interface Device {
   lastUpdateTime: string
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   code: number
   message: string
   data: T
@@ -43,17 +43,17 @@ export const getDeviceDetail = (id: string): Promise<ApiResponse<Device>> => {
 }
 
 // 更新设备
-export const updateDevice = (id: string, data: Partial<Device>): Promise<ApiResponse<any>> => {
+export const updateDevice = (id: string, data: Partial<Device>): Promise<ApiResponse<Device>> => {
   return request.put(`/devices/${id}`, data)
 }
 
 // 删除设备
-export const deleteDevice = (id: string): Promise<ApiResponse<any>> => {
+export const deleteDevice = (id: string): Promise<ApiResponse<boolean>> => {
   return request.delete(`/devices/${id}`)
 }
 
 // 批量操作设备
-export const batchOperateDevices = (ids: string[], operation: string): Promise<ApiResponse<any>> => {
+export const batchOperateDevices = (ids: string[], operation: string): Promise<ApiResponse<{success: boolean; affectedCount: number}>> => {
   return request.post('/devices/batch', {
     ids,
     operation

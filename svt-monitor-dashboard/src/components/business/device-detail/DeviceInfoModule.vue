@@ -257,8 +257,8 @@ const initGaugeChart = () => {
                 },
                 axisLabel: {
                     show: true,
-                    distance: -35, // 调整标签距离
-                    fontSize: 12,
+                    distance: -50, // 调整标签距离
+                    fontSize: 16,
                     color: '#fff',
                     formatter: function (value: number) {
                         if (value % 20 === 0) { // 每20分显示一个刻度
@@ -321,6 +321,9 @@ const resizeGauge = () => {
     }, 100) // 延迟100毫秒以确保容器尺寸已稳定
 }
 
+// 存储用于重试的定时器ID
+let gaugeRetryTimerId: number | null = null;
+
 // 使用ResizeObserver监听容器变化
 const setupGaugeResizeObserver = () => {
     if (gaugeRef.value) {
@@ -328,7 +331,10 @@ const setupGaugeResizeObserver = () => {
         resizeObserver.observe(gaugeRef.value);
     } else {
         // 如果ref还未绑定，稍后重试
-        setTimeout(setupGaugeResizeObserver, 100);
+        if (gaugeRetryTimerId) {
+            clearTimeout(gaugeRetryTimerId);
+        }
+        gaugeRetryTimerId = window.setTimeout(setupGaugeResizeObserver, 100);
     }
 }
 
@@ -370,6 +376,12 @@ onUnmounted(() => {
         parentResizeObserver.disconnect();
         parentResizeObserver = null;
     }
+
+    // 清理重试图表初始化的定时器
+    if (gaugeRetryTimerId) {
+        clearTimeout(gaugeRetryTimerId);
+        gaugeRetryTimerId = null;
+    }
 })
 </script>
 
@@ -402,15 +414,8 @@ onUnmounted(() => {
 
             .module-title {
                 margin: 0;
-                font-size: clamp(22px, 3vw, 26px);
+                font-size: clamp(18px, 2.5vw, 22px);
                 font-weight: 600;
-            }
-
-            .device-name {
-                margin: 0;
-                font-size: clamp(22px, 3vw, 26px);
-                font-weight: 600;
-                color: white;
             }
 
             .header-actions {

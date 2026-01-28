@@ -59,7 +59,7 @@
                                     format="YYYY-MM-DD HH:mm:ss" value-format="YYYY-MM-DD HH:mm:ss" size="small"
                                     style="width: 100%;" popper-class="custom-datepicker-popper"
                                     :default-time="defaultTime" :disabled-date="disabledDate"
-                                    :picker-options="pickerOptions" @calendar-change="handleCalendarChange" />
+                                    @calendar-change="handleCalendarChange" />
                             </el-form-item>
 
                             <el-button type="primary" @click="analyzeTrend" style="width: 100%; margin-top: 10px;">
@@ -106,6 +106,9 @@ interface AnalysisResult {
     pointName: string
 }
 
+// 定义日期范围类型，兼容Element Plus的日期选择器
+export type DateRange = [Date, Date] | null
+
 // 定义属性
 const props = defineProps<{
     pointList: PointInfo[]
@@ -125,49 +128,15 @@ const disabledDate = (time: Date) => {
     return time.getTime() > Date.now();
 };
 
-const pickerOptions = {
-    shortcuts: [
-        {
-            text: '今天',
-            onClick(picker: any) {
-                const start = new Date();
-                const end = new Date();
-                start.setHours(0, 0, 0, 0);
-                // 结束时间设置为当前时间，而不是23:59:59
-                picker.$emit('pick', [start, end]);
-            }
-        },
-        {
-            text: '昨天',
-            onClick(picker: any) {
-                const start = new Date(Date.now() - 86400000);
-                const end = new Date(Date.now() - 86400000);
-                start.setHours(0, 0, 0, 0);
-                // 如果选择昨天，结束时间仍为昨天的23:59:59
-                end.setHours(23, 59, 59, 999);
-                picker.$emit('pick', [start, end]);
-            }
-        },
-        {
-            text: '一周前',
-            onClick(picker: any) {
-                const start = new Date(Date.now() - 7 * 86400000);
-                const end = new Date();
-                start.setHours(0, 0, 0, 0);
-                // 结束时间设置为当前时间
-                picker.$emit('pick', [start, end]);
-            }
-        }
-    ]
-};
 
-const defaultTime = computed(() => {
+
+const defaultTime = computed<[Date, Date]>(() => {
     const now = new Date();
     return [new Date(2000, 1, 1, 0, 0, 0), now];
 });
 
-const handleCalendarChange = (val: [Date, Date]) => {
-    if (val && val.length === 2) {
+const handleCalendarChange = (val: DateRange) => {
+    if (val) {
         const [start, end] = val;
         if (end) {
             const now = new Date();
@@ -187,7 +156,7 @@ const handleCalendarChange = (val: [Date, Date]) => {
 const analysisForm = ref({
     pointId: '',
     days: 1,
-    dateRange: [] as [Date, Date] | []
+    dateRange: null as DateRange
 })
 
 const analysisResult = ref<AnalysisResult>({
@@ -228,7 +197,7 @@ const initTempChart = () => {
 
     tempChart = echarts.init(tempChartRef.value)
 
-    const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`)
+    const hours = Array.from({ length: 24 }, (_, i) => `${i}`)
     const tempData = Array.from({ length: 24 }, () => Math.floor(Math.random() * 50) + 30) // 30-80℃
 
     const option = {
@@ -328,7 +297,7 @@ const initSoundChart = () => {
 
     soundChart = echarts.init(soundChartRef.value)
 
-    const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`)
+    const hours = Array.from({ length: 24 }, (_, i) => `${i}`)
     const soundData = Array.from({ length: 24 }, () => Math.floor(Math.random() * 30) + 50) // 50-80 dB
 
     const option = {
@@ -428,7 +397,7 @@ const initVibChart = () => {
 
     vibChart = echarts.init(vibChartRef.value)
 
-    const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`)
+    const hours = Array.from({ length: 24 }, (_, i) => `${i}`)
     const vibData = Array.from({ length: 24 }, () => (Math.random() * 20).toFixed(1)) // 0-20 mm/s
 
     const option = {
@@ -566,6 +535,9 @@ const resizeCharts = () => {
     }, 100)
 }
 
+// 存储用于重试的定时器ID
+let chartsRetryTimerId: number | null = null;
+
 // 使用ResizeObserver监听容器变化
 const setupResizeObserver = () => {
     if (chartGridRef?.value) {
@@ -573,7 +545,10 @@ const setupResizeObserver = () => {
         resizeObserver.observe(chartGridRef.value);
     } else {
         // 如果ref还未绑定，稍后重试
-        setTimeout(setupResizeObserver, 100);
+        if (chartsRetryTimerId) {
+            clearTimeout(chartsRetryTimerId);
+        }
+        chartsRetryTimerId = window.setTimeout(setupResizeObserver, 100);
     }
 }
 
@@ -605,6 +580,12 @@ onUnmounted(() => {
     if (resizeObserver) {
         resizeObserver.disconnect();
         resizeObserver = null;
+    }
+
+    // 清理重试图表初始化的定时器
+    if (chartsRetryTimerId) {
+        clearTimeout(chartsRetryTimerId);
+        chartsRetryTimerId = null;
     }
 })
 </script>

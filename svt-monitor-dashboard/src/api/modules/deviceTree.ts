@@ -92,7 +92,7 @@ export interface StatisticsData {
 /**
  * 获取设备树数据
  */
-export const getDeviceTreeData = () => {
+export const getDeviceTreeData = (): Promise<DeviceTreeResponse> => {
   return request.get<DeviceTreeResponse>('/api/device/tree')
 }
 

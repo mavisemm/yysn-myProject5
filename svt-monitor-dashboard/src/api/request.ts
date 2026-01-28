@@ -2,9 +2,14 @@ import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse,
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 扩展 AxiosRequestConfig 类型，添加自定义属性
+interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
+  showLoading?: boolean
+  hideNotification?: boolean
+}
 declare module 'axios' {
   interface AxiosRequestConfig {
-    loading?: boolean
+    showLoading?: boolean
+    hideNotification?: boolean
   }
 }
 
@@ -16,6 +21,9 @@ const service: AxiosInstance = axios.create({
     'Content-Type': 'application/json;charset=UTF-8'
   }
 })
+
+// 全局加载状态管理
+let loadingInstance: any = null;
 
 // 请求拦截器
 service.interceptors.request.use(
@@ -34,8 +42,14 @@ service.interceptors.request.use(
       }
     }
     
-    // 添加加载状态
-    if (config.loading !== false) {
+    // 显示加载状态
+    if (config.showLoading !== false) {
+      loadingInstance = ElMessage({
+        message: '加载中...',
+        type: 'info',
+        duration: 0,
+        showClose: false
+      })
     }
     
     return config
@@ -49,10 +63,19 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   (response: AxiosResponse) => {
+    // 关闭加载状态
+    if (loadingInstance) {
+      loadingInstance.close();
+      loadingInstance = null;
+    }
+    
     const res = response.data
     
     if (res.code && res.code !== 200) {
-      ElMessage.error(res.message || '请求失败')
+      // 隐藏通知如果配置了不显示
+      if (!response.config.hideNotification) {
+        ElMessage.error(res.message || '请求失败')
+      }
       
       if (res.code === 401) {
         localStorage.removeItem('token')
@@ -70,6 +93,12 @@ service.interceptors.response.use(
     }
   },
   (error: any) => {
+    // 关闭加载状态
+    if (loadingInstance) {
+      loadingInstance.close();
+      loadingInstance = null;
+    }
+    
     console.error('响应错误:', error)
     
     let errorMessage = '请求失败'
@@ -113,7 +142,7 @@ service.interceptors.response.use(
           errorMessage = '网关超时'
           break
         default:
-          errorMessage = data.message || `连接错误${status}`
+          errorMessage = data?.message || `连接错误${status}`
       }
     } else if (error.code === 'ECONNABORTED') {
       errorMessage = '请求超时'
@@ -121,7 +150,11 @@ service.interceptors.response.use(
       errorMessage = '网络异常，请检查网络连接'
     }
     
-    ElMessage.error(errorMessage)
+    // 如果配置了隐藏通知则不显示错误消息
+    if (!error.config?.hideNotification) {
+      ElMessage.error(errorMessage)
+    }
+    
     return Promise.reject(error)
   }
 )

@@ -22,6 +22,7 @@
 import { useRouter } from 'vue-router'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import type { MetricItem } from '@/types/device'
+import type { DeviceNode } from '@/types/device'
 
 interface RankingItem {
     deviceName: string;
@@ -43,7 +44,7 @@ const deviceTreeStore = useDeviceTreeStore()
 const deviceNameToIdMap: Record<string, string> = {};
 
 // 遍历设备树以填充映射表
-const buildDeviceNameToIdMap = (nodes: any[]) => {
+const buildDeviceNameToIdMap = (nodes: DeviceNode[]) => {
     nodes.forEach(node => {
         if (node.type === 'device') {
             // 提取设备名称（去除车间信息）
@@ -62,7 +63,7 @@ buildDeviceNameToIdMap(deviceTreeStore.deviceTreeData);
 // 验证设备是否存在
 const isValidDevice = (deviceId: string): boolean => {
     // 遍历设备树数据，检查设备是否存在
-    const findDeviceInTree = (nodes: any[]): boolean => {
+    const findDeviceInTree = (nodes: DeviceNode[]): boolean => {
         for (const node of nodes) {
             if (node.id === deviceId && node.type === 'device') {
                 return true;
@@ -83,7 +84,7 @@ const isValidDevice = (deviceId: string): boolean => {
 
 // 方法：跳转到设备详情页
 const goToDeviceDetail = (rank: RankingItem) => {
-    console.log('点击了设备:', rank);
+    // console.log('点击了设备:', rank);
 
     let deviceId = rank.deviceId;
 
@@ -91,14 +92,14 @@ const goToDeviceDetail = (rank: RankingItem) => {
         // 如果没有直接的设备ID，通过设备名称查找
         deviceId = deviceNameToIdMap[rank.deviceName];
         if (deviceId) {
-            console.log('通过设备名称找到了ID:', rank.deviceName, '->', deviceId);
+            // console.log('通过设备名称找到了ID:', rank.deviceName, '->', deviceId);
         } else {
             console.warn('无法通过设备名称找到ID:', rank.deviceName);
         }
     }
 
     if (deviceId && isValidDevice(deviceId)) {
-        console.log('准备跳转到设备详情页，设备ID:', deviceId);
+        // console.log('准备跳转到设备详情页，设备ID:', deviceId);
         // 在跳转前设置选中的设备ID
         deviceTreeStore.setSelectedDeviceId(deviceId);
         router.push({
@@ -106,7 +107,7 @@ const goToDeviceDetail = (rank: RankingItem) => {
             params: { id: deviceId },
             query: { deviceName: rank.deviceName, workshopName: rank.workshopName }
         }).then(() => {
-            console.log('路由跳转成功');
+            // console.log('路由跳转成功');
         }).catch(err => {
             console.error('路由跳转失败:', err);
         });
@@ -132,7 +133,7 @@ const getRankings = (index: number): RankingItem[] => {
     // 否则从设备树中提取设备数据
     const devices: RankingItem[] = [];
 
-    const traverse = (nodes: any[]) => {
+    const traverse = (nodes: DeviceNode[]) => {
         nodes.forEach(node => {
             if (node.type === 'device') {
                 devices.push({

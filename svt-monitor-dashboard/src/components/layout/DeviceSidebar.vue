@@ -217,15 +217,18 @@ const updateExpansion = async (newKeys: string[]) => {
 }
 
 // 在组件挂载后设置监听器
+// 存储定时器ID以便后续清理
+let timeoutId: number | null = null;
+
 onMounted(async () => {
-  console.log('设备列表组件已加载')
+  // console.log('设备列表组件已加载')
 
   // 等待设备树数据加载完成
   // 由于loadDeviceTreeData在store初始化时已调用，我们只需稍等一下
   await nextTick();
 
   // 使用setTimeout确保数据已完全加载
-  setTimeout(() => {
+  timeoutId = window.setTimeout(() => {
     const firstWorkshopId = getFirstWorkshopId()
     if (firstWorkshopId) {
       deviceTreeStore.setExpandedKeys(['factory-1', firstWorkshopId])
@@ -460,8 +463,13 @@ const handleWorkshopFocus = () => {
   showDeviceDropdown.value = false
 }
 
+let workshopBlurTimerId: number | null = null;
+
 const handleWorkshopBlur = () => {
-  setTimeout(() => {
+  if (workshopBlurTimerId) {
+    clearTimeout(workshopBlurTimerId);
+  }
+  workshopBlurTimerId = window.setTimeout(() => {
     showWorkshopDropdown.value = false
   }, 200)
 }
@@ -490,8 +498,13 @@ const handleDeviceFocus = () => {
   showWorkshopDropdown.value = false
 }
 
+let deviceBlurTimerId: number | null = null;
+
 const handleDeviceBlur = () => {
-  setTimeout(() => {
+  if (deviceBlurTimerId) {
+    clearTimeout(deviceBlurTimerId);
+  }
+  deviceBlurTimerId = window.setTimeout(() => {
     showDeviceDropdown.value = false
   }, 200)
 }
@@ -618,6 +631,24 @@ watch(
 watch(displayTreeData, () => {
   updateExpandedKeys()
 }, { deep: true })
+
+onUnmounted(() => {
+  // 清理所有定时器
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+    timeoutId = null;
+  }
+
+  if (workshopBlurTimerId) {
+    clearTimeout(workshopBlurTimerId);
+    workshopBlurTimerId = null;
+  }
+
+  if (deviceBlurTimerId) {
+    clearTimeout(deviceBlurTimerId);
+    deviceBlurTimerId = null;
+  }
+})
 </script>
 
 <style lang="scss" scoped>

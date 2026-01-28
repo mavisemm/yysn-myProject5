@@ -71,6 +71,7 @@ import { Search, Sort } from '@element-plus/icons-vue';
 import { ElInput, ElButton, ElDatePicker, ElPagination } from 'element-plus';
 import { useLocale } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
+import type { DeviceNode } from '@/types/device';
 
 const { t } = useLocale();
 
@@ -139,10 +140,10 @@ interface DeviceItem {
     name: string;
 }
 
-const extractDevicesFromTree = (nodes: any[]): DeviceItem[] => {
+const extractDevicesFromTree = (nodes: DeviceNode[]): DeviceItem[] => {
     const devices: DeviceItem[] = [];
 
-    const traverse = (nodeList: any[]) => {
+    const traverse = (nodeList: DeviceNode[]) => {
         nodeList.forEach(node => {
             if (node.type === 'device') {
                 devices.push({
@@ -497,8 +498,13 @@ const showDeviceDropdown = () => {
     showDropdown.value = true;
 };
 
+let hideDropdownTimerId: number | null = null;
+
 const hideDeviceDropdown = () => {
-    setTimeout(() => {
+    if (hideDropdownTimerId) {
+        clearTimeout(hideDropdownTimerId);
+    }
+    hideDropdownTimerId = window.setTimeout(() => {
         showDropdown.value = false;
     }, 200);
 };
@@ -551,10 +557,16 @@ onMounted(() => {
 
 onUnmounted(() => {
     window.removeEventListener('resize', updateContainerSize);
+
+    // 清理隐藏下拉菜单的定时器
+    if (hideDropdownTimerId) {
+        clearTimeout(hideDropdownTimerId);
+        hideDropdownTimerId = null;
+    }
 });
 
 const isValidDevice = (deviceId: string): boolean => {
-    const findDeviceInTree = (nodes: any[]): boolean => {
+    const findDeviceInTree = (nodes: DeviceNode[]): boolean => {
         for (const node of nodes) {
             if (node.id === deviceId && node.type === 'device') {
                 return true;
@@ -572,7 +584,7 @@ const isValidDevice = (deviceId: string): boolean => {
 };
 
 const goToDeviceDetail = (alarm: AlarmItem) => {
-    console.log('跳转到设备详情页，设备ID:', alarm.id);
+    // console.log('跳转到设备详情页，设备ID:', alarm.id);
 
     if (isValidDevice(alarm.id)) {
         deviceTreeStore.setSelectedDeviceId(alarm.id);
@@ -611,6 +623,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             margin: 0;
             font-size: clamp(22px, 3vw, 26px);
             font-weight: 600;
+            white-space: nowrap;
         }
 
         .search-section {
