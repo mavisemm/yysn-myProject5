@@ -1,15 +1,15 @@
 ﻿<template>
   <div class="device-detail">
-    <!-- 左侧设备信息模块 (25vw) -->
+    <!-- 左侧设备信息模块 (响应式宽度) -->
     <DeviceInfoModule :device-info="deviceInfo" @update:device-info="handleUpdateDeviceInfo" />
 
-    <!-- 右侧内容模块 (75vw) -->
+    <!-- 右侧内容模块 (响应式宽度) -->
     <div class="right-content">
-      <!-- 点位列表 (40%高度) -->
+      <!-- 点位列表 (响应式高度) -->
       <PointListModule ref="pointListModuleRef" :point-list="pointList" :selected-point-id="selectedPointId"
         @point-selected="selectedPointId = $event" />
 
-      <!-- 图表和趋势分析 (60%高度) -->
+      <!-- 图表和趋势分析 (响应式高度) -->
       <ChartsAnalysisModule :point-list="pointList" />
     </div>
   </div>
@@ -135,15 +135,6 @@ const pointListModuleRef = ref<ComponentPublicInstance & PointListModuleType>()
 // 选中的点位ID
 const selectedPointId = ref<string>('')
 
-// 图表相关
-const tempChartRef = ref<HTMLDivElement>()
-const soundChartRef = ref<HTMLDivElement>()
-const vibChartRef = ref<HTMLDivElement>()
-
-let tempChart: echarts.ECharts | null = null
-let soundChart: echarts.ECharts | null = null
-let vibChart: echarts.ECharts | null = null
-
 // 趋势分析相关
 const analysisForm = ref({
   pointId: '',
@@ -168,7 +159,7 @@ const initDeviceData = () => {
   const findDeviceInTree = (nodes: any[]) => {
     if (!deviceId.value) return;
     for (const node of nodes) {
-      if (node.id === deviceId.value && node.type === 'device') {
+      if (deviceId.value && node.id === deviceId.value && node.type === 'device') {
         deviceInfo.value.deviceName = node.name || '未知设备'
         deviceInfo.value.installationLocation = node.workshopName || '未知位置'
 
@@ -206,12 +197,6 @@ const initDeviceData = () => {
   // 初始化图表
   nextTick(() => {
     initGaugeChart()
-    // 确保图表容器存在后再初始化图表
-    nextTick(() => {
-      initTempChart()
-      initSoundChart()
-      initVibChart()
-    })
   })
 
   // 数据加载完成后，自动选中第一行
@@ -220,7 +205,8 @@ const initDeviceData = () => {
     const pointListModule = pointListModuleRef.value
     if (pointList.value.length > 0 && pointListModule && typeof pointListModule.setCurrentRow === 'function') {
       pointListModule.setCurrentRow(0)
-      selectedPointId.value = pointList.value[0].id
+      const firstPoint = pointList.value[0]
+      selectedPointId.value = firstPoint ? firstPoint.id : ''
     }
   })
 
@@ -369,276 +355,6 @@ const initGaugeChart = () => {
   gaugeChart.setOption(option)
 }
 
-// 初始化温度图表
-const initTempChart = () => {
-  if (!tempChartRef.value) return
-
-  if (tempChart) {
-    tempChart.dispose()
-  }
-
-  tempChart = echarts.init(tempChartRef.value)
-
-  const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`)
-  const tempData = Array.from({ length: 24 }, () => Math.floor(Math.random() * 50) + 30) // 30-80℃
-
-  const option = {
-    tooltip: {
-      trigger: 'axis'
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '10%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: hours,
-      axisLabel: {
-        fontSize: 10,
-        color: '#fff'
-      },
-      axisLine: {
-        lineStyle: {
-          color: '#fff'
-        }
-      },
-      axisTick: {
-        lineStyle: {
-          color: '#fff'
-        }
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: '℃',
-      axisLabel: {
-        fontSize: 10,
-        color: '#fff'
-      },
-      axisLine: {
-        lineStyle: {
-          color: '#fff'
-        }
-      },
-      splitLine: {
-        lineStyle: {
-          color: 'rgba(255, 255, 255, 0.2)'
-        }
-      }
-    },
-    series: [{
-      data: tempData,
-      type: 'line',
-      smooth: true,
-      itemStyle: {
-        color: '#FF6384'
-      },
-      lineStyle: {
-        color: '#FF6384',
-        width: 2
-      },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [{
-            offset: 0, color: 'rgba(255, 99, 132, 0.5)' // color with opacity
-          }, {
-            offset: 1, color: 'rgba(255, 99, 132, 0.1)' // color with opacity
-          }]
-        },
-        opacity: 0.3
-      }
-    }],
-    backgroundColor: 'transparent'
-  }
-
-  tempChart.setOption(option)
-}
-
-// 初始化响度图表
-const initSoundChart = () => {
-  if (!soundChartRef.value) return
-
-  if (soundChart) {
-    soundChart.dispose()
-  }
-
-  soundChart = echarts.init(soundChartRef.value)
-
-  const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`)
-  const soundData = Array.from({ length: 24 }, () => Math.floor(Math.random() * 30) + 50) // 50-80 dB
-
-  const option = {
-    tooltip: {
-      trigger: 'axis'
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '10%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: hours,
-      axisLabel: {
-        fontSize: 10,
-        color: '#fff'
-      },
-      axisLine: {
-        lineStyle: {
-          color: '#fff'
-        }
-      },
-      axisTick: {
-        lineStyle: {
-          color: '#fff'
-        }
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: 'dB',
-      axisLabel: {
-        fontSize: 10,
-        color: '#fff'
-      },
-      axisLine: {
-        lineStyle: {
-          color: '#fff'
-        }
-      },
-      splitLine: {
-        lineStyle: {
-          color: 'rgba(255, 255, 255, 0.2)'
-        }
-      }
-    },
-    series: [{
-      data: soundData,
-      type: 'line',
-      smooth: true,
-      itemStyle: {
-        color: '#36A2EB'
-      },
-      lineStyle: {
-        color: '#36A2EB',
-        width: 2
-      },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [{
-            offset: 0, color: 'rgba(54, 162, 235, 0.5)' // color with opacity
-          }, {
-            offset: 1, color: 'rgba(54, 162, 235, 0.1)' // color with opacity
-          }]
-        },
-        opacity: 0.3
-      }
-    }],
-    backgroundColor: 'transparent'
-  }
-
-  soundChart.setOption(option)
-}
-
-// 初始化振动图表
-const initVibChart = () => {
-  if (!vibChartRef.value) return
-
-  if (vibChart) {
-    vibChart.dispose()
-  }
-
-  vibChart = echarts.init(vibChartRef.value)
-
-  const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`)
-  const vibData = Array.from({ length: 24 }, () => (Math.random() * 20).toFixed(1)) // 0-20 mm/s
-
-  const option = {
-    tooltip: {
-      trigger: 'axis'
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '10%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: hours,
-      axisLabel: {
-        fontSize: 10,
-        color: '#fff'
-      },
-      axisLine: {
-        lineStyle: {
-          color: '#fff'
-        }
-      },
-      axisTick: {
-        lineStyle: {
-          color: '#fff'
-        }
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: 'mm/s',
-      axisLabel: {
-        fontSize: 10,
-        color: '#fff'
-      },
-      axisLine: {
-        lineStyle: {
-          color: '#fff'
-        }
-      },
-      splitLine: {
-        lineStyle: {
-          color: 'rgba(255, 255, 255, 0.2)'
-        }
-      }
-    },
-    series: [{
-      data: vibData,
-      type: 'line',
-      smooth: true,
-      itemStyle: {
-        color: '#FFCE56'
-      },
-      lineStyle: {
-        color: '#FFCE56',
-        width: 2
-      },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [{
-            offset: 0, color: 'rgba(255, 206, 86, 0.5)' // color with opacity
-          }, {
-            offset: 1, color: 'rgba(255, 206, 86, 0.1)' // color with opacity
-          }]
-        },
-        opacity: 0.3
-      }
-    }],
-    backgroundColor: 'transparent'
-  }
-
-  vibChart.setOption(option)
-}
-
 // 获取预警类型标签
 const getAlarmTypeTag = (type: string) => {
   switch (type) {
@@ -663,20 +379,47 @@ const analyzeTrend = () => {
   ElMessage.success('趋势分析完成')
 }
 
-// 窗口大小改变时，重新调整图表大小
-window.addEventListener('resize', () => {
-  if (gaugeChart) gaugeChart.resize()
-  if (tempChart) tempChart.resize()
-  if (soundChart) soundChart.resize()
-  if (vibChart) vibChart.resize()
+let resizeObserver: ResizeObserver | null = null
+
+// 页面尺寸改变时，调整所有图表
+const resizeAllCharts = () => {
+  // 触发强制重排以确保子组件能响应尺寸变化
+  document.body.offsetHeight;
+}
+
+// 使用ResizeObserver监听页面容器变化
+const setupPageResizeObserver = () => {
+  const pageContainer = document.querySelector('.device-detail') as HTMLDivElement;
+  if (pageContainer) {
+    resizeObserver = new ResizeObserver(resizeAllCharts);
+    resizeObserver.observe(pageContainer);
+  }
+}
+
+// 组件挂载时设置页面级resize监听
+onMounted(() => {
+  deviceTreeStore.setSelectedDeviceId(deviceId.value);
+  // 初始化数据
+  initDeviceData()
+
+  // 设置页面级resize观察器
+  setupPageResizeObserver();
+
+  // 作为备用方案，也监听window的resize事件
+  window.addEventListener('resize', resizeAllCharts);
 })
 
 // 组件卸载时清理资源
 onUnmounted(() => {
   if (gaugeChart) gaugeChart.dispose()
-  if (tempChart) tempChart.dispose()
-  if (soundChart) soundChart.dispose()
-  if (vibChart) vibChart.dispose()
+
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+
+  // 清理window事件监听器
+  window.removeEventListener('resize', resizeAllCharts);
 })
 </script>
 
@@ -687,13 +430,36 @@ onUnmounted(() => {
   gap: 15px;
   box-sizing: border-box;
   color: white;
+  min-width: 0;
+  /* 允许flex子项收缩 */
 
   .right-content {
+    width: 50vw !important;
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 15px;
     height: 100%;
+    min-width: 0;
+  }
+}
+
+/* 响应式处理：当屏幕较小时调整左侧设备信息模块的宽度 */
+@media screen and (max-width: 1200px) {
+  .right-content {
+    flex: 1;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .device-detail {
+    flex-direction: column;
+    padding: 10px;
+
+    .device-info-module {
+      width: 100% !important;
+      height: auto !important;
+    }
   }
 }
 </style>

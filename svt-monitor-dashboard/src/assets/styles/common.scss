@@ -38,3 +38,33 @@ html, body {
 .special-colored-text {
   color: initial;
 }
+
+/* 滚动条样式 - 与设备树模块保持一致 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--el-text-color-secondary, #909399);
+  border-radius: 4px;
+  opacity: 0.3;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--el-text-color-secondary, #909399);
+  opacity: 0.3;
+}
+:deep(.el-scrollbar) {
+    --el-scrollbar-opacity: 0.3;
+    --el-scrollbar-bg-color: var(--el-text-color-secondary);
+    --el-scrollbar-hover-opacity: 0.5;
+    --el-scrollbar-hover-bg-color: var(--el-text-color-secondary);
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+}

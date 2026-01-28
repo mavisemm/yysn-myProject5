@@ -4,24 +4,25 @@
             <h3 class="module-title">点位列表</h3>
         </div>
         <div class="point-table-container">
-            <el-table ref="pointTableRef" :data="pointList" height="100%" style="width: 100%"
-                :header-cell-style="{ background: 'transparent', color: 'white' }"
-                :cell-style="{ background: 'transparent', color: 'white' }" @row-click="onRowClick"
-                highlight-current-row>
-                <el-table-column prop="id" label="点位" width="80" />
-                <el-table-column prop="name" label="点位名称" />
-                <el-table-column prop="lastAlarmTime" label="预警时间" width="150" />
-                <el-table-column prop="alarmType" label="预警类型" width="100">
+            <el-table ref="pointTableRef" :data="pointList" height="100%" :fit="true"
+                :header-cell-style="{ background: 'transparent', color: 'white', 'text-align': 'center' }"
+                :cell-style="{ background: 'transparent', color: 'white', 'text-align': 'center' }"
+                @row-click="onRowClick" highlight-current-row>
+                <el-table-column prop="id" label="点位" width="15%" />
+                <el-table-column prop="name" label="点位名称" width="20%" />
+                <el-table-column prop="lastAlarmTime" label="预警时间" width="20%" />
+                <el-table-column prop="alarmType" label="预警类型" width="15%">
                     <template #default="{ row }">
                         <span :class="getAlarmTypeTag(row.alarmType)">
                             {{ row.alarmType }}
                         </span>
                     </template>
                 </el-table-column>
-                <el-table-column prop="alarmValue" label="预警值" width="120" />
-                <el-table-column label="操作" width="100">
+                <el-table-column prop="alarmValue" label="预警值" width="15%" />
+                <el-table-column label="操作" width="15%" align="center">
                     <template #default="{ row }">
-                        <el-button :type="row.hasAlarm ? 'danger' : 'primary'" size="small" :disabled="true">
+                        <el-button :type="row.hasAlarm ? 'danger' : 'primary'" size="small" :disabled="true"
+                            style="min-width: auto; width: fit-content; padding-left: 10px; padding-right: 10px;">
                             {{ row.hasAlarm ? '未处理' : '已处理' }}
                         </el-button>
                     </template>
@@ -93,30 +94,31 @@ defineExpose({
 })
 
 
-
 </script>
 
 <style lang="scss" scoped>
 .point-list-module {
+    width: 100%;
     display: flex;
     flex-direction: column;
-    height: 40%;
+    height: 50%;
     background: url('@/assets/images/background/设备详情页-点位列表背景.png') no-repeat center center;
     background-size: 100% 100%;
     border-radius: 8px;
-    padding: 20px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+    min-width: 0;
 
     .module-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 10px;
+        padding: 20px 20px 0 20px;
 
         .module-title {
             margin: 0;
-            font-size: clamp(22px, 3vw, 26px);
+            font-size: clamp(18px, 2.5vw, 22px);
+            /* 更小的字体范围以适应小屏幕 */
             font-weight: 600;
         }
     }
@@ -126,11 +128,36 @@ defineExpose({
         /* 占据剩余空间 */
         overflow: hidden;
         background: none !important;
+        min-width: 0;
+        /* 允许flex子项收缩 */
+        padding: 20px;
+        display: flex;
+        align-items: stretch;
     }
 
     :deep(.el-table) {
         background: transparent !important;
         --el-table-border-color: none !important;
+
+        .el-table__header {
+            width: 100% !important;
+        }
+
+        .el-table__body {
+            width: 100% !important;
+        }
+
+        .el-scrollbar {
+            width: 100% !important;
+        }
+
+        .el-scrollbar__wrap {
+            width: 100% !important;
+        }
+
+        .el-scrollbar__view {
+            width: 100% !important;
+        }
 
         .el-table__body-wrapper {
             background: transparent !important;
@@ -164,11 +191,19 @@ defineExpose({
         th {
             background: transparent !important;
             color: white !important;
+            font-size: clamp(10px, 1.5vw, 12px);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         td {
             background: transparent !important;
             color: white !important;
+            font-size: clamp(10px, 1.5vw, 12px);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .el-table__body tr.current-row>td {

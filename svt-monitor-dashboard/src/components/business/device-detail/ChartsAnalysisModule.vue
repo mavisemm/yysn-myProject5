@@ -1,6 +1,15 @@
 <template>
     <div class="charts-analysis-module">
-        <div class="charts-grid">
+        <div ref="chartGridRef" class="charts-grid">
+            <!-- 烈度图表 -->
+            <div class="chart-item">
+                <div class="chart-header">
+                    <span class="chart-title">烈度随时间变化</span>
+                    <span class="chart-unit">（单位：mm/s）</span>
+                </div>
+                <div ref="vibChartRef" class="chart"></div>
+            </div>
+
             <!-- 温度图表 -->
             <div class="chart-item">
                 <div class="chart-header">
@@ -19,51 +28,47 @@
                 <div ref="soundChartRef" class="chart"></div>
             </div>
 
-            <!-- 烈度图表 -->
-            <div class="chart-item">
-                <div class="chart-header">
-                    <span class="chart-title">烈度随时间变化</span>
-                    <span class="chart-unit">（单位：mm/s）</span>
-                </div>
-                <div ref="vibChartRef" class="chart"></div>
-            </div>
+
 
             <!-- 趋势分析模块 -->
             <div class="analysis-item">
                 <div class="module-header">
                     <h3 class="module-title">趋势分析</h3>
                 </div>
-                <div class="analysis-form">
-                    <el-form label-position="top">
-                        <el-form-item label="点位选择">
-                            <el-select v-model="analysisForm.pointId" placeholder="请选择点位" size="small"
-                                style="width: 100%;">
-                                <el-option v-for="point in pointList" :key="point.id" :label="point.name"
-                                    :value="point.id" />
-                            </el-select>
-                        </el-form-item>
+                <div class="module-content">
+                    <div class="analysis-form">
+                        <el-form label-position="top">
+                            <div class="form-row">
+                                <el-form-item label="点位选择" style="flex: 1; margin-right: 10px;">
+                                    <el-select v-model="analysisForm.pointId" placeholder="请选择点位" size="small"
+                                        style="width: 100%;">
+                                        <el-option v-for="point in pointList" :key="point.id" :label="point.name"
+                                            :value="point.id" />
+                                    </el-select>
+                                </el-form-item>
 
-                        <el-form-item label="间隔天数">
-                            <el-input-number v-model="analysisForm.days" :min="1" :max="365" placeholder="输入天数"
-                                size="small" style="width: 100%;" />
-                        </el-form-item>
+                                <el-form-item label="间隔天数" style="flex: 1;">
+                                    <el-input-number v-model="analysisForm.days" :min="0" :max="365" placeholder="输入天数"
+                                        size="small" style="width: 100%;" />
+                                </el-form-item>
+                            </div>
 
-                        <el-form-item label="时间选择">
-                            <el-date-picker v-model="analysisForm.dateRange" type="daterange" range-separator="至"
-                                start-placeholder="开始日期" end-placeholder="结束日期" size="small" style="width: 100%;" />
-                        </el-form-item>
+                            <el-form-item label="时间选择">
+                                <el-date-picker v-model="analysisForm.dateRange" type="datetimerange"
+                                    range-separator="-" start-placeholder="开始日期" end-placeholder="结束日期"
+                                    format="YYYY-MM-DD HH:mm:ss" value-format="YYYY-MM-DD HH:mm:ss" size="small"
+                                    style="width: 100%;" popper-class="custom-datepicker-popper"
+                                    :default-time="defaultTime" :disabled-date="disabledDate"
+                                    :picker-options="pickerOptions" @calendar-change="handleCalendarChange" />
+                            </el-form-item>
 
-                        <el-button type="primary" @click="analyzeTrend" style="width: 100%; margin-top: 10px;">
-                            开始分析
-                        </el-button>
-                    </el-form>
-                </div>
-
-                <div class="analysis-result">
-                    <div class="result-header">
-                        <span>分析结果</span>
+                            <el-button type="primary" @click="analyzeTrend" style="width: 100%; margin-top: 10px;">
+                                开始分析
+                            </el-button>
+                        </el-form>
                     </div>
-                    <div class="result-content">
+
+                    <div class="analysis-result">
                         <div class="result-row">
                             <span class="result-label">偏差值：</span>
                             <span class="result-value">{{ analysisResult.deviation }}</span>
@@ -74,15 +79,17 @@
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, onUnmounted, watch } from 'vue'
+import { ref, onMounted, nextTick, onUnmounted, watch, computed } from 'vue'
 import { ElForm, ElFormItem, ElSelect, ElOption, ElInputNumber, ElDatePicker, ElButton, ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
 // 定义点位信息类型
 interface PointInfo {
@@ -114,9 +121,72 @@ let soundChart: echarts.ECharts | null = null
 let vibChart: echarts.ECharts | null = null
 
 // 趋势分析相关
+const disabledDate = (time: Date) => {
+    return time.getTime() > Date.now();
+};
+
+const pickerOptions = {
+    shortcuts: [
+        {
+            text: '今天',
+            onClick(picker: any) {
+                const start = new Date();
+                const end = new Date();
+                start.setHours(0, 0, 0, 0);
+                // 结束时间设置为当前时间，而不是23:59:59
+                picker.$emit('pick', [start, end]);
+            }
+        },
+        {
+            text: '昨天',
+            onClick(picker: any) {
+                const start = new Date(Date.now() - 86400000);
+                const end = new Date(Date.now() - 86400000);
+                start.setHours(0, 0, 0, 0);
+                // 如果选择昨天，结束时间仍为昨天的23:59:59
+                end.setHours(23, 59, 59, 999);
+                picker.$emit('pick', [start, end]);
+            }
+        },
+        {
+            text: '一周前',
+            onClick(picker: any) {
+                const start = new Date(Date.now() - 7 * 86400000);
+                const end = new Date();
+                start.setHours(0, 0, 0, 0);
+                // 结束时间设置为当前时间
+                picker.$emit('pick', [start, end]);
+            }
+        }
+    ]
+};
+
+const defaultTime = computed(() => {
+    const now = new Date();
+    return [new Date(2000, 1, 1, 0, 0, 0), now];
+});
+
+const handleCalendarChange = (val: [Date, Date]) => {
+    if (val && val.length === 2) {
+        const [start, end] = val;
+        if (end) {
+            const now = new Date();
+            const endDay = new Date(end);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // 如果结束日期是今天，则结束时间设置为当前时间
+            endDay.setHours(0, 0, 0, 0);
+            if (endDay.getTime() === today.getTime()) {
+                analysisForm.value.dateRange = [start, now];
+            }
+        }
+    }
+};
+
 const analysisForm = ref({
     pointId: '',
-    days: 7,
+    days: 1,
     dateRange: [] as [Date, Date] | []
 })
 
@@ -127,16 +197,30 @@ const analysisResult = ref<AnalysisResult>({
 
 // 初始化图表
 onMounted(() => {
+    // 使用 nextTick 确保 DOM 已渲染
     nextTick(() => {
-        initTempChart()
-        initSoundChart()
-        initVibChart()
-    })
+        // 使用 setTimeout 确保 DOM 完全渲染后再初始化图表
+        setTimeout(() => {
+            initTempChart();
+            initSoundChart();
+            initVibChart();
+        }, 100);
+    });
 })
 
 // 初始化温度图表
 const initTempChart = () => {
     if (!tempChartRef.value) return
+
+    // 检查容器元素是否具有有效尺寸
+    const rect = tempChartRef.value.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+        // 如果尺寸为0，推迟初始化
+        setTimeout(() => {
+            initTempChart();
+        }, 100);
+        return;
+    }
 
     if (tempChart) {
         tempChart.dispose()
@@ -228,6 +312,16 @@ const initTempChart = () => {
 const initSoundChart = () => {
     if (!soundChartRef.value) return
 
+    // 检查容器元素是否具有有效尺寸
+    const rect = soundChartRef.value.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+        // 如果尺寸为0，推迟初始化
+        setTimeout(() => {
+            initSoundChart();
+        }, 100);
+        return;
+    }
+
     if (soundChart) {
         soundChart.dispose()
     }
@@ -317,6 +411,16 @@ const initSoundChart = () => {
 // 初始化振动图表
 const initVibChart = () => {
     if (!vibChartRef.value) return
+
+    // 检查容器元素是否具有有效尺寸
+    const rect = vibChartRef.value.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+        // 如果尺寸为0，推迟初始化
+        setTimeout(() => {
+            initVibChart();
+        }, 100);
+        return;
+    }
 
     if (vibChart) {
         vibChart.dispose()
@@ -414,15 +518,83 @@ const analyzeTrend = () => {
     ElMessage.success('趋势分析完成')
 }
 
+let resizeObserver: ResizeObserver | null = null
+
 // 窗口大小改变时，重新调整图表大小
 const resizeCharts = () => {
-    if (tempChart) tempChart.resize()
-    if (soundChart) soundChart.resize()
-    if (vibChart) vibChart.resize()
+    // 使用setTimeout确保在下一个事件循环中执行resize，避免在DOM未完全更新时调用
+    setTimeout(() => {
+        if (tempChart) {
+            try {
+                tempChart.resize()
+                // 在某些情况下，resize后立即重绘图表可确保显示正常
+                tempChart.setOption(tempChart.getOption());
+            } catch (e) {
+                console.warn('Error resizing temp chart:', e)
+                // 如果resize失败，尝试重新初始化图表
+                nextTick(() => {
+                    initTempChart();
+                });
+            }
+        }
+        if (soundChart) {
+            try {
+                soundChart.resize()
+                // 在某些情况下，resize后立即重绘图表可确保显示正常
+                soundChart.setOption(soundChart.getOption());
+            } catch (e) {
+                console.warn('Error resizing sound chart:', e)
+                // 如果resize失败，尝试重新初始化图表
+                nextTick(() => {
+                    initSoundChart();
+                });
+            }
+        }
+        if (vibChart) {
+            try {
+                vibChart.resize()
+                // 在某些情况下，resize后立即重绘图表可确保显示正常
+                vibChart.setOption(vibChart.getOption());
+            } catch (e) {
+                console.warn('Error resizing vib chart:', e)
+                // 如果resize失败，尝试重新初始化图表
+                nextTick(() => {
+                    initVibChart();
+                });
+            }
+        }
+    }, 100)
 }
 
-// 监听窗口大小变化
-window.addEventListener('resize', resizeCharts)
+// 使用ResizeObserver监听容器变化
+const setupResizeObserver = () => {
+    if (chartGridRef?.value) {
+        resizeObserver = new ResizeObserver(resizeCharts);
+        resizeObserver.observe(chartGridRef.value);
+    } else {
+        // 如果ref还未绑定，稍后重试
+        setTimeout(setupResizeObserver, 100);
+    }
+}
+
+// 创建一个ref来引用charts-grid容器
+const chartGridRef = ref<HTMLDivElement>()
+
+// 组件挂载时设置resize监听
+onMounted(() => {
+    // 使用 nextTick 确保 DOM 已渲染
+    nextTick(() => {
+        // 使用 setTimeout 确保 DOM 完全渲染后再初始化图表
+        setTimeout(() => {
+            initTempChart();
+            initSoundChart();
+            initVibChart();
+
+            // 设置resize观察器
+            setupResizeObserver();
+        }, 150); // 增加延时时间以确保图表容器完全渲染
+    });
+})
 
 // 组件卸载时清理资源
 onUnmounted(() => {
@@ -430,13 +602,16 @@ onUnmounted(() => {
     if (soundChart) soundChart.dispose()
     if (vibChart) vibChart.dispose()
 
-    window.removeEventListener('resize', resizeCharts)
+    if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+    }
 })
 </script>
 
 <style lang="scss" scoped>
 .charts-analysis-module {
-    height: 60%;
+    height: 50%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -449,21 +624,27 @@ onUnmounted(() => {
         grid-template-rows: 1fr 1fr;
         gap: 15px;
         overflow: hidden;
+        min-height: 0;
 
         .chart-item {
             background: url('@/assets/images/background/设备详情页-echarts背景.png') no-repeat center center;
             background-size: 100% 100%;
             border-radius: 8px;
-            padding: 15px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            min-height: 0;
+            /* 确保flex子项可以收缩 */
+            overflow: hidden;
 
             .chart-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 10px;
+                flex: 0 0 auto;
+                /* 固定头部高度 */
 
                 .chart-title {
                     font-size: 14px;
@@ -473,12 +654,14 @@ onUnmounted(() => {
 
                 .chart-unit {
                     font-size: 12px;
-                    color: #c0c4cc;
+                    color: #fff;
                 }
             }
 
             .chart {
                 flex: 1;
+                min-height: 0;
+                /* 确保图表区域可以收缩 */
             }
         }
 
@@ -486,54 +669,58 @@ onUnmounted(() => {
             background: url('@/assets/images/background/设备详情页-echarts背景.png') no-repeat center center;
             background-size: 100% 100%;
             border-radius: 8px;
-            padding: 20px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            /* 统一overflow处理 */
+            min-height: 0;
+            /* 确保flex子项可以收缩 */
 
             .module-header {
                 display: flex;
+                justify-content: space-between;
                 align-items: center;
-                gap: 10px;
-                margin-bottom: 15px;
+                margin-bottom: 10px;
+                flex: 0 0 auto;
 
                 .module-title {
-                    margin: 0;
-                    font-size: 16px;
-                    font-weight: bold;
-                    color: white;
-                }
-            }
-
-            .analysis-form {
-                flex: 1;
-                overflow-y: auto;
-
-                .el-form {
-                    .el-form-item {
-                        margin-bottom: 12px;
-
-                        .el-form-item__label {
-                            font-size: 12px;
-                            color: white;
-                        }
-                    }
-                }
-            }
-
-            .analysis-result {
-                margin-top: 15px;
-                padding-top: 15px;
-                border-top: 1px solid #e4e7ed;
-
-                .result-header {
                     font-size: 14px;
                     font-weight: bold;
                     color: white;
-                    margin-bottom: 10px;
+                }
+            }
+
+            .module-content {
+
+                overflow-y: auto;
+
+                .analysis-form {
+                    flex: 1;
+                    min-height: 0;
+
+                    .form-row {
+                        display: flex;
+                        gap: 10px;
+                    }
+
+                    .el-form {
+                        .el-form-item {
+                            margin-bottom: 12px;
+
+                            :deep(.el-form-item__label) {
+                                font-size: 12px;
+                                color: white !important;
+                            }
+                        }
+                    }
                 }
 
-                .result-content {
+                .analysis-result {
+                    margin-top: 15px;
+                    padding-top: 15px;
+                    border-top: 1px solid #e4e7ed;
+
                     .result-row {
                         display: flex;
                         justify-content: space-between;
@@ -541,7 +728,8 @@ onUnmounted(() => {
 
                         .result-label {
                             font-size: 12px;
-                            color: #c0c4cc;
+                            color: #fff;
+                            font-weight: 600;
                         }
 
                         .result-value {
@@ -552,6 +740,129 @@ onUnmounted(() => {
                     }
                 }
             }
+
+
+
+
+        }
+    }
+}
+
+/* === 精细化调整 Element Plus 日期范围选择器 === */
+.el-picker-panel.el-date-range-picker {
+    width: 440px !important;
+    font-size: 12px !important;
+
+    .el-input__wrapper {
+        width: 90px !important;
+    }
+
+    .el-date-range-picker__time-header {
+        width: 400px !important;
+    }
+
+    /* --- 1. 压缩顶部“开始/结束 时间输入区域” --- */
+    .el-date-range-picker__time-header {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 10px !important;
+        gap: 6px;
+        /* 控制左右两组之间的间隙 */
+
+        /* 每组：日期 + 时间 */
+        >.el-scrollbar {
+            width: calc(50% - 3px) !important;
+            /* 两等分，减去 gap 的一半 */
+        }
+
+        /* 日期输入框 */
+        .el-date-editor {
+            width: 100% !important;
+
+            :deep(.el-input__wrapper) {
+                height: 26px !important;
+                padding: 0 6px !important;
+                background: rgba(255, 255, 255, 0.1) !important;
+                border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                box-shadow: none !important;
+                border-radius: 3px !important;
+            }
+
+            :deep(.el-input__inner) {
+                height: 26px !important;
+                line-height: 26px !important;
+                font-size: 11px !important;
+                padding: 0 4px !important;
+                color: white !important;
+                background: transparent !important;
+            }
+        }
+    }
+
+    /* --- 2. 缩小日历顶部“2026年1月”标题 --- */
+    .el-date-range-picker__header {
+        font-size: 12px !important;
+        /* 原为 14px+ */
+        font-weight: normal !important;
+        padding: 4px 0 !important;
+        line-height: 1.2 !important;
+        // 防止文字过长换行或溢出
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    /* 左右切换箭头也缩小 */
+    .el-picker-panel__icon-btn {
+        width: 14px !important;
+        height: 14px !important;
+        line-height: 14px !important;
+        font-size: 11px !important;
+    }
+
+    /* --- 3. 日历内容区继续紧凑 --- */
+    .el-date-range-picker__content {
+        width: 180px !important;
+        /* 每个日历 180px */
+        padding: 6px !important;
+
+        .el-date-table {
+            font-size: 10.5px !important;
+
+            th,
+            td {
+                padding: 2px 0 !important;
+                height: 22px !important;
+                line-height: 22px !important;
+            }
+        }
+    }
+
+    /* --- 4. 时间选择器（如果展开）--- */
+    .el-time-panel {
+        padding: 6px !important;
+
+        .el-time-spinner__wrapper {
+            padding: 0 3px !important;
+        }
+
+        .el-time-spinner__input {
+            :deep(.el-input__inner) {
+                height: 22px !important;
+                line-height: 22px !important;
+                font-size: 11px !important;
+                padding: 0 3px !important;
+            }
+        }
+    }
+
+    /* --- 5. Footer 按钮 --- */
+    .el-picker-panel__footer {
+        padding: 6px 10px !important;
+
+        .el-button--text {
+            font-size: 11px !important;
+            padding: 2px 6px !important;
         }
     }
 }

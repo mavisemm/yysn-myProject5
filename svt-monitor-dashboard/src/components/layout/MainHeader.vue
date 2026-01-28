@@ -207,7 +207,7 @@ const handleLogout = () => {
     .user-info {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 15px;
       padding: 6px 12px;
       cursor: pointer;
 

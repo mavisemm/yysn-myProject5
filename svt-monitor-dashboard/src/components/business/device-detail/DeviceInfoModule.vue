@@ -2,10 +2,9 @@
     <div class="device-info-module">
         <div class="module-header">
             <div class="header-main">
-                <h3 class="module-title" v-if="!isCollapsed">设备信息</h3>
-                <div class="device-name" v-if="isCollapsed">{{ deviceInfo.deviceName }}</div>
+                <h3 class="module-title">设备信息</h3>
                 <div class="header-actions">
-                    <el-button v-if="!isCollapsed" type="primary" size="small" @click="toggleEdit" class="edit-btn">
+                    <el-button type="primary" size="small" @click="toggleEdit" class="edit-btn">
                         {{ isEditing ? '保存' : '编辑' }}
                     </el-button>
                     <el-button type="primary" size="small" @click="toggleCollapse" class="collapse-btn">
@@ -26,6 +25,7 @@
                         <span class="info-value">{{ deviceInfo.model }}</span>
                     </div>
                 </div>
+
                 <div class="info-row" v-else>
                     <div class="info-item">
                         <span class="info-label">设备名称：</span>
@@ -101,8 +101,7 @@
                 </div>
             </div>
 
-            <!-- 设备健康度仪表盘 -->
-            <div class="health-gauge-container" v-show="!isCollapsed">
+            <div class="health-gauge-container">
                 <div class="gauge-header">
                     <el-button type="primary" size="small" @click="toggleHealthType" class="switch-health-btn">
                         切换{{ healthType === '声音' ? '震动' : '声音' }}健康度
@@ -110,14 +109,11 @@
                 </div>
                 <div class="gauge-wrapper">
                     <div ref="gaugeRef" class="gauge"></div>
-                    <!-- <div class="gauge-center-text">
-                    <div class="gauge-score">{{ currentHealthScore }}分</div>
-                </div> -->
                 </div>
             </div>
 
-            <!-- 设备图片 -->
-            <div class="device-image-container" v-show="!isCollapsed">
+            <!-- 设备图片 - 总是显示 -->
+            <div class="device-image-container">
                 <img src="@/assets/images/background/设备详情页-设备实物图.png" alt="设备图片" class="device-image" />
             </div>
         </div>
@@ -172,7 +168,6 @@ const toggleEdit = () => {
         // 保存编辑
         Object.assign(props.deviceInfo, editForm.value)
         emit('update:device-info', { ...editForm.value })
-        ElMessage.success('设备信息已更新')
     } else {
         // 进入编辑模式
         Object.assign(editForm.value, props.deviceInfo)
@@ -193,6 +188,16 @@ const toggleHealthType = () => {
 // 初始化仪表盘
 const initGaugeChart = () => {
     if (!gaugeRef.value) return
+
+    // 检查容器元素是否具有有效尺寸
+    const rect = gaugeRef.value.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+        // 如果尺寸为0，推迟初始化
+        setTimeout(() => {
+            initGaugeChart();
+        }, 100);
+        return;
+    }
 
     if (gaugeChart) {
         gaugeChart.dispose()
@@ -293,20 +298,78 @@ const initGaugeChart = () => {
     gaugeChart.setOption(option)
 }
 
+let resizeObserver: ResizeObserver | null = null
+let parentResizeObserver: ResizeObserver | null = null
+
+// 窗口大小改变时，重新调整图表大小
+const resizeGauge = () => {
+    // 使用setTimeout确保在下一个事件循环中执行resize，避免在DOM未完全更新时调用
+    setTimeout(() => {
+        if (gaugeChart) {
+            try {
+                gaugeChart.resize()
+                // 在某些情况下，resize后立即重绘图表可确保显示正常
+                gaugeChart.setOption(gaugeChart.getOption());
+            } catch (e) {
+                console.warn('Error resizing gauge chart:', e)
+                // 如果resize失败，尝试重新初始化图表
+                nextTick(() => {
+                    initGaugeChart();
+                });
+            }
+        }
+    }, 100) // 延迟100毫秒以确保容器尺寸已稳定
+}
+
+// 使用ResizeObserver监听容器变化
+const setupGaugeResizeObserver = () => {
+    if (gaugeRef.value) {
+        resizeObserver = new ResizeObserver(resizeGauge);
+        resizeObserver.observe(gaugeRef.value);
+    } else {
+        // 如果ref还未绑定，稍后重试
+        setTimeout(setupGaugeResizeObserver, 100);
+    }
+}
+
+// 使用ResizeObserver监听父容器变化
+const setupParentResizeObserver = () => {
+    const parentElement = document.querySelector('.device-info-module') as HTMLDivElement;
+    if (parentElement) {
+        parentResizeObserver = new ResizeObserver(resizeGauge);
+        parentResizeObserver.observe(parentElement);
+    }
+}
+
+// 在组件挂载和健康度类型切换时设置resize监听
 onMounted(() => {
+    nextTick(() => {
+        initGaugeChart()
+        setupGaugeResizeObserver();
+        setupParentResizeObserver();
+    })
+})
+
+// 监听健康度类型变化时重新初始化图表
+watch(healthType, () => {
     nextTick(() => {
         initGaugeChart()
     })
 })
 
-// 窗口大小改变时，重新调整图表大小
-window.addEventListener('resize', () => {
-    if (gaugeChart) gaugeChart.resize()
-})
-
 // 组件卸载时清理资源
 onUnmounted(() => {
     if (gaugeChart) gaugeChart.dispose()
+
+    if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+    }
+
+    if (parentResizeObserver) {
+        parentResizeObserver.disconnect();
+        parentResizeObserver = null;
+    }
 })
 </script>
 
@@ -317,21 +380,19 @@ onUnmounted(() => {
     background: url('@/assets/images/background/设备详情页-设备信息背景.png') no-repeat center center;
     background-size: 100% 100%;
     border-radius: 8px;
-    padding: 20px;
     display: flex;
     flex-direction: column;
     min-height: 0;
     /* 允许flex子项收缩 */
-    overflow: hidden;
-    /* 防止内容溢出 */
+    overflow: visible;
+    /* 保持可见，让内部滚动条正常显示 */
 
 
     .module-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 10px;
-        margin-bottom: 20px;
+        padding: 20px 20px 0 20px;
 
         .header-main {
             display: flex;
@@ -354,7 +415,7 @@ onUnmounted(() => {
 
             .header-actions {
                 display: flex;
-                gap: 10px;
+                gap: 15px;
             }
 
             .edit-btn {
@@ -367,33 +428,27 @@ onUnmounted(() => {
         }
 
 
-
-
     }
 
     .device-main {
+        padding: 20px;
         flex: 1;
         width: 100%;
         display: flex;
         flex-direction: column;
-        gap: 20px;
         min-height: 0;
         /* 允许flex子项收缩 */
-        overflow: auto;
-        /* 防止内容溢出 */
+        overflow-y: auto;
+        /* 当内容超出容器高度时显示垂直滚动条 */
 
         .device-basic-info {
-            flex: 1;
-            /* 占据剩余空间 */
-            min-height: 0;
-            /* 允许内容区域收缩 */
-            overflow-y: auto;
-            /* 当内容过多时显示滚动条 */
+            // flex: 1 0 auto;
 
             .info-row {
                 display: flex;
                 gap: 15px;
                 margin-bottom: 15px;
+                flex: 0 0 auto;
 
                 .info-item {
                     flex: 1;
@@ -404,13 +459,13 @@ onUnmounted(() => {
 
                     .info-label {
                         font-size: 12px;
-                        color: #c0c4cc;
-                        margin-bottom: 5px;
+                        color: #ccc;
                     }
 
                     .info-value {
                         font-size: 14px;
-                        color: white;
+                        color: #fff;
+                        margin-bottom: 5px;
                         font-weight: 500;
                     }
 
@@ -422,14 +477,14 @@ onUnmounted(() => {
         }
 
         .health-gauge-container {
-            flex-shrink: 0;
-            /* 防止过度收缩 */
+            flex: 0 0 auto;
+            margin-top: 20px;
+            /* 不伸缩，保持固定高度 */
 
             .gauge-header {
                 display: flex;
                 justify-content: flex-end;
                 align-items: center;
-                margin-bottom: 10px;
 
                 .switch-health-btn {
                     font-size: 12px;
@@ -440,6 +495,7 @@ onUnmounted(() => {
                 position: relative;
                 height: 200px;
                 width: 100%;
+                min-height: 150px; // 确保在小屏幕上也有最小高度
 
                 .gauge {
                     width: 100%;
@@ -463,8 +519,9 @@ onUnmounted(() => {
         }
 
         .device-image-container {
-            flex-shrink: 0;
-            /* 防止图片区域过度收缩 */
+            flex: 0 0 auto;
+            margin-top: 20px;
+            /* 不伸缩，保持固定高度 */
 
             .device-image {
                 width: 100%;

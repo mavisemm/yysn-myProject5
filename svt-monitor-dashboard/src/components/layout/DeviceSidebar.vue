@@ -630,10 +630,9 @@ watch(displayTreeData, () => {
   background-size: 100% 100%;
 
   .sidebar-header {
-    padding: 20px 20px 16px;
+    padding: 20px 20px 0 20px;
     display: flex;
     align-items: center;
-    gap: 10px;
     flex-shrink: 0;
 
     .sidebar-title {
@@ -644,12 +643,12 @@ watch(displayTreeData, () => {
   }
 
   .search-area {
-    padding: 16px 20px;
+    padding: 20px 20px 0 20px;
     flex-shrink: 0;
 
     .search-row {
       display: flex;
-      gap: 10px;
+      gap: 15px;
       align-items: flex-start;
 
       .search-item {
@@ -731,15 +730,10 @@ watch(displayTreeData, () => {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    padding: 20px 20px 0 20px;
 
     .tree-scrollbar {
       flex: 1;
-      padding: 10px 20px;
-
-      // .tree-node {
-      //   background: url('@/assets/images/background/首页-厂区背景.png') no-repeat center center !important;
-      //   background-size: 100% 100% !important;
-      // }
 
       :deep(.el-tree) {
         background: transparent;
