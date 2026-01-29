@@ -8,28 +8,75 @@
     { title: '振动烈度Top3', unit: '（单位：mm/s）' },
     { title: '声音响度Top3', unit: '（单位：dB）' },
     { title: '温度Top3', unit: '（单位：℃）' }
-  ]" :rankings="[
-    [
-      { deviceName: '设备a', workshopName: '车间A' },
-      { deviceName: '设备b', workshopName: '车间B' },
-      { deviceName: '设备c', workshopName: '车间AB' }
-    ],
-    [
-      { deviceName: '设备d', workshopName: '车间A' },
-      { deviceName: '设备a', workshopName: '车间B' },
-      { deviceName: '设备e', workshopName: '车间AB' }
-    ],
-    [
-      { deviceName: '设备b', workshopName: '车间A' },
-      { deviceName: '设备c', workshopName: '车间B' },
-      { deviceName: '设备a', workshopName: '车间AB' }
-    ]
-  ]">
+  ]" :rankings="rankings">
     <template #alarms>
     </template>
   </DataPanel>
 </template>
 
 <script setup lang="ts">
-import DataPanel from '@/components/business/DataPanel.vue'
+import { onMounted, ref } from 'vue';
+import DataPanel from '@/components/business/DataPanel.vue';
+import { getTop5Devices } from '@/api/modules/hardware';
+
+// 定义类型
+interface RankingItem {
+  deviceName: string;
+  workshopName: string;
+  value?: number;
+}
+
+// 初始化排名数据
+const rankings = ref<RankingItem[][]>([
+  [], // 振动烈度Top3
+  [], // 声音响度Top3
+  []  // 温度Top3
+]);
+
+// 获取Top5数据
+const fetchTop5Data = async () => {
+  try {
+    // 并行获取三种类型的Top5数据
+    const [vibrationData, soundData, temperatureData] = await Promise.all([
+      getTop5Devices('VIBRATION'),
+      getTop5Devices('SOUND'),
+      getTop5Devices('TEMPERATURE')
+    ]);
+    
+    // 处理振动烈度数据
+    if (vibrationData.rc === 0 && vibrationData.ret) {
+      rankings.value[0] = vibrationData.ret.map(item => ({
+        deviceName: item.deviceName,
+        workshopName: item.workshopName,
+        value: item.value
+      })).slice(0, 3); // 只取Top3
+    }
+    
+    // 处理声音响度数据
+    if (soundData.rc === 0 && soundData.ret) {
+      rankings.value[1] = soundData.ret.map(item => ({
+        deviceName: item.deviceName,
+        workshopName: item.workshopName,
+        value: item.value
+      })).slice(0, 3); // 只取Top3
+    }
+    
+    // 处理温度数据
+    if (temperatureData.rc === 0 && temperatureData.ret) {
+      rankings.value[2] = temperatureData.ret.map(item => ({
+        deviceName: item.deviceName,
+        workshopName: item.workshopName,
+        value: item.value
+      })).slice(0, 3); // 只取Top3
+    }
+  } catch (error) {
+    console.error('获取Top5数据失败:', error);
+    // 如果获取失败，保持空数组，这样ThreeMetrics组件会显示加载状态
+    // 不需要额外处理，因为请求拦截器会显示错误信息
+  }
+};
+
+onMounted(() => {
+  fetchTop5Data();
+});
 </script>

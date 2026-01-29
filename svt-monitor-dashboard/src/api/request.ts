@@ -55,6 +55,28 @@ function addPendingRequest(config: InternalAxiosRequestConfig): void {
 
 // 全局加载状态管理
 let loadingInstance: any = null;
+let loadingCount = 0;
+
+const showLoading = () => {
+  if (loadingCount === 0) {
+    loadingInstance = ElMessage({
+      message: '加载中...',
+      type: 'info',
+      duration: 0,
+      showClose: false
+    });
+  }
+  loadingCount++;
+};
+
+const hideLoading = () => {
+  if (loadingCount <= 0) return;
+  loadingCount--;
+  if (loadingCount === 0 && loadingInstance) {
+    loadingInstance.close();
+    loadingInstance = null;
+  }
+};
 
 // 请求拦截器
 service.interceptors.request.use(
@@ -91,12 +113,7 @@ service.interceptors.request.use(
     
     // 显示加载状态
     if (config.showLoading !== false) {
-      loadingInstance = ElMessage({
-        message: '加载中...',
-        type: 'info',
-        duration: 0,
-        showClose: false
-      })
+      showLoading();
     }
     
     return config
@@ -117,32 +134,47 @@ service.interceptors.response.use(
     }
     
     // 关闭加载状态
-    if (loadingInstance) {
-      loadingInstance.close();
-      loadingInstance = null;
+    if (response.config.showLoading !== false) {
+      hideLoading();
     }
     
     const res = response.data
     
-    if (res.code && res.code !== 200) {
-      // 隐藏通知如果配置了不显示
-      if (!response.config.hideNotification) {
-        ElMessage.error(res.message || '请求失败')
+    // 检查是否符合新的响应格式 (rc/ret/err)
+    if (res.hasOwnProperty('rc')) {
+      // 新格式：rc为0表示成功，非0表示失败
+      if (res.rc !== 0) {
+        // 隐藏通知如果配置了不显示
+        if (!response.config.hideNotification) {
+          ElMessage.error(res.err || '请求失败')
+        }
+        
+        return Promise.reject(new Error(res.err || 'Error'))
+      } else {
+        return res
       }
-      
-      if (res.code === 401) {
-        localStorage.removeItem('token')
-        ElMessageBox.alert('登录已过期，请重新登录', '提示', {
-          confirmButtonText: '确定',
-          callback: () => {
-            window.location.href = '/login'
-          }
-        })
-      }
-      
-      return Promise.reject(new Error(res.message || 'Error'))
     } else {
-      return res
+      // 旧格式：code不为200表示失败
+      if (res.code && res.code !== 200) {
+        // 隐藏通知如果配置了不显示
+        if (!response.config.hideNotification) {
+          ElMessage.error(res.message || '请求失败')
+        }
+        
+        if (res.code === 401) {
+          localStorage.removeItem('token')
+          ElMessageBox.alert('登录已过期，请重新登录', '提示', {
+            confirmButtonText: '确定',
+            callback: () => {
+              window.location.href = '/login'
+            }
+          })
+        }
+        
+        return Promise.reject(new Error(res.message || 'Error'))
+      } else {
+        return res
+      }
     }
   },
   (error: any) => {
@@ -155,9 +187,8 @@ service.interceptors.response.use(
     }
     
     // 关闭加载状态
-    if (loadingInstance) {
-      loadingInstance.close();
-      loadingInstance = null;
+    if (error.config?.showLoading !== false) {
+      hideLoading();
     }
     
     console.error('响应错误:', error)

@@ -888,7 +888,6 @@ onUnmounted(() => {
   }
 }
 </style>
-
 @keyframes rotate {
 from {
 transform: rotate(0deg);

@@ -236,3 +236,27 @@ export const getDeviceHealthReport = (deviceId: string, params?: {
     showLoading: true
   })
 }
+
+// 获取TOP5设备数据
+export interface TopDevice {
+  deviceId: string;
+  deviceName: string;
+  workshopId: string;
+  workshopName: string;
+  value: number; // 数值，如振动烈度、声音响度或温度
+  latestTime: string;
+}
+
+export interface TopDeviceResponse {
+  rc: number;
+  ret: TopDevice[];
+  err: string | null;
+}
+
+// 获取设备Top5数据，type可为SOUND, VIBRATION, TEMPERATURE
+export const getTop5Devices = (type: 'SOUND' | 'VIBRATION' | 'TEMPERATURE'): Promise<TopDeviceResponse> => {
+  return request.get('/taicang/hardware/device/vibration/top5', {
+    params: { type },
+    showLoading: true
+  })
+}

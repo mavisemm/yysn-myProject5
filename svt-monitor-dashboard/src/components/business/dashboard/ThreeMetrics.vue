@@ -9,8 +9,8 @@
                     <span class="rank-device">
                         {{ rankIndex + 1 }}.&nbsp;
                         {{ rank.deviceName }}
-                        （{{ rank.workshopName }}）
-                        &nbsp;50</span>
+                        <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
+                        <span v-if="rank.value !== undefined" class="rank-value">&nbsp;{{ rank.value }}</span></span>
                 </div>
             </div>
             <slot :name="'metric-' + index"></slot>
@@ -28,6 +28,7 @@ interface RankingItem {
     deviceName: string;
     workshopName: string;
     deviceId?: string; // 设备ID，用于跳转
+    value?: number; // 数值，如振动烈度、声音响度或温度
 }
 
 interface Props {
