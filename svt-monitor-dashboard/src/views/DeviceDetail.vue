@@ -249,7 +249,7 @@ const toggleEdit = () => {
 
 // 切换健康度类型
 const toggleHealthType = () => {
-  healthType.value = healthType.value === '声音' ? '震动' : '声音'
+  healthType.value = healthType.value === '声音' ? '振动' : '声音'
   // 更新分数，模拟不同健康度的分数
   currentHealthScore.value = healthType.value === '声音' ? 85 : 78
   initGaugeChart()

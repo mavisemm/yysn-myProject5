@@ -3,6 +3,11 @@
     <!-- 标题 -->
     <div class="sidebar-header">
       <h3 class="sidebar-title">设备列表</h3>
+      <el-button size="small" @click="refreshDeviceTree" class="refresh-btn">
+        <el-icon>
+          <Refresh />
+        </el-icon>
+      </el-button>
     </div>
 
     <!-- 搜索区域 -->
@@ -124,7 +129,8 @@ import {
   Search,
   Loading,
   ArrowRight,
-  ArrowDown
+  ArrowDown,
+  Refresh
 } from '@element-plus/icons-vue'
 
 import { useDebounce } from '@/composables/useDebounce'
@@ -224,18 +230,30 @@ onMounted(async () => {
   // console.log('设备列表组件已加载')
 
   // 等待设备树数据加载完成
-  // 由于loadDeviceTreeData在store初始化时已调用，我们只需稍等一下
+  // 等待store中的数据加载完成
   await nextTick();
 
-  // 使用setTimeout确保数据已完全加载
-  timeoutId = window.setTimeout(() => {
-    const firstWorkshopId = getFirstWorkshopId()
-    if (firstWorkshopId) {
-      deviceTreeStore.setExpandedKeys(['factory-1', firstWorkshopId])
-    } else {
-      deviceTreeStore.setExpandedKeys(['factory-1'])
-    }
-  }, 100);
+  // 使用观察者来等待数据加载完成
+  const stopWatch = watch(
+    () => deviceTreeStore.deviceTreeData,
+    (newData) => {
+      if (newData && newData.length > 0) {
+        // 数据已加载，停止观察
+        stopWatch();
+
+        // 使用setTimeout确保数据已完全渲染
+        timeoutId = window.setTimeout(() => {
+          const firstWorkshopId = getFirstWorkshopId()
+          if (firstWorkshopId) {
+            deviceTreeStore.setExpandedKeys(['factory-1', firstWorkshopId])
+          } else {
+            deviceTreeStore.setExpandedKeys(['factory-1'])
+          }
+        }, 100);
+      }
+    },
+    { immediate: true }
+  );
 
   // 监听选中状态变化并更新树组件
   watch(selectedDeviceId, updateSelection, { immediate: true })
@@ -447,7 +465,9 @@ const getFirstWorkshopId = (): string | null => {
     !displayTreeData.value[0].children.length) {
     return null
   }
-  return displayTreeData.value[0].children![0]?.id || null
+  // 确保是workshop类型的节点
+  const firstWorkshop = displayTreeData.value[0].children!.find(child => child.type === 'workshop');
+  return firstWorkshop?.id || null
 }
 
 const getSelectedDeviceWorkshopId = (): string | null => {
@@ -455,6 +475,11 @@ const getSelectedDeviceWorkshopId = (): string | null => {
     return selectedDevice.value.workshopId
   }
   return null
+}
+
+// 刷新设备树数据
+const refreshDeviceTree = async () => {
+  await deviceTreeStore.loadDeviceTreeData();
 }
 
 // ==================== 搜索相关方法 ====================
@@ -665,11 +690,35 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     flex-shrink: 0;
+    justify-content: space-between;
 
     .sidebar-title {
       margin: 0;
       font-size: clamp(22px, 3vw, 26px);
       font-weight: 600;
+    }
+
+    .refresh-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      border-radius: 4px;
+      padding: 4px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+
+      .el-icon {
+        font-size: 16px;
+      }
     }
   }
 

@@ -34,11 +34,24 @@ service.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
+    // 对于某些路径（如 /taicang/*），我们不需要添加基础URL
+    // 所以对于这些路径，我们临时设置baseURL为空
+    if (config.url && config.url.startsWith('/taicang')) {
+      // 为这些请求创建一个临时实例
+      const tempService = axios.create({
+        timeout: config.timeout || 3000,
+        headers: config.headers
+      });
+      
+      // 返回修改后的配置
+      config.baseURL = '';
+    }
+    
     // 添加时间戳防止缓存
     if (config.method === 'get') {
       config.params = {
         ...config.params,
-        _t: Date.now()
+        // _t: Date.now()
       }
     }
     

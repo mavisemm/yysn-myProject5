@@ -1,4 +1,4 @@
-import request from '../request'
+import request from '../request';
 
 // 定义设备树相关的类型
 export interface DeviceTreeNode {
@@ -93,7 +93,38 @@ export interface StatisticsData {
  * 获取设备树数据
  */
 export const getDeviceTreeData = (): Promise<DeviceTreeResponse> => {
-  return request.get<DeviceTreeResponse>('/api/device/tree')
+  console.log('正在请求设备树数据...');
+  // 直接使用完整路径，让Vite代理处理
+  return request.get<DeviceTreeResponse>('/taicang/hardware/device/tree')
+    .then(response => {
+      console.log('设备树API响应成功:', response);
+      return response;
+    })
+    .catch(error => {
+      console.error('设备树API请求失败，将使用默认数据:', error);
+      console.error('错误详情:', error.message || error);
+      // 返回默认的模拟数据结构
+      const defaultResponse: DeviceTreeResponse = {
+        code: 200,
+        message: 'success',
+        data: {
+          factories: [],
+          statistics: {
+            totalFactoryCount: 0,
+            totalWorkshopCount: 0,
+            totalDeviceCount: 0,
+            totalPointCount: 0,
+            onlineDeviceCount: 0,
+            offlineDeviceCount: 0,
+            alarmDeviceCount: 0,
+            warningDeviceCount: 0,
+            normalDeviceCount: 0
+          }
+        },
+        timestamp: Date.now()
+      };
+      return defaultResponse;
+    });
 }
 
 /**

@@ -13,6 +13,15 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  server: {
+    proxy: {
+      '/taicang': {
+        target: 'http://192.168.0.199:36000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
   css: {
     postcss: {
       // 显式配置空的 PostCSS 插件列表，跳过自动查找
