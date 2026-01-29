@@ -3,11 +3,6 @@
     <!-- 标题 -->
     <div class="sidebar-header">
       <h3 class="sidebar-title">设备列表</h3>
-      <el-button size="small" @click="refreshDeviceTree" class="refresh-btn">
-        <el-icon>
-          <Refresh />
-        </el-icon>
-      </el-button>
     </div>
 
     <!-- 搜索区域 -->
@@ -66,7 +61,7 @@
     <!-- 设备树 -->
     <div class="device-tree-container">
       <el-scrollbar class="tree-scrollbar">
-        <el-tree ref="deviceTreeRef" :data="displayTreeData" :props="treeProps" :expand-on-click-node="false"
+        <el-tree ref="deviceTreeRef" :data="displayTreeData" :props="treeProps" :expand-on-click-node="true"
           :default-expanded-keys="expandedKeys" node-key="id" highlight-current @node-click="handleNodeClick">
           <template #default="{ node, data }">
             <div class="tree-node" :data-type="data.type">
@@ -475,12 +470,9 @@ const getSelectedDeviceWorkshopId = (): string | null => {
     return selectedDevice.value.workshopId
   }
   return null
+
 }
 
-// 刷新设备树数据
-const refreshDeviceTree = async () => {
-  await deviceTreeStore.loadDeviceTreeData();
-}
 
 // ==================== 搜索相关方法 ====================
 const handleWorkshopFocus = () => {
@@ -602,28 +594,19 @@ const toggleNode = (node: Node) => {
 
 const handleExpandIconClick = (node: Node) => {
   // 阻止节点选中，只执行展开/收起操作
-  node.expanded ? node.collapse() : node.expand()
+  toggleNode(node)
 }
 
 const handleNodeClick = (data: DeviceNode, node: Node) => {
-  if (data.type === 'factory' || data.type === 'workshop') {
-    if (node.expanded) {
-      node.collapse()
-    } else {
-      node.expand()
-    }
-    return
-  }
-
+  // 设备点击时跳转路由
   if (data.type === 'device') {
-    node.expand()
-
     router.push({
       name: 'DeviceDetail',
       params: { id: data.id }
     })
   }
 
+  // 点位点击时跳转路由
   if (data.type === 'point') {
     const deviceId = node.parent?.data?.id || ''
     router.push({
@@ -810,7 +793,7 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    padding: 20px 20px 0 20px;
+    padding: 20px;
 
     .tree-scrollbar {
       flex: 1;
@@ -838,6 +821,7 @@ onUnmounted(() => {
           }
         }
 
+        // 为所有节点类型设置统一的选中样式
         .el-tree-node.is-current>.el-tree-node__content {
           background: rgb(103, 157, 215) !important;
         }

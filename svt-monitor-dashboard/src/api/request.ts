@@ -5,22 +5,53 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
   showLoading?: boolean
   hideNotification?: boolean
+  cacheControl?: boolean
+  customBaseURL?: string
 }
 declare module 'axios' {
   interface AxiosRequestConfig {
     showLoading?: boolean
     hideNotification?: boolean
+    cacheControl?: boolean
+    customBaseURL?: string
   }
 }
 
 // 创建 axios 实例
 const service: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api', 
-  timeout: 3000, // 请求超时时间
+  timeout: 15000, // 请求超时时间增加到15秒
   headers: {
     'Content-Type': 'application/json;charset=UTF-8'
   }
 })
+
+// 存储请求标识符的集合，用于取消重复请求
+const pendingRequests = new Map<string, AbortController>()
+
+// 生成请求唯一标识符
+function generateReqKey(config: InternalAxiosRequestConfig): string {
+  const { method, url, params, data } = config
+  return [method, url, JSON.stringify(params), JSON.stringify(data)].join('&')
+}
+
+// 取消重复请求
+function removePendingRequest(config: InternalAxiosRequestConfig): void {
+  const reqKey = generateReqKey(config)
+  if (pendingRequests.has(reqKey)) {
+    const controller = pendingRequests.get(reqKey)
+    controller?.abort()
+    pendingRequests.delete(reqKey)
+  }
+}
+
+// 添加请求到待处理队列
+function addPendingRequest(config: InternalAxiosRequestConfig): void {
+  const reqKey = generateReqKey(config)
+  const controller = new AbortController()
+  config.signal = controller.signal
+  pendingRequests.set(reqKey, controller)
+}
 
 // 全局加载状态管理
 let loadingInstance: any = null;
@@ -28,6 +59,8 @@ let loadingInstance: any = null;
 // 请求拦截器
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    removePendingRequest(config)
+    
     // 携带认证 token
     const token = localStorage.getItem('token')
     if (token) {
@@ -36,24 +69,25 @@ service.interceptors.request.use(
     
     // 对于某些路径（如 /taicang/*），我们不需要添加基础URL
     // 所以对于这些路径，我们临时设置baseURL为空
-    if (config.url && config.url.startsWith('/taicang')) {
-      // 为这些请求创建一个临时实例
-      const tempService = axios.create({
-        timeout: config.timeout || 3000,
-        headers: config.headers
-      });
-      
-      // 返回修改后的配置
+    if (config.url && (config.url.startsWith('/taicang') || config.url.startsWith('/vortex') || config.url.startsWith('/jiepai') || config.url.startsWith('/cas') || config.url.startsWith('/zhongyuan'))) {
       config.baseURL = '';
     }
     
-    // 添加时间戳防止缓存
-    if (config.method === 'get') {
+    // 使用自定义基础URL
+    if (config.customBaseURL) {
+      config.baseURL = config.customBaseURL
+    }
+    
+    // 添加时间戳防止缓存（除非明确禁用）
+    if (config.method === 'get' && config.cacheControl !== false) {
       config.params = {
         ...config.params,
-        // _t: Date.now()
+        _t: Date.now()
       }
     }
+    
+    // 添加请求到待处理队列
+    addPendingRequest(config)
     
     // 显示加载状态
     if (config.showLoading !== false) {
@@ -76,6 +110,12 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   (response: AxiosResponse) => {
+    // 从待处理队列中移除已完成的请求
+    const reqKey = generateReqKey(response.config as InternalAxiosRequestConfig)
+    if (pendingRequests.has(reqKey)) {
+      pendingRequests.delete(reqKey)
+    }
+    
     // 关闭加载状态
     if (loadingInstance) {
       loadingInstance.close();
@@ -106,6 +146,14 @@ service.interceptors.response.use(
     }
   },
   (error: any) => {
+    // 从待处理队列中移除已失败的请求
+    if (error.config) {
+      const reqKey = generateReqKey(error.config as InternalAxiosRequestConfig)
+      if (pendingRequests.has(reqKey)) {
+        pendingRequests.delete(reqKey)
+      }
+    }
+    
     // 关闭加载状态
     if (loadingInstance) {
       loadingInstance.close();

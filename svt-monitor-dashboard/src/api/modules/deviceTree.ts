@@ -15,78 +15,32 @@ export interface DeviceTreeNode {
 }
 
 export interface DeviceTreeResponse {
-  code: number;
-  message: string;
-  data: {
-    factories: FactoryData[];
-    statistics: StatisticsData;
-  };
-  timestamp: number;
+  rc: number;
+  ret: FactoryData[];
+  err: string | null;
 }
 
 export interface FactoryData {
   factoryId: string;
   factoryName: string;
-  factoryCode: string;
-  totalDeviceCount: number;
-  totalPointCount: number;
-  onlineDeviceCount: number;
-  alarmDeviceCount: number;
-  workshops: WorkshopData[];
+  children: WorkshopData[];
 }
 
 export interface WorkshopData {
   workshopId: string;
   workshopName: string;
-  workshopCode: string;
-  status: 'normal' | 'warning' | 'alarm';
-  deviceCount: number;
-  pointCount: number;
-  onlineCount: number;
-  alarmCount: number;
-  devices: DeviceData[];
+  children: EquipmentData[];
 }
 
-export interface DeviceData {
-  deviceId: string;
-  deviceName: string;
-  deviceCode: string;
-  deviceType: string;
-  deviceTypeName: string;
-  status: 'normal' | 'warning' | 'alarm';
-  onlineStatus: 'online' | 'offline';
-  model: string;
-  manufacturer: string;
-  lastDataTime: string;
-  points: PointData[];
+export interface EquipmentData {
+  equipmentId: string;
+  equipmentName: string;
+  children: PointData[];
 }
 
 export interface PointData {
-  pointId: string;
   pointName: string;
-  pointCode: string;
-  pointType: string;
-  pointTypeName: string;
-  sensorModel: string;
-  position: string;
-  status: 'normal' | 'warning' | 'alarm';
-  currentValue: number;
-  unit: string;
-  thresholdWarning: number;
-  thresholdAlarm: number;
-  lastUpdateTime: string;
-}
-
-export interface StatisticsData {
-  totalFactoryCount: number;
-  totalWorkshopCount: number;
-  totalDeviceCount: number;
-  totalPointCount: number;
-  onlineDeviceCount: number;
-  offlineDeviceCount: number;
-  alarmDeviceCount: number;
-  warningDeviceCount: number;
-  normalDeviceCount: number;
+  receiverId: string;
 }
 
 /**
@@ -105,23 +59,9 @@ export const getDeviceTreeData = (): Promise<DeviceTreeResponse> => {
       console.error('错误详情:', error.message || error);
       // 返回默认的模拟数据结构
       const defaultResponse: DeviceTreeResponse = {
-        code: 200,
-        message: 'success',
-        data: {
-          factories: [],
-          statistics: {
-            totalFactoryCount: 0,
-            totalWorkshopCount: 0,
-            totalDeviceCount: 0,
-            totalPointCount: 0,
-            onlineDeviceCount: 0,
-            offlineDeviceCount: 0,
-            alarmDeviceCount: 0,
-            warningDeviceCount: 0,
-            normalDeviceCount: 0
-          }
-        },
-        timestamp: Date.now()
+        rc: 0,
+        ret: [],
+        err: null
       };
       return defaultResponse;
     });
@@ -131,36 +71,30 @@ export const getDeviceTreeData = (): Promise<DeviceTreeResponse> => {
  * 将后端返回的设备树数据转换为前端所需的格式
  */
 export const transformDeviceTreeData = (responseData: DeviceTreeResponse): DeviceTreeNode[] => {
-  if (!responseData.data || !responseData.data.factories) {
+  if (responseData.rc !== 0 || !responseData.ret) {
     return [];
   }
 
-  return responseData.data.factories.map(factory => ({
+  return responseData.ret.map(factory => ({
     id: factory.factoryId,
     name: factory.factoryName,
     type: 'factory',
-    status: factory.alarmDeviceCount > 0 ? 'alarm' : (factory.onlineDeviceCount < factory.totalDeviceCount ? 'warning' : 'normal'),
-    deviceCount: factory.totalDeviceCount,
-    pointCount: factory.totalPointCount,
-    children: factory.workshops.map(workshop => ({
+    status: 'normal', // 默认状态
+    children: factory.children.map(workshop => ({
       id: workshop.workshopId,
       name: workshop.workshopName,
       type: 'workshop',
-      status: workshop.status,
-      deviceCount: workshop.deviceCount,
-      pointCount: workshop.pointCount,
-      children: workshop.devices.map(device => ({
-        id: device.deviceId,
-        name: device.deviceName,
+      status: 'normal', // 默认状态
+      children: workshop.children.map(equipment => ({
+        id: equipment.equipmentId,
+        name: equipment.equipmentName,
         type: 'device',
-        status: device.status,
-        pointCount: device.points.length,
-        workshopName: workshop.workshopName,
-        children: device.points.map(point => ({
-          id: point.pointId,
+        status: 'normal', // 默认状态
+        children: equipment.children.map(point => ({
+          id: point.receiverId,
           name: point.pointName,
           type: 'point',
-          status: point.status
+          status: 'normal' // 默认状态
         }))
       }))
     }))
