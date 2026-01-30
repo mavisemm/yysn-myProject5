@@ -42,7 +42,7 @@ const fetchTop5Data = async () => {
       getTop5Devices('SOUND'),
       getTop5Devices('TEMPERATURE')
     ]);
-    
+
     // 处理振动烈度数据
     if (vibrationData.rc === 0 && vibrationData.ret) {
       rankings.value[0] = vibrationData.ret.map(item => ({
@@ -51,7 +51,7 @@ const fetchTop5Data = async () => {
         value: item.value
       })).slice(0, 3); // 只取Top3
     }
-    
+
     // 处理声音响度数据
     if (soundData.rc === 0 && soundData.ret) {
       rankings.value[1] = soundData.ret.map(item => ({
@@ -60,7 +60,7 @@ const fetchTop5Data = async () => {
         value: item.value
       })).slice(0, 3); // 只取Top3
     }
-    
+
     // 处理温度数据
     if (temperatureData.rc === 0 && temperatureData.ret) {
       rankings.value[2] = temperatureData.ret.map(item => ({

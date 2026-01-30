@@ -63,6 +63,9 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import * as echarts from 'echarts';
 import { ElTable, ElTableColumn, ElButton } from 'element-plus';
+import { Right } from '@element-plus/icons-vue';
+import { connectCharts } from '@/utils/chart';
+import { useChartResize } from '@/composables/useChart';
 
 // 引入API
 // 不使用API，使用静态数据
@@ -82,6 +85,10 @@ const deviceId = ref('');
 const pointId = ref('');
 const selectedRow = ref<any>(null);
 
+// 注册响应式监听
+const { bindResize: bindEnergyResize } = useChartResize(energyChartInstance, energyChartRef);
+const { bindResize: bindDensityResize } = useChartResize(densityChartInstance, densityChartRef);
+
 // 定时器
 let timer: number | null = null;
 
@@ -96,14 +103,27 @@ const initCharts = async () => {
     const energyOption = {
       title: {
         text: '能量曲线',
-        left: 'center'
+        left: 'center',
       },
       tooltip: {
         trigger: 'axis'
       },
       legend: {
+        orient: 'vertical',
+        right: 10,
+        top: 20,
         data: ['当前能量', '平均能量', '标准能量']
       },
+      dataZoom: [
+        {
+          type: 'inside',
+          xAxisIndex: [0]
+        },
+        {
+          type: 'slider',
+          xAxisIndex: [0]
+        }
+      ],
       xAxis: {
         type: 'category',
         boundaryGap: false,
@@ -152,8 +172,21 @@ const initCharts = async () => {
         trigger: 'axis'
       },
       legend: {
+        orient: 'vertical',
+        right: 10,
+        top: 20,
         data: ['当前密度', '平均密度', '标准密度']
       },
+      dataZoom: [
+        {
+          type: 'inside',
+          xAxisIndex: [0]
+        },
+        {
+          type: 'slider',
+          xAxisIndex: [0]
+        }
+      ],
       xAxis: {
         type: 'category',
         boundaryGap: false,
@@ -189,6 +222,13 @@ const initCharts = async () => {
     };
     densityChartInstance.value.setOption(densityOption);
   }
+
+  // 绑定响应式
+  bindEnergyResize();
+  bindDensityResize();
+
+  // 联动两个图表
+  connectCharts([energyChartInstance.value, densityChartInstance.value]);
 };
 
 // 更新图表数据
@@ -350,7 +390,7 @@ onUnmounted(() => {
 
       .chart-container {
         flex: 1;
-        min-height: 300px;
+        min-height: 200px;
       }
     }
   }
