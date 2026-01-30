@@ -202,7 +202,23 @@ const initTempChart = () => {
 
     const option = {
         tooltip: {
-            trigger: 'axis'
+            trigger: 'axis',
+            backgroundColor: 'rgba(50,50,50,0.8)',
+            borderColor: 'rgba(50,50,50,0.8)',
+            textStyle: {
+                color: '#fff'
+            },
+            position: function (pos: any, params: any, el: any, elRect: any, size: any) {
+                const [mouseX, mouseY] = pos;
+                const [contentWidth, contentHeight] = size.contentSize;
+                const [viewWidth, viewHeight] = size.viewSize;
+                let x = mouseX + 20;
+                if (x + contentWidth > viewWidth) {
+                    x = mouseX - contentWidth - 20;
+                }
+                let y = Math.max(0, mouseY - contentHeight / 2);
+                return [x, y];
+            }
         },
         grid: {
             left: '3%',
@@ -251,6 +267,7 @@ const initTempChart = () => {
             data: tempData,
             type: 'line',
             smooth: true,
+            symbolSize: 1,
             itemStyle: {
                 color: '#FF6384'
             },
@@ -302,7 +319,23 @@ const initSoundChart = () => {
 
     const option = {
         tooltip: {
-            trigger: 'axis'
+            trigger: 'axis',
+            backgroundColor: 'rgba(50,50,50,0.8)',
+            borderColor: 'rgba(50,50,50,0.8)',
+            textStyle: {
+                color: '#fff'
+            },
+            position: function (pos: any, params: any, el: any, elRect: any, size: any) {
+                const [mouseX, mouseY] = pos;
+                const [contentWidth, contentHeight] = size.contentSize;
+                const [viewWidth, viewHeight] = size.viewSize;
+                let x = mouseX + 20;
+                if (x + contentWidth > viewWidth) {
+                    x = mouseX - contentWidth - 20;
+                }
+                let y = Math.max(0, mouseY - contentHeight / 2);
+                return [x, y];
+            }
         },
         grid: {
             left: '3%',
@@ -351,11 +384,12 @@ const initSoundChart = () => {
             data: soundData,
             type: 'line',
             smooth: true,
+            symbolSize: 1,
             itemStyle: {
-                color: '#36A2EB'
+                color: '#ea7ccc'
             },
             lineStyle: {
-                color: '#36A2EB',
+                color: '#ea7ccc',
                 width: 2
             },
             areaStyle: {
@@ -363,9 +397,9 @@ const initSoundChart = () => {
                     type: 'linear',
                     x: 0, y: 0, x2: 0, y2: 1,
                     colorStops: [{
-                        offset: 0, color: 'rgba(54, 162, 235, 0.5)' // color with opacity
+                        offset: 0, color: 'rgba(234, 124, 204, 0.5)' // purple with opacity
                     }, {
-                        offset: 1, color: 'rgba(54, 162, 235, 0.1)' // color with opacity
+                        offset: 1, color: 'rgba(234, 124, 204, 0.1)' // purple with opacity
                     }]
                 },
                 opacity: 0.3
@@ -402,7 +436,23 @@ const initVibChart = () => {
 
     const option = {
         tooltip: {
-            trigger: 'axis'
+            trigger: 'axis',
+            backgroundColor: 'rgba(50,50,50,0.8)',
+            borderColor: 'rgba(50,50,50,0.8)',
+            textStyle: {
+                color: '#fff'
+            },
+            position: function (pos: any, params: any, el: any, elRect: any, size: any) {
+                const [mouseX, mouseY] = pos;
+                const [contentWidth, contentHeight] = size.contentSize;
+                const [viewWidth, viewHeight] = size.viewSize;
+                let x = mouseX + 20;
+                if (x + contentWidth > viewWidth) {
+                    x = mouseX - contentWidth - 20;
+                }
+                let y = Math.max(0, mouseY - contentHeight / 2);
+                return [x, y];
+            }
         },
         grid: {
             left: '3%',
@@ -451,6 +501,7 @@ const initVibChart = () => {
             data: vibData,
             type: 'line',
             smooth: true,
+            symbolSize: 1,
             itemStyle: {
                 color: '#FFCE56'
             },
@@ -604,7 +655,6 @@ onUnmounted(() => {
         grid-template-columns: 1fr 1fr;
         grid-template-rows: 1fr 1fr;
         gap: 15px;
-        overflow: hidden;
         min-height: 0;
 
         .chart-item {
@@ -617,7 +667,6 @@ onUnmounted(() => {
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
             min-height: 0;
             /* 确保flex子项可以收缩 */
-            overflow: hidden;
 
             .chart-header {
                 display: flex;

@@ -120,10 +120,10 @@ const currentDataTime = ref('');
 
 // 颜色池
 const colors = [
-  '#FF6347', '#ffc0cb', '#32CD32', '#FFD700', '#800080',
-  '#FF1493', '#2E8B57', '#FF8C00', '#00FF7F', '#BA55D3',
-  '#20B2AA', '#FF69B4', '#CD5C5C', '#48D1CC', '#B0C4DE',
-  '#DAA520', '#FFB6C1', '#FF4500', '#DB7093', '#87CEFA'
+  '#91cc75', '#fac858', '#ee6666', '#3ba272', '#fc8452',
+  '#9a60b4', '#ea7ccc', '#d48265', '#91c7ae', '#749f83',
+  '#ca8622', '#bda29a', '#6e7074', '#8ec6ad', '#ff9f7f',
+  '#fb7293', '#e7bcf3', '#ffdb5c', '#9fe6b8', '#ff9e7d'
 ];
 
 // 20条固定假数据构造
@@ -141,7 +141,7 @@ const generateMockData = () => {
       visible: i === 0, // 默认选中第一条
       color: i === 0 ? colors[0] : undefined,
       dbArr: freqAxis.map(() => (Math.random() * 20 + 40).toFixed(2)),
-      densityArr: freqAxis.map(() => (Math.random() * 0.5 + 0.1).toFixed(4)),
+      densityArr: freqAxis.map(() => (Math.random() * 0.7 + 0.1).toFixed(4)),
       freqs: freqAxis
     });
   }
@@ -227,16 +227,28 @@ const updateCharts = () => {
     textStyle: { color: '#fff' }, // 设置全局字体为白色
     tooltip: {
       trigger: 'axis',
-      confine: true,
+      backgroundColor: 'rgba(50,50,50,0.8)',
+      borderColor: 'rgba(50,50,50,0.8)',
+      textStyle: {
+        color: '#fff'
+      },
       axisPointer: { type: 'cross' },
       position: function (pos: any, params: any, el: any, elRect: any, size: any) {
-        return [pos[0] + 10, pos[1] - size.contentSize[1] / 2];
+        const [mouseX, mouseY] = pos;
+        const [contentWidth, contentHeight] = size.contentSize;
+        const [viewWidth, viewHeight] = size.viewSize;
+        let x = mouseX + 20;
+        if (x + contentWidth > viewWidth) {
+          x = mouseX - contentWidth - 20;
+        }
+        let y = Math.max(0, mouseY - contentHeight / 2);
+        return [x, y];
       }
     },
     axisPointer: {
       link: [{ xAxisIndex: 'all' }],
       label: {
-        backgroundColor: 'rgba(0, 0, 0, 0.7)', // 改为深色半透明背景，确保白色文字清晰
+        backgroundColor: 'rgba(50,50,50,0.8)', // 改为深色半透明背景
         color: '#fff',
       }
     },
@@ -277,7 +289,8 @@ const updateCharts = () => {
       type: 'line',
       data: item.dbArr,
       itemStyle: { color: item.color },
-      smooth: true
+      smooth: true,
+      symbolSize: 1
     }))
   }, true);
 
@@ -295,7 +308,8 @@ const updateCharts = () => {
       type: 'line',
       data: item.densityArr,
       itemStyle: { color: item.color },
-      smooth: true
+      smooth: true,
+      symbolSize: 1
     }))
   }, true);
 };
@@ -308,7 +322,25 @@ const viewDetails = (row: any) => {
       modalChartInstance.value = echarts.init(modalChartRef.value);
       modalChartInstance.value.setOption({
         title: { text: `${row.time} 详细频谱`, left: 'center' },
-        tooltip: { trigger: 'axis' },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(50,50,50,0.8)',
+          borderColor: 'rgba(50,50,50,0.8)',
+          textStyle: {
+            color: '#fff'
+          },
+          position: function (pos: any, params: any, el: any, elRect: any, size: any) {
+            const [mouseX, mouseY] = pos;
+            const [contentWidth, contentHeight] = size.contentSize;
+            const [viewWidth, viewHeight] = size.viewSize;
+            let x = mouseX + 20;
+            if (x + contentWidth > viewWidth) {
+              x = mouseX - contentWidth - 20;
+            }
+            let y = Math.max(0, mouseY - contentHeight / 2);
+            return [x, y];
+          }
+        },
         legend: { show: true, top: 30 },
         xAxis: { type: 'category', data: row.freqs, boundaryGap: false },
         yAxis: [
@@ -316,8 +348,8 @@ const viewDetails = (row: any) => {
           { type: 'value', name: '密度' }
         ],
         series: [
-          { name: '能量', type: 'line', data: row.dbArr },
-          { name: '密度', type: 'line', data: row.densityArr, yAxisIndex: 1 }
+          { name: '能量', type: 'line', data: row.dbArr, symbolSize: 1 },
+          { name: '密度', type: 'line', data: row.densityArr, yAxisIndex: 1, symbolSize: 1 }
         ]
       });
     }
@@ -370,7 +402,7 @@ onUnmounted(() => {
     display: flex;
     flex-direction: row;
     gap: 20px;
-    height: 55%;
+    height: 50%;
     padding-bottom: 15px;
 
     .chart-item {
@@ -381,7 +413,7 @@ onUnmounted(() => {
       flex-direction: column;
       padding: 10px;
       border-radius: 8px;
-      overflow: hidden;
+      // overflow: hidden;
 
       .chart-title {
         font-size: clamp(18px, 2.5vw, 24px);
@@ -400,7 +432,7 @@ onUnmounted(() => {
     display: flex;
     flex: 1;
     gap: 20px;
-    height: 45%;
+    height: 50%;
     overflow: hidden;
 
     .table-section-left {
@@ -494,10 +526,6 @@ onUnmounted(() => {
           overflow: hidden;
           text-overflow: ellipsis;
         }
-
-        .el-table__body tr.current-row>td {
-          background-color: rgb(103, 157, 215) !important;
-        }
       }
 
       .hint-text {
@@ -562,54 +590,5 @@ onUnmounted(() => {
       }
     }
   }
-
-  /* 深度选择器确保 Element Table 透明效果及百分比宽度渲染 */
-  // :deep(.el-table) {
-  //   --el-table-bg-color: transparent !important;
-  //   --el-table-tr-bg-color: transparent !important;
-  //   --el-table-border-color: none !important;
-
-  //   .el-table__header {
-  //     width: 100% !important;
-  //   }
-
-  //   .el-table__body-wrapper {
-  //     background-color: transparent !important;
-  //   }
-
-  //   .el-table__body {
-  //     width: 100% !important;
-  //     display: table !important; // 强制以表格模式渲染以支持百分比宽度
-  //   }
-
-  //   tbody tr:hover>td {
-  //     background-color: rgba(255, 255, 255, 0.3) !important;
-  //   }
-
-  //   tbody tr.current-row>td {
-  //     background-color: rgba(255, 255, 255, 0.3) !important;
-  //   }
-
-  //   .el-scrollbar {
-  //     width: 100% !important;
-  //   }
-
-  //   .el-scrollbar__wrap {
-  //     width: 100% !important;
-  //   }
-
-  //   .el-scrollbar__view {
-  //     width: 100% !important;
-  //     display: block !important;
-  //   }
-
-  //   // :deep(.el-table__header-wrapper) {
-  //   //   background: rgba(255, 255, 255, 0.3) !important;
-  //   // }
-
-  //   // :deep(.el-table th.el-table__cell) {
-  //   //   background: rgba(255, 255, 255, 0.3) !important;
-  //   // }
-  // }
 }
 </style>
