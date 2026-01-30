@@ -165,12 +165,11 @@ const getRankings = (index: number): RankingItem[] => {
     box-sizing: border-box;
     background: url('@/assets/images/background/首页-Top5背景.png') no-repeat center center;
     background-size: 100% 100%;
-    padding: 10px 0 0;
+    padding: 10px;
     // background-color: pink;
 
     >div {
         flex: 1;
-        padding: 10px;
         display: flex;
         flex-direction: column;
         overflow: hidden;

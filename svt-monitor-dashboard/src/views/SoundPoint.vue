@@ -17,25 +17,27 @@
       <!-- 左侧表格区域 -->
       <div class="table-section-left">
         <div class="section-title">声音数据分析</div>
-        <el-table :data="deviationList" height="100%" style="width: 100%; background: transparent;"
-          :header-cell-style="{ background: 'transparent', textAlign: 'center' }" :cell-style="{ textAlign: 'center' }">
+        <el-table :data="deviationList" height="100%" style="width: 100%" table-layout="auto"
+          @row-click="handleRowClick"
+          :header-cell-style="{ background: 'rgba(255, 255, 255, 0.3)', color: 'white', textAlign: 'center' }"
+          :cell-style="{ background: 'transparent', color: 'white', textAlign: 'center' }">
           <!-- 自定义勾选列 -->
-          <el-table-column width="60" align="center">
+          <el-table-column width="10%" align="center">
             <template #header>
               <el-checkbox :model-value="isAllSelected" :indeterminate="isIndeterminate" @change="handleSelectAll" />
             </template>
             <template #default="{ row, $index }">
-              <el-checkbox v-model="row.visible" @change="toggleVisible(row, $index)" />
+              <el-checkbox v-model="row.visible" @change="toggleVisible" @click.stop />
             </template>
           </el-table-column>
 
-          <el-table-column label="上传时间" width="180" align="center">
+          <el-table-column label="上传时间" width="30%" align="center">
             <template #default="{ row }">
               {{ row.time }}
             </template>
           </el-table-column>
 
-          <el-table-column prop="deviationValue" label="偏差值" width="100" align="center" />
+          <el-table-column prop="deviationValue" label="偏差值" width="15%" align="center" />
 
           <el-table-column label="操作栏" width="220" align="center">
             <template #default="{ row }">
@@ -47,7 +49,7 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="色块" width="80" align="center">
+          <el-table-column label="色块" width="15%" align="center">
             <template #default="{ row }">
               <div v-if="row.color" :style="{ width: '12px', height: '12px', background: row.color, margin: '0 auto' }">
               </div>
@@ -60,7 +62,7 @@
       <!-- 右侧信息区域 -->
       <div class="info-section-right">
         <div class="section-title">详细信息</div>
-        <div class="info-content">
+        <div class="info-scroll-area">
           <div class="info-item">
             <span class="info-label">点位名称:</span>
             <span class="info-value">{{ pointName }}</span>
@@ -73,9 +75,9 @@
             <span class="info-label">上传时间:</span>
             <span class="info-value">{{ currentDataTime }}</span>
           </div>
-          <div class="audio-player">
-            <audio ref="audioRef" :src="audioPath" controls preload="auto"></audio>
-          </div>
+        </div>
+        <div class="audio-player">
+          <audio ref="audioRef" :src="audioPath" controls preload="auto"></audio>
         </div>
       </div>
     </div>
@@ -116,7 +118,7 @@ const currentDataTime = ref('');
 
 // 颜色池
 const colors = [
-  '#FF6347', '#4682B4', '#32CD32', '#FFD700', '#800080',
+  '#FF6347', '#ffc0cb', '#32CD32', '#FFD700', '#800080',
   '#FF1493', '#2E8B57', '#FF8C00', '#00FF7F', '#BA55D3',
   '#20B2AA', '#FF69B4', '#CD5C5C', '#48D1CC', '#B0C4DE',
   '#DAA520', '#FFB6C1', '#FF4500', '#DB7093', '#87CEFA'
@@ -173,19 +175,22 @@ const handleSelectAll = () => {
   updateCharts();
 };
 
-// 切换单项勾选
-const toggleVisible = (row: any, index: number) => {
-  row.visible = !row.visible;
+// 切换单项勾选 (由行点击或 Checkbox 触发)
+const toggleVisible = () => {
   const selectedCount = deviationList.value.filter(item => item.visible).length;
 
   if (selectedCount === 0) {
+    ElMessage.error('至少选择一条数据，已为您选择最新的一条');
     const firstItem = deviationList.value[0];
-    if (firstItem) {
-      ElMessage.error('至少选择一条数据，已为您选择最新的一条');
-      firstItem.visible = true;
-    }
+    if (firstItem) firstItem.visible = true;
   }
   updateCharts();
+};
+
+// 表格行点击处理：切换勾选状态
+const handleRowClick = (row: any) => {
+  row.visible = !row.visible;
+  toggleVisible();
 };
 
 // 初始化图表
@@ -217,26 +222,54 @@ const updateCharts = () => {
   const freqs = selectedItems[0]?.freqs || [];
 
   const commonOption = {
+    textStyle: { color: '#fff' }, // 设置全局字体为白色
     tooltip: {
       trigger: 'axis',
-      axisPointer: { type: 'cross' }
+      confine: true,
+      axisPointer: { type: 'cross' },
+      position: function (pos: any, params: any, el: any, elRect: any, size: any) {
+        return [pos[0] + 10, pos[1] - size.contentSize[1] / 2];
+      }
     },
     axisPointer: {
-      link: [{ xAxisIndex: 'all' }] // 联动所有 X 轴
+      link: [{ xAxisIndex: 'all' }],
+      label: {
+        backgroundColor: 'rgba(0, 0, 0, 0.7)', // 改为深色半透明背景，确保白色文字清晰
+        color: '#fff',
+      }
     },
-    grid: { left: '10%', right: '10%', bottom: '15%' },
+    grid: { left: '10%', right: '10%', bottom: 50 }, // 增加底部空间避让 zoom
     legend: { show: false },
     dataZoom: [
       { type: 'inside', xAxisIndex: [0] },
-      { type: 'slider', xAxisIndex: [0], bottom: 10 }
+      {
+        type: 'slider',
+        xAxisIndex: [0],
+        bottom: 10,
+        height: 20,
+        width: '81%',
+        textStyle: { color: '#fff' },
+        handleStyle: { color: '#fff' }
+      }
     ],
-    xAxis: { type: 'category', data: freqs, boundaryGap: false },
+    xAxis: {
+      type: 'category',
+      data: freqs,
+      boundaryGap: false,
+      axisLine: { lineStyle: { color: '#fff' } },
+      axisLabel: { color: '#fff' }
+    },
   };
 
   energyChartInstance.value?.setOption({
     ...commonOption,
-    title: { text: '能量曲线 (dB)', left: 'center' },
-    yAxis: { type: 'value', name: 'dB' },
+    yAxis: {
+      type: 'value',
+      name: 'dB',
+      axisLine: { lineStyle: { color: '#fff' } },
+      axisLabel: { color: '#fff' },
+      nameTextStyle: { color: '#fff' }
+    },
     series: selectedItems.map(item => ({
       name: item.time,
       type: 'line',
@@ -248,8 +281,13 @@ const updateCharts = () => {
 
   densityChartInstance.value?.setOption({
     ...commonOption,
-    title: { text: '密度曲线', left: 'center' },
-    yAxis: { type: 'value', name: '密度' },
+    yAxis: {
+      type: 'value',
+      name: '密度',
+      axisLine: { lineStyle: { color: '#fff' } },
+      axisLabel: { color: '#fff' },
+      nameTextStyle: { color: '#fff' }
+    },
     series: selectedItems.map(item => ({
       name: item.time,
       type: 'line',
@@ -322,32 +360,27 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .sound-point-container {
-  padding: 20px;
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: #f5f7fa;
 
   .charts-section {
     display: flex;
     flex-direction: row;
     gap: 20px;
-    height: 60%;
-    margin-bottom: 20px;
+    height: 50%;
+    margin-bottom: 15px;
 
     .chart-item {
       flex: 1;
       display: flex;
       flex-direction: column;
-      background: white;
       border-radius: 8px;
-      padding: 15px;
-      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 
       .chart-title {
-        font-size: 16px;
+        font-size: clamp(18px, 2.5vw, 24px);
         font-weight: bold;
-        margin-bottom: 10px;
+        margin-top: 10px;
         text-align: center;
       }
 
@@ -362,22 +395,20 @@ onUnmounted(() => {
     display: flex;
     flex: 1;
     gap: 20px;
-    height: 40%;
+    height: 50%;
     overflow: hidden;
 
     .table-section-left {
-      flex: 3;
+      flex: 2;
       border-radius: 8px;
-      padding: 15px;
-      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+      padding: 10px;
       display: flex;
       flex-direction: column;
 
       .section-title {
-        color: #111;
-        font-size: 16px;
+        font-size: clamp(18px, 2.5vw, 24px);
         font-weight: bold;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
       }
 
       .hint-text {
@@ -397,23 +428,23 @@ onUnmounted(() => {
     .info-section-right {
       flex: 1;
       border-radius: 8px;
-      padding: 15px;
-      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+      padding: 10px;
       display: flex;
       flex-direction: column;
 
       .section-title {
-        color: #111;
-        font-size: 16px;
+        font-size: clamp(18px, 2.5vw, 24px);
         font-weight: bold;
-        margin-bottom: 15px;
+        margin-bottom: 18px;
       }
 
-      .info-content {
+      .info-scroll-area {
+        flex: 1;
+        overflow-y: auto;
         display: flex;
         flex-direction: column;
         gap: 15px;
-        overflow-y: auto;
+        padding-right: 5px;
 
         .info-item {
           display: flex;
@@ -422,33 +453,65 @@ onUnmounted(() => {
           .info-label {
             font-weight: bold;
             margin-bottom: 5px;
-            color: #606266;
           }
 
           .info-value {
-            color: #303133;
             word-break: break-all;
           }
         }
+      }
 
-        .audio-player {
-          margin-top: 20px;
+      .audio-player {
+        padding-top: 10px;
 
-          audio {
-            width: 100%;
-            height: 34px;
-          }
+        audio {
+          width: 100%;
+          height: 34px;
         }
       }
     }
   }
 }
 
-/* 深度选择器确保 Element Table 透明效果 */
+/* 深度选择器确保 Element Table 透明效果及百分比宽度渲染 */
 :deep(.el-table) {
   background-color: transparent !important;
   --el-table-bg-color: transparent !important;
   --el-table-tr-bg-color: transparent !important;
+
+  .el-table__header {
+    width: 100% !important;
+  }
+
+  .el-table__body-wrapper {
+    background-color: transparent !important;
+  }
+
+  .el-table__body {
+    width: 100% !important;
+    display: table !important; // 强制以表格模式渲染以支持百分比宽度
+  }
+
+  tbody tr:hover>td {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  tbody tr.current-row>td {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+  }
+
+  .el-scrollbar {
+    width: 100% !important;
+  }
+
+  .el-scrollbar__wrap {
+    width: 100% !important;
+  }
+
+  .el-scrollbar__view {
+    width: 100% !important;
+    display: block !important;
+  }
 }
 
 :deep(.el-table__header-wrapper) {
