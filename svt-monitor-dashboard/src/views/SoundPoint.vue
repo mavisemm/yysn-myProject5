@@ -368,13 +368,16 @@ onUnmounted(() => {
     display: flex;
     flex-direction: row;
     gap: 20px;
-    height: 50%;
-    margin-bottom: 15px;
+    height: 55%;
+    padding-bottom: 15px;
 
     .chart-item {
+      background: url('@/assets/images/background/首页-预警总览背景.png') no-repeat center center;
+      background-size: 100% 100%;
       flex: 1;
       display: flex;
       flex-direction: column;
+      padding: 10px;
       border-radius: 8px;
 
       .chart-title {
@@ -395,10 +398,12 @@ onUnmounted(() => {
     display: flex;
     flex: 1;
     gap: 20px;
-    height: 50%;
+    height: 45%;
     overflow: hidden;
 
     .table-section-left {
+      background: url('@/assets/images/background/设备详情页-点位列表背景.png') no-repeat center center;
+      background-size: 100% 100%;
       flex: 2;
       border-radius: 8px;
       padding: 10px;
@@ -426,6 +431,8 @@ onUnmounted(() => {
     }
 
     .info-section-right {
+      background: url('@/assets/images/background/首页-数据统计背景.png') no-repeat center center;
+      background-size: 100% 100%;
       flex: 1;
       border-radius: 8px;
       padding: 10px;
@@ -475,9 +482,9 @@ onUnmounted(() => {
 
 /* 深度选择器确保 Element Table 透明效果及百分比宽度渲染 */
 :deep(.el-table) {
-  background-color: transparent !important;
   --el-table-bg-color: transparent !important;
   --el-table-tr-bg-color: transparent !important;
+  --el-table-border-color: none !important;
 
   .el-table__header {
     width: 100% !important;
@@ -493,7 +500,7 @@ onUnmounted(() => {
   }
 
   tbody tr:hover>td {
-    background-color: rgba(255, 255, 255, 0.2) !important;
+    background-color: rgba(255, 255, 255, 0.3) !important;
   }
 
   tbody tr.current-row>td {
@@ -512,13 +519,13 @@ onUnmounted(() => {
     width: 100% !important;
     display: block !important;
   }
-}
 
-:deep(.el-table__header-wrapper) {
-  background-color: transparent !important;
-}
+  // :deep(.el-table__header-wrapper) {
+  //   background: rgba(255, 255, 255, 0.3) !important;
+  // }
 
-:deep(.el-table th.el-table__cell) {
-  background-color: transparent !important;
+  // :deep(.el-table th.el-table__cell) {
+  //   background: rgba(255, 255, 255, 0.3) !important;
+  // }
 }
 </style>

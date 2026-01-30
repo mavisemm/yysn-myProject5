@@ -165,7 +165,6 @@ defineExpose({
 
         .el-table__header-wrapper {
             background: rgba(255, 255, 255, 0.3) !important;
-            background-size: 100% 100% !important;
         }
 
         tr {
