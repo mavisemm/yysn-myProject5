@@ -90,6 +90,7 @@ import { ref, onMounted, nextTick, onUnmounted, watch, computed } from 'vue'
 import { ElForm, ElFormItem, ElSelect, ElOption, ElInputNumber, ElDatePicker, ElButton, ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import { enableMouseWheelZoomForCharts, connectCharts } from '@/utils/chart'
 
 // 定义点位信息类型
 interface PointInfo {
@@ -223,10 +224,23 @@ const initTempChart = () => {
         grid: {
             left: '3%',
             right: '4%',
-            bottom: '3%',
+            bottom: '15%',
             top: '10%',
             containLabel: true
         },
+        dataZoom: [
+            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+            {
+                type: 'slider',
+                xAxisIndex: [0],
+                bottom: '5%',
+                height: '10%',
+                fillerColor: 'rgba(255, 99, 132, 0.3)',
+                borderColor: 'rgba(255, 99, 132, 0.5)',
+                handleStyle: { color: '#FF6384' },
+                filterMode: 'none'
+            }
+        ],
         xAxis: {
             type: 'category',
             data: hours,
@@ -340,10 +354,23 @@ const initSoundChart = () => {
         grid: {
             left: '3%',
             right: '4%',
-            bottom: '3%',
+            bottom: '15%',
             top: '10%',
             containLabel: true
         },
+        dataZoom: [
+            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+            {
+                type: 'slider',
+                xAxisIndex: [0],
+                bottom: '5%',
+                height: '10%',
+                fillerColor: 'rgba(234, 124, 204, 0.3)',
+                borderColor: 'rgba(234, 124, 204, 0.5)',
+                handleStyle: { color: '#ea7ccc' },
+                filterMode: 'none'
+            }
+        ],
         xAxis: {
             type: 'category',
             data: hours,
@@ -457,10 +484,23 @@ const initVibChart = () => {
         grid: {
             left: '3%',
             right: '4%',
-            bottom: '3%',
+            bottom: '15%',
             top: '10%',
             containLabel: true
         },
+        dataZoom: [
+            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+            {
+                type: 'slider',
+                xAxisIndex: [0],
+                bottom: '5%',
+                height: '10%',
+                fillerColor: 'rgba(255, 206, 86, 0.3)',
+                borderColor: 'rgba(255, 206, 86, 0.5)',
+                handleStyle: { color: '#FFCE56' },
+                filterMode: 'none'
+            }
+        ],
         xAxis: {
             type: 'category',
             data: hours,
@@ -615,6 +655,12 @@ onMounted(() => {
             initTempChart();
             initSoundChart();
             initVibChart();
+
+            // 图表联动
+            connectCharts([tempChart, soundChart, vibChart]);
+
+            // 启用滚轮缩放功能
+            enableMouseWheelZoomForCharts([tempChart, soundChart, vibChart]);
 
             // 设置resize观察器
             setupResizeObserver();

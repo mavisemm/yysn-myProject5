@@ -97,7 +97,7 @@ import { useRoute } from 'vue-router';
 import * as echarts from 'echarts';
 import { ElTable, ElTableColumn, ElButton, ElMessage, ElDialog, ElCheckbox } from 'element-plus';
 import { useChartResize } from '@/composables/useChart';
-import { connectCharts } from '@/utils/chart';
+import { connectCharts, enableMouseWheelZoomForCharts, enableMouseWheelZoom } from '@/utils/chart';
 
 const route = useRoute();
 const energyChartRef = ref<HTMLDivElement>();
@@ -206,6 +206,7 @@ const initCharts = () => {
   bindDensity();
 
   connectCharts([energyChartInstance.value, densityChartInstance.value]);
+  enableMouseWheelZoomForCharts([energyChartInstance.value, densityChartInstance.value]);
   updateCharts();
 };
 
@@ -252,18 +253,18 @@ const updateCharts = () => {
         color: '#fff',
       }
     },
-    grid: { left: '10%', right: '10%', bottom: 50 }, // 增加底部空间避让 zoom
+    grid: { left: 30, right: 20, top: 40, bottom: 50 }, // 增加底部空间避让 zoom
     legend: { show: false },
     dataZoom: [
-      { type: 'inside', xAxisIndex: [0] },
+      { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
       {
         type: 'slider',
         xAxisIndex: [0],
         bottom: 10,
         height: 20,
-        width: '81%',
         textStyle: { color: '#fff' },
-        handleStyle: { color: '#fff' }
+        handleStyle: { color: '#fff' },
+        filterMode: 'none'
       }
     ],
     xAxis: {
@@ -341,17 +342,34 @@ const viewDetails = (row: any) => {
             return [x, y];
           }
         },
+        grid: { left: 30, right: 20, top: 40, bottom: 50 },
         legend: { show: true, top: 30 },
         xAxis: { type: 'category', data: row.freqs, boundaryGap: false },
         yAxis: [
           { type: 'value', name: 'dB' },
           { type: 'value', name: '密度' }
         ],
+        dataZoom: [
+          { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+          {
+            type: 'slider',
+            xAxisIndex: [0],
+            bottom: 10,
+            height: 20,
+            fillerColor: 'rgba(126, 203, 161, 0.3)',
+            borderColor: 'rgba(126, 203, 161, 0.5)',
+            handleStyle: { color: '#7ecba1' },
+            filterMode: 'none'
+          }
+        ],
         series: [
           { name: '能量', type: 'line', data: row.dbArr, symbolSize: 1 },
           { name: '密度', type: 'line', data: row.densityArr, yAxisIndex: 1, symbolSize: 1 }
         ]
       });
+
+      // 为模态框中的图表启用滚轮缩放
+      enableMouseWheelZoom(modalChartInstance.value);
     }
   });
 };
