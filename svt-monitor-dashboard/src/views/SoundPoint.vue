@@ -17,45 +17,47 @@
       <!-- 左侧表格区域 -->
       <div class="table-section-left">
         <div class="section-title">声音数据分析</div>
-        <el-table :data="deviationList" height="100%" style="width: 100%" table-layout="auto"
-          @row-click="handleRowClick"
-          :header-cell-style="{ background: 'rgba(255, 255, 255, 0.3)', color: 'white', textAlign: 'center' }"
-          :cell-style="{ background: 'transparent', color: 'white', textAlign: 'center' }">
-          <!-- 自定义勾选列 -->
-          <el-table-column width="10%" align="center">
-            <template #header>
-              <el-checkbox :model-value="isAllSelected" :indeterminate="isIndeterminate" @change="handleSelectAll" />
-            </template>
-            <template #default="{ row, $index }">
-              <el-checkbox v-model="row.visible" @change="toggleVisible" @click.stop />
-            </template>
-          </el-table-column>
+        <div class="voiceDetail-table-container">
+          <el-table :data="deviationList" height="100%" @row-click="handleRowClick"
+            :header-cell-style="{ background: 'rgba(255, 255, 255, 0.3)', color: 'white', textAlign: 'center' }"
+            :cell-style="{ background: 'transparent', color: 'white', textAlign: 'center' }">
+            <!-- 自定义勾选列 -->
+            <el-table-column width="10%" align="center">
+              <template #header>
+                <el-checkbox :model-value="isAllSelected" :indeterminate="isIndeterminate" @change="handleSelectAll" />
+              </template>
+              <template #default="{ row, $index }">
+                <el-checkbox v-model="row.visible" @change="toggleVisible" @click.stop />
+              </template>
+            </el-table-column>
 
-          <el-table-column label="上传时间" width="30%" align="center">
-            <template #default="{ row }">
-              {{ row.time }}
-            </template>
-          </el-table-column>
+            <el-table-column label="上传时间" width="25%" align="center">
+              <template #default="{ row }">
+                {{ row.time }}
+              </template>
+            </el-table-column>
 
-          <el-table-column prop="deviationValue" label="偏差值" width="15%" align="center" />
+            <el-table-column prop="deviationValue" label="偏差值" width="15%" align="center" />
 
-          <el-table-column label="操作栏" width="220" align="center">
-            <template #default="{ row }">
-              <div class="operate-btns">
-                <el-button link type="primary" @click="viewDetails(row)">查看曲线</el-button>
-                <el-button link type="primary" @click="downloadFile(row.id)">下载文件</el-button>
-                <el-button link type="primary" @click="playAudio(row.id)">播放</el-button>
-              </div>
-            </template>
-          </el-table-column>
+            <el-table-column label="操作栏" width="40%" align="center">
+              <template #default="{ row }">
+                <div class="operate-btns">
+                  <el-button link type="primary" @click="viewDetails(row)">查看曲线</el-button>
+                  <el-button link type="primary" @click="downloadFile(row.id)">下载文件</el-button>
+                  <el-button link type="primary" @click="playAudio(row.id)">播放</el-button>
+                </div>
+              </template>
+            </el-table-column>
 
-          <el-table-column label="色块" width="15%" align="center">
-            <template #default="{ row }">
-              <div v-if="row.color" :style="{ width: '12px', height: '12px', background: row.color, margin: '0 auto' }">
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
+            <el-table-column label="色块" width="10%" align="center">
+              <template #default="{ row }">
+                <div v-if="row.color"
+                  :style="{ width: '12px', height: '12px', background: row.color, margin: '0 auto' }">
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
         <div class="hint-text">提示：偏差值为与上一次的偏差值作比较</div>
       </div>
 
@@ -379,11 +381,11 @@ onUnmounted(() => {
       flex-direction: column;
       padding: 10px;
       border-radius: 8px;
+      overflow: hidden;
 
       .chart-title {
         font-size: clamp(18px, 2.5vw, 24px);
         font-weight: bold;
-        margin-top: 10px;
         text-align: center;
       }
 
@@ -406,7 +408,6 @@ onUnmounted(() => {
       background-size: 100% 100%;
       flex: 2;
       border-radius: 8px;
-      padding: 10px;
       display: flex;
       flex-direction: column;
 
@@ -414,19 +415,102 @@ onUnmounted(() => {
         font-size: clamp(18px, 2.5vw, 24px);
         font-weight: bold;
         margin-bottom: 10px;
+        padding: 20px 20px 0 20px;
+      }
+
+      .voiceDetail-table-container {
+        flex: 1;
+        overflow: hidden;
+        padding: 20px 20px 0 20px;
+        align-items: stretch;
+      }
+
+      :deep(.el-table) {
+        background: transparent !important;
+        --el-table-border-color: none !important;
+
+        .el-table__header {
+          width: 100% !important;
+        }
+
+        .el-table__body {
+          width: 100% !important;
+        }
+
+        .el-scrollbar {
+          width: 100% !important;
+        }
+
+        .el-scrollbar__wrap {
+          width: 100% !important;
+        }
+
+        .el-scrollbar__view {
+          width: 100% !important;
+        }
+
+        .el-table__body-wrapper {
+          background: transparent !important;
+        }
+
+        .el-table__header-wrapper {
+          background: rgba(255, 255, 255, 0.3) !important;
+        }
+
+        tr {
+          background: transparent !important;
+        }
+
+        tbody tr {
+          background: transparent !important;
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+          }
+        }
+
+        :deep(thead) tr {
+          background: transparent !important;
+
+          &:hover {
+            background: transparent !important; // 禁用表头悬停效果
+          }
+        }
+
+        th {
+          background: transparent !important;
+          color: white !important;
+          font-size: clamp(10px, 1.5vw, 12px);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        td {
+          background: transparent !important;
+          color: white !important;
+          font-size: clamp(10px, 1.5vw, 12px);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .el-table__body tr.current-row>td {
+          background-color: rgb(103, 157, 215) !important;
+        }
       }
 
       .hint-text {
         color: #f56c6c;
         text-align: center;
-        margin-top: 10px;
         font-size: 12px;
+        padding: 20px;
       }
 
       .operate-btns {
         display: flex;
         justify-content: center;
-        gap: 10px;
+        gap: 5px;
       }
     }
 
@@ -435,11 +519,11 @@ onUnmounted(() => {
       background-size: 100% 100%;
       flex: 1;
       border-radius: 8px;
-      padding: 10px;
       display: flex;
       flex-direction: column;
 
       .section-title {
+        padding: 20px 20px 0 20px;
         font-size: clamp(18px, 2.5vw, 24px);
         font-weight: bold;
         margin-bottom: 18px;
@@ -451,7 +535,7 @@ onUnmounted(() => {
         display: flex;
         flex-direction: column;
         gap: 15px;
-        padding-right: 5px;
+        padding: 20px 20px 0 20px;
 
         .info-item {
           display: flex;
@@ -469,7 +553,7 @@ onUnmounted(() => {
       }
 
       .audio-player {
-        padding-top: 10px;
+        padding: 20px;
 
         audio {
           width: 100%;
@@ -478,54 +562,54 @@ onUnmounted(() => {
       }
     }
   }
-}
 
-/* 深度选择器确保 Element Table 透明效果及百分比宽度渲染 */
-:deep(.el-table) {
-  --el-table-bg-color: transparent !important;
-  --el-table-tr-bg-color: transparent !important;
-  --el-table-border-color: none !important;
+  /* 深度选择器确保 Element Table 透明效果及百分比宽度渲染 */
+  // :deep(.el-table) {
+  //   --el-table-bg-color: transparent !important;
+  //   --el-table-tr-bg-color: transparent !important;
+  //   --el-table-border-color: none !important;
 
-  .el-table__header {
-    width: 100% !important;
-  }
+  //   .el-table__header {
+  //     width: 100% !important;
+  //   }
 
-  .el-table__body-wrapper {
-    background-color: transparent !important;
-  }
+  //   .el-table__body-wrapper {
+  //     background-color: transparent !important;
+  //   }
 
-  .el-table__body {
-    width: 100% !important;
-    display: table !important; // 强制以表格模式渲染以支持百分比宽度
-  }
+  //   .el-table__body {
+  //     width: 100% !important;
+  //     display: table !important; // 强制以表格模式渲染以支持百分比宽度
+  //   }
 
-  tbody tr:hover>td {
-    background-color: rgba(255, 255, 255, 0.3) !important;
-  }
+  //   tbody tr:hover>td {
+  //     background-color: rgba(255, 255, 255, 0.3) !important;
+  //   }
 
-  tbody tr.current-row>td {
-    background-color: rgba(255, 255, 255, 0.3) !important;
-  }
+  //   tbody tr.current-row>td {
+  //     background-color: rgba(255, 255, 255, 0.3) !important;
+  //   }
 
-  .el-scrollbar {
-    width: 100% !important;
-  }
+  //   .el-scrollbar {
+  //     width: 100% !important;
+  //   }
 
-  .el-scrollbar__wrap {
-    width: 100% !important;
-  }
+  //   .el-scrollbar__wrap {
+  //     width: 100% !important;
+  //   }
 
-  .el-scrollbar__view {
-    width: 100% !important;
-    display: block !important;
-  }
+  //   .el-scrollbar__view {
+  //     width: 100% !important;
+  //     display: block !important;
+  //   }
 
-  // :deep(.el-table__header-wrapper) {
-  //   background: rgba(255, 255, 255, 0.3) !important;
-  // }
+  //   // :deep(.el-table__header-wrapper) {
+  //   //   background: rgba(255, 255, 255, 0.3) !important;
+  //   // }
 
-  // :deep(.el-table th.el-table__cell) {
-  //   background: rgba(255, 255, 255, 0.3) !important;
+  //   // :deep(.el-table th.el-table__cell) {
+  //   //   background: rgba(255, 255, 255, 0.3) !important;
+  //   // }
   // }
 }
 </style>
