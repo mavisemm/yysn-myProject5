@@ -162,7 +162,8 @@ const handleLogout = () => {
     align-items: center;
     gap: 8px;
     position: absolute;
-    left: 24px;
+    left: 15px;
+    top: calc(8vh - 30px);
     z-index: 1;
 
     .nav-btn {
@@ -201,14 +202,18 @@ const handleLogout = () => {
   .header-right {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 15px;
     position: absolute;
-    right: 24px;
+    right: 15px;
+    top: 15px;
     z-index: 1;
+    height: 100%;
 
     .user-info {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 15px;
       padding: 6px 12px;
       cursor: pointer;

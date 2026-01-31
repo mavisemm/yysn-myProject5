@@ -1,6 +1,7 @@
 ﻿import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import PageLayout from '@/components/layout/PageLayout.vue'
+import { setupRouterGuard } from './guard'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -34,6 +35,12 @@ const routes: RouteRecordRaw[] = [
     ]
   },
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/Login.vue'),
+    meta: { title: 'Login' }
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/'
   }
@@ -43,5 +50,7 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
 })
+
+setupRouterGuard(router)
 
 export default router

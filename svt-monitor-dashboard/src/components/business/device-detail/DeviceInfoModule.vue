@@ -245,7 +245,7 @@ const initGaugeChart = () => {
             {
                 type: 'gauge',
                 center: ['50%', '60%'],
-                radius: '90%',
+                radius: '80%',
                 startAngle: 210,
                 endAngle: -30,
                 min: 0,
@@ -277,7 +277,7 @@ const initGaugeChart = () => {
                 },
                 axisLabel: {
                     show: true,
-                    distance: calculateResponsiveDistance(-50, containerWidth, containerHeight), // 调整标签距离
+                    distance: calculateResponsiveDistance(-80, containerWidth, containerHeight), // 调整标签距离
                     fontSize: calculateResponsiveFontSize(16, containerWidth, containerHeight),
                     color: '#fff',
                     formatter: function (value: number) {
