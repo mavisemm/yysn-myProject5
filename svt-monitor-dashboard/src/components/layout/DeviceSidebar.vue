@@ -665,7 +665,6 @@ onUnmounted(() => {
   min-width: 200px;
   max-width: 400px;
   height: 100%;
-  padding: 20px;
   display: flex;
   flex-direction: column;
   background: url('@/assets/images/background/首页-设备列表背景.png') no-repeat center center;
@@ -677,6 +676,7 @@ onUnmounted(() => {
     align-items: center;
     flex-shrink: 0;
     justify-content: space-between;
+    padding: 20px 20px 0 20px;
 
     .sidebar-title {
       font-size: clamp(22px, 3vw, 26px);
@@ -685,7 +685,7 @@ onUnmounted(() => {
   }
 
   .search-area {
-    padding-top: 20px;
+    padding: 20px 20px 0 20px;
     flex-shrink: 0;
 
     .search-row {
@@ -768,7 +768,7 @@ onUnmounted(() => {
   }
 
   .device-tree-container {
-    padding-top: 20px;
+    padding: 20px;
     flex: 1;
     display: flex;
     flex-direction: column;

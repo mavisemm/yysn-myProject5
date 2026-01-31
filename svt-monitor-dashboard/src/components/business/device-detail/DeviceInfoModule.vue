@@ -220,6 +220,26 @@ const initGaugeChart = () => {
         healthColor = '#FF5722' // 红色
     }
 
+    // 计算响应式字体大小的函数
+    const calculateResponsiveFontSize = (baseSize: number, containerWidth: number, containerHeight: number) => {
+        // 使用容器的宽度和高度的平均值作为基础进行缩放
+        const baseDimension = Math.min(containerWidth, containerHeight);
+        // 基于默认尺寸(假设默认容器大小为300x200)的比例计算
+        const scaleRatio = Math.min(baseDimension / 200, 2); // 限制最大放大倍数为2
+        return Math.max(baseSize * scaleRatio, baseSize * 0.5); // 最小为原始大小的一半
+    };
+
+    // 计算响应式距离的函数
+    const calculateResponsiveDistance = (baseDistance: number, containerWidth: number, containerHeight: number) => {
+        const baseDimension = Math.min(containerWidth, containerHeight);
+        const scaleRatio = Math.min(baseDimension / 200, 2);
+        return Math.max(baseDistance * scaleRatio, baseDistance * 0.5);
+    };
+
+    // 获取容器尺寸
+    const containerWidth = gaugeRef.value!.clientWidth;
+    const containerHeight = gaugeRef.value!.clientHeight;
+
     const option = {
         series: [
             {
@@ -239,7 +259,7 @@ const initGaugeChart = () => {
                 },
                 axisLine: {
                     lineStyle: {
-                        width: 12,
+                        width: Math.round(12 * Math.min(containerWidth / 300, 2)),
                         color: [
                             [0.2, '#FF5722'], // 0-20 红色
                             [0.4, '#FF9800'], // 20-40 橙色
@@ -257,8 +277,8 @@ const initGaugeChart = () => {
                 },
                 axisLabel: {
                     show: true,
-                    distance: -50, // 调整标签距离
-                    fontSize: 16,
+                    distance: calculateResponsiveDistance(-50, containerWidth, containerHeight), // 调整标签距离
+                    fontSize: calculateResponsiveFontSize(16, containerWidth, containerHeight),
                     color: '#fff',
                     formatter: function (value: number) {
                         if (value % 20 === 0) { // 每20分显示一个刻度
@@ -271,16 +291,16 @@ const initGaugeChart = () => {
                     show: false, // 隐藏锚点
                 },
                 title: {
-                    show: true, // 隐藏标题  
+                    show: true, // 显示标题  
                     color: healthColor,
-                    fontSize: 25,
+                    fontSize: calculateResponsiveFontSize(25, containerWidth, containerHeight),
                     fontWeight: 'bolder',
                     offsetCenter: [0, '0%'],
                 },
                 detail: {
                     valueAnimation: true,
                     offsetCenter: [0, '-30%'],
-                    fontSize: 35,
+                    fontSize: calculateResponsiveFontSize(35, containerWidth, containerHeight),
                     fontWeight: 'bolder',
                     formatter: '{value}',
                     color: healthColor,
@@ -387,8 +407,10 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .device-info-module {
-    width: 25vw;
-    min-width: 300px;
+    width: 33%;
+    min-width: 200px;
+    max-width: 400px;
+    flex: 0 0 auto;
     background: url('@/assets/images/background/设备详情页-设备信息背景.png') no-repeat center center;
     background-size: 100% 100%;
     border-radius: 8px;

@@ -41,7 +41,6 @@ import { RouterView } from 'vue-router'
       flex: 1;
       display: flex;
       flex-direction: column;
-      overflow-y: auto;
       height: 100%;
       padding-left: 15px;
 
@@ -74,12 +73,6 @@ import { RouterView } from 'vue-router'
 
       .device-sidebar-container {
         width: 200px;
-      }
-
-      .content-wrapper {
-        .content-area {
-          padding: 16px;
-        }
       }
     }
   }

@@ -19,10 +19,10 @@
                     </template>
                 </el-table-column>
                 <el-table-column prop="alarmValue" label="预警值" width="15%" />
-                <el-table-column label="操作" width="15%" align="center">
+                <el-table-column label="操作" width="18%" align="center">
                     <template #default="{ row }">
                         <el-button :type="row.hasAlarm ? 'danger' : 'primary'" size="small" :disabled="true"
-                            style="min-width: auto; width: fit-content; padding-left: 10px; padding-right: 10px;">
+                            style="min-width: auto; width: fit-content; padding-left: 10px; padding-right: 10px; white-space: nowrap; overflow: visible;">
                             {{ row.hasAlarm ? '未处理' : '已处理' }}
                         </el-button>
                     </template>
@@ -203,6 +203,18 @@ defineExpose({
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        /* 为操作列取消ellipsis效果 */
+        .el-table__body tr td:last-child {
+            overflow: visible !important;
+            text-overflow: clip !important;
+        }
+
+        .el-table__body tr td:last-child .cell {
+            overflow: visible !important;
+            text-overflow: clip !important;
+            white-space: nowrap !important;
         }
 
         .el-table__body tr.current-row>td {

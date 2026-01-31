@@ -702,6 +702,7 @@ onUnmounted(() => {
         grid-template-rows: 1fr 1fr;
         gap: 15px;
         min-height: 0;
+        overflow: auto;
 
         .chart-item {
             background: url('@/assets/images/background/设备详情页-echarts背景.png') no-repeat center center;
@@ -713,6 +714,8 @@ onUnmounted(() => {
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
             min-height: 0;
             /* 确保flex子项可以收缩 */
+            min-width: 0;
+            /* 确保项目可以在小屏幕上收缩 */
 
             .chart-header {
                 display: flex;
@@ -752,6 +755,8 @@ onUnmounted(() => {
             /* 统一overflow处理 */
             min-height: 0;
             /* 确保flex子项可以收缩 */
+            min-width: 0;
+            /* 确保项目可以在小屏幕上收缩 */
 
             .module-header {
                 display: flex;

@@ -394,8 +394,6 @@ onUnmounted(() => {
 
 @media screen and (max-width: 768px) {
   .device-detail {
-    flex-direction: column;
-    padding: 10px;
 
     .device-info-module {
       width: 100% !important;
