@@ -442,12 +442,9 @@ onUnmounted(() => {
         display: flex;
         flex-direction: column;
         min-height: 0;
-        /* 允许flex子项收缩 */
         overflow-y: auto;
-        /* 当内容超出容器高度时显示垂直滚动条 */
 
         .device-basic-info {
-            // flex: 1 0 auto;
 
             .info-row {
                 display: flex;
@@ -458,7 +455,6 @@ onUnmounted(() => {
                 .info-item {
                     flex: 1;
                     min-width: 0;
-                    /* 允许flex子项收缩 */
                     display: flex;
                     flex-direction: column;
 
@@ -484,7 +480,6 @@ onUnmounted(() => {
         .health-gauge-container {
             flex: 0 0 auto;
             margin-top: 20px;
-            /* 不伸缩，保持固定高度 */
 
             .gauge-header {
                 display: flex;
@@ -500,7 +495,7 @@ onUnmounted(() => {
                 position: relative;
                 height: 200px;
                 width: 100%;
-                min-height: 150px; // 确保在小屏幕上也有最小高度
+                min-height: 150px;
 
                 .gauge {
                     width: 100%;

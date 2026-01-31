@@ -1,22 +1,34 @@
 ﻿<template>
-  <DataPanel :stats="[
-    { title: '健康设备数', number: 5 },
-    { title: '预警设备数', number: 2 },
-    { title: '监控总设备数', number: 7 },
-    { title: '监测点位数', number: 40 }
-  ]" :metrics="[
-    { title: '振动烈度Top3', unit: '（单位：mm/s）' },
-    { title: '声音响度Top3', unit: '（单位：dB）' },
-    { title: '温度Top3', unit: '（单位：℃）' }
-  ]" :rankings="rankings">
-    <template #alarms>
-    </template>
-  </DataPanel>
+  <div class="dashboard">
+    <div class="top-section">
+      <DashboardStats :stats="[
+        { title: '健康设备数', number: 5 },
+        { title: '预警设备数', number: 2 },
+        { title: '监控总设备数', number: 7 },
+        { title: '监测点位数', number: 40 }
+      ]" />
+      <AlarmOverview>
+        <template #alarms>
+        </template>
+      </AlarmOverview>
+    </div>
+    <div class="bottom-section">
+      <ThreeMetrics :metrics="[
+        { title: '振动烈度Top3', unit: '（单位：mm/s）' },
+        { title: '声音响度Top3', unit: '（单位：dB）' },
+        { title: '温度Top3', unit: '（单位：℃）' }
+      ]" :rankings="rankings">
+
+      </ThreeMetrics>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import DataPanel from '@/components/business/DataPanel.vue';
+import DashboardStats from '@/components/business/dashboard/DashboardStats.vue';
+import AlarmOverview from '@/components/business/dashboard/AlarmOverview.vue';
+import ThreeMetrics from '@/components/business/dashboard/ThreeMetrics.vue';
 import { getTop5Devices } from '@/api/modules/hardware';
 
 // 定义类型
@@ -80,3 +92,24 @@ onMounted(() => {
   fetchTop5Data();
 });
 </script>
+
+<style lang="scss" scoped>
+.dashboard {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+
+  .top-section {
+    height: 60%;
+    display: flex;
+    gap: 15px;
+    padding-bottom: 15px;
+    box-sizing: border-box;
+  }
+
+  .bottom-section {
+    height: 40%;
+  }
+}
+</style>
