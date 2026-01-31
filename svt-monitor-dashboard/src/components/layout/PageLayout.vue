@@ -2,16 +2,11 @@
   <div class="page-layout">
     <MainHeader />
     <div class="main-content">
-      <!-- 设备列表侧边栏 -->
-      <div class="device-sidebar-container">
-        <DeviceSidebar />
-      </div>
+      <DeviceSidebar />
 
       <!-- 主要内容区域 -->
       <div class="content-wrapper">
-        <div class="content-area">
-          <RouterView />
-        </div>
+        <RouterView />
       </div>
     </div>
   </div>
@@ -25,7 +20,7 @@ import { RouterView } from 'vue-router'
 
 <style lang="scss" scoped>
 .page-layout {
-  width: 100%;
+  width: 100vw;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -40,53 +35,30 @@ import { RouterView } from 'vue-router'
     display: flex;
     overflow: hidden;
     min-height: 0;
-
-    .device-sidebar-container {
-      width: 25vw;
-      min-width: 200px;
-      max-width: 400px;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      padding: 15px 0 15px 15px;
-
-      >* {
-        flex: 1;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-      }
-    }
+    padding: 15px;
 
     .content-wrapper {
       flex: 1;
       display: flex;
       flex-direction: column;
-      min-width: 0;
-      overflow: auto;
+      overflow-y: auto;
       height: 100%;
+      padding-left: 15px;
 
-      .content-area {
-        flex: 1;
-        padding: 15px;
-        overflow: auto;
-        min-width: 300px;
-        height: 100%;
 
-        &::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
+      &::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
 
-        &::-webkit-scrollbar-track {
-          background: transparent;
-          border-radius: 3px;
-        }
+      &::-webkit-scrollbar-track {
+        background: transparent;
+        border-radius: 3px;
+      }
 
-        &::-webkit-scrollbar-thumb {
-          background: rgba(0, 0, 0, 0.2);
-          border-radius: 3px;
-        }
+      &::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 3px;
       }
     }
   }

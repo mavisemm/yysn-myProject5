@@ -149,11 +149,13 @@ const handleLogout = () => {
 
 <style lang="scss" scoped>
 .main-header {
-  height: 8.5vh;
+  width: 100%;
+  height: 8vh;
   display: flex;
   align-items: center;
   position: relative;
   z-index: 100;
+  padding: 15px;
 
   .header-left {
     display: flex;

@@ -661,52 +661,31 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .device-sidebar {
-  width: 100%;
+  width: 25%;
+  min-width: 200px;
+  max-width: 400px;
   height: 100%;
+  padding: 20px;
   display: flex;
   flex-direction: column;
   background: url('@/assets/images/background/首页-设备列表背景.png') no-repeat center center;
   background-size: 100% 100%;
+  overflow: hidden;
 
   .sidebar-header {
-    padding: 20px 20px 0 20px;
     display: flex;
     align-items: center;
     flex-shrink: 0;
     justify-content: space-between;
 
     .sidebar-title {
-      margin: 0;
       font-size: clamp(22px, 3vw, 26px);
       font-weight: 600;
-    }
-
-    .refresh-btn {
-      background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: white;
-      border-radius: 4px;
-      padding: 4px;
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.3s;
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.5);
-      }
-
-      .el-icon {
-        font-size: 16px;
-      }
     }
   }
 
   .search-area {
-    padding: 20px 20px 0 20px;
+    padding-top: 20px;
     flex-shrink: 0;
 
     .search-row {
@@ -789,11 +768,12 @@ onUnmounted(() => {
   }
 
   .device-tree-container {
+    padding-top: 20px;
     flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
-    padding: 20px;
+    overflow: hidden;
 
     .tree-scrollbar {
       flex: 1;

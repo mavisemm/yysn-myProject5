@@ -43,6 +43,7 @@ defineProps<Props>();
         height: 100%;
         overflow: hidden;
         box-sizing: border-box;
+        padding: 10px;
 
         .stat-card {
             height: 100%;

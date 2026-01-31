@@ -748,7 +748,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         display: grid;
         gap: 15px;
         flex: 1;
-        overflow: auto;
+        overflow-y: auto;
         padding: 8px 0;
         width: 100%;
         box-sizing: border-box;

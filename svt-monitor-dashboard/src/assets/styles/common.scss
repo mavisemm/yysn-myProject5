@@ -39,32 +39,33 @@ html, body {
   color: initial;
 }
 
-/* 滚动条样式 - 与设备树模块保持一致 */
+/* 全局滚动条样式 - 统一设计 */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--el-text-color-secondary, #909399);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  opacity: 0.3;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--el-text-color-secondary, #909399);
-  opacity: 0.3;
+  background: rgba(255, 255, 255, 0.1);
 }
+
+/* Element Plus滚动条定制 */
 :deep(.el-scrollbar) {
-    --el-scrollbar-opacity: 0.3;
-    --el-scrollbar-bg-color: var(--el-text-color-secondary);
-    --el-scrollbar-hover-opacity: 0.5;
-    --el-scrollbar-hover-bg-color: var(--el-text-color-secondary);
-    height: 100%;
-    overflow: hidden;
-    position: relative;
+  --el-scrollbar-opacity: 0.3;
+  --el-scrollbar-bg-color: rgba(255, 255, 255, 0.1);
+  --el-scrollbar-hover-opacity: 0.5;
+  --el-scrollbar-hover-bg-color: rgba(255, 255, 255, 0.1);
+  height: 100%;
+  overflow: hidden;
+  position: relative;
 }

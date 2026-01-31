@@ -419,7 +419,7 @@ onUnmounted(() => {
   .charts-section {
     display: flex;
     flex-direction: row;
-    gap: 20px;
+    gap: 15px;
     height: 50%;
     padding-bottom: 15px;
 
@@ -429,7 +429,6 @@ onUnmounted(() => {
       flex: 1;
       display: flex;
       flex-direction: column;
-      padding: 10px;
       border-radius: 8px;
       // overflow: hidden;
 
@@ -437,11 +436,13 @@ onUnmounted(() => {
         font-size: clamp(18px, 2.5vw, 24px);
         font-weight: bold;
         text-align: center;
+        padding: 20px 20px 0 20px;
       }
 
       .chart-container {
         flex: 1;
         min-height: 200px;
+        padding: 20px;
       }
     }
   }
@@ -464,7 +465,6 @@ onUnmounted(() => {
       .section-title {
         font-size: clamp(18px, 2.5vw, 24px);
         font-weight: bold;
-        margin-bottom: 10px;
         padding: 20px 20px 0 20px;
       }
 
@@ -572,7 +572,6 @@ onUnmounted(() => {
         padding: 20px 20px 0 20px;
         font-size: clamp(18px, 2.5vw, 24px);
         font-weight: bold;
-        margin-bottom: 18px;
       }
 
       .info-scroll-area {

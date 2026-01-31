@@ -771,6 +771,8 @@ onUnmounted(() => {
 
                 overflow-y: auto;
 
+
+
                 .analysis-form {
                     flex: 1;
                     min-height: 0;
