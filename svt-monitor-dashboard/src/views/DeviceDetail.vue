@@ -1,15 +1,16 @@
-﻿<template>
+﻿<!-- 设备详情页面：展示设备信息和数据分析 -->
+<template>
   <div class="device-detail">
-    <!-- 左侧设备信息模块 (响应式宽度) -->
+    <!-- 左侧设备信息模块：显示设备基本信息 -->
     <DeviceInfoModule :device-info="deviceInfo" @update:device-info="handleUpdateDeviceInfo" />
 
-    <!-- 右侧内容模块 (响应式宽度) -->
+    <!-- 右侧内容模块：包含点位列表和图表分析 -->
     <div class="right-content">
-      <!-- 点位列表 (响应式高度) -->
+      <!-- 点位列表：显示设备的各个监测点 -->
       <PointListModule ref="pointListModuleRef" :point-list="pointList" :selected-point-id="selectedPointId"
         @point-selected="selectedPointId = $event" />
 
-      <!-- 图表和趋势分析 (响应式高度) -->
+      <!-- 图表和趋势分析：展示点位数据的图表 -->
       <ChartsAnalysisModule :point-list="pointList" />
     </div>
   </div>
@@ -27,7 +28,6 @@ import PointListModule from '@/components/business/device-detail/PointListModule
 import ChartsAnalysisModule from '@/components/business/device-detail/ChartsAnalysisModule.vue'
 import type { DeviceNode } from '@/types/device'
 
-// 引入点位列表模块类型
 import type { ComponentPublicInstance } from 'vue'
 type PointListModuleType = InstanceType<typeof PointListModule>
 
@@ -45,36 +45,38 @@ const deviceId = computed<string | null>(() => {
   return id;
 })
 
-// 处理设备信息更新
+/**
+ * 处理设备信息更新
+ */
 const handleUpdateDeviceInfo = (updatedInfo: DeviceInfo) => {
   Object.assign(deviceInfo.value, updatedInfo);
   ElMessage.success('设备信息已更新');
 };
 
-// 监听设备ID变化并通知设备树选中相应设备
+/**
+ * 监听设备ID变化并通知设备树选中相应设备
+ */
 watch(
   () => route.params.id,
   (newId, oldId) => {
-    // 更新状态管理中的选中设备ID
     if (newId) {
       const id = Array.isArray(newId) ? newId[0] : newId;
       if (id) {
         deviceTreeStore.setSelectedDeviceId(id);
-        // 当设备ID变化时，重新初始化设备数据
         initDeviceData();
       }
     }
   }
 )
 
-// 组件挂载时也触发一次设备选中
+/**
+ * 组件挂载时触发设备选中和数据初始化
+ */
 onMounted(() => {
   deviceTreeStore.setSelectedDeviceId(deviceId.value);
-  // 初始化数据
   initDeviceData()
 })
 
-// 定义设备信息类型
 interface DeviceInfo {
   deviceName: string,
   model: string,
@@ -86,7 +88,6 @@ interface DeviceInfo {
   lastAlarmTime: string
 }
 
-// 设备信息
 const deviceInfo = ref<DeviceInfo>({
   deviceName: '设备a',
   model: 'PUMP-500',
@@ -98,20 +99,16 @@ const deviceInfo = ref<DeviceInfo>({
   lastAlarmTime: '2025-12-12 10:30:00'
 })
 
-// 编辑状态
 const isEditing = ref(false)
 const editForm = ref<DeviceInfo>({ ...deviceInfo.value })
 
-// 健康度相关
 const healthType = ref('声音')
 const currentHealthScore = ref(85)
 const gaugeRef = ref<HTMLDivElement>()
 let gaugeChart: echarts.ECharts | null = null
 
-// 设备图片
 const deviceImage = ref('https://cube.elemecdn.com/6/94/4d395b316ae0a58e9e9e97b18bd89.jpg')
 
-// 定义点位信息类型
 interface PointInfo {
   id: string,
   name: string,
@@ -121,7 +118,6 @@ interface PointInfo {
   hasAlarm: boolean
 }
 
-// 点位列表
 const pointList = ref<PointInfo[]>([
   { id: '1', name: '进风口位置', lastAlarmTime: '2025-12-12 10:30:00', alarmType: '温度', alarmValue: '500℃', hasAlarm: true },
   { id: '2', name: '出风口位置', lastAlarmTime: '2025-12-12 09:45:00', alarmType: '振动', alarmValue: '65mm/s', hasAlarm: true },
@@ -130,20 +126,16 @@ const pointList = ref<PointInfo[]>([
   { id: '5', name: '电机前端盖', lastAlarmTime: '2025-12-10 12:10:00', alarmType: '振动', alarmValue: '45mm/s', hasAlarm: false },
 ])
 
-// 点位列表模块引用
 const pointListModuleRef = ref<ComponentPublicInstance & PointListModuleType>()
 
-// 选中的点位ID
 const selectedPointId = ref<string>('')
 
-// 趋势分析相关
 const analysisForm = ref({
   pointId: '',
   days: 7,
   dateRange: [] as [Date, Date] | []
 })
 
-// 定义分析结果类型
 interface AnalysisResult {
   deviation: string,
   pointName: string
@@ -154,9 +146,7 @@ const analysisResult = ref<AnalysisResult>({
   pointName: '进风口位置'
 })
 
-// 初始化设备数据
 const initDeviceData = () => {
-  // 查找当前设备信息和点位数据
   const findDeviceInTree = (nodes: DeviceNode[]) => {
     if (!deviceId.value) return;
     for (const node of nodes) {
@@ -164,7 +154,6 @@ const initDeviceData = () => {
         deviceInfo.value.deviceName = node.name || '未知设备'
         deviceInfo.value.installationLocation = node.workshopName || '未知位置'
 
-        // 根据设备的子节点（点位）更新点位列表
         if (node.children && node.children.length > 0) {
           pointList.value = node.children.map((point: DeviceNode, index: number) => ({
             id: String(point.id || ''),
@@ -175,7 +164,6 @@ const initDeviceData = () => {
             hasAlarm: Boolean(point.status === 'alarm' || point.status === 'warning')
           }))
         } else {
-          // 如果设备没有关联的点位数据，使用默认的10个点位
           pointList.value = Array.from({ length: 10 }, (_, i) => ({
             id: String(i + 1),
             name: `点位${i + 1}`,
@@ -195,14 +183,12 @@ const initDeviceData = () => {
 
   findDeviceInTree(deviceTreeStore.deviceTreeData)
 
-  // 初始化图表
   nextTick(() => {
     initGaugeChart()
   })
 
-  // 数据加载完成后，自动选中第一行
   nextTick(async () => {
-    await nextTick(); // 确保DOM完全更新
+    await nextTick();
     const pointListModule = pointListModuleRef.value
     if (pointList.value.length > 0 && pointListModule && typeof pointListModule.setCurrentRow === 'function') {
       pointListModule.setCurrentRow(0)
@@ -213,14 +199,12 @@ const initDeviceData = () => {
 
 }
 
-// 辅助函数：随机获取报警类型
 const getRandomAlarmType = (): string => {
   const types = ['温度', '振动', '声音']
   const index = Math.floor(Math.random() * types.length)
   return types[index] || '温度'
 }
 
-// 辅助函数：根据报警类型生成随机报警值
 const getRandomAlarmValue = (type?: string): string => {
   switch (type) {
     case '温度':
@@ -234,28 +218,6 @@ const getRandomAlarmValue = (type?: string): string => {
   }
 }
 
-// 切换编辑状态
-const toggleEdit = () => {
-  if (isEditing.value) {
-    // 保存编辑
-    Object.assign(deviceInfo.value, editForm.value)
-    ElMessage.success('设备信息已更新')
-  } else {
-    // 进入编辑模式
-    Object.assign(editForm.value, deviceInfo.value)
-  }
-  isEditing.value = !isEditing.value
-}
-
-// 切换健康度类型
-const toggleHealthType = () => {
-  healthType.value = healthType.value === '声音' ? '振动' : '声音'
-  // 更新分数，模拟不同健康度的分数
-  currentHealthScore.value = healthType.value === '声音' ? 85 : 78
-  initGaugeChart()
-}
-
-// 初始化仪表盘
 const initGaugeChart = () => {
   if (!gaugeRef.value) return
 
@@ -269,15 +231,15 @@ const initGaugeChart = () => {
 
   let healthColor = ''
   if (score >= 80) {
-    healthColor = '#2E7D32' // 深绿色
+    healthColor = '#2E7D32'
   } else if (score >= 60) {
-    healthColor = '#8bf58fff' // 淡绿色
+    healthColor = '#8bf58fff'
   } else if (score >= 40) {
-    healthColor = '#FFC107' // 黄色
+    healthColor = '#FFC107'
   } else if (score >= 20) {
-    healthColor = '#FF9800' // 橙色
+    healthColor = '#FF9800'
   } else {
-    healthColor = '#FF5722' // 红色
+    healthColor = '#FF5722'
   }
 
   const option = {
@@ -305,11 +267,11 @@ const initGaugeChart = () => {
           lineStyle: {
             width: 12,
             color: [
-              [0.2, '#FF5722'], // 0-20 红色
-              [0.4, '#FF9800'], // 20-40 橙色
-              [0.6, '#FFC107'], // 40-60 黄色
-              [0.8, '#8bf58fff'], // 60-80 淡绿色
-              [1, '#2E7D32'] // 80-100 深绿色
+              [0.2, '#FF5722'],
+              [0.4, '#FF9800'],
+              [0.6, '#FFC107'],
+              [0.8, '#8bf58fff'],
+              [1, '#2E7D32']
             ]
           }
         },
@@ -356,7 +318,6 @@ const initGaugeChart = () => {
   gaugeChart.setOption(option)
 }
 
-// 获取预警类型标签
 const getAlarmTypeTag = (type: string) => {
   switch (type) {
     case '温度':
@@ -370,25 +331,12 @@ const getAlarmTypeTag = (type: string) => {
   }
 }
 
-// 分析趋势
-const analyzeTrend = () => {
-  // 模拟分析结果
-  analysisResult.value.deviation = (Math.random() * 0.5).toFixed(2)
-  const selectedPoint = pointList.value.find(p => p.id === analysisForm.value.pointId)
-  analysisResult.value.pointName = selectedPoint ? String(selectedPoint.name) : '未知点位'
-
-  ElMessage.success('趋势分析完成')
-}
-
 let resizeObserver: ResizeObserver | null = null
 
-// 页面尺寸改变时，调整所有图表
 const resizeAllCharts = () => {
-  // 触发强制重排以确保子组件能响应尺寸变化
   document.body.offsetHeight;
 }
 
-// 使用ResizeObserver监听页面容器变化
 const setupPageResizeObserver = () => {
   const pageContainer = document.querySelector('.device-detail') as HTMLDivElement;
   if (pageContainer) {
@@ -397,20 +345,15 @@ const setupPageResizeObserver = () => {
   }
 }
 
-// 组件挂载时设置页面级resize监听
 onMounted(() => {
   deviceTreeStore.setSelectedDeviceId(deviceId.value);
-  // 初始化数据
   initDeviceData()
 
-  // 设置页面级resize观察器
   setupPageResizeObserver();
 
-  // 作为备用方案，也监听window的resize事件
   window.addEventListener('resize', resizeAllCharts);
 })
 
-// 组件卸载时清理资源
 onUnmounted(() => {
   if (gaugeChart) gaugeChart.dispose()
 
@@ -419,7 +362,6 @@ onUnmounted(() => {
     resizeObserver = null;
   }
 
-  // 清理window事件监听器
   window.removeEventListener('resize', resizeAllCharts);
 })
 </script>
@@ -432,7 +374,6 @@ onUnmounted(() => {
   box-sizing: border-box;
   color: white;
   min-width: 0;
-  /* 允许flex子项收缩 */
 
   .right-content {
     width: 50vw !important;
@@ -445,7 +386,6 @@ onUnmounted(() => {
   }
 }
 
-/* 响应式处理：当屏幕较小时调整左侧设备信息模块的宽度 */
 @media screen and (max-width: 1200px) {
   .right-content {
     flex: 1;

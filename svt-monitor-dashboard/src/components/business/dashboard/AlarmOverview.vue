@@ -1,3 +1,4 @@
+<!-- 预警总览组件：显示设备告警信息 -->
 <template>
     <div class="alarm-overview">
         <!-- 顶部区域：标题和搜索栏 -->
@@ -82,6 +83,9 @@ const disabledDate = (time: Date) => {
     return time.getTime() > Date.now();
 };
 
+/**
+ * 日期选择器快捷选项
+ */
 const pickerOptions = {
     shortcuts: [
         {
@@ -90,7 +94,6 @@ const pickerOptions = {
                 const start = new Date();
                 const end = new Date();
                 start.setHours(0, 0, 0, 0);
-                // 结束时间设置为当前时间，而不是23:59:59
                 picker.$emit('pick', [start, end]);
             }
         },
@@ -100,7 +103,6 @@ const pickerOptions = {
                 const start = new Date(Date.now() - 86400000);
                 const end = new Date(Date.now() - 86400000);
                 start.setHours(0, 0, 0, 0);
-                // 如果选择昨天，结束时间仍为昨天的23:59:59
                 end.setHours(23, 59, 59, 999);
                 picker.$emit('pick', [start, end]);
             }
@@ -111,7 +113,6 @@ const pickerOptions = {
                 const start = new Date(Date.now() - 7 * 86400000);
                 const end = new Date();
                 start.setHours(0, 0, 0, 0);
-                // 结束时间设置为当前时间
                 picker.$emit('pick', [start, end]);
             }
         }
@@ -180,7 +181,6 @@ const handleCalendarChange = (val: [Date, Date]) => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            // 如果结束日期是今天，则结束时间设置为当前时间
             endDay.setHours(0, 0, 0, 0);
             if (endDay.getTime() === today.getTime()) {
                 dateRange.value = [formatDate(start), formatDate(now)];
@@ -558,7 +558,6 @@ onMounted(() => {
 onUnmounted(() => {
     window.removeEventListener('resize', updateContainerSize);
 
-    // 清理隐藏下拉菜单的定时器
     if (hideDropdownTimerId) {
         clearTimeout(hideDropdownTimerId);
         hideDropdownTimerId = null;
@@ -584,7 +583,6 @@ const isValidDevice = (deviceId: string): boolean => {
 };
 
 const goToDeviceDetail = (alarm: AlarmItem) => {
-    // console.log('跳转到设备详情页，设备ID:', alarm.id);
 
     if (isValidDevice(alarm.id)) {
         deviceTreeStore.setSelectedDeviceId(alarm.id);
@@ -647,13 +645,11 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                         box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
                         border: none;
 
-                        // 修改输入框内部文字颜色，使其在浅色背景上更易读
                         .el-input__inner {
                             color: white;
                             background: transparent;
                         }
 
-                        // 搜索图标颜色
                         .el-input__prefix {
                             color: white;
                         }
@@ -679,7 +675,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                         cursor: pointer;
                         transition: background-color 0.2s;
                         font-size: clamp(10px, 1.2vw, 12px);
-                        /* 响应式字体大小 */
                         display: flex;
                         align-items: center;
                         color: white;
@@ -690,7 +685,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
                         .workshop-name {
                             font-size: clamp(8px, 1vw, 10px);
-                            /* 响应式字体大小 */
                             margin-left: 4px;
                             flex-shrink: 0;
                         }
@@ -700,7 +694,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                         padding: 12px;
                         text-align: center;
                         font-size: clamp(10px, 1.2vw, 12px);
-                        /* 响应式字体大小 */
                         color: white;
                     }
                 }
@@ -720,13 +713,11 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                         box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
                         border: none;
 
-                        // 修改输入框内部文字颜色，使其在浅色背景上更易读
                         .el-input__inner {
                             color: white;
                             background: transparent;
                         }
 
-                        // 搜索图标颜色
                         .el-input__prefix {
                             color: white;
                         }
@@ -752,7 +743,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         padding: 8px 0;
         width: 100%;
         box-sizing: border-box;
-        /* 防止在响应式转换期间出现滚动条 */
         -ms-overflow-style: none;
         scrollbar-width: none;
 
@@ -771,7 +761,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             max-height: 150px;
             min-height: 0;
             overflow: hidden;
-            /* 响应式卡片高度 */
             height: 100%;
             cursor: pointer;
 
@@ -804,13 +793,13 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                     &.warning {
                         background: url('@/assets/images/background/首页-预警设备.png') no-repeat center center;
                         background-size: contain;
-                        background-color: #f56c6c; // fallback color
+                        background-color: #f56c6c;
                     }
 
                     &.healthy {
                         background: url('@/assets/images/background/首页-健康设备.png') no-repeat center center;
                         background-size: contain;
-                        background-color: #67c23a; // fallback color
+                        background-color: #67c23a;
                     }
                 }
             }
@@ -895,7 +884,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             color: white;
         }
 
-        // 页码按钮样式
         .el-pager li {
             background-color: transparent;
             color: white;
@@ -927,20 +915,17 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             }
         }
 
-        // 输入框样式
         .el-pagination__sizes .el-input__inner,
         .el-pagination__jump .el-input__inner {
             height: 18px;
             background-color: transparent;
             color: #111;
             font-size: clamp(10px, 1vw, 12px);
-            /* 响应式字体大小 */
         }
     }
 }
 </style>
 <style lang="scss">
-/* === 精细化调整 Element Plus 日期范围选择器 === */
 .el-picker-panel.el-date-range-picker {
     width: 440px !important;
     font-size: 12px !important;
@@ -953,21 +938,16 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         width: 400px !important;
     }
 
-    /* --- 1. 压缩顶部“开始/结束 时间输入区域” --- */
     .el-date-range-picker__time-header {
         display: flex;
         justify-content: space-between;
         padding: 8px 10px !important;
         gap: 6px;
-        /* 控制左右两组之间的间隙 */
 
-        /* 每组：日期 + 时间 */
         >.el-scrollbar {
             width: calc(50% - 3px) !important;
-            /* 两等分，减去 gap 的一半 */
         }
 
-        /* 日期输入框 */
         .el-date-editor {
             width: 100% !important;
 
@@ -991,20 +971,16 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         }
     }
 
-    /* --- 2. 缩小日历顶部“2026年1月”标题 --- */
     .el-date-range-picker__header {
         font-size: 12px !important;
-        /* 原为 14px+ */
         font-weight: normal !important;
         padding: 4px 0 !important;
         line-height: 1.2 !important;
-        // 防止文字过长换行或溢出
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
     }
 
-    /* 左右切换箭头也缩小 */
     .el-picker-panel__icon-btn {
         width: 14px !important;
         height: 14px !important;
@@ -1012,10 +988,8 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         font-size: 11px !important;
     }
 
-    /* --- 3. 日历内容区继续紧凑 --- */
     .el-date-range-picker__content {
         width: 180px !important;
-        /* 每个日历 180px */
         padding: 6px !important;
 
         .el-date-table {
@@ -1030,7 +1004,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         }
     }
 
-    /* --- 4. 时间选择器（如果展开）--- */
     .el-time-panel {
         padding: 6px !important;
 
@@ -1048,7 +1021,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         }
     }
 
-    /* --- 5. Footer 按钮 --- */
     .el-picker-panel__footer {
         padding: 6px 10px !important;
 

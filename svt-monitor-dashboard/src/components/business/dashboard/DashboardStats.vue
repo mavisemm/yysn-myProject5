@@ -1,3 +1,4 @@
+<!-- 统计数据展示区域：显示各类设备统计数据 -->
 <template>
     <div class="stats-area">
         <div class="stats-grid">
@@ -21,6 +22,9 @@
 import type { StatItem } from '@/types/device'
 import { Monitor } from '@element-plus/icons-vue'
 
+/**
+ * 组件属性接口
+ */
 interface Props {
     stats: StatItem[];
 }
@@ -51,7 +55,6 @@ defineProps<Props>();
             align-items: center;
             justify-content: center;
             font-size: clamp(14px, 2.5vw, 16px);
-            /* 响应式字体大小 */
             font-weight: bold;
             color: white;
             box-sizing: border-box;
@@ -70,13 +73,11 @@ defineProps<Props>();
 
         .stat-icon {
             font-size: clamp(30px, 4.5vw, 36px);
-            /* 响应式字体大小 */
             margin-bottom: 8px;
         }
 
         .stat-text {
             font-size: clamp(18px, 2.5vw, 24px);
-            /* 响应式字体大小 */
             margin-bottom: 4px;
             white-space: nowrap;
             overflow: hidden;
@@ -85,7 +86,6 @@ defineProps<Props>();
 
         .stat-number {
             font-size: clamp(24px, 3.5vw, 30px);
-            /* 响应式字体大小 */
             font-weight: bold;
             white-space: nowrap;
             overflow: hidden;
