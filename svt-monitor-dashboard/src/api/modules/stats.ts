@@ -1,202 +1,84 @@
 import request from '../request'
 
-// 统计相关 API 接口
-
-// 统计数据类型定义
-export interface DeviceCountStats {
-  total: number
-  online: number
-  offline: number
-  maintenance: number
-  fault: number
-}
-
-export interface HealthStats {
-  excellent: number
-  good: number
-  fair: number
-  poor: number
-  healthScore: number
-}
-
-export interface AlarmStats {
-  critical: number
-  high: number
-  medium: number
-  low: number
-  total: number
-}
-
-export interface EventStats {
-  new: number
-  acknowledged: number
-  processing: number
-  resolved: number
-  closed: number
-  total: number
-}
-
-export interface TimeSeriesData {
-  time: string
-  value: number
-}
-
-export interface DeviceCountStatsResponse {
-  code: number
-  message: string
-  data: DeviceCountStats
-}
-
-export interface HealthStatsResponse {
-  code: number
-  message: string
-  data: HealthStats
-}
-
-export interface AlarmStatsResponse {
-  code: number
-  message: string
-  data: AlarmStats
-}
-
-export interface EventStatsResponse {
-  code: number
-  message: string
-  data: EventStats
-}
-
-export interface TimeSeriesStatsResponse {
-  code: number
-  message: string
-  data: TimeSeriesData[]
-}
-
-export interface ComprehensiveStats {
-  deviceCounts: DeviceCountStats
-  healthStatus: HealthStats
-  alarms: AlarmStats
-  events: EventStats
-  dailyTrends: TimeSeriesData[]
-  monthlyTrends: TimeSeriesData[]
-}
-
-export interface ComprehensiveStatsResponse {
-  code: number
-  message: string
-  data: ComprehensiveStats
-}
-
-// 获取设备数量统计
-export const getDeviceCountStats = (): Promise<DeviceCountStatsResponse> => {
-  return request.get('/stats/device-counts', {
-    showLoading: true
+// 获取预警设备数量
+export const getAlertDeviceCount = () => {
+  // TODO: 替换为真实接口调用
+  // return request.get('/taicang/hardware/device/overview/healthy/number')
+  
+  // 使用假数据
+  return Promise.resolve({
+    rc: 0,
+    ret: 2,
+    err: null
   })
 }
 
-// 获取设备健康度统计
-export const getHealthStats = (): Promise<HealthStatsResponse> => {
-  return request.get('/stats/health-status', {
-    showLoading: true
+// 获取总设备数量
+export const getTotalDeviceCount = () => {
+  // TODO: 替换为真实接口调用
+  // return request.get('/taicang/hardware/device/overview/totalnumber')
+  
+  // 使用假数据
+  return Promise.resolve({
+    rc: 0,
+    ret: 7,
+    err: null
   })
 }
 
-// 获取告警统计
-export const getAlarmStats = (): Promise<AlarmStatsResponse> => {
-  return request.get('/stats/alarms', {
-    showLoading: true
+// 获取总点位数量
+export const getTotalPointCount = () => {
+  // TODO: 替换为真实接口调用
+  // return request.get('/taicang/hardware/device/overview/monit/point')
+  
+  // 使用假数据
+  return Promise.resolve({
+    rc: 0,
+    ret: 40,
+    err: null
   })
 }
 
-// 获取事件统计
-export const getEventStats = (): Promise<EventStatsResponse> => {
-  return request.get('/stats/events', {
-    showLoading: true
+// 获取健康设备数量
+export const getHealthyDeviceCount = () => {
+  // TODO: 替换为真实接口调用
+  // return request.get('/taicang/hardware/device/overview/health/number')
+  
+  // 使用假数据
+  return Promise.resolve({
+    rc: 0,
+    ret: 5,
+    err: null
   })
 }
 
-// 获取设备数量趋势统计
-export const getDeviceTrendStats = (params?: {
-  startTime?: string
-  endTime?: string
-  interval?: string
-}): Promise<TimeSeriesStatsResponse> => {
-  return request.get('/stats/device-trends', {
-    params,
-    showLoading: true
-  })
-}
-
-// 获取告警趋势统计
-export const getAlarmTrendStats = (params?: {
-  startTime?: string
-  endTime?: string
-  interval?: string
-}): Promise<TimeSeriesStatsResponse> => {
-  return request.get('/stats/alarm-trends', {
-    params,
-    showLoading: true
-  })
-}
-
-// 获取综合统计信息
-export const getComprehensiveStats = (params?: {
-  startTime?: string
-  endTime?: string
-}): Promise<ComprehensiveStatsResponse> => {
-  return request.get('/stats/comprehensive', {
-    params,
-    showLoading: true
-  })
-}
-
-// 获取工厂维度统计
-export const getFactoryStats = (params?: {
-  factoryId?: string
-}): Promise<any> => {
-  return request.get('/stats/factory', {
-    params,
-    showLoading: true
-  })
-}
-
-// 获取车间维度统计
-export const getWorkshopStats = (params?: {
-  workshopId?: string
-}): Promise<any> => {
-  return request.get('/stats/workshop', {
-    params,
-    showLoading: true
-  })
-}
-
-// 获取设备类型统计
-export const getDeviceTypeStats = (): Promise<any> => {
-  return request.get('/stats/device-type', {
-    showLoading: true
-  })
-}
-
-// 获取设备故障率统计
-export const getDeviceFailureRate = (params?: {
-  startTime?: string
-  endTime?: string
-}): Promise<any> => {
-  return request.get('/stats/failure-rate', {
-    params,
-    showLoading: true
-  })
-}
-
-// 导出统计报表
-export const exportStatsReport = (params?: {
-  reportType?: string
-  startTime?: string
-  endTime?: string
-  format?: 'xlsx' | 'pdf' | 'csv'
-}): Promise<any> => {
-  return request.get('/stats/export', {
-    params,
-    showLoading: true,
-    responseType: 'blob'
-  })
+// 统一获取所有统计信息
+export const getAllStats = async () => {
+  try {
+    const [alertCount, totalCount, pointCount, healthyCount] = await Promise.all([
+      getAlertDeviceCount(),
+      getTotalDeviceCount(),
+      getTotalPointCount(),
+      getHealthyDeviceCount()
+    ])
+    
+    if (
+      alertCount.rc !== 0 || 
+      totalCount.rc !== 0 || 
+      pointCount.rc !== 0 || 
+      healthyCount.rc !== 0
+    ) {
+      throw new Error('获取统计数据失败')
+    }
+    
+    return {
+      alertDeviceCount: alertCount.ret,
+      totalDeviceCount: totalCount.ret,
+      totalPointCount: pointCount.ret,
+      healthyDeviceCount: healthyCount.ret
+    }
+  } catch (error) {
+    console.error('获取统计数据失败:', error)
+    throw error
+  }
 }

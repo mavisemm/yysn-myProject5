@@ -102,10 +102,7 @@ const deviceInfo = ref<DeviceInfo>({
 const isEditing = ref(false)
 const editForm = ref<DeviceInfo>({ ...deviceInfo.value })
 
-const healthType = ref('声音')
-const currentHealthScore = ref(85)
-const gaugeRef = ref<HTMLDivElement>()
-let gaugeChart: echarts.ECharts | null = null
+
 
 const deviceImage = ref('https://cube.elemecdn.com/6/94/4d395b316ae0a58e9e9e97b18bd89.jpg')
 
@@ -183,9 +180,7 @@ const initDeviceData = () => {
 
   findDeviceInTree(deviceTreeStore.deviceTreeData)
 
-  nextTick(() => {
-    initGaugeChart()
-  })
+
 
   nextTick(async () => {
     await nextTick();
@@ -218,105 +213,7 @@ const getRandomAlarmValue = (type?: string): string => {
   }
 }
 
-const initGaugeChart = () => {
-  if (!gaugeRef.value) return
 
-  if (gaugeChart) {
-    gaugeChart.dispose()
-  }
-
-  gaugeChart = echarts.init(gaugeRef.value)
-
-  const score = currentHealthScore.value
-
-  let healthColor = ''
-  if (score >= 80) {
-    healthColor = '#2E7D32'
-  } else if (score >= 60) {
-    healthColor = '#8bf58fff'
-  } else if (score >= 40) {
-    healthColor = '#FFC107'
-  } else if (score >= 20) {
-    healthColor = '#FF9800'
-  } else {
-    healthColor = '#FF5722'
-  }
-
-  const option = {
-    series: [
-      {
-        type: 'gauge',
-        center: ['50%', '60%'],
-        radius: '60%',
-        startAngle: 180,
-        endAngle: 0,
-        min: 0,
-        max: 100,
-        splitNumber: 5,
-        progress: {
-          show: false,
-          width: 12,
-          roundCap: true,
-        },
-        pointer: {
-          show: true,
-          length: '80%',
-          width: 6,
-        },
-        axisLine: {
-          lineStyle: {
-            width: 12,
-            color: [
-              [0.2, '#FF5722'],
-              [0.4, '#FF9800'],
-              [0.6, '#FFC107'],
-              [0.8, '#8bf58fff'],
-              [1, '#2E7D32']
-            ]
-          }
-        },
-        axisTick: {
-          show: false,
-        },
-        splitLine: {
-          show: false,
-        },
-        axisLabel: {
-          show: false,
-        },
-        anchor: {
-          show: true,
-          size: 10,
-          itemStyle: {
-            color: '#fff'
-          }
-        },
-        title: {
-          show: false
-        },
-        detail: {
-          valueAnimation: true,
-          offsetCenter: [0, '0%'],
-          fontSize: 20,
-          fontWeight: 'bolder',
-          formatter: '{value}',
-          color: healthColor,
-          fontFamily: 'Arial',
-          textBorderColor: 'rgba(0,0,0,0.3)',
-          textBorderWidth: 1
-        },
-        data: [
-          {
-            value: score,
-            name: '设备健康度'
-          }
-        ]
-      }
-    ]
-  };
-
-  gaugeChart.setOption(option)
-}
 
 const getAlarmTypeTag = (type: string) => {
   switch (type) {
@@ -355,8 +252,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (gaugeChart) gaugeChart.dispose()
-
   if (resizeObserver) {
     resizeObserver.disconnect();
     resizeObserver = null;
@@ -383,22 +278,6 @@ onUnmounted(() => {
     gap: 15px;
     height: 100%;
     min-width: 0;
-  }
-}
-
-@media screen and (max-width: 1200px) {
-  .right-content {
-    flex: 1;
-  }
-}
-
-@media screen and (max-width: 768px) {
-  .device-detail {
-
-    .device-info-module {
-      width: 100% !important;
-      height: auto !important;
-    }
   }
 }
 </style>

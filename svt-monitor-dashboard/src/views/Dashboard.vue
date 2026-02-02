@@ -3,12 +3,7 @@
   <div class="dashboard">
     <!-- 顶部区域：统计数据和告警概览 -->
     <div class="top-section">
-      <DashboardStats :stats="[
-        { title: '健康设备数', number: 5 },
-        { title: '预警设备数', number: 2 },
-        { title: '监控总设备数', number: 7 },
-        { title: '监测点位数', number: 40 }
-      ]" />
+      <DashboardStats :stats="statsData" />
       <AlarmOverview>
         <template #alarms>
         </template>
@@ -28,11 +23,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, reactive } from 'vue';
 import DashboardStats from '@/components/business/dashboard/DashboardStats.vue';
 import AlarmOverview from '@/components/business/dashboard/AlarmOverview.vue';
 import ThreeMetrics from '@/components/business/dashboard/ThreeMetrics.vue';
 import { getTop5Devices } from '@/api/modules/hardware';
+import { getAllStats } from '@/api/modules/stats';
 
 
 /**
@@ -48,6 +44,14 @@ const rankings = ref<RankingItem[][]>([
   [],
   [],
   []
+]);
+
+// 统计数据
+const statsData = ref([
+  { title: '健康设备数', number: 0 },
+  { title: '预警设备数', number: 0 },
+  { title: '监控总设备数', number: 0 },
+  { title: '监测点位数', number: 0 }
 ]);
 
 /**
@@ -89,8 +93,34 @@ const fetchTop5Data = async () => {
   }
 };
 
+/**
+ * 获取统计数据显示
+ */
+const fetchStatsData = async () => {
+  try {
+    const stats = await getAllStats();
+
+    statsData.value = [
+      { title: '健康设备数', number: stats.healthyDeviceCount },
+      { title: '预警设备数', number: stats.alertDeviceCount },
+      { title: '监控总设备数', number: stats.totalDeviceCount },
+      { title: '监测点位数', number: stats.totalPointCount }
+    ];
+  } catch (error) {
+    console.error('获取统计数据失败:', error);
+    // 使用默认值
+    statsData.value = [
+      { title: '健康设备数', number: 0 },
+      { title: '预警设备数', number: 0 },
+      { title: '监控总设备数', number: 0 },
+      { title: '监测点位数', number: 0 }
+    ];
+  }
+};
+
 onMounted(() => {
   fetchTop5Data();
+  fetchStatsData();
 });
 </script>
 
