@@ -62,9 +62,9 @@
     <div class="device-tree-container">
       <el-scrollbar class="tree-scrollbar">
         <el-tree ref="deviceTreeRef" :data="displayTreeData" :props="treeProps" :expand-on-click-node="true"
-          :default-expanded-keys="expandedKeys" node-key="id" highlight-current @node-click="handleNodeClick">
+          :highlight-current="false" :default-expanded-keys="expandedKeys" node-key="id" @node-click="handleNodeClick">
           <template #default="{ node, data }">
-            <div class="tree-node" :data-type="data.type">
+            <div class="tree-node" :data-type="data.type" :class="{ 'is-selected': isNodeSelected(data) }">
               <!-- 自定义展开图标 -->
               <el-icon v-if="node.childNodes && node.childNodes.length > 0" class="expand-icon no-select"
                 @mousedown.prevent @click.stop="handleExpandIconClick(node)">
@@ -222,21 +222,14 @@ const updateExpansion = async (newKeys: string[]) => {
 let timeoutId: number | null = null;
 
 onMounted(async () => {
-  // console.log('设备列表组件已加载')
-
-  // 等待设备树数据加载完成
-  // 等待store中的数据加载完成
   await nextTick();
 
-  // 使用观察者来等待数据加载完成
   const stopWatch = watch(
     () => deviceTreeStore.deviceTreeData,
     (newData) => {
       if (newData && newData.length > 0) {
-        // 数据已加载，停止观察
         stopWatch();
 
-        // 使用setTimeout确保数据已完全渲染
         timeoutId = window.setTimeout(() => {
           const firstWorkshopId = getFirstWorkshopId()
           if (firstWorkshopId) {
@@ -250,10 +243,8 @@ onMounted(async () => {
     { immediate: true }
   );
 
-  // 监听选中状态变化并更新树组件
   watch(selectedDeviceId, updateSelection, { immediate: true })
 
-  // 监听展开节点变化，更新树组件状态
   watch(deviceTreeStore.expandedKeys, updateExpansion, { immediate: true })
 })
 
@@ -590,6 +581,18 @@ const toggleNode = (node: Node) => {
   } else {
     node.expand()
   }
+  // 同步更新状态管理中的展开键
+  syncExpandedKeys()
+}
+
+// 同步树组件的展开状态到状态管理
+const syncExpandedKeys = () => {
+  nextTick(() => {
+    if (deviceTreeRef.value && deviceTreeRef.value.getExpandedKeys) {
+      const currentExpandedKeys = deviceTreeRef.value.getExpandedKeys()
+      deviceTreeStore.setExpandedKeys(currentExpandedKeys)
+    }
+  })
 }
 
 const handleExpandIconClick = (node: Node) => {
@@ -598,22 +601,40 @@ const handleExpandIconClick = (node: Node) => {
 }
 
 const handleNodeClick = (data: DeviceNode, node: Node) => {
-  // 设备点击时跳转路由
+  // 工厂和车间点击时，让Element Plus处理展开/收起，我们只处理业务逻辑
+  if (data.type === 'factory' || data.type === 'workshop') {
+    // 不再主动调用toggleNode，让expand-on-click-node="true"生效
+    return
+  }
+
+  // 设备点击时跳转路由并设置选中状态
   if (data.type === 'device') {
+    deviceTreeStore.setSelectedDeviceId(data.id)
+    // 让Element Plus的expand-on-click-node="true"处理展开收起
+    // 不再主动调用toggleNode以避免冲突
     router.push({
       name: 'DeviceDetail',
       params: { id: data.id }
     })
   }
 
-  // 点位点击时跳转路由
+  // 点位点击时跳转路由并设置选中状态
   if (data.type === 'point') {
+    deviceTreeStore.setSelectedDeviceId(data.id)
     const deviceId = node.parent?.data?.id || ''
     router.push({
       name: 'SoundPoint',
       query: { pointId: data.id, deviceId: deviceId }
     })
   }
+}
+
+// 判断节点是否被选中（只有设备和点位才能被选中）
+const isNodeSelected = (data: DeviceNode): boolean => {
+  if (data.type !== 'device' && data.type !== 'point') {
+    return false
+  }
+  return deviceTreeStore.selectedDeviceId === data.id
 }
 
 
@@ -801,8 +822,14 @@ onUnmounted(() => {
           }
         }
 
-        // 为所有节点类型设置统一的选中样式
-        .el-tree-node.is-current>.el-tree-node__content {
+        // 清除所有节点的默认选中样式（包括focus状态和is-current）
+        .el-tree-node.is-current>.el-tree-node__content,
+        .el-tree-node:focus>.el-tree-node__content {
+          background: transparent !important;
+        }
+
+        // 自定义选中样式 - 基于 .is-selected 类，完全不依赖 el-tree 的 is-current
+        .el-tree-node__content:has(.tree-node.is-selected) {
           background: rgb(103, 157, 215) !important;
         }
       }
