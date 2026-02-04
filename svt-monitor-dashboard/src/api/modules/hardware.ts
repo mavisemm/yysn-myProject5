@@ -260,3 +260,62 @@ export const getTop5Devices = (type: 'SOUND' | 'VIBRATION' | 'TEMPERATURE'): Pro
     showLoading: true
   })
 }
+
+// 设备详情信息接口返回类型
+export interface DeviceInfoResponse {
+  rc: number;
+  ret: {
+    id: number;
+    deviceId: string;
+    deviceName: string;
+    deviceModel: string;
+    deviceFactory: string;
+    locationDetail: string;
+    pressure: number;
+    rotationSpeed: number;
+    designFlow: number;
+    onlineStatus: number;
+    createdTime: string | null;
+    updatedTime: string | null;
+  };
+  err: string | null;
+}
+
+// 根据设备ID获取设备详情信息
+export const getDeviceInfoByDeviceId = (deviceId: string): Promise<DeviceInfoResponse> => {
+  return request.get(`/taicang/hardware/device/info/findByDeviceId`, {
+    params: { deviceId },
+    showLoading: true
+  })
+}
+
+// 设备编辑信息类型定义
+export interface DeviceInfoDto {
+  id: number;
+  deviceId: string;
+  deviceName: string;
+  deviceModel: string;
+  deviceFactory: string;
+  locationDetail: string;
+  pressure: number;
+  rotationSpeed: number;
+  designFlow: number;
+  onlineStatus: number;
+}
+
+// 设备编辑响应类型
+export interface DeviceEditResponse {
+  rc: number;
+  ret: boolean;
+  err: string | null;
+}
+
+// 编辑设备信息
+export const editDeviceInfo = (deviceId: string, deviceInfo: DeviceInfoDto): Promise<DeviceEditResponse> => {
+  return request.post(`/taicang/hardware/device/info/edit`, {
+    deviceId,
+    deviceInfo
+  }, {
+    showLoading: true
+  })
+}

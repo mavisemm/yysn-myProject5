@@ -11,126 +11,194 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, shallowRef } from 'vue';
 import * as echarts from 'echarts';
+import 'echarts-gl'; // 引入3D图表支持
 import { ElButton } from 'element-plus';
 import { useChartResize } from '@/composables/useChart';
 
 const waterfallChartRef = ref<HTMLElement>();
 const waterfallChartInstance = shallowRef<echarts.ECharts | null>(null);
 
-const waterfallTimeLabels = [
-    '2026-11-14 13:59:57 (29 ℃)',
-    '2026-11-14 14:59:57 (28 ℃)',
-    '2026-11-14 15:59:58 (27 ℃)',
-    '2026-11-14 16:59:58 (25 ℃)',
-    '2026-11-14 17:59:58'
-];
 
-const waterfallColors = [
-    '#c23531',
-    '#61a0a8',
-    '#6e7074',
-    '#546fc6',
-    '#3a5ba0'
-];
 
 const initChart = () => {
     if (waterfallChartRef.value) {
         waterfallChartInstance.value = echarts.init(waterfallChartRef.value);
 
-        const waterfallSeries = generateWaterfallSeries();
+        // 模拟数据：频率-时间-加速度有效值
+        const mockData: any[] = [];
+        // x轴：频率 0-100000Hz
+        const frequencies = Array.from({ length: 100 }, (_, i) => i * 1000); // 0-100000Hz，间隔1000Hz
+        // y轴：连续十天
+        const startDate = new Date();
+        const times = Array.from({ length: 10 }, (_, i) => {
+            const date = new Date(startDate);
+            date.setDate(date.getDate() - i);
+            return date.toISOString().split('T')[0]; // YYYY-MM-DD格式
+        }).reverse(); // 按时间顺序排列
+
+        times.forEach((time, timeIndex) => {
+            frequencies.forEach(freq => {
+                // 生成加速度有效值数据，模拟真实测量值
+                const baseAcceleration = 0.5 + Math.sin(freq / 10000) * 0.3; // 基础值
+                const noise = (Math.random() - 0.5) * 0.2; // 随机噪声
+                const acceleration = Math.max(0, baseAcceleration + noise); // 确保非负
+                mockData.push([freq, time, acceleration, `${(acceleration || 0).toFixed(3)} m/s²`, timeIndex]);
+            });
+        });
 
         waterfallChartInstance.value.setOption({
-            tooltip: {
-                trigger: 'axis',
-                backgroundColor: 'rgba(50, 50, 50, 0.9)',
-                borderColor: 'rgba(50, 50, 50, 0.9)',
-                textStyle: { color: '#fff' }
-            },
-            grid: {
-                top: 30,
-                left: 30,
-                right: 30,
-                bottom: 30
-            },
-            xAxis: {
-                type: 'value',
-                name: 'Hz',
-                min: 300,
-                max: 600,
-                nameTextStyle: { color: '#fff' },
-                axisLabel: { color: '#fff' },
-                axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
-            },
-            yAxis: {
-                type: 'value',
-                name: 'm/s2',
-                min: 0,
-                max: 3.2,
-                nameTextStyle: { color: '#fff' },
-                axisLabel: { color: '#fff' },
-                axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
-            },
-            series: waterfallSeries
-        });
-    }
-};
-
-/**
- * 生成瀑布图的多条线series（模拟3D效果）
- */
-const generateWaterfallSeries = () => {
-    const series: any[] = [];
-    const lineCount = 5;
-
-    for (let i = 0; i < lineCount; i++) {
-        const yOffset = i * 0.5;
-        const lineData = generateSingleWaterfallLine(yOffset);
-
-        series.push({
-            type: 'line',
-            smooth: false,
-            showSymbol: false,
-            data: lineData,
-            lineStyle: {
-                color: waterfallColors[i],
-                width: 1
-            },
-            z: lineCount - i,
-            markPoint: {
-                symbol: 'none',
-                label: {
-                    show: true,
-                    position: 'right',
-                    formatter: waterfallTimeLabels[i],
-                    color: waterfallColors[i],
-                    fontSize: 10
+            grid3D: {
+                viewControl: {
+                    projection: 'orthographic',
+                    alpha: 15, // 垂直角度
+                    beta: 20,  // 水平角度
+                    distance: 250, // 视距
+                    rotateSensitivity: 1, // 旋转灵敏度
+                    zoomSensitivity: 0.5, // 缩放灵敏度
+                    panSensitivity: 1 // 平移灵敏度
                 },
-                data: [{
-                    coord: [600, yOffset + 0.3],
-                    value: waterfallTimeLabels[i]
-                }]
-            }
+                // 3D盒子尺寸
+                boxWidth: 100,
+                boxHeight: 100,
+                boxDepth: 100,
+                // 添加网格线颜色设置
+                axisPointer: {
+                    lineStyle: {
+                        color: '#ffffff' // 白色cross线
+                    }
+                },
+                splitLine: {
+                    lineStyle: {
+                        color: '#ffffff' // 白色网格线
+                    }
+                }
+            },
+            xAxis3D: {
+                type: 'value',
+                name: '频率(Hz)',
+                nameTextStyle: {
+                    color: '#ffffff', // 白色字体
+                    fontSize: 12, // 字体大小
+                },
+                nameGap: 20,
+                axisLine: {
+                    lineStyle: {
+                        color: '#ffffff' // 白色坐标轴线
+                    }
+                },
+                axisLabel: {
+                    color: '#ffffff', // 白色标签
+                    fontSize: 12, // 标签字体大小
+                    margin: 5 // 标签与轴线的距离
+                },
+                min: 0,
+                max: 100000
+            },
+            yAxis3D: {
+                type: 'category',
+                name: '时间',
+                nameTextStyle: {
+                    color: '#ffffff', // 白色字体
+                    fontSize: 12, // 字体大小
+                },
+                nameGap: 5,
+                axisLine: {
+                    lineStyle: {
+                        color: '#ffffff' // 白色坐标轴线
+                    }
+                },
+                axisLabel: {
+                    color: '#ffffff', // 白色标签
+                    fontSize: 12, // 标签字体大小
+                    margin: 17 // 标签与轴线的距离
+                },
+                data: times
+            },
+            zAxis3D: {
+                name: '加速度有效值(m/s²)',
+                nameTextStyle: {
+                    color: '#ffffff', // 白色字体
+                    fontSize: 12, // 字体大小
+
+                },
+                nameGap: 5,
+                namemoveoverlap: true,
+                axisLine: {
+                    lineStyle: {
+                        color: '#ffffff' // 白色坐标轴线
+                    }
+                },
+                axisLabel: {
+                    color: '#ffffff', // 白色标签
+                    fontSize: 12, // 标签字体大小
+                    margin: 5 // 标签与轴线的距离
+                }
+            },
+            visualMap: {
+                show: true,
+                type: 'continuous', // 连续型图例
+                orient: 'vertical', // 垂直方向
+                right: 20, // 右侧边距
+                top: 'middle', // 垂直居中
+                calculable: true, // 可拖拽计算
+                realtime: true, // 实时更新
+                textStyle: {
+                    color: '#ffffff' // 白色文字
+                },
+                handleStyle: {
+                    color: '#ffffff', // 拖拽手柄白色
+                    borderColor: '#ffffff'
+                },
+                borderColor: '#ffffff',
+                borderWidth: 1,
+                max: 1.0,
+                dimension: 2,
+                inRange: {
+                    // 改为暖色调配色，避免蓝色背景冲突
+                    color: ['#ff6b35', '#f7931e', '#ffd23f', '#a3de83', '#2ec4b6', '#6a67ce', '#c19a6b', '#ff7bac', '#ff9aa2', '#ffb7b2', '#ffdac1']
+                }
+            },
+            dataset: {
+                dimensions: [
+                    'Frequency',
+                    'Time',
+                    'Acceleration',
+                    'Tooltip',
+                    { name: 'TimeIndex', type: 'ordinal' }
+                ],
+                source: mockData
+            },
+            series: [
+                {
+                    type: 'line3D',
+                    lineStyle: {
+                        width: 2,
+                        color: '#ffffff' // 白色线条，避免蓝色背景干扰
+                    },
+                    label: {
+                        show: false
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            formatter: (params: any) => `${(params.value[2] || 0).toFixed(3)} m/s²`,
+                            fontSize: 12,
+                            color: '#ffffff'
+                        }
+                    },
+                    encode: {
+                        x: 'Frequency',
+                        y: 'TimeIndex',
+                        z: 'Acceleration',
+                        tooltip: [0, 1, 2, 3]
+                    }
+                }
+            ]
         });
     }
-
-    return series;
 };
 
-/**
- * 生成单条瀑布线数据
- */
-const generateSingleWaterfallLine = (yOffset: number) => {
-    const data = [];
-    for (let x = 300; x <= 600; x += 2) {
-        const baseValue = Math.random() * 0.3;
-        const spike = Math.random() > 0.95 ? Math.random() * 1.5 : 0;
-        const y = yOffset + baseValue + spike;
-        data.push([x, y]);
-    }
-    return data;
-};
+
 
 const { bindResize } = useChartResize(waterfallChartInstance, waterfallChartRef);
 

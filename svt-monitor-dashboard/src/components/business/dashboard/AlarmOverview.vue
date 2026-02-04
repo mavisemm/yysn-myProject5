@@ -39,7 +39,7 @@
                 @click="goToDeviceDetail(alarm)">
                 <!-- 第一部分：设备名和状态 -->
                 <div class="card-header">
-                    <span class="device-name">{{ alarm.deviceNameWithShop }}</span>
+                    <span class="device-name" :title="alarm.deviceNameWithShop">{{ alarm.deviceNameWithShop }}</span>
                     <span :class="['status-dot', alarm.status]"></span>
                 </div>
 
@@ -236,177 +236,176 @@ const pageSize = ref(responsivePageSize.value.pageSize);
 
 const sortOrder = ref<'asc' | 'desc'>("desc");
 
-// 模拟告警数据
-const alarms = ref<AlarmItem[]>([
-    {
-        id: 'device_001',
-        deviceName: '设备a',
-        shopName: '车间A',
-        deviceNameWithShop: '设备a（车间A）',
-        status: 'warning',
-        statusText: '预警',
-        time: '2026-01-02 16:53:26',
-        measurementPoints: [
-            { name: '测点1', status: 'healthy' },
-            { name: '测点2', status: 'warning' },
-            { name: '测点3', status: 'healthy' },
-            { name: '测点4', status: 'healthy' },
-            { name: '测点5', status: 'warning' },
-            { name: '测点6', status: 'healthy' },
-            { name: '测点7', status: 'healthy' },
-            { name: '测点8', status: 'warning' },
-            { name: '测点9', status: 'healthy' },
-            { name: '测点10', status: 'healthy' },
-        ]
-    },
-    {
-        id: 'device_002',
-        deviceName: '设备b',
-        shopName: '车间A',
-        deviceNameWithShop: '设备b（车间A）',
-        status: 'healthy',
-        statusText: '健康',
-        time: '',
-        measurementPoints: [
-            { name: '测点1', status: 'healthy' },
-            { name: '测点2', status: 'healthy' },
-            { name: '测点3', status: 'healthy' },
-            { name: '测点4', status: 'healthy' },
-            { name: '测点5', status: 'healthy' },
-            { name: '测点6', status: 'healthy' },
-            { name: '测点7', status: 'healthy' },
-            { name: '测点8', status: 'healthy' },
-            { name: '测点9', status: 'healthy' },
-            { name: '测点10', status: 'healthy' },
-        ]
-    },
-    {
-        id: 'device_003',
-        deviceName: '设备c',
-        shopName: '车间B',
-        deviceNameWithShop: '设备c（车间B）',
-        status: 'warning',
-        statusText: '预警',
-        time: '2026-01-02 14:20:33',
-        measurementPoints: [
-            { name: '测点1', status: 'warning' },
-            { name: '测点2', status: 'healthy' },
-            { name: '测点3', status: 'warning' },
-            { name: '测点4', status: 'healthy' },
-            { name: '测点5', status: 'healthy' },
-            { name: '测点6', status: 'warning' },
-            { name: '测点7', status: 'healthy' },
-            { name: '测点8', status: 'healthy' },
-            { name: '测点9', status: 'warning' },
-            { name: '测点10', status: 'healthy' },
-        ]
-    },
-    {
-        id: 'device_004',
-        deviceName: '设备a',
-        shopName: '车间B',
-        deviceNameWithShop: '设备a（车间B）',
-        status: 'healthy',
-        statusText: '健康',
-        time: '',
-        measurementPoints: [
-            { name: '测点1', status: 'healthy' },
-            { name: '测点2', status: 'healthy' },
-            { name: '测点3', status: 'healthy' },
-            { name: '测点4', status: 'healthy' },
-            { name: '测点5', status: 'healthy' },
-            { name: '测点6', status: 'healthy' },
-            { name: '测点7', status: 'healthy' },
-            { name: '测点8', status: 'healthy' },
-            { name: '测点9', status: 'healthy' },
-            { name: '测点10', status: 'healthy' },
-        ]
-    },
-    {
-        id: 'device_005',
-        deviceName: '设备a',
-        shopName: '车间A',
-        deviceNameWithShop: '设备a（车间A）',
-        status: 'warning',
-        statusText: '预警',
-        time: '2026-01-02 12:05:21',
-        measurementPoints: [
-            { name: '测点1', status: 'healthy' },
-            { name: '测点2', status: 'warning' },
-            { name: '测点3', status: 'healthy' },
-            { name: '测点4', status: 'warning' },
-            { name: '测点5', status: 'healthy' },
-            { name: '测点6', status: 'healthy' },
-            { name: '测点7', status: 'warning' },
-            { name: '测点8', status: 'healthy' },
-            { name: '测点9', status: 'healthy' },
-            { name: '测点10', status: 'warning' },
-        ]
-    },
-    {
-        id: 'device_006',
-        deviceName: '设备e',
-        shopName: '车间AB',
-        deviceNameWithShop: '设备e（车间AB）',
-        status: 'healthy',
-        statusText: '健康',
-        time: '',
-        measurementPoints: [
-            { name: '测点1', status: 'healthy' },
-            { name: '测点2', status: 'healthy' },
-            { name: '测点3', status: 'healthy' },
-            { name: '测点4', status: 'healthy' },
-            { name: '测点5', status: 'healthy' },
-            { name: '测点6', status: 'healthy' },
-            { name: '测点7', status: 'healthy' },
-            { name: '测点8', status: 'healthy' },
-            { name: '测点9', status: 'healthy' },
-            { name: '测点10', status: 'healthy' },
-        ]
-    },
-    {
-        id: 'device_007',
-        deviceName: '设备a',
-        shopName: '车间A',
-        deviceNameWithShop: '设备a（车间A）',
-        status: 'warning',
-        statusText: '预警',
-        time: '2026-01-01 10:15:30',
-        measurementPoints: [
-            { name: '测点1', status: 'warning' },
-            { name: '测点2', status: 'healthy' },
-            { name: '测点3', status: 'warning' },
-            { name: '测点4', status: 'healthy' },
-            { name: '测点5', status: 'healthy' },
-            { name: '测点6', status: 'warning' },
-            { name: '测点7', status: 'healthy' },
-            { name: '测点8', status: 'healthy' },
-            { name: '测点9', status: 'warning' },
-            { name: '测点10', status: 'healthy' },
-        ]
-    },
-    {
-        id: 'device_008',
-        deviceName: '设备c',
-        shopName: '车间B',
-        deviceNameWithShop: '设备c（车间B）',
-        status: 'healthy',
-        statusText: '健康',
-        time: '',
-        measurementPoints: [
-            { name: '测点1', status: 'healthy' },
-            { name: '测点2', status: 'healthy' },
-            { name: '测点3', status: 'healthy' },
-            { name: '测点4', status: 'healthy' },
-            { name: '测点5', status: 'healthy' },
-            { name: '测点6', status: 'healthy' },
-            { name: '测点7', status: 'healthy' },
-            { name: '测点8', status: 'healthy' },
-            { name: '测点9', status: 'healthy' },
-            { name: '测点10', status: 'healthy' },
-        ]
-    }
-]);
+// 模拟告警数据 - 基于真实设备树结构
+const alarms = computed<AlarmItem[]>(() => {
+    // 使用真实的设备树数据
+    const realDeviceTree = [
+        {
+            "factoryId": "FAC001",
+            "factoryName": "Main Factory",
+            "children": [
+                {
+                    "workshopId": "WSH001",
+                    "workshopName": "Workshop A",
+                    "children": [
+                        {
+                            "equipmentId": "ff8081819a4cd984019a4d524e0d0000",
+                            "equipmentName": "五线三路风机",
+                            "children": [
+                                { "pointName": "3", "receiverId": "lfpznaj5u6RsUgMzQH4" },
+                                { "pointName": "2", "receiverId": "ofC6mcZeoOhmtZOcdnL" },
+                                { "pointName": "1", "receiverId": "9sXGsnoV80oz7uB7AMv" },
+                                { "pointName": "8", "receiverId": "afuBOPygDME90Ocf4Nl" },
+                                { "pointName": "7", "receiverId": "3kZpxW0Ti67uYxy04Wd" },
+                                { "pointName": "6", "receiverId": "AiWdaUEqTCYa6CF4mYr" },
+                                { "pointName": "5", "receiverId": "2jSWm5mguSklnzJLXQ3" },
+                                { "pointName": "4", "receiverId": "ymnelvApbJkig1714Jh" },
+                                { "pointName": "JXA24F5308", "receiverId": "CHl6tUtNe5C7pHLTkJK" },
+                                { "pointName": "JXA24F5307", "receiverId": "9lzwOputwMwgnLChIpG" }
+                            ]
+                        },
+                        {
+                            "equipmentId": "ff8081819a623bff019a71fbec550018",
+                            "equipmentName": "往复式压缩机",
+                            "children": [
+                                { "pointName": "JS32F21", "receiverId": "Y9zzIRfcHLOihs9w8c8" },
+                                { "pointName": "JS32F20", "receiverId": "0T1dvp6P17FTM5QcpaX" },
+                                { "pointName": "JS32F19", "receiverId": "01wL5Y4luluaWHUur00" },
+                                { "pointName": "JS32F18", "receiverId": "GrVcQ9rPRT7qNBcjtZf" },
+                                { "pointName": "JS32F17", "receiverId": "jxF3AMdUlheGf374F4Q" },
+                                { "pointName": "JS32F16", "receiverId": "x56tm1lmnVgg2jrHAmz" },
+                                { "pointName": "JS32F15", "receiverId": "Tm9gTzgmKD4wRA8abmD" },
+                                { "pointName": "JS32F14", "receiverId": "iiT3Jj5OVkoNDV0673J" },
+                                { "pointName": "JS32F13", "receiverId": "syjlTFYJqVbxPvIGkbn" },
+                                { "pointName": "JS32F12", "receiverId": "aDRI7krlKWE1kQhLGF3" }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "workshopId": "WSH002",
+                    "workshopName": "Workshop B",
+                    "children": [
+                        {
+                            "equipmentId": "ff8081819a623bff019a71ee6a950000",
+                            "equipmentName": "五线一路风机",
+                            "children": [
+                                { "pointName": "JXA29F6106", "receiverId": "kHXkZgnoUDglfey75DG" },
+                                { "pointName": "JXA29F6105", "receiverId": "mEE2HiiLmrlOtbtzrlW" },
+                                { "pointName": "JXA29F6104", "receiverId": "RJYERBkadHWRg3HL6aF" },
+                                { "pointName": "JXA29F6103", "receiverId": "xvAd4v5aXEQE6HmQIdm" },
+                                { "pointName": "JXA29F6102", "receiverId": "RhaSNWozeQpsbL39IhD" },
+                                { "pointName": "JXA29F6101", "receiverId": "a5nIlFdxnIGqiWFu3Mc" },
+                                { "pointName": "JXA29F6107", "receiverId": "cVwuOHYFy0pUttJNLrV" },
+                                { "pointName": "JXA29F6108", "receiverId": "tCrBMi4H9a0g80Yqqgn" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "factoryId": "FAC002",
+            "factoryName": "East Branch Factory",
+            "children": [
+                {
+                    "workshopId": "WSH003",
+                    "workshopName": "Workshop C",
+                    "children": [
+                        {
+                            "equipmentId": "ff8081819a623bff019a71f434130009",
+                            "equipmentName": "七线一路风机",
+                            "children": [
+                                { "pointName": "JXA29F8108", "receiverId": "yoH4519rucZJWLvznRF" },
+                                { "pointName": "JXA29F8107", "receiverId": "tQ3by7SBR7jv2sSc6e9" },
+                                { "pointName": "JXA29F8106", "receiverId": "CCW9gAmMTcJjCd8ZNM5" },
+                                { "pointName": "JXA29F8105", "receiverId": "wCfB2K6IzUOJZiLDwvI" },
+                                { "pointName": "JXA29F8102", "receiverId": "Rxe4UwGmf8uQs7zB9KT" },
+                                { "pointName": "JXA29F8101", "receiverId": "oRxw9NT9Uid0zJDAI2e" },
+                                { "pointName": "JXA29F8104", "receiverId": "gtrCHbhSmXYOkqh03Hr" },
+                                { "pointName": "JXA29F8103", "receiverId": "mWp4H5tOt7SsAT52n6b" }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "workshopId": "WSH004",
+                    "workshopName": "Workshop D",
+                    "children": [
+                        {
+                            "equipmentId": "ff8081819a909f21019a918dcbf00000",
+                            "equipmentName": "旋压机",
+                            "children": [
+                                { "pointName": "尾顶电磁阀1号点位", "receiverId": "gFlE5Ph0jNKHDUtOhcc" },
+                                { "pointName": "SHJY-XYJ1号点位", "receiverId": "TUQ4qCulrC0Hw7ODkhZ" }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ];
+
+    // 将设备树数据转换为告警数据格式
+    const alarmItems: AlarmItem[] = [];
+
+    realDeviceTree.forEach(factory => {
+        factory.children.forEach(workshop => {
+            workshop.children.forEach(equipment => {
+                // 随机生成设备状态（健康或预警）
+                const isWarning = Math.random() > 0.7; // 30%概率为预警
+                const status = isWarning ? 'warning' : 'healthy';
+                const statusText = isWarning ? '预警' : '健康';
+
+                // 生成随机的时间（如果是预警状态）
+                let time = '';
+                if (isWarning) {
+                    const now = new Date();
+                    const randomHours = Math.floor(Math.random() * 48); // 48小时内随机时间
+                    const alarmTime = new Date(now.getTime() - randomHours * 60 * 60 * 1000);
+                    time = formatDate(alarmTime);
+                }
+
+                // 生成测点数据（最多10个测点用于展示）
+                const measurementPoints: MeasurementPoint[] = [];
+                const pointCount = Math.min(10, equipment.children.length); // 最多显示10个测点
+
+                for (let i = 0; i < pointCount; i++) {
+                    const isPointWarning = isWarning && Math.random() > 0.6; // 如果设备预警，测点有40%概率预警
+                    const point = equipment.children[i];
+                    if (point) {
+                        measurementPoints.push({
+                            name: point.pointName,
+                            status: isPointWarning ? 'warning' : 'healthy'
+                        });
+                    }
+                }
+
+                // 如果测点少于10个，补充虚拟测点
+                while (measurementPoints.length < 10) {
+                    const isPointWarning = isWarning && Math.random() > 0.6;
+                    measurementPoints.push({
+                        name: `测点${measurementPoints.length + 1}`,
+                        status: isPointWarning ? 'warning' : 'healthy'
+                    });
+                }
+
+                alarmItems.push({
+                    id: equipment.equipmentId,
+                    deviceName: equipment.equipmentName,
+                    shopName: workshop.workshopName,
+                    deviceNameWithShop: `${equipment.equipmentName}（${workshop.workshopName}）`,
+                    status,
+                    statusText,
+                    time,
+                    measurementPoints
+                });
+            });
+        });
+    });
+
+    return alarmItems;
+});
 
 const allDevices = computed(() => {
     return extractDevicesFromTree(deviceTreeStore.deviceTreeData);
@@ -780,6 +779,10 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                     font-weight: bold;
                     font-size: clamp(12px, 1.5vw, 16px);
                     white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    flex: 1;
+                    min-width: 0;
                 }
 
                 .status-dot {
@@ -829,17 +832,16 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                     padding: 1px;
                     word-break: break-word;
                     overflow: hidden;
+                    color: white;
 
                     &.healthy {
-                        background-color: #e1f3d8;
-                        color: #67c23a;
-                        border: 1px solid #c2e7b0;
+                        background: url('@/assets/images/background/首页-健康测点.png') no-repeat center center;
+                        background-size: 100% 100%;
                     }
 
                     &.warning {
-                        background-color: #fde2e2;
-                        color: #f56c6c;
-                        border: 1px solid #fbc4c4;
+                        background: url('@/assets/images/background/首页-预警测点.png') no-repeat center center;
+                        background-size: 100% 100%;
                     }
                 }
             }

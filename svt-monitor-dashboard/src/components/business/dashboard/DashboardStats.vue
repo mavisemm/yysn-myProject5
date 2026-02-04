@@ -5,7 +5,14 @@
             <div v-for="(stat, index) in stats" :key="index" class="stat-card" :class="`stat-card-${index}`">
                 <div class="stat-content">
                     <div class="stat-icon">
-                        <component :is="stat.icon" v-if="stat.icon" />
+                        <img v-if="index === 0" src="@/assets/images/background/首页-健康设备数.png" alt="健康设备数"
+                            class="stat-icon-img" />
+                        <img v-else-if="index === 1" src="@/assets/images/background/首页-预警设备数.png" alt="预警设备数"
+                            class="stat-icon-img" />
+                        <img v-else-if="index === 2" src="@/assets/images/background/首页-监控总设备数.png" alt="监控总设备数"
+                            class="stat-icon-img" />
+                        <img v-else-if="index === 3" src="@/assets/images/background/首页-监测点位数.png" alt="监测点位数"
+                            class="stat-icon-img" />
                         <el-icon v-else>
                             <Monitor />
                         </el-icon>
@@ -74,6 +81,12 @@ defineProps<Props>();
         .stat-icon {
             font-size: clamp(30px, 4.5vw, 36px);
             margin-bottom: 8px;
+
+            .stat-icon-img {
+                width: 5vw;
+                height: 15h;
+                object-fit: contain;
+            }
         }
 
         .stat-text {

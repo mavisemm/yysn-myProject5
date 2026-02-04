@@ -61,7 +61,7 @@
     <!-- 设备树 -->
     <div class="device-tree-container">
       <el-scrollbar class="tree-scrollbar">
-        <el-tree ref="deviceTreeRef" :data="displayTreeData" :props="treeProps" :expand-on-click-node="true"
+        <el-tree ref="deviceTreeRef" :data="displayTreeData" :props="treeProps" :expand-on-click-node="false"
           :highlight-current="false" :default-expanded-keys="expandedKeys" node-key="id" @node-click="handleNodeClick">
           <template #default="{ node, data }">
             <div class="tree-node" :data-type="data.type" :class="{ 'is-selected': isNodeSelected(data) }">
@@ -89,7 +89,7 @@
               </div>
 
               <!-- 名称 -->
-              <span class="node-label">{{ node.label }}</span>
+              <span class="node-label" :title="node.label">{{ node.label }}</span>
 
               <!-- <span v-if="(data.type === 'factory' || data.type === 'workshop') && data.deviceCount" class="node-count">
                 <el-tag size="small" type="info">
@@ -601,24 +601,22 @@ const handleExpandIconClick = (node: Node) => {
 }
 
 const handleNodeClick = (data: DeviceNode, node: Node) => {
-  // 工厂和车间点击时，让Element Plus处理展开/收起，我们只处理业务逻辑
+  // 工厂和车间点击时，手动控制展开/收起
   if (data.type === 'factory' || data.type === 'workshop') {
-    // 不再主动调用toggleNode，让expand-on-click-node="true"生效
+    toggleNode(node)
     return
   }
 
-  // 设备点击时跳转路由并设置选中状态
+  // 设备点击时跳转路由并设置选中状态，但不自动展开
   if (data.type === 'device') {
     deviceTreeStore.setSelectedDeviceId(data.id)
-    // 让Element Plus的expand-on-click-node="true"处理展开收起
-    // 不再主动调用toggleNode以避免冲突
     router.push({
       name: 'DeviceDetail',
       params: { id: data.id }
     })
   }
 
-  // 点位点击时跳转路由并设置选中状态
+  // 点位点击时跳转路由并设置选中状态，但不自动展开
   if (data.type === 'point') {
     deviceTreeStore.setSelectedDeviceId(data.id)
     const deviceId = node.parent?.data?.id || ''

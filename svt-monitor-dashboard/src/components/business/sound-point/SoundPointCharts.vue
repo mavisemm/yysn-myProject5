@@ -149,8 +149,45 @@ const initCharts = () => {
 };
 
 const handleResize = () => {
-    energyChartInstance.value?.resize();
-    densityChartInstance.value?.resize();
+    // 使用 setTimeout 避免在主渲染过程中调用 resize
+    setTimeout(() => {
+        try {
+            if (energyChartInstance.value) {
+                if (!(energyChartInstance.value.isDisposed && energyChartInstance.value.isDisposed())) {
+                    energyChartInstance.value.resize();
+                    console.debug('Energy chart resize completed');
+                }
+            }
+
+            if (densityChartInstance.value) {
+                if (!(densityChartInstance.value.isDisposed && densityChartInstance.value.isDisposed())) {
+                    densityChartInstance.value.resize();
+                    console.debug('Density chart resize completed');
+                }
+            }
+        } catch (error) {
+            console.warn('Charts resize failed:', error);
+            // 如果是主进程错误，尝试重试
+            if (error instanceof Error && error.message.includes('main process')) {
+                console.info('SoundPoint charts main process resize error, will retry');
+                setTimeout(() => {
+                    try {
+                        if (energyChartInstance.value && !(energyChartInstance.value.isDisposed && energyChartInstance.value.isDisposed())) {
+                            energyChartInstance.value.resize();
+                            console.debug('Energy chart resize retry successful');
+                        }
+
+                        if (densityChartInstance.value && !(densityChartInstance.value.isDisposed && densityChartInstance.value.isDisposed())) {
+                            densityChartInstance.value.resize();
+                            console.debug('Density chart resize retry successful');
+                        }
+                    } catch (retryError) {
+                        console.error('Charts resize retry also failed:', retryError);
+                    }
+                }, 50);
+            }
+        }
+    }, 0);
 };
 
 onMounted(() => {

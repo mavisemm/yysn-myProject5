@@ -2,7 +2,7 @@
 <template>
   <div class="device-detail">
     <!-- 左侧设备信息模块：显示设备基本信息 -->
-    <DeviceInfoModule :device-info="deviceInfo" @update:device-info="handleUpdateDeviceInfo" />
+    <DeviceInfoModule v-if="deviceId" :device-id="deviceId" />
 
     <!-- 右侧内容模块：包含点位列表和图表分析 -->
     <div class="right-content">
@@ -46,14 +46,6 @@ const deviceId = computed<string | null>(() => {
 })
 
 /**
- * 处理设备信息更新
- */
-const handleUpdateDeviceInfo = (updatedInfo: DeviceInfo) => {
-  Object.assign(deviceInfo.value, updatedInfo);
-  ElMessage.success('设备信息已更新');
-};
-
-/**
  * 监听设备ID变化并通知设备树选中相应设备
  */
 watch(
@@ -75,36 +67,11 @@ watch(
 onMounted(() => {
   deviceTreeStore.setSelectedDeviceId(deviceId.value);
   initDeviceData()
+
+  setupPageResizeObserver();
+
+  window.addEventListener('resize', resizeAllCharts);
 })
-
-interface DeviceInfo {
-  deviceName: string,
-  model: string,
-  manufacturer: string,
-  installationLocation: string,
-  operatingSpeed: string,
-  designFlow: string,
-  pressure: string,
-  lastAlarmTime: string
-}
-
-const deviceInfo = ref<DeviceInfo>({
-  deviceName: '设备a',
-  model: 'PUMP-500',
-  manufacturer: '厂家A',
-  installationLocation: '车间A',
-  operatingSpeed: '1500',
-  designFlow: '50',
-  pressure: '1.2',
-  lastAlarmTime: '2025-12-12 10:30:00'
-})
-
-const isEditing = ref(false)
-const editForm = ref<DeviceInfo>({ ...deviceInfo.value })
-
-
-
-const deviceImage = ref('https://cube.elemecdn.com/6/94/4d395b316ae0a58e9e9e97b18bd89.jpg')
 
 interface PointInfo {
   id: string,
@@ -148,8 +115,7 @@ const initDeviceData = () => {
     if (!deviceId.value) return;
     for (const node of nodes) {
       if (deviceId.value && node.id === deviceId.value && node.type === 'device') {
-        deviceInfo.value.deviceName = node.name || '未知设备'
-        deviceInfo.value.installationLocation = node.workshopName || '未知位置'
+        // 设备信息现在由 DeviceInfoModule 组件通过 API 获取
 
         if (node.children && node.children.length > 0) {
           pointList.value = node.children.map((point: DeviceNode, index: number) => ({

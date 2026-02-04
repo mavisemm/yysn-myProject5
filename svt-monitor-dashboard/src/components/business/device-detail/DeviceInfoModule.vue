@@ -22,7 +22,7 @@
                     </div>
                     <div class="info-item">
                         <span class="info-label">设备型号：</span>
-                        <span class="info-value">{{ deviceInfo.model }}</span>
+                        <span class="info-value">{{ deviceInfo.deviceModel }}</span>
                     </div>
                 </div>
 
@@ -33,35 +33,35 @@
                     </div>
                     <div class="info-item">
                         <span class="info-label">设备型号：</span>
-                        <el-input v-model="editForm.model" size="small" class="info-input" />
+                        <el-input v-model="editForm.deviceModel" size="small" class="info-input" />
                     </div>
                 </div>
 
                 <div class="info-row" v-if="!isEditing">
                     <div class="info-item">
                         <span class="info-label">生产厂家：</span>
-                        <span class="info-value">{{ deviceInfo.manufacturer }}</span>
+                        <span class="info-value">{{ deviceInfo.deviceFactory }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">安装位置：</span>
-                        <span class="info-value">{{ deviceInfo.installationLocation }}</span>
+                        <span class="info-value">{{ deviceInfo.locationDetail }}</span>
                     </div>
                 </div>
                 <div class="info-row" v-else>
                     <div class="info-item">
                         <span class="info-label">生产厂家：</span>
-                        <el-input v-model="editForm.manufacturer" size="small" class="info-input" />
+                        <el-input v-model="editForm.deviceFactory" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
                         <span class="info-label">安装位置：</span>
-                        <el-input v-model="editForm.installationLocation" size="small" class="info-input" />
+                        <el-input v-model="editForm.locationDetail" size="small" class="info-input" />
                     </div>
                 </div>
 
                 <div class="info-row" v-if="!isEditing">
                     <div class="info-item">
                         <span class="info-label">工作转速：</span>
-                        <span class="info-value">{{ deviceInfo.operatingSpeed }} rpm</span>
+                        <span class="info-value">{{ deviceInfo.rotationSpeed }} rpm</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">设计流量：</span>
@@ -71,7 +71,7 @@
                 <div class="info-row" v-else>
                     <div class="info-item">
                         <span class="info-label">工作转速：</span>
-                        <el-input v-model="editForm.operatingSpeed" size="small" class="info-input" />
+                        <el-input v-model="editForm.rotationSpeed" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
                         <span class="info-label">设计流量：</span>
@@ -85,8 +85,7 @@
                         <span class="info-value">{{ deviceInfo.pressure }} MPa</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">最近预警时间：</span>
-                        <span class="info-value">{{ deviceInfo.lastAlarmTime }}</span>
+                        <!-- 在线状态已移除 -->
                     </div>
                 </div>
                 <div class="info-row" v-else>
@@ -95,8 +94,7 @@
                         <el-input v-model="editForm.pressure" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
-                        <span class="info-label">最近预警时间：</span>
-                        <el-input v-model="editForm.lastAlarmTime" size="small" class="info-input" />
+                        <!-- 在线状态已移除 -->
                     </div>
                 </div>
             </div>
@@ -124,29 +122,72 @@
 import { ref, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { ElButton, ElInput, ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
+import { getDeviceInfoByDeviceId, editDeviceInfo, type DeviceInfoDto } from '@/api/modules/hardware'
 
-// 定义设备信息类型
+// 定义设备信息类型 - 对应API返回的数据结构
 interface DeviceInfo {
-    deviceName: string,
-    model: string,
-    manufacturer: string,
-    installationLocation: string,
-    operatingSpeed: string,
-    designFlow: string,
-    pressure: string,
-    lastAlarmTime: string
+    id: number;
+    deviceId: string;
+    deviceName: string;
+    deviceModel: string;
+    deviceFactory: string;
+    locationDetail: string;
+    pressure: number;
+    rotationSpeed: number;
+    designFlow: number;
+    onlineStatus: number;
+    createdTime: string | null;
+    updatedTime: string | null;
 }
 
-// 设备信息
+// 设备信息prop
 const props = defineProps<{
-    deviceInfo: DeviceInfo
+    deviceId: string
 }>()
 
-const emit = defineEmits(['update:device-info'])
+// 设备信息响应式数据
+const deviceInfo = ref<DeviceInfo>({
+    id: 0,
+    deviceId: '',
+    deviceName: '加载中...',
+    deviceModel: '',
+    deviceFactory: '',
+    locationDetail: '',
+    pressure: 0,
+    rotationSpeed: 0,
+    designFlow: 0,
+    onlineStatus: 0,
+    createdTime: null,
+    updatedTime: null
+})
+
+// 加载设备信息
+const loadDeviceInfo = async () => {
+    if (!props.deviceId) return;
+
+    try {
+        const response = await getDeviceInfoByDeviceId(props.deviceId);
+        if (response.rc === 0 && response.ret) {
+            deviceInfo.value = response.ret;
+        } else {
+            ElMessage.error('获取设备信息失败');
+        }
+    } catch (error) {
+        console.error('获取设备信息失败:', error);
+        ElMessage.error('获取设备信息失败');
+    }
+}
+
+// 监听deviceId变化
+watch(() => props.deviceId, (newId) => {
+    if (newId) {
+        loadDeviceInfo();
+    }
+}, { immediate: true })
 
 // 编辑状态
 const isEditing = ref(false)
-const editForm = ref<DeviceInfo>({ ...props.deviceInfo })
+const editForm = ref<DeviceInfo>({ ...deviceInfo.value })
 
 // 折叠状态
 const isCollapsed = ref(false)
@@ -163,16 +204,43 @@ const toggleCollapse = () => {
 }
 
 // 切换编辑状态
-const toggleEdit = () => {
+const toggleEdit = async () => {
     if (isEditing.value) {
         // 保存编辑
-        Object.assign(props.deviceInfo, editForm.value)
-        emit('update:device-info', { ...editForm.value })
+        try {
+            // 构造要发送的设备信息对象
+            const deviceInfoDto: DeviceInfoDto = {
+                id: deviceInfo.value.id,
+                deviceId: props.deviceId,
+                deviceName: editForm.value.deviceName,
+                deviceModel: editForm.value.deviceModel,
+                deviceFactory: editForm.value.deviceFactory,
+                locationDetail: editForm.value.locationDetail,
+                pressure: Number(editForm.value.pressure),
+                rotationSpeed: Number(editForm.value.rotationSpeed),
+                designFlow: Number(editForm.value.designFlow),
+                onlineStatus: deviceInfo.value.onlineStatus
+            };
+
+            const response = await editDeviceInfo(props.deviceId, deviceInfoDto);
+
+            if (response.rc === 0) {
+                // 更新本地数据
+                Object.assign(deviceInfo.value, editForm.value);
+                ElMessage.success('设备信息更新成功');
+                isEditing.value = false;
+            } else {
+                ElMessage.error(response.err || '设备信息更新失败');
+            }
+        } catch (error) {
+            console.error('更新设备信息失败:', error);
+            ElMessage.error('设备信息更新失败');
+        }
     } else {
         // 进入编辑模式
-        Object.assign(editForm.value, props.deviceInfo)
+        Object.assign(editForm.value, deviceInfo.value)
+        isEditing.value = true;
     }
-    isEditing.value = !isEditing.value
 }
 
 // 切换健康度类型
@@ -278,7 +346,7 @@ const initGaugeChart = () => {
                 axisLabel: {
                     show: true,
                     distance: calculateResponsiveDistance(-80, containerWidth, containerHeight), // 调整标签距离
-                    fontSize: calculateResponsiveFontSize(16, containerWidth, containerHeight),
+                    fontSize: 'clamp(14px, 1.8vw, 16px)',
                     color: '#fff',
                     formatter: function (value: number) {
                         if (value % 20 === 0) { // 每20分显示一个刻度
@@ -293,14 +361,14 @@ const initGaugeChart = () => {
                 title: {
                     show: true, // 显示标题  
                     color: healthColor,
-                    fontSize: calculateResponsiveFontSize(25, containerWidth, containerHeight),
+                    fontSize: 'clamp(16px, 2vw, 20px)',
                     fontWeight: 'bolder',
                     offsetCenter: [0, '0%'],
                 },
                 detail: {
                     valueAnimation: true,
                     offsetCenter: [0, '-30%'],
-                    fontSize: calculateResponsiveFontSize(35, containerWidth, containerHeight),
+                    fontSize: 'clamp(24px, 2.8vw, 28px)',
                     fontWeight: 'bolder',
                     formatter: '{value}',
                     color: healthColor,
@@ -490,10 +558,27 @@ onUnmounted(() => {
                         color: #fff;
                         margin-bottom: 5px;
                         font-weight: 500;
+                        white-space: normal;
+                        /* 允许换行 */
+                        overflow: visible;
+                        /* 不隐藏内容 */
+                        text-overflow: clip;
+                        /* 不显示省略号 */
+                        word-wrap: break-word;
+                        /* 长单词自动换行 */
                     }
 
                     .info-input {
                         width: 100%;
+
+                        :deep(.el-input__wrapper) {
+
+                            // 确保输入框能适应长内容
+                            .el-input__inner {
+                                white-space: normal;
+                                word-wrap: break-word;
+                            }
+                        }
                     }
                 }
             }

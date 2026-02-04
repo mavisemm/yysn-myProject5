@@ -213,7 +213,14 @@ const playAudio = (id: string) => {
 };
 
 const handleResize = () => {
-  modalChartInstance.value?.resize();
+  // 使用 setTimeout 避免在主渲染过程中调用 resize
+  setTimeout(() => {
+    try {
+      modalChartInstance.value?.resize();
+    } catch (error) {
+      console.warn('Modal chart resize failed:', error);
+    }
+  }, 0);
   // 图表调整大小现在由 SoundPointCharts 组件处理
 };
 

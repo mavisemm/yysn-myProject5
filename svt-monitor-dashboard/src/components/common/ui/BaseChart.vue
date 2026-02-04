@@ -79,10 +79,40 @@ const initChart = () => {
 }
 
 const handleResize = () => {
-    if (chartInstance) {
-        chartInstance.resize()
-    }
-}
+    // 使用 setTimeout 避免在主渲染过程中调用 resize
+    setTimeout(() => {
+        if (chartInstance) {
+            try {
+                // 检查图表是否已销毁
+                if (chartInstance.isDisposed && chartInstance.isDisposed()) {
+                    console.debug('BaseChart already disposed, skipping resize');
+                    return;
+                }
+
+                chartInstance.resize();
+                console.debug('BaseChart resize completed successfully');
+            } catch (error) {
+                console.warn('BaseChart resize failed:', error);
+                // 如果是主进程错误，尝试重试
+                if (error instanceof Error && error.message.includes('main process')) {
+                    console.info('BaseChart main process resize error, will retry');
+                    setTimeout(() => {
+                        if (chartInstance && !(chartInstance.isDisposed && chartInstance.isDisposed())) {
+                            try {
+                                chartInstance.resize();
+                                console.debug('BaseChart resize retry successful');
+                            } catch (retryError) {
+                                console.error('BaseChart resize retry also failed:', retryError);
+                            }
+                        }
+                    }, 50);
+                }
+            }
+        } else {
+            console.debug('BaseChart instance not ready for resize');
+        }
+    }, 0);
+};
 
 // 监听容器大小变化
 const observeResize = () => {

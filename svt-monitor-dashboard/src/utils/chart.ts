@@ -18,9 +18,48 @@ export const connectCharts = (charts: any[]) => {
  * @returns 销毁监听的方法
  */
 export const observeResize = (chart: any, container: HTMLElement) => {
-  const resizeObserver = new ResizeObserver(() => {
-    chart?.resize();
+  const resizeObserver = new ResizeObserver((entries) => {
+    // 检查是否在主渲染过程中
+    if (document.hidden) {
+      console.debug('Document hidden, skipping resize');
+      return;
+    }
+    
+    // 使用 setTimeout 将 resize 调用推迟到下一个事件循环，避免在主渲染过程中调用
+    setTimeout(() => {
+      if (chart && typeof chart.resize === 'function') {
+        try {
+          // 再次检查图表状态
+          if (chart.isDisposed && chart.isDisposed()) {
+            console.debug('Chart already disposed, skipping resize');
+            return;
+          }
+          
+          chart.resize();
+          console.debug('ECharts resize completed successfully');
+        } catch (error) {
+          console.warn('ECharts resize failed:', error);
+          // 如果 resize 失败，可能需要重新初始化
+          if (error instanceof Error && error.message.includes('main process')) {
+            console.info('Main process resize error detected, will retry');
+            setTimeout(() => {
+              if (chart && typeof chart.resize === 'function' && !(chart.isDisposed && chart.isDisposed())) {
+                try {
+                  chart.resize();
+                  console.debug('ECharts resize retry successful');
+                } catch (retryError) {
+                  console.error('ECharts resize retry also failed:', retryError);
+                }
+              }
+            }, 50);
+          }
+        }
+      } else {
+        console.debug('Chart not ready for resize');
+      }
+    }, 0);
   });
+  
   resizeObserver.observe(container);
   return () => resizeObserver.disconnect();
 };

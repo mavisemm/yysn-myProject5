@@ -75,10 +75,14 @@ watch(() => props.audioPath, (newPath) => {
             .info-label {
                 font-weight: bold;
                 margin-bottom: 5px;
+                font-size: clamp(12px, 1.5vw, 16px);
             }
 
             .info-value {
-                word-break: break-all;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-size: clamp(14px, 2vw, 16px);
             }
         }
     }
