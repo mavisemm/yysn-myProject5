@@ -6,26 +6,65 @@
         <div class="stats-grid">
             <div class="stat-box">
                 <div class="stat-label">速度有效值</div>
-                <div class="stat-value">3.25 <span class="unit">mm/s</span></div>
+                <div class="stat-value">{{ formatValue(vibrationData.velocityRms) }} <span class="unit">mm/s</span>
+                </div>
             </div>
             <div class="stat-box">
                 <div class="stat-label">速度最大值</div>
-                <div class="stat-value">5.12 <span class="unit">mm/s</span></div>
+                <div class="stat-value">{{ formatValue(vibrationData.velocityMax) }} <span class="unit">mm/s</span>
+                </div>
             </div>
             <div class="stat-box">
                 <div class="stat-label">加速度有效值</div>
-                <div class="stat-value">12.4 <span class="unit">m/s²</span></div>
+                <div class="stat-value">{{ formatValue(vibrationData.accelerationRms) }} <span class="unit">m/s²</span>
+                </div>
             </div>
             <div class="stat-box">
                 <div class="stat-label">加速度最大值</div>
-                <div class="stat-value">18.6 <span class="unit">m/s²</span></div>
+                <div class="stat-value">{{ formatValue(vibrationData.accelerationMax) }} <span class="unit">m/s²</span>
+                </div>
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-// 暂无脚本逻辑，这是一个纯展示组件
+import { ref, onMounted } from 'vue'
+import { getVibrationMetricData, type VibrationMetricData } from '@/api/modules/device'
+import { ElMessage } from 'element-plus'
+
+// 振动数据响应式变量
+const vibrationData = ref<VibrationMetricData>({
+    velocityRms: 0,
+    velocityMax: 0,
+    accelerationRms: 0,
+    accelerationMax: 0
+})
+
+// 格式化数值显示
+const formatValue = (value: number): string => {
+    return value.toFixed(2)
+}
+
+// 加载振动数据
+const loadVibrationData = async () => {
+    try {
+        const response = await getVibrationMetricData()
+        if (response.rc === 0 && response.ret) {
+            vibrationData.value = response.ret
+        } else {
+            ElMessage.error('获取振动数据失败')
+        }
+    } catch (error) {
+        console.error('获取振动数据失败:', error)
+        ElMessage.error('获取振动数据失败')
+    }
+}
+
+// 组件挂载时加载数据
+onMounted(() => {
+    loadVibrationData()
+})
 </script>
 
 <style lang="scss" scoped>

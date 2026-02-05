@@ -74,7 +74,37 @@ export interface VibrationFrequencyData {
 }
 
 export const getVibrationFrequencyData = (): Promise<NewApiResponse<VibrationFrequencyData>> => {
-  return request.post('/device/vibration/data/frequency', {
+  return request.post('/api/device/vibration/data/frequency', {
+    tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
+    deviceId: 'ff8081819a4cd984019a4d524e0d0000',
+    pointId: 'PNT_A01'
+  })
+}
+
+// 振动基本指标数据接口
+export interface VibrationMetricData {
+  velocityRms: number
+  velocityMax: number
+  accelerationRms: number
+  accelerationMax: number
+}
+
+export const getVibrationMetricData = (): Promise<NewApiResponse<VibrationMetricData>> => {
+  return request.post('/api/device/vibration/data/metric/rms', {
+    tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
+    deviceId: 'ff8081819a4cd984019a4d524e0d0000',
+    pointId: 'PNT_A01'
+  })
+}
+
+// 振动时域图数据接口
+export interface VibrationTimeDomainData {
+  time: number
+  timedomaindata: string  // JSON字符串格式的数组
+}
+
+export const getVibrationTimeDomainData = (): Promise<NewApiResponse<VibrationTimeDomainData>> => {
+  return request.post('/api/device/vibration/data/time', {
     tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
     deviceId: 'ff8081819a4cd984019a4d524e0d0000',
     pointId: 'PNT_A01'

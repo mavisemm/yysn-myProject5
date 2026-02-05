@@ -12,7 +12,9 @@
 
       <!-- 右侧信息区域 -->
       <SoundPointInfo :point-name="pointName" :device-name="deviceName" :current-data-time="currentDataTime"
-        :audio-path="audioPath" />
+        :audio-path="audioPath" :cluster-name="clusterName" :production-equipment="productionEquipment"
+        :sub-component="subComponent" :detection-equipment="detectionEquipment" :microphone="microphone"
+        :deviation-value="currentDeviationValue" :upload-time="currentDataTime" />
     </div>
   </div>
 
@@ -47,6 +49,14 @@ const pointName = ref('北侧电机监听点');
 const deviceName = ref('1号传送带电机');
 const currentDataTime = ref('');
 
+// 详细信息字段
+const clusterName = ref('生产设备：五线三路风机');
+const productionEquipment = ref('五线三路风机');
+const subComponent = ref('1.进风口位置');
+const detectionEquipment = ref('五线3路');
+const microphone = ref('1');
+const currentDeviationValue = ref('0.00');
+
 // 颜色池
 const colors = [
   '#91cc75', '#fac858', '#ee6666', '#3ba272', '#fc8452',
@@ -74,6 +84,7 @@ const deviationList = ref<DeviationListItem[]>([]);
 const handleRowClick = (row: any) => {
   row.visible = !row.visible;
   currentDataTime.value = row.time;
+  currentDeviationValue.value = row.deviationValue.toFixed(2);
   handleSelectChange();
 };
 

@@ -23,7 +23,7 @@ import { ref, onMounted, onUnmounted, shallowRef } from 'vue';
 import * as echarts from 'echarts';
 import { useChartResize } from '@/composables/useChart';
 import { enableMouseWheelZoomForCharts, connectCharts } from '@/utils/chart';
-import { getVibrationFrequencyData, type VibrationFrequencyData, type NewApiResponse } from '@/api/modules/device';
+import { getVibrationFrequencyData, getVibrationTimeDomainData, type VibrationFrequencyData, type VibrationTimeDomainData, type NewApiResponse } from '@/api/modules/device';
 
 const freqChartRef = ref<HTMLElement>();
 const timeChartRef = ref<HTMLElement>();
@@ -37,6 +37,10 @@ const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({
     freqSpeedData: []
 });
 
+// 存储时域图数据
+const timeDomainData = ref<number[]>([]);
+const totalTime = ref<number>(0);
+
 const initCharts = () => {
     if (freqChartRef.value) {
         freqChartInstance.value = echarts.init(freqChartRef.value);
@@ -45,60 +49,7 @@ const initCharts = () => {
 
     if (timeChartRef.value) {
         timeChartInstance.value = echarts.init(timeChartRef.value);
-        timeChartInstance.value.setOption({
-            tooltip: {
-                trigger: 'axis',
-                backgroundColor: 'rgba(50, 50, 50, 0.9)',
-                borderColor: 'rgba(50, 50, 50, 0.9)',
-                textStyle: { color: '#fff' }
-            },
-            grid: { top: 30, left: 40, right: 40, bottom: 50 },
-            xAxis: {
-                type: 'value',
-                name: 's',
-                min: 0,
-                max: 5,
-                nameTextStyle: { color: '#fff' },
-                axisLabel: { color: '#fff' },
-                axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-                splitLine: { show: false }
-            },
-            yAxis: {
-                type: 'value',
-                name: 'm/s²',
-                nameTextStyle: { color: '#fff' },
-                axisLabel: { color: '#fff' },
-                axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
-            },
-            dataZoom: [
-                { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-                {
-                    type: 'slider',
-                    xAxisIndex: [0],
-                    bottom: 10,
-                    height: 20,
-                    fillerColor: 'rgba(126, 203, 161, 0.3)',
-                    borderColor: 'rgba(126, 203, 161, 0.5)',
-                    handleStyle: { color: '#7ecba1' },
-                    filterMode: 'none'
-                }
-            ],
-            series: [{
-                type: 'line',
-                smooth: false,
-                showSymbol: false,
-                sampling: 'lttb',
-                data: generateTimeData(),
-                lineStyle: { color: '#7ecba1', width: 1 },
-                areaStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: 'rgba(126, 203, 161, 0.8)' },
-                        { offset: 1, color: 'rgba(126, 203, 161, 0.2)' }
-                    ])
-                }
-            }]
-        });
+        updateTimeChart();
 
         if (freqChartInstance.value && timeChartInstance.value) {
             connectCharts([freqChartInstance.value, timeChartInstance.value]);
@@ -176,22 +127,75 @@ const updateFreqChart = () => {
 };
 
 /**
- * 生成时域图数据（密集振动波形）
+ * 更新时域图数据
  */
-const generateTimeData = () => {
-    const data = [];
-    const sampleRate = 1000;
-    const duration = 5;
-    const totalPoints = sampleRate * duration;
+const updateTimeChart = () => {
+    if (!timeChartInstance.value || timeDomainData.value.length === 0) return;
 
-    for (let i = 0; i < totalPoints; i++) {
-        const t = i / sampleRate;
-        const baseValue = 9.5;
-        const noise = (Math.random() - 0.5) * 1.5;
-        const y = baseValue + noise;
-        data.push([t, y]);
-    }
-    return data;
+    // 根据总时长和数据点数生成x轴坐标
+    const dataPoints = timeDomainData.value.length;
+    const step = totalTime.value / (dataPoints - 1);
+
+    // 生成 [x, y] 格式的二维数组
+    const chartData = timeDomainData.value.map((value, index) => [
+        index * step,
+        value
+    ]);
+
+    timeChartInstance.value.setOption({
+        tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(50, 50, 50, 0.9)',
+            borderColor: 'rgba(50, 50, 50, 0.9)',
+            textStyle: { color: '#fff' }
+        },
+        grid: { top: 30, left: 40, right: 40, bottom: 50 },
+        xAxis: {
+            type: 'value',
+            name: 's',
+            min: 0,
+            max: totalTime.value,
+            nameTextStyle: { color: '#fff' },
+            axisLabel: { color: '#fff' },
+            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
+            splitLine: { show: false }
+        },
+        yAxis: {
+            type: 'value',
+            name: 'm/s²',
+            nameTextStyle: { color: '#fff' },
+            axisLabel: { color: '#fff' },
+            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
+            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+        },
+        dataZoom: [
+            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+            {
+                type: 'slider',
+                xAxisIndex: [0],
+                bottom: 10,
+                height: 20,
+                fillerColor: 'rgba(126, 203, 161, 0.3)',
+                borderColor: 'rgba(126, 203, 161, 0.5)',
+                handleStyle: { color: '#7ecba1' },
+                filterMode: 'none'
+            }
+        ],
+        series: [{
+            type: 'line',
+            smooth: false,
+            showSymbol: false,
+            sampling: 'lttb',
+            data: chartData,
+            lineStyle: { color: '#7ecba1', width: 1 },
+            areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: 'rgba(126, 203, 161, 0.8)' },
+                    { offset: 1, color: 'rgba(126, 203, 161, 0.2)' }
+                ])
+            }
+        }]
+    });
 };
 
 const { bindResize: bindFreq } = useChartResize(freqChartInstance, freqChartRef);
@@ -203,13 +207,13 @@ onMounted(async () => {
     bindFreq();
     bindTime();
 
-    // 请求接口数据
+    // 请求频域图数据
     try {
-        const response = await getVibrationFrequencyData();
-        if (response.rc === 0 && response.ret) {
+        const freqResponse = await getVibrationFrequencyData();
+        if (freqResponse.rc === 0 && freqResponse.ret) {
             // 解析JSON字符串为数组
-            const frequencyArray = JSON.parse(response.ret.frequency);
-            const freqSpeedArray = JSON.parse(response.ret.freqSpeedData);
+            const frequencyArray = JSON.parse(freqResponse.ret.frequency);
+            const freqSpeedArray = JSON.parse(freqResponse.ret.freqSpeedData);
 
             // 更新数据
             freqData.value = {
@@ -222,6 +226,24 @@ onMounted(async () => {
         }
     } catch (error) {
         console.error('获取振动频域数据失败:', error);
+    }
+
+    // 请求时域图数据
+    try {
+        const timeResponse = await getVibrationTimeDomainData();
+        if (timeResponse.rc === 0 && timeResponse.ret) {
+            // 解析JSON字符串为数组
+            const timeDomainArray = JSON.parse(timeResponse.ret.timedomaindata);
+
+            // 更新时域图数据
+            timeDomainData.value = timeDomainArray;
+            totalTime.value = timeResponse.ret.time;
+
+            // 更新时域图
+            updateTimeChart();
+        }
+    } catch (error) {
+        console.error('获取振动时域数据失败:', error);
     }
 });
 

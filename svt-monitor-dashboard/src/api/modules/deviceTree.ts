@@ -42,6 +42,9 @@ export interface PointData {
   pointName: string;
   pointId?: string; // 点位ID，优先使用
   receiverId?: string; // 接收器ID，作为后备
+  warningTime?: string; // 预警时间
+  warningType?: string; // 预警类型
+  warningValue?: number | string; // 预警值
 }
 
 /**
@@ -58,10 +61,50 @@ export const getDeviceTreeData = (): Promise<DeviceTreeResponse> => {
     .catch(error => {
       console.error('设备树API请求失败，将使用默认数据:', error);
       console.error('错误详情:', error.message || error);
-      // 返回默认的模拟数据结构
+      // 返回带有预警信息的默认模拟数据
       const defaultResponse: DeviceTreeResponse = {
         rc: 0,
-        ret: [],
+        ret: [
+          {
+            factoryId: "FAC001",
+            factoryName: "Main Factory",
+            children: [
+              {
+                workshopId: "WSH001",
+                workshopName: "Workshop A",
+                children: [
+                  {
+                    equipmentId: "ff8081819a4cd984019a4d524e0d0000",
+                    equipmentName: "五线三路风机",
+                    children: [
+                      {
+                        pointName: "3",
+                        pointId: "lfpznaj5u6RsUgMzQH4",
+                        warningTime: "2026-02-02 17:11:59",
+                        warningValue: 88,
+                        warningType: "temperature"
+                      },
+                      {
+                        pointName: "2",
+                        pointId: "ofC6mcZeoOhmtZOcdnL",
+                        warningTime: "2026-02-04 17:11:43",
+                        warningValue: 1116,
+                        warningType: "vibration"
+                      },
+                      {
+                        pointName: "1",
+                        pointId: "9sXGsnoV80oz7uB7AMv",
+                        warningTime: "2026-02-03 17:11:39",
+                        warningValue: 6,
+                        warningType: "temperature"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ],
         err: null
       };
       return defaultResponse;
@@ -95,7 +138,10 @@ export const transformDeviceTreeData = (responseData: DeviceTreeResponse): Devic
           id: point.pointId || point.receiverId || '', // 优先使用pointId，如果没有则使用receiverId
           name: point.pointName,
           type: 'point',
-          status: 'normal' // 默认状态
+          status: 'normal', // 默认状态
+          warningTime: point.warningTime, // 预警时间
+          warningType: point.warningType, // 预警类型
+          warningValue: point.warningValue  // 预警值
         }))
       }))
     }))

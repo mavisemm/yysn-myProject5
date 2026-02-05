@@ -101,7 +101,6 @@
 
             <div class="health-gauge-container">
                 <div class="gauge-header">
-                    <div class="health-title">{{ healthTitle }}</div>
                     <el-button type="primary" size="small" @click="toggleHealthType" class="switch-health-btn">
                         切换{{ healthType === '声音' ? '振动' : '声音' }}健康度
                     </el-button>
@@ -645,12 +644,6 @@ onUnmounted(() => {
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 10px;
-
-                .health-title {
-                    font-size: 14px;
-                    font-weight: 500;
-                    color: #fff;
-                }
 
                 .switch-health-btn {
                     font-size: 12px;

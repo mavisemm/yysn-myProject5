@@ -137,12 +137,13 @@ const initDeviceData = () => {
           pointList.value = node.children
             .filter((point: DeviceNode) => point.type === 'point') // 确保只取点位类型的数据
             .map((point: DeviceNode) => ({
-              id: String(point.id || ''), // 来自设备树的 pointId
-              name: String(point.name || '未知点位'), // 来自设备树的 pointName
-              lastAlarmTime: String(point.lastAlarmTime || ''),
-              alarmType: String(point.alarmType || ''),
-              alarmValue: String(point.alarmValue || ''),
-              hasAlarm: Boolean(point.status === 'alarm' || point.status === 'warning')
+              id: String(point.id || point.pointId || ''), // 点位ID
+              name: String(point.name || point.pointName || '未知点位'), // 点位名称
+              lastAlarmTime: String(point.warningTime || point.lastAlarmTime || ''), // 预警时间
+              alarmType: String(point.warningType || point.alarmType || ''), // 预警类型
+              alarmValue: String(point.warningValue || point.alarmValue || ''), // 预警值
+              hasAlarm: Boolean(point.status === 'alarm' || point.status === 'warning' || 
+                              point.warningType || point.warningValue) // 根据是否有预警信息判断
             }))
         } else {
           // 如果没有点位数据，设置为空数组

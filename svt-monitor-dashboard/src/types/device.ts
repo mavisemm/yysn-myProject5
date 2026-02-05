@@ -13,6 +13,15 @@ export interface DeviceNode {
   alarmType?: string
   alarmValue?: string
   hasAlarm?: boolean
+  
+  // 设备树中实际使用的字段
+  pointId?: string        // 点位ID
+  pointName?: string      // 点位名称
+  warningTime?: string    // 预警时间
+  warningType?: string    // 预警类型
+  warningValue?: number | string  // 预警值
+  equipmentId?: string    // 设备ID
+  equipmentName?: string  // 设备名称
 }
 
 // 车间类型定义
