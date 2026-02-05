@@ -23,6 +23,7 @@ import { ref, onMounted, onUnmounted, shallowRef } from 'vue';
 import * as echarts from 'echarts';
 import { useChartResize } from '@/composables/useChart';
 import { enableMouseWheelZoomForCharts, connectCharts } from '@/utils/chart';
+import { getVibrationFrequencyData, type VibrationFrequencyData, type NewApiResponse } from '@/api/modules/device';
 
 const freqChartRef = ref<HTMLElement>();
 const timeChartRef = ref<HTMLElement>();
@@ -30,63 +31,16 @@ const timeChartRef = ref<HTMLElement>();
 const freqChartInstance = shallowRef<echarts.ECharts | null>(null);
 const timeChartInstance = shallowRef<echarts.ECharts | null>(null);
 
+// 存储接口返回的数据
+const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({
+    frequency: [],
+    freqSpeedData: []
+});
+
 const initCharts = () => {
     if (freqChartRef.value) {
         freqChartInstance.value = echarts.init(freqChartRef.value);
-        freqChartInstance.value.setOption({
-            tooltip: {
-                trigger: 'axis',
-                backgroundColor: 'rgba(50, 50, 50, 0.9)',
-                borderColor: 'rgba(50, 50, 50, 0.9)',
-                textStyle: { color: '#fff' },
-                axisPointer: { type: 'shadow' }
-            },
-            grid: { top: 30, left: 40, right: 30, bottom: 50 },
-            xAxis: {
-                type: 'value',
-                name: 'Hz',
-                min: 0,
-                max: 2000,
-                nameTextStyle: { color: '#fff' },
-                axisLabel: { color: '#fff' },
-                axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-                splitLine: { show: false }
-            },
-            yAxis: {
-                type: 'value',
-                name: 'm/s²',
-                min: 0,
-                nameTextStyle: { color: '#fff' },
-                axisLabel: { color: '#fff', formatter: '{value}' },
-                axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
-            },
-            dataZoom: [
-                { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-                {
-                    type: 'slider',
-                    xAxisIndex: [0],
-                    bottom: 10,
-                    height: 20,
-                    fillerColor: 'rgba(126, 203, 161, 0.3)',
-                    borderColor: 'rgba(126, 203, 161, 0.5)',
-                    handleStyle: { color: '#7ecba1' },
-                    filterMode: 'none'
-                }
-            ],
-            series: [{
-                type: 'bar',
-                barWidth: 2,
-                data: generateFreqData(),
-                itemStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: '#7ecba1' },
-                        { offset: 0.5, color: '#5fb98b' },
-                        { offset: 1, color: '#d4a853' }
-                    ])
-                }
-            }]
-        });
+        updateFreqChart();
     }
 
     if (timeChartRef.value) {
@@ -154,21 +108,71 @@ const initCharts = () => {
 };
 
 /**
- * 生成频域图数据（柱状图）
+ * 更新频域图数据
  */
-const generateFreqData = () => {
-    const data = [];
-    for (let x = 0; x <= 2000; x += 10) {
-        let y = 0;
-        if (x < 200) {
-            y = Math.random() * 0.15 + 0.03;
-            if (x < 50) y += 0.05;
-        } else {
-            y = Math.random() * 0.01 + 0.000002;
-        }
-        data.push([x, y]);
-    }
-    return data;
+const updateFreqChart = () => {
+    if (!freqChartInstance.value) return;
+
+    // 将两个数组组合成 [x, y] 格式的二维数组
+    const chartData = freqData.value.frequency.map((freq, index) => [
+        freq,
+        freqData.value.freqSpeedData[index] || 0
+    ]);
+
+    freqChartInstance.value.setOption({
+        tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(50, 50, 50, 0.9)',
+            borderColor: 'rgba(50, 50, 50, 0.9)',
+            textStyle: { color: '#fff' },
+            axisPointer: { type: 'shadow' }
+        },
+        grid: { top: 30, left: 40, right: 30, bottom: 50 },
+        xAxis: {
+            type: 'value',
+            name: 'Hz',
+            min: 0,
+            max: Math.max(...freqData.value.frequency, 2000),
+            nameTextStyle: { color: '#fff' },
+            axisLabel: { color: '#fff' },
+            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
+            splitLine: { show: false }
+        },
+        yAxis: {
+            type: 'value',
+            name: 'm/s²',
+            min: 0,
+            nameTextStyle: { color: '#fff' },
+            axisLabel: { color: '#fff', formatter: '{value}' },
+            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
+            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+        },
+        dataZoom: [
+            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+            {
+                type: 'slider',
+                xAxisIndex: [0],
+                bottom: 10,
+                height: 20,
+                fillerColor: 'rgba(126, 203, 161, 0.3)',
+                borderColor: 'rgba(126, 203, 161, 0.5)',
+                handleStyle: { color: '#7ecba1' },
+                filterMode: 'none'
+            }
+        ],
+        series: [{
+            type: 'bar',
+            barWidth: 2,
+            data: chartData,
+            itemStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#7ecba1' },
+                    { offset: 0.5, color: '#5fb98b' },
+                    { offset: 1, color: '#d4a853' }
+                ])
+            }
+        }]
+    });
 };
 
 /**
@@ -193,10 +197,32 @@ const generateTimeData = () => {
 const { bindResize: bindFreq } = useChartResize(freqChartInstance, freqChartRef);
 const { bindResize: bindTime } = useChartResize(timeChartInstance, timeChartRef);
 
-onMounted(() => {
+onMounted(async () => {
+    // 初始化图表
     initCharts();
     bindFreq();
     bindTime();
+
+    // 请求接口数据
+    try {
+        const response = await getVibrationFrequencyData();
+        if (response.rc === 0 && response.ret) {
+            // 解析JSON字符串为数组
+            const frequencyArray = JSON.parse(response.ret.frequency);
+            const freqSpeedArray = JSON.parse(response.ret.freqSpeedData);
+
+            // 更新数据
+            freqData.value = {
+                frequency: frequencyArray,
+                freqSpeedData: freqSpeedArray
+            };
+
+            // 更新图表
+            updateFreqChart();
+        }
+    } catch (error) {
+        console.error('获取振动频域数据失败:', error);
+    }
 });
 
 onUnmounted(() => {

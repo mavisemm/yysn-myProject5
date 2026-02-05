@@ -101,6 +101,7 @@
 
             <div class="health-gauge-container">
                 <div class="gauge-header">
+                    <div class="health-title">{{ healthTitle }}</div>
                     <el-button type="primary" size="small" @click="toggleHealthType" class="switch-health-btn">
                         切换{{ healthType === '声音' ? '振动' : '声音' }}健康度
                     </el-button>
@@ -122,7 +123,7 @@
 import { ref, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { ElButton, ElInput, ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import { getDeviceInfoByDeviceId, editDeviceInfo, type DeviceInfoDto } from '@/api/modules/hardware'
+import { getDeviceInfoByDeviceId, editDeviceInfo, getDeviceHealth, type DeviceInfoDto, type DeviceHealthResponse } from '@/api/modules/hardware'
 
 // 定义设备信息类型 - 对应API返回的数据结构
 interface DeviceInfo {
@@ -178,10 +179,44 @@ const loadDeviceInfo = async () => {
     }
 }
 
+// 并行加载设备信息和健康度（根据用户记忆要求）
+const loadDeviceDataParallel = async () => {
+    if (!props.deviceId) return;
+
+    try {
+        // 并行执行设备信息和健康度查询
+        const [infoResponse, healthResponse] = await Promise.all([
+            getDeviceInfoByDeviceId(props.deviceId),
+            getDeviceHealth({
+                deviceId: props.deviceId,
+                type: 'sound'
+            })
+        ]);
+
+        // 处理设备信息响应
+        if (infoResponse.rc === 0 && infoResponse.ret) {
+            deviceInfo.value = infoResponse.ret;
+        } else {
+            ElMessage.error('获取设备信息失败');
+        }
+
+        // 处理健康度响应
+        if (healthResponse.rc === 0 && healthResponse.ret) {
+            currentHealthScore.value = healthResponse.ret.healthScore;
+            nextTick(() => {
+                initGaugeChart();
+            });
+        }
+    } catch (error) {
+        console.error('并行加载设备数据失败:', error);
+        ElMessage.error('加载设备数据失败');
+    }
+}
+
 // 监听deviceId变化
 watch(() => props.deviceId, (newId) => {
     if (newId) {
-        loadDeviceInfo();
+        loadDeviceDataParallel();
     }
 }, { immediate: true })
 
@@ -194,7 +229,8 @@ const isCollapsed = ref(false)
 
 // 健康度相关
 const healthType = ref('声音')
-const currentHealthScore = ref(85)
+const currentHealthScore = ref(98) // 默认声音健康度分数
+const healthTitle = ref('声音健康度')
 const gaugeRef = ref<HTMLDivElement>()
 let gaugeChart: echarts.ECharts | null = null
 
@@ -244,13 +280,29 @@ const toggleEdit = async () => {
 }
 
 // 切换健康度类型
-const toggleHealthType = () => {
-    healthType.value = healthType.value === '声音' ? '振动' : '声音'
-    // 更新分数，模拟不同健康度的分数
-    currentHealthScore.value = healthType.value === '声音' ? 85 : 78
-    nextTick(() => {
-        initGaugeChart()
-    })
+const toggleHealthType = async () => {
+    const newType = healthType.value === '声音' ? '振动' : '声音'
+
+    try {
+        const response = await getDeviceHealth({
+            deviceId: props.deviceId,
+            type: newType === '声音' ? 'sound' : 'vibration'
+        });
+
+        if (response.rc === 0 && response.ret) {
+            healthType.value = newType
+            healthTitle.value = newType + '健康度'
+            currentHealthScore.value = response.ret.healthScore
+            nextTick(() => {
+                initGaugeChart()
+            })
+        } else {
+            ElMessage.error(response.err || '获取健康度数据失败')
+        }
+    } catch (error) {
+        console.error('获取健康度数据失败:', error)
+        ElMessage.error('获取健康度数据失败')
+    }
 }
 
 // 初始化仪表盘
@@ -376,7 +428,7 @@ const initGaugeChart = () => {
                 data: [
                     {
                         value: score,
-                        name: '设备健康度'
+                        name: healthTitle.value
                     }
                 ]
             }
@@ -435,8 +487,8 @@ const setupParentResizeObserver = () => {
     }
 }
 
-// 在组件挂载和健康度类型切换时设置resize监听
-onMounted(() => {
+// 在组件挂载时初始化图表监听
+onMounted(async () => {
     nextTick(() => {
         initGaugeChart()
         setupGaugeResizeObserver();
@@ -590,8 +642,15 @@ onUnmounted(() => {
 
             .gauge-header {
                 display: flex;
-                justify-content: flex-end;
+                justify-content: space-between;
                 align-items: center;
+                margin-bottom: 10px;
+
+                .health-title {
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #fff;
+                }
 
                 .switch-health-btn {
                     font-size: 12px;

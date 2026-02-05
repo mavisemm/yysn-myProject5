@@ -40,7 +40,8 @@ export interface EquipmentData {
 
 export interface PointData {
   pointName: string;
-  receiverId: string;
+  pointId?: string; // 点位ID，优先使用
+  receiverId?: string; // 接收器ID，作为后备
 }
 
 /**
@@ -91,7 +92,7 @@ export const transformDeviceTreeData = (responseData: DeviceTreeResponse): Devic
         type: 'device',
         status: 'normal', // 默认状态
         children: equipment.children.map(point => ({
-          id: point.receiverId,
+          id: point.pointId || point.receiverId || '', // 优先使用pointId，如果没有则使用receiverId
           name: point.pointName,
           type: 'point',
           status: 'normal' // 默认状态

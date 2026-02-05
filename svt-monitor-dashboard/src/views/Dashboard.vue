@@ -49,9 +49,9 @@ const rankings = ref<RankingItem[][]>([
 // 统计数据
 const statsData = ref([
   { title: '健康设备数', number: 0 },
-  { title: '预警设备数', number: 0 },
+  { title: '报警设备数', number: 0 },
   { title: '监控总设备数', number: 0 },
-  { title: '监测点位数', number: 0 }
+  { title: '预警设备数', number: 0 }
 ]);
 
 /**
@@ -102,18 +102,18 @@ const fetchStatsData = async () => {
 
     statsData.value = [
       { title: '健康设备数', number: stats.healthyDeviceCount },
-      { title: '预警设备数', number: stats.alertDeviceCount },
+      { title: '报警设备数', number: stats.alertDeviceCount },
       { title: '监控总设备数', number: stats.totalDeviceCount },
-      { title: '监测点位数', number: stats.totalPointCount }
+      { title: '预警设备数', number: stats.totalPointCount }
     ];
   } catch (error) {
     console.error('获取统计数据失败:', error);
     // 使用默认值
     statsData.value = [
       { title: '健康设备数', number: 0 },
-      { title: '预警设备数', number: 0 },
+      { title: '报警设备数', number: 0 },
       { title: '监控总设备数', number: 0 },
-      { title: '监测点位数', number: 0 }
+      { title: '预警设备数', number: 0 }
     ];
   }
 };

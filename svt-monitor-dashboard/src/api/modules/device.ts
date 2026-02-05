@@ -59,3 +59,24 @@ export const batchOperateDevices = (ids: string[], operation: string): Promise<A
     operation
   })
 }
+
+// 新的响应格式类型
+export interface NewApiResponse<T = unknown> {
+  rc: number
+  ret: T
+  err: string | null
+}
+
+// 振动频域图数据接口
+export interface VibrationFrequencyData {
+  frequency: string
+  freqSpeedData: string
+}
+
+export const getVibrationFrequencyData = (): Promise<NewApiResponse<VibrationFrequencyData>> => {
+  return request.post('/device/vibration/data/frequency', {
+    tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
+    deviceId: 'ff8081819a4cd984019a4d524e0d0000',
+    pointId: 'PNT_A01'
+  })
+}

@@ -1,4 +1,4 @@
-﻿<!-- 声音点位监控页面：展示声音数据分析和图表 -->
+<!-- 声音点位监控页面：展示声音数据分析和图表 -->
 <template>
   <div class="sound-point-container">
     <!-- 曲线图表区域：展示能量曲线和密度曲线 -->
@@ -23,19 +23,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, nextTick, shallowRef } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, onMounted, onUnmounted, nextTick, shallowRef } from 'vue';
 import * as echarts from 'echarts';
-import { ElTable, ElTableColumn, ElButton, ElMessage, ElDialog, ElCheckbox } from 'element-plus';
-import { useChartResize } from '@/composables/useChart';
-import { connectCharts, enableMouseWheelZoomForCharts, enableMouseWheelZoom } from '@/utils/chart';
+import { ElMessage, ElDialog } from 'element-plus';
+import { enableMouseWheelZoom } from '@/utils/chart';
+import { getLatestDeviationByReceiver, getStandardFrequencyList, type SoundDeviationItem } from '@/api/modules/voiceSound';
 
 // 导入新组件
 import SoundPointCharts from '@/components/business/sound-point/SoundPointCharts.vue';
 import SoundDataTable from '@/components/business/sound-point/SoundDataTable.vue';
 import SoundPointInfo from '@/components/business/sound-point/SoundPointInfo.vue';
-
-const route = useRoute();
 const chartsComponentRef = ref<any>(null);
 const modalChartRef = ref<HTMLDivElement>();
 
@@ -58,73 +55,26 @@ const colors = [
   '#fb7293', '#e7bcf3', '#ffdb5c', '#9fe6b8', '#ff9e7d'
 ];
 
-const generateMockData = () => {
-  const data = [];
-  const now = new Date();
-  const freqAxis = ['31.5', '63', '125', '250', '500', '1k', '2k', '4k', '8k', '16k'];
+interface DeviationListItem {
+  id: string;
+  time: string;
+  deviationValue: number;
+  visible: boolean;
+  color?: string;
+  dbArr: (number | string)[];
+  densityArr: (number | string)[];
+  freqs: string[];
+  filePath?: string;
+  receiverId?: string;
+  sampleSec?: number;
+}
 
-  for (let i = 0; i < 20; i++) {
-    const time = new Date(now.getTime() - i * 5 * 60000);
-    data.push({
-      id: `${20 - i}`,
-      time: time.toLocaleString(),
-      deviationValue: (Math.random() * 2).toFixed(2),
-      visible: i === 0, // 默认选中第一条
-      color: i === 0 ? colors[0] : undefined,
-      dbArr: freqAxis.map(() => (Math.random() * 20 + 40).toFixed(2)),
-      densityArr: freqAxis.map(() => (Math.random() * 0.7 + 0.1).toFixed(4)),
-      freqs: freqAxis
-    });
-  }
-  return data;
-};
-
-const deviationList = ref(generateMockData());
-
-const isAllSelected = computed(() => {
-  return deviationList.value.length > 0 && deviationList.value.every(item => item.visible);
-});
-
-const isIndeterminate = computed(() => {
-  const selectedCount = deviationList.value.filter(item => item.visible).length;
-  return selectedCount > 0 && selectedCount < deviationList.value.length;
-});
-
-const handleSelectAll = () => {
-  const allSelected = isAllSelected.value;
-  if (allSelected) {
-    deviationList.value.forEach((item, index) => {
-      item.visible = index === 0;
-    });
-    ElMessage.info('已为您保留最新的一条数据');
-  } else {
-    deviationList.value.forEach(item => {
-      item.visible = true;
-    });
-  }
-  // 调用图表组件的更新方法
-  if (chartsComponentRef.value && typeof chartsComponentRef.value.updateCharts === 'function') {
-    chartsComponentRef.value.updateCharts();
-  }
-};
-
-const toggleVisible = () => {
-  const selectedCount = deviationList.value.filter(item => item.visible).length;
-
-  if (selectedCount === 0) {
-    ElMessage.error('至少选择一条数据，已为您选择最新的一条');
-    const firstItem = deviationList.value[0];
-    if (firstItem) firstItem.visible = true;
-  }
-  // 调用图表组件的更新方法
-  if (chartsComponentRef.value && typeof chartsComponentRef.value.updateCharts === 'function') {
-    chartsComponentRef.value.updateCharts();
-  }
-};
+const deviationList = ref<DeviationListItem[]>([]);
 
 const handleRowClick = (row: any) => {
   row.visible = !row.visible;
-  toggleVisible();
+  currentDataTime.value = row.time;
+  handleSelectChange();
 };
 
 // 处理图表初始化事件
@@ -134,15 +84,126 @@ const handleChartInit = (charts: any) => {
 
 // 处理选择变更事件
 const handleSelectChange = () => {
-  // 调用图表组件的更新方法
-  if (chartsComponentRef.value && typeof chartsComponentRef.value.updateCharts === 'function') {
-    chartsComponentRef.value.updateCharts();
-  }
+  loadFrequencyData();
 };
 
 
 
 
+
+const formatDateTime = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value || '';
+  const pad = (num: number) => String(num).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+const normalizeDeviationList = (list: SoundDeviationItem[]): DeviationListItem[] => {
+  return list.map((item, index) => {
+    const freqLength = (item.dbArray && item.dbArray.length) ? item.dbArray.length : (item.densityArray?.length || 0);
+    const freqs = freqLength ? Array.from({ length: freqLength }, (_, i) => String(i + 1)) : [];
+    return {
+      id: String(item.id ?? index),
+      time: formatDateTime(item.time),
+      deviationValue: Number(item.deviationValue || 0),
+      visible: index === 0,
+      color: index === 0 ? colors[0] : undefined,
+      dbArr: item.dbArray ?? [],
+      densityArr: item.densityArray ?? [],
+      freqs,
+      filePath: item.filePath,
+      receiverId: item.receiverId,
+      sampleSec: item.sampleSec
+    };
+  });
+};
+
+const loadDeviationList = async () => {
+  try {
+    const res = await getLatestDeviationByReceiver();
+    const rawList = Array.isArray(res)
+      ? res
+      : Array.isArray((res as any)?.data)
+        ? (res as any).data
+        : Array.isArray((res as any)?.ret)
+          ? (res as any).ret
+          : [];
+    const mapped = normalizeDeviationList(rawList);
+    deviationList.value = mapped;
+
+    const firstItem = mapped[0];
+    if (firstItem) {
+      currentDataTime.value = firstItem.time;
+    }
+
+    await loadFrequencyData();
+  } catch (error) {
+    console.error('加载声音偏差数据失败:', error);
+    ElMessage.error('声音偏差数据加载失败，请稍后重试');
+  }
+};
+
+const applyFrequencyResponse = (freqs: number[], responseList: any[], mode: 'energy' | 'density') => {
+  if (!Array.isArray(responseList) || responseList.length === 0) return;
+  responseList.forEach((res) => {
+    const target = deviationList.value.find(item => Number(item.id) === Number(res.recordId));
+    if (!target) return;
+    const dbArr = Array.isArray(res.dbArray) ? res.dbArray : [];
+    const densityArr = Array.isArray(res.densityArray) ? res.densityArray : [];
+    const sourceArr = mode === 'energy' ? dbArr : densityArr;
+    const xFreqs = freqs.length > 0
+      ? freqs
+      : (sourceArr.length > 0 ? Array.from({ length: sourceArr.length }, (_, i) => i + 1) : target.freqs.map(f => Number(f)));
+
+    if (xFreqs && xFreqs.length > 0) {
+      target.freqs = xFreqs.map(f => String(f));
+    }
+
+    if (mode === 'energy') {
+      target.dbArr = dbArr;
+    } else {
+      target.densityArr = densityArr;
+    }
+  });
+
+  const first = responseList[0];
+  if (first?.time) {
+    currentDataTime.value = formatDateTime(String(first.time));
+  }
+
+  if (chartsComponentRef.value && typeof chartsComponentRef.value.updateCharts === 'function') {
+    chartsComponentRef.value.updateCharts();
+  }
+};
+
+const loadFrequencyData = async () => {
+  const selectedIds = deviationList.value.filter(item => item.visible).map(item => Number(item.id));
+  if (selectedIds.length === 0) {
+    if (chartsComponentRef.value && typeof chartsComponentRef.value.updateCharts === 'function') {
+      chartsComponentRef.value.updateCharts();
+    }
+    return;
+  }
+
+  const loadOnce = async (type: number, mode: 'energy' | 'density') => {
+    const res = await getStandardFrequencyList({
+      recordIdList: selectedIds,
+      type
+    });
+    const body = (res as any)?.data ?? (res as any)?.ret ?? res;
+    const freqs = Array.isArray(body?.freqs) ? body.freqs : [];
+    const responseList = Array.isArray(body?.responseList) ? body.responseList : [];
+    applyFrequencyResponse(freqs, responseList, mode);
+  };
+
+  try {
+    await loadOnce(0, 'energy');
+    await loadOnce(1, 'density');
+  } catch (error) {
+    console.error('加载频率曲线失败:', error);
+    ElMessage.error('频率曲线加载失败');
+  }
+};
 
 // 操作方法
 const viewDetails = (row: any) => {
@@ -225,10 +286,7 @@ const handleResize = () => {
 };
 
 onMounted(() => {
-  const firstItem = deviationList.value[0];
-  if (firstItem) {
-    currentDataTime.value = firstItem.time;
-  }
+  loadDeviationList();
   window.addEventListener('resize', handleResize);
 });
 

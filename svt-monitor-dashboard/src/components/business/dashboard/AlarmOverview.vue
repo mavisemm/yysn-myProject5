@@ -252,32 +252,32 @@ const alarms = computed<AlarmItem[]>(() => {
                             "equipmentId": "ff8081819a4cd984019a4d524e0d0000",
                             "equipmentName": "五线三路风机",
                             "children": [
-                                { "pointName": "3", "receiverId": "lfpznaj5u6RsUgMzQH4" },
-                                { "pointName": "2", "receiverId": "ofC6mcZeoOhmtZOcdnL" },
-                                { "pointName": "1", "receiverId": "9sXGsnoV80oz7uB7AMv" },
-                                { "pointName": "8", "receiverId": "afuBOPygDME90Ocf4Nl" },
-                                { "pointName": "7", "receiverId": "3kZpxW0Ti67uYxy04Wd" },
-                                { "pointName": "6", "receiverId": "AiWdaUEqTCYa6CF4mYr" },
-                                { "pointName": "5", "receiverId": "2jSWm5mguSklnzJLXQ3" },
-                                { "pointName": "4", "receiverId": "ymnelvApbJkig1714Jh" },
-                                { "pointName": "JXA24F5308", "receiverId": "CHl6tUtNe5C7pHLTkJK" },
-                                { "pointName": "JXA24F5307", "receiverId": "9lzwOputwMwgnLChIpG" }
+                                { "pointName": "3", "pointId": "lfpznaj5u6RsUgMzQH4" },
+                                { "pointName": "2", "pointId": "ofC6mcZeoOhmtZOcdnL" },
+                                { "pointName": "1", "pointId": "9sXGsnoV80oz7uB7AMv" },
+                                { "pointName": "8", "pointId": "afuBOPygDME90Ocf4Nl" },
+                                { "pointName": "7", "pointId": "3kZpxW0Ti67uYxy04Wd" },
+                                { "pointName": "6", "pointId": "AiWdaUEqTCYa6CF4mYr" },
+                                { "pointName": "5", "pointId": "2jSWm5mguSklnzJLXQ3" },
+                                { "pointName": "4", "pointId": "ymnelvApbJkig1714Jh" },
+                                { "pointName": "JXA24F5308", "pointId": "CHl6tUtNe5C7pHLTkJK" },
+                                { "pointName": "JXA24F5307", "pointId": "9lzwOputwMwgnLChIpG" }
                             ]
                         },
                         {
                             "equipmentId": "ff8081819a623bff019a71fbec550018",
                             "equipmentName": "往复式压缩机",
                             "children": [
-                                { "pointName": "JS32F21", "receiverId": "Y9zzIRfcHLOihs9w8c8" },
-                                { "pointName": "JS32F20", "receiverId": "0T1dvp6P17FTM5QcpaX" },
-                                { "pointName": "JS32F19", "receiverId": "01wL5Y4luluaWHUur00" },
-                                { "pointName": "JS32F18", "receiverId": "GrVcQ9rPRT7qNBcjtZf" },
-                                { "pointName": "JS32F17", "receiverId": "jxF3AMdUlheGf374F4Q" },
-                                { "pointName": "JS32F16", "receiverId": "x56tm1lmnVgg2jrHAmz" },
-                                { "pointName": "JS32F15", "receiverId": "Tm9gTzgmKD4wRA8abmD" },
-                                { "pointName": "JS32F14", "receiverId": "iiT3Jj5OVkoNDV0673J" },
-                                { "pointName": "JS32F13", "receiverId": "syjlTFYJqVbxPvIGkbn" },
-                                { "pointName": "JS32F12", "receiverId": "aDRI7krlKWE1kQhLGF3" }
+                                { "pointName": "JS32F21", "pointId": "Y9zzIRfcHLOihs9w8c8" },
+                                { "pointName": "JS32F20", "pointId": "0T1dvp6P17FTM5QcpaX" },
+                                { "pointName": "JS32F19", "pointId": "01wL5Y4luluaWHUur00" },
+                                { "pointName": "JS32F18", "pointId": "GrVcQ9rPRT7qNBcjtZf" },
+                                { "pointName": "JS32F17", "pointId": "jxF3AMdUlheGf374F4Q" },
+                                { "pointName": "JS32F16", "pointId": "x56tm1lmnVgg2jrHAmz" },
+                                { "pointName": "JS32F15", "pointId": "Tm9gTzgmKD4wRA8abmD" },
+                                { "pointName": "JS32F14", "pointId": "iiT3Jj5OVkoNDV0673J" },
+                                { "pointName": "JS32F13", "pointId": "syjlTFYJqVbxPvIGkbn" },
+                                { "pointName": "JS32F12", "pointId": "aDRI7krlKWE1kQhLGF3" }
                             ]
                         }
                     ]
@@ -290,14 +290,14 @@ const alarms = computed<AlarmItem[]>(() => {
                             "equipmentId": "ff8081819a623bff019a71ee6a950000",
                             "equipmentName": "五线一路风机",
                             "children": [
-                                { "pointName": "JXA29F6106", "receiverId": "kHXkZgnoUDglfey75DG" },
-                                { "pointName": "JXA29F6105", "receiverId": "mEE2HiiLmrlOtbtzrlW" },
-                                { "pointName": "JXA29F6104", "receiverId": "RJYERBkadHWRg3HL6aF" },
-                                { "pointName": "JXA29F6103", "receiverId": "xvAd4v5aXEQE6HmQIdm" },
-                                { "pointName": "JXA29F6102", "receiverId": "RhaSNWozeQpsbL39IhD" },
-                                { "pointName": "JXA29F6101", "receiverId": "a5nIlFdxnIGqiWFu3Mc" },
-                                { "pointName": "JXA29F6107", "receiverId": "cVwuOHYFy0pUttJNLrV" },
-                                { "pointName": "JXA29F6108", "receiverId": "tCrBMi4H9a0g80Yqqgn" }
+                                { "pointName": "JXA29F6106", "pointId": "kHXkZgnoUDglfey75DG" },
+                                { "pointName": "JXA29F6105", "pointId": "mEE2HiiLmrlOtbtzrlW" },
+                                { "pointName": "JXA29F6104", "pointId": "RJYERBkadHWRg3HL6aF" },
+                                { "pointName": "JXA29F6103", "pointId": "xvAd4v5aXEQE6HmQIdm" },
+                                { "pointName": "JXA29F6102", "pointId": "RhaSNWozeQpsbL39IhD" },
+                                { "pointName": "JXA29F6101", "pointId": "a5nIlFdxnIGqiWFu3Mc" },
+                                { "pointName": "JXA29F6107", "pointId": "cVwuOHYFy0pUttJNLrV" },
+                                { "pointName": "JXA29F6108", "pointId": "tCrBMi4H9a0g80Yqqgn" }
                             ]
                         }
                     ]
@@ -316,14 +316,14 @@ const alarms = computed<AlarmItem[]>(() => {
                             "equipmentId": "ff8081819a623bff019a71f434130009",
                             "equipmentName": "七线一路风机",
                             "children": [
-                                { "pointName": "JXA29F8108", "receiverId": "yoH4519rucZJWLvznRF" },
-                                { "pointName": "JXA29F8107", "receiverId": "tQ3by7SBR7jv2sSc6e9" },
-                                { "pointName": "JXA29F8106", "receiverId": "CCW9gAmMTcJjCd8ZNM5" },
-                                { "pointName": "JXA29F8105", "receiverId": "wCfB2K6IzUOJZiLDwvI" },
-                                { "pointName": "JXA29F8102", "receiverId": "Rxe4UwGmf8uQs7zB9KT" },
-                                { "pointName": "JXA29F8101", "receiverId": "oRxw9NT9Uid0zJDAI2e" },
-                                { "pointName": "JXA29F8104", "receiverId": "gtrCHbhSmXYOkqh03Hr" },
-                                { "pointName": "JXA29F8103", "receiverId": "mWp4H5tOt7SsAT52n6b" }
+                                { "pointName": "JXA29F8108", "pointId": "yoH4519rucZJWLvznRF" },
+                                { "pointName": "JXA29F8107", "pointId": "tQ3by7SBR7jv2sSc6e9" },
+                                { "pointName": "JXA29F8106", "pointId": "CCW9gAmMTcJjCd8ZNM5" },
+                                { "pointName": "JXA29F8105", "pointId": "wCfB2K6IzUOJZiLDwvI" },
+                                { "pointName": "JXA29F8102", "pointId": "Rxe4UwGmf8uQs7zB9KT" },
+                                { "pointName": "JXA29F8101", "pointId": "oRxw9NT9Uid0zJDAI2e" },
+                                { "pointName": "JXA29F8104", "pointId": "gtrCHbhSmXYOkqh03Hr" },
+                                { "pointName": "JXA29F8103", "pointId": "mWp4H5tOt7SsAT52n6b" }
                             ]
                         }
                     ]
@@ -336,8 +336,8 @@ const alarms = computed<AlarmItem[]>(() => {
                             "equipmentId": "ff8081819a909f21019a918dcbf00000",
                             "equipmentName": "旋压机",
                             "children": [
-                                { "pointName": "尾顶电磁阀1号点位", "receiverId": "gFlE5Ph0jNKHDUtOhcc" },
-                                { "pointName": "SHJY-XYJ1号点位", "receiverId": "TUQ4qCulrC0Hw7ODkhZ" }
+                                { "pointName": "尾顶电磁阀1号点位", "pointId": "gFlE5Ph0jNKHDUtOhcc" },
+                                { "pointName": "SHJY-XYJ1号点位", "pointId": "TUQ4qCulrC0Hw7ODkhZ" }
                             ]
                         }
                     ]

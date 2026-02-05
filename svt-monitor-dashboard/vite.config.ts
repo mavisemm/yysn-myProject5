@@ -17,6 +17,8 @@ export default defineConfig({
     proxy: {
       '/taicang': {
         target: 'http://192.168.0.199:36000',
+        // target:'http://122.224.196.178:8003',
+        // target:'http://192.168.1.219:36052',
         changeOrigin: true,
         secure: false,
       },

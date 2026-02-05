@@ -97,6 +97,40 @@ export interface SoundAnalysisResultResponse {
   data: SoundAnalysisResult
 }
 
+// 最新偏差数据（声音点位表格）
+export interface SoundDeviationItem {
+  id: number
+  time: string
+  deviceId: string
+  deviceName: string | null
+  receiverId: string
+  receiverName: string | null
+  sceneId: string | null
+  sceneName: string | null
+  fileFlag: boolean
+  filePath: string
+  productId: string | null
+  productName: string | null
+  subProductId: string | null
+  subProductName: string | null
+  pointId: number
+  pointGroupId: number
+  pointName: string | null
+  status: number
+  avgGroupId: string | null
+  soundFrequencyDtoList: unknown
+  soundAvgFrequencyDtoList: unknown
+  detectorStatus: boolean
+  deviationValue: number
+  titleGroupName: string | null
+  dbArray: number[] | null
+  densityArray: number[] | null
+  markFlag: unknown
+  sampleSec: number
+  deviceModel: string | null
+  productionFactory: string | null
+}
+
 // 获取声音数据
 export const getSoundData = (params?: {
   deviceId?: string
@@ -205,5 +239,50 @@ export const getHistoricalSoundData = (params?: {
   return request.get('/sound/history', {
     params,
     showLoading: true
+  })
+}
+
+// 声音频率曲线（勾选记录后获取频率列表）
+export const getStandardFrequencyList = (payload: {
+  recordIdList: (number | string)[]
+  type: number
+}): Promise<{
+  freqs: number[]
+  responseList: Array<{
+    recordId: number
+    time: number
+    sort: number
+    machineNo: string | null
+    pointName: string | null
+    dbArray: number[] | null
+    densityArray: number[] | null
+  }>
+}> => {
+  return request.post('/taicang/hardware/device/standard-frequency-type/findSimpleFrequencyList', payload, {
+    params: {
+      userId: '',
+      tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
+      _t: '1770273268272'
+    },
+    // cacheControl: false,
+    // customBaseURL: 'http://122.224.196.178:8003',
+    // showLoading: true
+  })
+}
+
+// 获取声音点位页最新偏差列表（固定参数）
+export const getLatestDeviationByReceiver = (): Promise<SoundDeviationItem[]> => {
+  return request.get('/taicang/device/sound/data/findLatestDeviationByReceiver/no-scene', {
+    params: {
+      userId: '',
+      tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
+      receiverId: '9sXGsnoV80oz7uB7AMv',
+      startTime: '1770271033097',
+      endTime: '1770272233097',
+      _t: '1770272233097'
+    },
+    // cacheControl: false,
+    // customBaseURL: 'http://122.224.196.178:8003',
+    // showLoading: true
   })
 }

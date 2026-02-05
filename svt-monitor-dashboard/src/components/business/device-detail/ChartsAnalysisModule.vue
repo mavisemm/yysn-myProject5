@@ -91,6 +91,7 @@ import { ElForm, ElFormItem, ElSelect, ElOption, ElInputNumber, ElDatePicker, El
 import * as echarts from 'echarts'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { enableMouseWheelZoomForCharts, connectCharts } from '@/utils/chart'
+import { getTemperatureTrend, getVibrationTrend, getSoundTrend } from '@/api/modules/hardware'
 
 // 定义点位信息类型
 interface PointInfo {
@@ -113,6 +114,7 @@ export type DateRange = [Date, Date] | null
 // 定义属性
 const props = defineProps<{
     pointList: PointInfo[]
+    selectedPointId?: string
 }>()
 
 // 图表相关
@@ -177,6 +179,239 @@ onMounted(() => {
         }, 100);
     });
 })
+
+// 根据数据范围计算 y 轴 min/max（支持负数，取整到合适刻度）
+function computeTempYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
+    const span = dataMax - dataMin
+    const padding = Math.max(span * 0.1, 2)
+    let min = dataMin - padding
+    let max = dataMax + padding
+    const range = max - min
+    const step = range <= 0 ? 1 : Math.pow(10, Math.floor(Math.log10(range)))
+    min = Math.floor(min / step) * step
+    max = Math.ceil(max / step) * step
+    return { min, max }
+}
+
+// 加载温度趋势数据
+const loadTemperatureData = async (pointId: string) => {
+    if (!pointId || !tempChart) return
+
+    try {
+        const startTime = '2026-02-04 00:00:00'
+        const endTime = '2026-02-04 23:59:59'
+
+        const response = await getTemperatureTrend({
+            point_id: 'PT-001-A',
+            start_time: startTime,
+            end_time: endTime
+        })
+
+        if (response.rc === 0 && response.ret && Array.isArray(response.ret)) {
+            // 接口返回格式: [{ dateTime: "2026-02-04 00:55:52", temperature: -3.2 }, ...]
+            const timeData = response.ret.map(item => {
+                const dt = item.dateTime || ''
+                if (dt.includes(' ')) return (dt.split(' ')[1] || dt).trim()
+                if (dt.includes('T')) return (dt.split('T')[1] || dt).substring(0, 8)
+                return dt
+            })
+            const tempData = response.ret.map(item => item.temperature)
+            const dataMin = tempData.length ? Math.min(...tempData) : 0
+            const dataMax = tempData.length ? Math.max(...tempData) : 100
+            const { min: yMin, max: yMax } = computeTempYAxisRange(dataMin, dataMax)
+
+            tempChart.setOption({
+                xAxis: {
+                    data: timeData,
+                    axisLabel: {
+                        fontSize: 10,
+                        color: '#fff'
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    scale: true,
+                    min: yMin,
+                    max: yMax,
+                    axisLabel: {
+                        fontSize: 10,
+                        color: '#fff',
+                        formatter: (value: number) => String(Math.round(Number(value)))
+                    },
+                    axisLine: { lineStyle: { color: '#fff' } },
+                    axisTick: { lineStyle: { color: '#fff' } },
+                    splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.2)' } },
+                    splitNumber: 8
+                },
+                series: [{
+                    data: tempData
+                }]
+            })
+        } else {
+            console.warn('温度趋势数据格式错误:', response)
+        }
+    } catch (error) {
+        console.error('加载温度趋势数据失败:', error)
+        const hours = Array.from({ length: 24 }, (_, i) => `${i}`)
+        const tempData = Array.from({ length: 24 }, () => Math.floor(Math.random() * 50) + 30)
+        tempChart.setOption({
+            xAxis: { data: hours },
+            series: [{ data: tempData }]
+        })
+    }
+}
+
+// 根据数据范围计算 y 轴 min/max（烈度，支持小数与取整刻度）
+function computeVibYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
+    const span = dataMax - dataMin
+    const padding = Math.max(span * 0.1, 0.5)
+    let min = Math.min(0, dataMin - padding)
+    let max = dataMax + padding
+    const range = max - min
+    const step = range <= 0 ? 1 : Math.pow(10, Math.floor(Math.log10(range)))
+    const safeStep = step < 0.1 ? 0.1 : step
+    min = Math.floor(min / safeStep) * safeStep
+    max = Math.ceil(max / safeStep) * safeStep
+    return { min, max }
+}
+
+// 加载振动趋势数据
+const loadVibrationData = async (pointId: string) => {
+    if (!pointId || !vibChart) return
+
+    try {
+        const startTime = '2026-02-04 00:00:00'
+        const endTime = '2026-02-04 23:59:59'
+
+        const response = await getVibrationTrend({
+            point_id: 'PT-001-A',
+            start_time: startTime,
+            end_time: endTime
+        })
+
+        const list = Array.isArray(response) ? response : (response.ret && Array.isArray(response.ret) ? response.ret : [])
+        if (list.length > 0) {
+            const timeData = list.map(item => {
+                const dt = item.time || ''
+                if (dt.includes(' ')) return (dt.split(' ')[1] || dt).trim().substring(0, 8)
+                if (dt.includes('T')) return (dt.split('T')[1] || dt).substring(0, 8)
+                return dt
+            })
+            const vibData = list.map(item => item.sumRms)
+            const dataMin = vibData.length ? Math.min(...vibData) : 0
+            const dataMax = vibData.length ? Math.max(...vibData) : 20
+            const { min: yMin, max: yMax } = computeVibYAxisRange(dataMin, dataMax)
+
+            vibChart.setOption({
+                xAxis: {
+                    data: timeData,
+                    axisLabel: {
+                        fontSize: 10,
+                        color: '#fff'
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    scale: true,
+                    min: yMin,
+                    max: yMax,
+                    axisLabel: {
+                        fontSize: 10,
+                        color: '#fff',
+                        formatter: (value: number) => String(Math.round(Number(value)))
+                    },
+                    axisLine: { lineStyle: { color: '#fff' } },
+                    axisTick: { lineStyle: { color: '#fff' } },
+                    splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.2)' } },
+                    splitNumber: 8
+                },
+                series: [{
+                    data: vibData
+                }]
+            })
+        } else {
+            console.warn('振动趋势数据格式错误:', response)
+        }
+    } catch (error) {
+        console.error('加载振动趋势数据失败:', error)
+    }
+}
+
+// 根据数据范围计算响度 y 轴 min/max
+function computeSoundYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
+    const span = Math.max(dataMax - dataMin, 1)
+    const padding = Math.max(span * 0.1, 2)
+    let min = Math.min(0, dataMin - padding)
+    let max = dataMax + padding
+    const range = max - min
+    const step = range <= 0 ? 10 : Math.pow(10, Math.floor(Math.log10(range)))
+    const safeStep = step < 1 ? 1 : step
+    min = Math.floor(min / safeStep) * safeStep
+    max = Math.ceil(max / safeStep) * safeStep
+    return { min, max }
+}
+
+// 加载响度趋势数据（point_id 暂用死数据 PT-001-A）
+const loadSoundData = async (_pointId: string) => {
+    if (!soundChart) return
+
+    try {
+        const startTime = '2026-02-04 00:00:00'
+        const endTime = '2026-02-04 23:59:59'
+
+        const response = await getSoundTrend({
+            point_id: 'PT-001-A',
+            start_time: startTime,
+            end_time: endTime
+        })
+
+        const list = Array.isArray(response) ? response : (response.ret && Array.isArray(response.ret) ? response.ret : [])
+        if (list.length > 0) {
+            const timeData = list.map(item => {
+                const dt = item.time || item.dateTime || ''
+                if (dt.includes(' ')) return (dt.split(' ')[1] || dt).trim().substring(0, 8)
+                if (dt.includes('T')) return (dt.split('T')[1] || dt).substring(0, 8)
+                return dt
+            })
+            const soundData = list.map(item => item.value ?? item.soundLevel ?? 0)
+            const dataMin = soundData.length ? Math.min(...soundData) : 0
+            const dataMax = soundData.length ? Math.max(...soundData) : 100
+            const { min: yMin, max: yMax } = computeSoundYAxisRange(dataMin, dataMax)
+
+            soundChart.setOption({
+                xAxis: {
+                    data: timeData,
+                    axisLabel: {
+                        fontSize: 10,
+                        color: '#fff'
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    scale: true,
+                    min: yMin,
+                    max: yMax,
+                    axisLabel: {
+                        fontSize: 10,
+                        color: '#fff',
+                        formatter: (value: number) => String(Math.round(Number(value)))
+                    },
+                    axisLine: { lineStyle: { color: '#fff' } },
+                    axisTick: { lineStyle: { color: '#fff' } },
+                    splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.2)' } },
+                    splitNumber: 8
+                },
+                series: [{
+                    data: soundData
+                }]
+            }, { replaceMerge: ['yAxis'] })
+        } else {
+            console.warn('响度趋势数据格式错误或为空:', response)
+        }
+    } catch (error) {
+        console.error('加载响度趋势数据失败:', error)
+    }
+}
 
 // 初始化温度图表
 const initTempChart = () => {
@@ -262,11 +497,20 @@ const initTempChart = () => {
         yAxis: {
             type: 'value',
             name: '℃',
+            scale: true,
+            min: 'dataMin',
+            max: 'dataMax',
             axisLabel: {
                 fontSize: 10,
-                color: '#fff'
+                color: '#fff',
+                formatter: (value: number) => String(Math.round(Number(value)))
             },
             axisLine: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            },
+            axisTick: {
                 lineStyle: {
                     color: '#fff'
                 }
@@ -275,7 +519,8 @@ const initTempChart = () => {
                 lineStyle: {
                     color: 'rgba(255, 255, 255, 0.2)'
                 }
-            }
+            },
+            splitNumber: 8
         },
         series: [{
             data: tempData,
@@ -397,6 +642,11 @@ const initSoundChart = () => {
                 color: '#fff'
             },
             axisLine: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            },
+            axisTick: {
                 lineStyle: {
                     color: '#fff'
                 }
@@ -531,6 +781,11 @@ const initVibChart = () => {
                     color: '#fff'
                 }
             },
+            axisTick: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            },
             splitLine: {
                 lineStyle: {
                     color: 'rgba(255, 255, 255, 0.2)'
@@ -646,6 +901,53 @@ const setupResizeObserver = () => {
 // 创建一个ref来引用charts-grid容器
 const chartGridRef = ref<HTMLDivElement>()
 
+// 图表初始化完成标志
+const chartsInitialized = ref(false)
+
+// 监听点位列表变化，自动加载第一个点位的温度数据
+watch(
+    () => props.pointList,
+    (newList, oldList) => {
+        // 只有当图表已初始化且点位列表有变化时才加载数据
+        if (chartsInitialized.value && newList && newList.length > 0 && tempChart) {
+            // 如果点位列表从空变为有数据，或者没有选中点位，加载第一个点位的数据
+            const oldListLength = oldList ? oldList.length : 0
+            const newListLength = newList.length
+
+            if (oldListLength === 0 && newListLength > 0) {
+                const pointId = newList[0]?.id
+                if (pointId) {
+                    loadTemperatureData(pointId)
+                    loadVibrationData(pointId)
+                    loadSoundData(pointId)
+                }
+            } else if (!props.selectedPointId && newListLength > 0) {
+                const pointId = newList[0]?.id
+                if (pointId) {
+                    loadTemperatureData(pointId)
+                    loadVibrationData(pointId)
+                    loadSoundData(pointId)
+                }
+            }
+        }
+    },
+    { immediate: false, deep: true }
+)
+
+// 监听选中点位变化，加载对应点位的温度数据
+watch(
+    () => props.selectedPointId,
+    (newPointId, oldPointId) => {
+        // 只有当图表已初始化且点位ID有变化时才重新加载数据
+        if (chartsInitialized.value && newPointId && newPointId !== oldPointId && tempChart) {
+            loadTemperatureData(newPointId)
+            loadVibrationData(newPointId)
+            loadSoundData(newPointId)
+        }
+    },
+    { immediate: false }
+)
+
 // 组件挂载时设置resize监听
 onMounted(() => {
     // 使用 nextTick 确保 DOM 已渲染
@@ -657,13 +959,29 @@ onMounted(() => {
             initVibChart();
 
             // 图表联动
-            connectCharts([tempChart, soundChart, vibChart]);
+            if (tempChart && soundChart && vibChart) {
+                connectCharts([tempChart, soundChart, vibChart]);
 
-            // 启用滚轮缩放功能
-            enableMouseWheelZoomForCharts([tempChart, soundChart, vibChart]);
+                // 启用滚轮缩放功能
+                enableMouseWheelZoomForCharts([tempChart, soundChart, vibChart]);
+            }
 
             // 设置resize观察器
             setupResizeObserver();
+
+            // 标记图表已初始化完成
+            chartsInitialized.value = true;
+
+            // 图表初始化完成后，如果有点位列表，自动加载第一个点位的数据
+            const firstPoint = props.pointList?.[0]
+            if (firstPoint && tempChart) {
+                const pointId = props.selectedPointId || firstPoint.id
+                if (pointId) {
+                    loadTemperatureData(pointId)
+                    loadVibrationData(pointId)
+                    loadSoundData(pointId)
+                }
+            }
         }, 150); // 增加延时时间以确保图表容器完全渲染
     });
 })

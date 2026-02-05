@@ -319,3 +319,97 @@ export const editDeviceInfo = (deviceId: string, deviceInfo: DeviceInfoDto): Pro
     showLoading: true
   })
 }
+
+// 温度趋势数据响应类型（接口返回 dateTime + temperature）
+export interface TemperatureTrendItem {
+  dateTime: string; // 如 "2026-02-04 00:55:52"
+  temperature: number;
+}
+export interface TemperatureTrendResponse {
+  rc: number;
+  ret: TemperatureTrendItem[];
+  err: string | null;
+}
+
+// 获取温度趋势数据（请求参数：point_id, start_time, end_time）
+export const getTemperatureTrend = (params: {
+  point_id: string;
+  start_time: string;
+  end_time: string;
+}): Promise<TemperatureTrendResponse> => {
+  return request.get('/taicang/hardware/device/info/temperature/trend', {
+    params,
+    showLoading: false
+  })
+}
+
+// 振动趋势数据响应类型（接口返回 time + sumRms）
+export interface VibrationTrendItem {
+  time: string;   // 如 "2026-01-28 20:30:00"
+  sumRms: number;  // 烈度 mm/s
+}
+export interface VibrationTrendResponse {
+  rc?: number;
+  ret?: VibrationTrendItem[];
+  err?: string | null;
+}
+
+// 获取振动趋势数据（请求参数：point_id, start_time, end_time）
+// 后端可能直接返回数组，或 { rc, ret: 数组 }
+export const getVibrationTrend = (params: {
+  point_id: string;
+  start_time: string;
+  end_time: string;
+}): Promise<VibrationTrendResponse | VibrationTrendItem[]> => {
+  return request.get('/taicang/hardware/device/info/vibration/trend', {
+    params,
+    showLoading: false
+  })
+}
+
+// 响度趋势数据响应类型（接口返回 time/dateTime + value，与振动/温度类似）
+export interface SoundTrendItem {
+  time?: string;
+  dateTime?: string;
+  value?: number;
+  soundLevel?: number; // dB
+}
+export interface SoundTrendResponse {
+  rc?: number;
+  ret?: SoundTrendItem[];
+  err?: string | null;
+}
+
+// 获取响度趋势数据（请求参数：point_id, start_time, end_time）
+export const getSoundTrend = (params: {
+  point_id: string;
+  start_time: string;
+  end_time: string;
+}): Promise<SoundTrendResponse | SoundTrendItem[]> => {
+  return request.get('/taicang/hardware/device/info/sound/trend', {
+    params,
+    showLoading: false
+  })
+}
+
+// 设备健康度数据响应类型
+export interface DeviceHealthResponse {
+  rc: number;
+  ret: {
+    deviceId: string;
+    deviceName: string;
+    healthScore: number;
+    type: 'sound' | 'vibration';
+  };
+  err: string | null;
+}
+
+// 获取设备健康度
+export const getDeviceHealth = (params: {
+  deviceId: string;
+  type: 'sound' | 'vibration';
+}): Promise<DeviceHealthResponse> => {
+  return request.post('/taicang/hardware/device/info/health', params, {
+    showLoading: false
+  })
+}
