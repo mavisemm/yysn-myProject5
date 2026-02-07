@@ -233,6 +233,97 @@ const healthTitle = ref('声音健康度')
 const gaugeRef = ref<HTMLDivElement>()
 let gaugeChart: echarts.ECharts | null = null
 
+// 响应式字体/距离计算（供初始化与 resize 时按当前容器尺寸重建 option）
+const calculateResponsiveFontSize = (baseSize: number, containerWidth: number, containerHeight: number) => {
+    const baseDimension = Math.min(containerWidth, containerHeight)
+    const scaleRatio = Math.min(baseDimension / 200, 2)
+    return Math.max(baseSize * scaleRatio, baseSize * 0.5)
+}
+const calculateResponsiveDistance = (baseDistance: number, containerWidth: number, containerHeight: number) => {
+    const baseDimension = Math.min(containerWidth, containerHeight)
+    const scaleRatio = Math.min(baseDimension / 200, 2)
+    return Math.max(baseDistance * scaleRatio, baseDistance * 0.5)
+}
+
+// 根据当前容器尺寸生成仪表盘 option（resize 时用新尺寸重新调用，实现自适应字体与布局）
+const buildGaugeOption = (containerWidth: number, containerHeight: number) => {
+    const score = currentHealthScore.value
+    let healthColor = ''
+    if (score >= 80) healthColor = '#309735'
+    else if (score >= 60) healthColor = '#85ea8c'
+    else if (score >= 20) healthColor = '#f2b504'
+    else healthColor = '#ff5722'
+
+    const axisLabelFontSize = Math.round(calculateResponsiveFontSize(15, containerWidth, containerHeight))
+    const titleFontSize = Math.round(calculateResponsiveFontSize(20, containerWidth, containerHeight))
+    const detailFontSize = Math.round(calculateResponsiveFontSize(24, containerWidth, containerHeight))
+
+    return {
+        series: [{
+            type: 'gauge',
+            center: ['50%', '60%'],
+            radius: '80%',
+            startAngle: 210,
+            endAngle: -30,
+            min: 0,
+            max: 100,
+            splitNumber: 10,
+            progress: { show: false },
+            pointer: { show: false },
+            axisLine: {
+                roundCap: true,  // 使用 Sausage 形状绘制弧线，两端圆润（lineStyle 的 cap/join 对 gauge 不生效）
+                lineStyle: {
+                    width: Math.round(12 * Math.min(containerWidth / 300, 2)),
+                    color: [[0.2, '#ff5722'], [0.6, '#f2b504'], [0.8, '#85ea8c'], [1, '#309735']]
+                }
+            },
+            axisTick: { show: false },
+            splitLine: { show: false },
+            axisLabel: {
+                show: true,
+                distance: calculateResponsiveDistance(-105, containerWidth, containerHeight),
+                fontSize: axisLabelFontSize,
+                color: '#fff',
+                formatter: function (value: number) {
+                    if (value === 0) return '{stop|0}'
+                    if (value === 10) return '{stop|停机}'
+                    if (value === 20) return '{stop|20}'
+                    if (value === 40) return '{inspect|巡检}'
+                    if (value === 60) return '{inspect|60}'
+                    if (value === 70) return '{focus|关注}'
+                    if (value === 80) return '{focus|80}'
+                    if (value === 90) return '{health|健康}'
+                    if (value === 100) return '{health|100}'
+                    return ''
+                },
+                rich: {
+                    stop: { color: '#ff5722', fontSize: axisLabelFontSize },
+                    inspect: { color: '#f2b504', fontSize: axisLabelFontSize },
+                    focus: { color: '#85ea8c', fontSize: axisLabelFontSize },
+                    health: { color: '#309735', fontSize: axisLabelFontSize }
+                }
+            },
+            anchor: { show: false },
+            title: {
+                show: true,
+                color: healthColor,
+                fontSize: titleFontSize,
+                fontWeight: 'bolder',
+                offsetCenter: [0, '0%']
+            },
+            detail: {
+                valueAnimation: true,
+                offsetCenter: [0, '-30%'],
+                fontSize: detailFontSize,
+                fontWeight: 'bolder',
+                formatter: '{value}',
+                color: healthColor
+            },
+            data: [{ value: score, name: healthTitle.value }]
+        }]
+    }
+}
+
 // 切换折叠状态
 const toggleCollapse = () => {
     isCollapsed.value = !isCollapsed.value
@@ -307,157 +398,35 @@ const toggleHealthType = async () => {
 // 初始化仪表盘
 const initGaugeChart = () => {
     if (!gaugeRef.value) return
-
-    // 检查容器元素是否具有有效尺寸
-    const rect = gaugeRef.value.getBoundingClientRect();
+    const rect = gaugeRef.value.getBoundingClientRect()
     if (rect.width === 0 || rect.height === 0) {
-        // 如果尺寸为0，推迟初始化
-        setTimeout(() => {
-            initGaugeChart();
-        }, 100);
-        return;
+        setTimeout(() => initGaugeChart(), 100)
+        return
     }
-
-    if (gaugeChart) {
-        gaugeChart.dispose()
-    }
-
+    if (gaugeChart) gaugeChart.dispose()
     gaugeChart = echarts.init(gaugeRef.value)
-
-    const score = currentHealthScore.value
-
-    let healthColor = ''
-    if (score >= 80) {
-        healthColor = '#2E7D32' // 深绿色
-    } else if (score >= 60) {
-        healthColor = '#8bf58fff' // 淡绿色
-    } else if (score >= 40) {
-        healthColor = '#FFC107' // 黄色
-    } else if (score >= 20) {
-        healthColor = '#FF9800' // 橙色
-    } else {
-        healthColor = '#FF5722' // 红色
-    }
-
-    // 计算响应式字体大小的函数
-    const calculateResponsiveFontSize = (baseSize: number, containerWidth: number, containerHeight: number) => {
-        // 使用容器的宽度和高度的平均值作为基础进行缩放
-        const baseDimension = Math.min(containerWidth, containerHeight);
-        // 基于默认尺寸(假设默认容器大小为300x200)的比例计算
-        const scaleRatio = Math.min(baseDimension / 200, 2); // 限制最大放大倍数为2
-        return Math.max(baseSize * scaleRatio, baseSize * 0.5); // 最小为原始大小的一半
-    };
-
-    // 计算响应式距离的函数
-    const calculateResponsiveDistance = (baseDistance: number, containerWidth: number, containerHeight: number) => {
-        const baseDimension = Math.min(containerWidth, containerHeight);
-        const scaleRatio = Math.min(baseDimension / 200, 2);
-        return Math.max(baseDistance * scaleRatio, baseDistance * 0.5);
-    };
-
-    // 获取容器尺寸
-    const containerWidth = gaugeRef.value!.clientWidth;
-    const containerHeight = gaugeRef.value!.clientHeight;
-
-    const option = {
-        series: [
-            {
-                type: 'gauge',
-                center: ['50%', '60%'],
-                radius: '80%',
-                startAngle: 210,
-                endAngle: -30,
-                min: 0,
-                max: 100,
-                splitNumber: 5,
-                progress: {
-                    show: false
-                },
-                pointer: {
-                    show: false, // 隐藏指针
-                },
-                axisLine: {
-                    lineStyle: {
-                        width: Math.round(12 * Math.min(containerWidth / 300, 2)),
-                        color: [
-                            [0.2, '#FF5722'], // 0-20 红色
-                            [0.4, '#FF9800'], // 20-40 橙色
-                            [0.6, '#FFC107'], // 40-60 黄色
-                            [0.8, '#8bf58fff'], // 60-80 淡绿色
-                            [1, '#2E7D32'] // 80-100 深绿色
-                        ]
-                    }
-                },
-                axisTick: {
-                    show: false,
-                },
-                splitLine: {
-                    show: false
-                },
-                axisLabel: {
-                    show: true,
-                    distance: calculateResponsiveDistance(-80, containerWidth, containerHeight), // 调整标签距离
-                    fontSize: 'clamp(14px, 1.8vw, 16px)',
-                    color: '#fff',
-                    formatter: function (value: number) {
-                        if (value % 20 === 0) { // 每20分显示一个刻度
-                            return value.toString();
-                        }
-                        return '';
-                    }
-                },
-                anchor: {
-                    show: false, // 隐藏锚点
-                },
-                title: {
-                    show: true, // 显示标题  
-                    color: healthColor,
-                    fontSize: 'clamp(16px, 2vw, 20px)',
-                    fontWeight: 'bolder',
-                    offsetCenter: [0, '0%'],
-                },
-                detail: {
-                    valueAnimation: true,
-                    offsetCenter: [0, '-30%'],
-                    fontSize: 'clamp(24px, 2.8vw, 28px)',
-                    fontWeight: 'bolder',
-                    formatter: '{value}',
-                    color: healthColor,
-                },
-                data: [
-                    {
-                        value: score,
-                        name: healthTitle.value
-                    }
-                ]
-            }
-        ]
-    };
-
-    gaugeChart.setOption(option)
+    const w = gaugeRef.value.clientWidth
+    const h = gaugeRef.value.clientHeight
+    gaugeChart.setOption(buildGaugeOption(w, h))
 }
 
 let resizeObserver: ResizeObserver | null = null
 let parentResizeObserver: ResizeObserver | null = null
 
-// 窗口大小改变时，重新调整图表大小
+// 窗口/容器大小改变时：先 resize 画布，再用当前容器尺寸重新生成 option（字体、刻度距离等自适应）
 const resizeGauge = () => {
-    // 使用setTimeout确保在下一个事件循环中执行resize，避免在DOM未完全更新时调用
     setTimeout(() => {
-        if (gaugeChart) {
-            try {
-                gaugeChart.resize()
-                // 在某些情况下，resize后立即重绘图表可确保显示正常
-                gaugeChart.setOption(gaugeChart.getOption());
-            } catch (e) {
-                console.warn('Error resizing gauge chart:', e)
-                // 如果resize失败，尝试重新初始化图表
-                nextTick(() => {
-                    initGaugeChart();
-                });
-            }
+        if (!gaugeChart || !gaugeRef.value) return
+        try {
+            gaugeChart.resize()
+            const w = gaugeRef.value.clientWidth
+            const h = gaugeRef.value.clientHeight
+            if (w > 0 && h > 0) gaugeChart.setOption(buildGaugeOption(w, h))
+        } catch (e) {
+            console.warn('Error resizing gauge chart:', e)
+            nextTick(() => initGaugeChart())
         }
-    }, 100) // 延迟100毫秒以确保容器尺寸已稳定
+    }, 50)
 }
 
 // 存储用于重试的定时器ID

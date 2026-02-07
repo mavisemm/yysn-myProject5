@@ -134,17 +134,35 @@ const initDeviceData = () => {
           // 使用设备树中的点位数据
           // 注意：point.id 对应设备树的 pointId，point.name 对应设备树的 pointName
           // (通过 transformDeviceTreeData 函数转换：point.pointId -> point.id, point.pointName -> point.name)
-          pointList.value = node.children
+          const list = node.children
             .filter((point: DeviceNode) => point.type === 'point') // 确保只取点位类型的数据
-            .map((point: DeviceNode) => ({
-              id: String(point.id || point.pointId || ''), // 点位ID
-              name: String(point.name || point.pointName || '未知点位'), // 点位名称
-              lastAlarmTime: String(point.warningTime || point.lastAlarmTime || ''), // 预警时间
-              alarmType: String(point.warningType || point.alarmType || ''), // 预警类型
-              alarmValue: String(point.warningValue || point.alarmValue || ''), // 预警值
-              hasAlarm: Boolean(point.status === 'alarm' || point.status === 'warning' || 
-                              point.warningType || point.warningValue) // 根据是否有预警信息判断
-            }))
+            .map((point: DeviceNode) => {
+              const warningTime = point.warningTime ?? point.lastAlarmTime
+              const warningType = point.warningType ?? point.alarmType
+              const warningValue = point.warningValue ?? point.alarmValue
+              const timeStr = warningTime != null && warningTime !== '' ? String(warningTime) : '无'
+              const typeStr = warningType != null && warningType !== '' ? String(warningType).toLowerCase() : ''
+              const alarmTypeDisplay = typeStr === 'vibration' ? '振动' : typeStr === 'temperature' ? '温度' : typeStr === 'sound' ? '声音' : (typeStr === '振动' || typeStr === '温度' || typeStr === '声音' ? String(warningType) : '无')
+              return {
+                id: String(point.id || point.pointId || ''),
+                name: String(point.name || point.pointName || '未知点位'),
+                lastAlarmTime: timeStr,
+                alarmType: alarmTypeDisplay,
+                alarmValue: warningValue != null && warningValue !== '' && warningValue !== 0 ? String(warningValue) : '无',
+                hasAlarm: Boolean(point.status === 'alarm' || point.status === 'warning' ||
+                  (point.warningType != null && point.warningType !== '') ||
+                  (point.warningValue != null && point.warningValue !== '' && point.warningValue !== 0))
+              }
+            })
+          // 按预警时间排序：有时间的按时间倒序（最新在上），无时间的保持原顺序排在后面
+          pointList.value = list.sort((a, b) => {
+            if (a.lastAlarmTime === '无' && b.lastAlarmTime === '无') return 0
+            if (a.lastAlarmTime === '无') return 1
+            if (b.lastAlarmTime === '无') return -1
+            const timeA = new Date(a.lastAlarmTime).getTime()
+            const timeB = new Date(b.lastAlarmTime).getTime()
+            return timeB - timeA // 降序，最新在前
+          })
         } else {
           // 如果没有点位数据，设置为空数组
           pointList.value = []

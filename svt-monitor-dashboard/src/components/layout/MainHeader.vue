@@ -124,8 +124,6 @@ const goToSound = () => {
 }
 
 const handleLogout = () => {
-  localStorage.removeItem('token')
-
   ElMessageBox.confirm(
     '确定要退出登录吗？',
     '提示',
@@ -136,9 +134,11 @@ const handleLogout = () => {
       customClass: 'logout-confirm-box',
     }
   ).then(() => {
+    localStorage.removeItem('token')
     router.push('/login')
     ElMessage.success('已安全退出')
   }).catch(() => {
+    // 用户点击取消或关闭弹窗，不做任何操作
   })
 }
 </script>

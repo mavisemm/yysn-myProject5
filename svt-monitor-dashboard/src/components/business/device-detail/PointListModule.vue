@@ -18,7 +18,11 @@
                         </span>
                     </template>
                 </el-table-column>
-                <el-table-column prop="alarmValue" label="预警值" width="15%" />
+                <el-table-column prop="alarmValue" label="预警值" width="15%">
+                    <template #default="{ row }">
+                        {{ row.alarmValue === '无' ? '无' : row.alarmValue + getAlarmValueUnit(row.alarmType) }}
+                    </template>
+                </el-table-column>
                 <el-table-column label="操作" width="18%" align="center">
                     <template #default="{ row }">
                         <el-button :type="row.hasAlarm ? 'danger' : 'primary'" size="small"
@@ -67,6 +71,16 @@ const getAlarmTypeTag = (type: string) => {
         case '振动': return 'warning'
         case '声音': return 'primary'
         default: return 'info'
+    }
+}
+
+/** 根据预警类型返回单位：振动 m/s²，温度 ℃，声音 dB */
+const getAlarmValueUnit = (type: string) => {
+    switch (type) {
+        case '振动': return ' m/s²'
+        case '温度': return ' ℃'
+        case '声音': return ' dB'
+        default: return ''
     }
 }
 
