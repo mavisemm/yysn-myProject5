@@ -271,6 +271,7 @@ export const getStandardFrequencyList = (payload: {
 }
 
 // 获取声音点位页最新偏差列表（固定参数）
+// 请求同源 8006，由 8006 反向代理转发到 8003
 export const getLatestDeviationByReceiver = (): Promise<SoundDeviationItem[]> => {
   return request.get('/taicang/device/sound/data/findLatestDeviationByReceiver/no-scene', {
     params: {
@@ -281,8 +282,5 @@ export const getLatestDeviationByReceiver = (): Promise<SoundDeviationItem[]> =>
       endTime: '1770272233097',
       _t: '1770272233097'
     },
-    // cacheControl: false,
-    // customBaseURL: 'http://122.224.196.178:8003',
-    // showLoading: true
   })
 }

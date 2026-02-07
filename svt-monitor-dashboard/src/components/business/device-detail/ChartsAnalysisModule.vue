@@ -207,13 +207,13 @@ const loadTemperatureData = async (pointId: string) => {
             end_time: endTime
         })
 
-        if (response.rc === 0 && response.ret && Array.isArray(response.ret)) {
+        if (response.rc === 0 && response.ret && Array.isArray(response.ret) && response.ret.length > 0) {
             // 接口返回格式: [{ dateTime: "2026-02-04 00:55:52", temperature: -3.2 }, ...]
             const timeData = response.ret.map(item => {
                 const dt = item.dateTime || ''
                 if (dt.includes(' ')) return (dt.split(' ')[1] || dt).trim()
                 if (dt.includes('T')) return (dt.split('T')[1] || dt).substring(0, 8)
-                return dt
+                return dt || '--'
             })
             const tempData = response.ret.map(item => item.temperature)
             const dataMin = tempData.length ? Math.min(...tempData) : 0
@@ -222,10 +222,14 @@ const loadTemperatureData = async (pointId: string) => {
 
             tempChart.setOption({
                 xAxis: {
+                    show: true,
                     data: timeData,
                     axisLabel: {
-                        fontSize: 10,
-                        color: '#fff'
+                        show: true,
+                        interval: 0,
+                        fontSize: 12,
+                        color: '#fff',
+                        margin: 10
                     }
                 },
                 yAxis: {
@@ -249,16 +253,26 @@ const loadTemperatureData = async (pointId: string) => {
             })
         } else {
             console.warn('温度趋势数据格式错误:', response)
+            setTempChartFallback()
         }
     } catch (error) {
         console.error('加载温度趋势数据失败:', error)
-        const hours = Array.from({ length: 24 }, (_, i) => `${i}`)
-        const tempData = Array.from({ length: 24 }, () => Math.floor(Math.random() * 50) + 30)
-        tempChart.setOption({
-            xAxis: { data: hours },
-            series: [{ data: tempData }]
-        })
+        setTempChartFallback()
     }
+}
+
+const TEMP_FALLBACK_TIMES = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00']
+const TEMP_FALLBACK_DATA = [32, 35, 38, 42, 45, 43, 40, 36, 33]
+const setTempChartFallback = () => {
+    if (!tempChart) return
+    tempChart.setOption({
+        xAxis: {
+            show: true,
+            data: TEMP_FALLBACK_TIMES,
+            axisLabel: { show: true, interval: 0, fontSize: 12, color: '#fff', margin: 10 }
+        },
+        series: [{ data: TEMP_FALLBACK_DATA }]
+    })
 }
 
 // 根据数据范围计算 y 轴 min/max（烈度，支持小数与取整刻度）
@@ -433,8 +447,9 @@ const initTempChart = () => {
 
     tempChart = echarts.init(tempChartRef.value)
 
-    const hours = Array.from({ length: 24 }, (_, i) => `${i}`)
-    const tempData = Array.from({ length: 24 }, () => Math.floor(Math.random() * 50) + 30) // 30-80℃
+    // 写死时间用于 x 轴占位，便于排查接口问题
+    const FALLBACK_TIME_LABELS = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00']
+    const tempData = [32, 35, 38, 42, 45, 43, 40, 36, 33] // 写死对应的温度数据
 
     const option = {
         tooltip: {
@@ -459,8 +474,8 @@ const initTempChart = () => {
         grid: {
             left: '3%',
             right: '4%',
-            bottom: '15%',
-            top: '10%',
+            bottom: '22%',
+            top: '5%',
             containLabel: true
         },
         dataZoom: [
@@ -468,8 +483,8 @@ const initTempChart = () => {
             {
                 type: 'slider',
                 xAxisIndex: [0],
-                bottom: '5%',
-                height: '10%',
+                bottom: '3%',
+                height: '8%',
                 fillerColor: 'rgba(255, 99, 132, 0.3)',
                 borderColor: 'rgba(255, 99, 132, 0.5)',
                 handleStyle: { color: '#FF6384' },
@@ -478,17 +493,23 @@ const initTempChart = () => {
         ],
         xAxis: {
             type: 'category',
-            data: hours,
+            show: true,
+            data: FALLBACK_TIME_LABELS,
             axisLabel: {
-                fontSize: 10,
-                color: '#fff'
+                show: true,
+                interval: 0,
+                fontSize: 12,
+                color: '#fff',
+                margin: 10
             },
             axisLine: {
+                show: true,
                 lineStyle: {
                     color: '#fff'
                 }
             },
             axisTick: {
+                show: true,
                 lineStyle: {
                     color: '#fff'
                 }
@@ -523,7 +544,7 @@ const initTempChart = () => {
             splitNumber: 8
         },
         series: [{
-            data: tempData,
+            data: tempData as number[],
             type: 'line',
             smooth: true,
             symbolSize: 1,
@@ -1058,7 +1079,7 @@ onUnmounted(() => {
             .chart {
                 flex: 1;
                 min-height: 0;
-                /* 确保图表区域可以收缩 */
+                min-width: 0;
             }
         }
 
