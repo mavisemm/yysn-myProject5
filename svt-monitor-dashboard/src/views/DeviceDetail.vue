@@ -20,6 +20,7 @@
 import { useRoute } from 'vue-router'
 import { watch, ref, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
+import { getSelectCheckPointIn } from '@/api/modules/hardware'
 import DeviceInfoModule from '@/components/business/device-detail/DeviceInfoModule.vue'
 import PointListModule from '@/components/business/device-detail/PointListModule.vue'
 import ChartsAnalysisModule from '@/components/business/device-detail/ChartsAnalysisModule.vue'
@@ -42,51 +43,6 @@ const deviceId = computed<string | null>(() => {
   return id;
 })
 
-/**
- * 监听设备ID变化并通知设备树选中相应设备
- */
-watch(
-  () => route.params.id,
-  (newId, oldId) => {
-    if (newId) {
-      const id = Array.isArray(newId) ? newId[0] : newId;
-      if (id) {
-        deviceTreeStore.setSelectedDeviceId(id);
-        initDeviceData();
-      }
-    }
-  }
-)
-
-/**
- * 监听设备树数据变化，当数据加载完成后重新初始化点位列表
- */
-watch(
-  () => deviceTreeStore.deviceTreeData,
-  (newData) => {
-    if (newData && newData.length > 0 && deviceId.value) {
-      initDeviceData();
-    }
-  },
-  { deep: true }
-)
-
-/**
- * 组件挂载时触发设备选中和数据初始化
- */
-onMounted(() => {
-  deviceTreeStore.setSelectedDeviceId(deviceId.value);
-  
-  // 如果设备树数据已加载，立即初始化；否则等待数据加载完成
-  if (deviceTreeStore.deviceTreeData && deviceTreeStore.deviceTreeData.length > 0) {
-    initDeviceData()
-  }
-
-  setupPageResizeObserver();
-
-  window.addEventListener('resize', resizeAllCharts);
-})
-
 interface PointInfo {
   id: string,
   name: string,
@@ -97,9 +53,7 @@ interface PointInfo {
 }
 
 const pointList = ref<PointInfo[]>([])
-
 const pointListModuleRef = ref<ComponentPublicInstance & PointListModuleType>()
-
 const selectedPointId = ref<string>('')
 
 const analysisForm = ref({
@@ -118,76 +72,50 @@ const analysisResult = ref<AnalysisResult>({
   pointName: '进风口位置'
 })
 
-const initDeviceData = () => {
-  // 如果设备树数据还未加载，等待加载完成
-  if (!deviceTreeStore.deviceTreeData || deviceTreeStore.deviceTreeData.length === 0) {
-    return
-  }
+const initDeviceData = async () => {
+  if (!deviceId.value) return
 
-  const findDeviceInTree = (nodes: DeviceNode[]) => {
-    if (!deviceId.value) return;
-    for (const node of nodes) {
-      if (deviceId.value && node.id === deviceId.value && node.type === 'device') {
-        // 设备信息现在由 DeviceInfoModule 组件通过 API 获取
-
-        if (node.children && node.children.length > 0) {
-          // 使用设备树中的点位数据
-          // 注意：point.id 对应设备树的 pointId，point.name 对应设备树的 pointName
-          // (通过 transformDeviceTreeData 函数转换：point.pointId -> point.id, point.pointName -> point.name)
-          const list = node.children
-            .filter((point: DeviceNode) => point.type === 'point') // 确保只取点位类型的数据
-            .map((point: DeviceNode) => {
-              const warningTime = point.warningTime ?? point.lastAlarmTime
-              const warningType = point.warningType ?? point.alarmType
-              const warningValue = point.warningValue ?? point.alarmValue
-              const timeStr = warningTime != null && warningTime !== '' ? String(warningTime) : '无'
-              const typeStr = warningType != null && warningType !== '' ? String(warningType).toLowerCase() : ''
-              const alarmTypeDisplay = typeStr === 'vibration' ? '振动' : typeStr === 'temperature' ? '温度' : typeStr === 'sound' ? '声音' : (typeStr === '振动' || typeStr === '温度' || typeStr === '声音' ? String(warningType) : '无')
-              return {
-                id: String(point.id || point.pointId || ''),
-                name: String(point.name || point.pointName || '未知点位'),
-                lastAlarmTime: timeStr,
-                alarmType: alarmTypeDisplay,
-                alarmValue: warningValue != null && warningValue !== '' && warningValue !== 0 ? String(warningValue) : '无',
-                hasAlarm: Boolean(point.status === 'alarm' || point.status === 'warning' ||
-                  (point.warningType != null && point.warningType !== '') ||
-                  (point.warningValue != null && point.warningValue !== '' && point.warningValue !== 0))
-              }
-            })
-          // 按预警时间排序：有时间的按时间倒序（最新在上），无时间的保持原顺序排在后面
-          pointList.value = list.sort((a, b) => {
-            if (a.lastAlarmTime === '无' && b.lastAlarmTime === '无') return 0
-            if (a.lastAlarmTime === '无') return 1
-            if (b.lastAlarmTime === '无') return -1
-            const timeA = new Date(a.lastAlarmTime).getTime()
-            const timeB = new Date(b.lastAlarmTime).getTime()
-            return timeB - timeA // 降序，最新在前
-          })
-        } else {
-          // 如果没有点位数据，设置为空数组
-          pointList.value = []
-        }
-        return
-      }
-      if (node.children && node.children.length > 0) {
-        findDeviceInTree(node.children)
-      }
+  try {
+    const res = await getSelectCheckPointIn(deviceId.value)
+    if (res.rc !== 0 || !Array.isArray(res.ret)) {
+      pointList.value = []
+      return
     }
+    const typeStrToDisplay = (t: string) => {
+      const s = String(t || '').toLowerCase()
+      if (s === 'vibration') return '振动'
+      if (s === 'temperature') return '温度'
+      if (s === 'sound') return '声音'
+      return t || '无'
+    }
+    const list: PointInfo[] = res.ret.map((item) => ({
+      id: item.pointId,
+      name: item.pointName || '未知点位',
+      lastAlarmTime: item.warningTime != null && item.warningTime !== '' ? item.warningTime : '无',
+      alarmType: typeStrToDisplay(item.warningType),
+      alarmValue: item.warningValue != null && Number(item.warningValue) !== 0 ? String(item.warningValue) : '无',
+      hasAlarm: item.isAlarm === 0  // 0=有预警(未处理)，1=没预警(已处理)
+    }))
+    pointList.value = list.sort((a, b) => {
+      if (a.lastAlarmTime === '无' && b.lastAlarmTime === '无') return 0
+      if (a.lastAlarmTime === '无') return 1
+      if (b.lastAlarmTime === '无') return -1
+      const timeA = new Date(a.lastAlarmTime).getTime()
+      const timeB = new Date(b.lastAlarmTime).getTime()
+      return timeB - timeA
+    })
+  } catch {
+    pointList.value = []
   }
-
-  findDeviceInTree(deviceTreeStore.deviceTreeData)
 
   nextTick(async () => {
     await nextTick();
     const pointListModule = pointListModuleRef.value
     if (pointList.value.length > 0) {
-      // 如果当前没有选中点位，或者选中的点位不在列表中，选择第一个点位
       if (!selectedPointId.value || !pointList.value.find(p => p.id === selectedPointId.value)) {
         const firstPoint = pointList.value[0]
         selectedPointId.value = firstPoint ? firstPoint.id : ''
       }
-      
-      // 设置点位列表模块的当前行
       if (pointListModule && typeof pointListModule.setCurrentRow === 'function') {
         const currentIndex = pointList.value.findIndex(p => p.id === selectedPointId.value)
         if (currentIndex >= 0) {
@@ -197,11 +125,31 @@ const initDeviceData = () => {
         }
       }
     } else {
-      // 如果没有点位数据，清空选中点位
       selectedPointId.value = ''
     }
   })
 }
+
+/**
+ * 仅由设备ID（路由）变化触发点位列表加载，避免重复请求
+ */
+watch(
+  () => route.params.id,
+  (newId) => {
+    const id = newId ? (Array.isArray(newId) ? newId[0] : newId) : null;
+    if (id) {
+      deviceTreeStore.setSelectedDeviceId(id);
+      initDeviceData();
+    }
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
+  deviceTreeStore.setSelectedDeviceId(deviceId.value);
+  setupPageResizeObserver();
+  window.addEventListener('resize', resizeAllCharts);
+})
 
 
 let resizeObserver: ResizeObserver | null = null

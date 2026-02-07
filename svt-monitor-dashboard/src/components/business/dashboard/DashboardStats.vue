@@ -41,7 +41,9 @@ defineProps<Props>();
 
 <style lang="scss" scoped>
 .stats-area {
-    flex: 0 0 calc(40% - 20px);
+    flex: 1 1 calc(40% - 20px);
+    min-width: 0;
+    min-height: 0;
     overflow: hidden;
     box-sizing: border-box;
     background: url('@/assets/images/background/首页-数据统计背景.png') no-repeat center center;
@@ -49,19 +51,23 @@ defineProps<Props>();
 
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 15px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: clamp(6px, 1.2vw, 15px);
         height: 100%;
+        min-height: 0;
+        min-width: 0;
         overflow: hidden;
         box-sizing: border-box;
-        padding: 10px;
+        padding: clamp(4px, 1vw, 10px);
 
         .stat-card {
+            min-width: 0;
+            min-height: 0;
             height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: clamp(14px, 2.5vw, 16px);
+            font-size: clamp(10px, 1.8vw, 16px);
             font-weight: bold;
             color: white;
             box-sizing: border-box;
@@ -73,36 +79,51 @@ defineProps<Props>();
             align-items: center;
             justify-content: center;
             width: 100%;
+            max-width: 100%;
             height: 100%;
+            min-height: 0;
+            min-width: 0;
             text-align: center;
             white-space: nowrap;
+            gap: clamp(2px, 0.5vw, 6px);
         }
 
         .stat-icon {
-            font-size: clamp(30px, 4.5vw, 36px);
-            margin-bottom: 8px;
+            flex: 1 1 0;
+            min-height: 0;
+            max-height: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
 
             .stat-icon-img {
-                width: 5vw;
-                height: 15h;
+                width: auto;
+                height: 100%;
+                max-height: 100%;
+                min-height: 20px;
                 object-fit: contain;
             }
         }
 
         .stat-text {
-            font-size: clamp(18px, 2.5vw, 24px);
-            margin-bottom: 4px;
+            font-size: clamp(11px, 1.8vw, 24px);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
         }
 
         .stat-number {
-            font-size: clamp(24px, 3.5vw, 30px);
+            font-size: clamp(14px, 2.5vw, 30px);
             font-weight: bold;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
         }
     }
 }

@@ -289,6 +289,29 @@ export const getDeviceInfoByDeviceId = (deviceId: string): Promise<DeviceInfoRes
   })
 }
 
+// 点位列表项（selectCheckPointIn 接口返回）
+export interface CheckPointItem {
+  pointId: string
+  pointName: string
+  warningTime: string | null
+  warningType: string
+  warningValue: number
+  isAlarm: number  // 0=有预警(未处理)，1=没预警(已处理)
+}
+export interface SelectCheckPointInResponse {
+  rc: number
+  ret: CheckPointItem[]
+  err: string | null
+}
+
+// 根据设备ID获取点位列表（设备详情页点位列表）
+export const getSelectCheckPointIn = (deviceId: string): Promise<SelectCheckPointInResponse> => {
+  return request.get('/taicang/hardware/device/vibration/selectCheckPointIn', {
+    params: { deviceId },
+    showLoading: false
+  })
+}
+
 // 设备编辑信息类型定义
 export interface DeviceInfoDto {
   id: number;

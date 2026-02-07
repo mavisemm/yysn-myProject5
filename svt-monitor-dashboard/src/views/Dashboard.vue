@@ -1,4 +1,4 @@
-﻿<!-- 首页仪表板：包含统计数据和指标排名 -->
+<!-- 首页仪表板：包含统计数据和指标排名 -->
 <template>
   <div class="dashboard">
     <!-- 顶部区域：统计数据和告警概览 -->
@@ -49,9 +49,9 @@ const rankings = ref<RankingItem[][]>([
 // 统计数据
 const statsData = ref([
   { title: '健康设备数', number: 0 },
-  { title: '报警设备数', number: 0 },
+  { title: '故障报警设备', number: 0 },
   { title: '监控总设备数', number: 0 },
-  { title: '预警设备数', number: 0 }
+  { title: '趋势预警设备', number: 0 }
 ]);
 
 /**
@@ -70,7 +70,7 @@ const fetchTop5Data = async () => {
         deviceName: item.deviceName,
         workshopName: item.workshopName,
         value: item.value
-      })).slice(0, 3);
+      }));
     }
 
     if (soundData.rc === 0 && soundData.ret) {
@@ -78,7 +78,7 @@ const fetchTop5Data = async () => {
         deviceName: item.deviceName,
         workshopName: item.workshopName,
         value: item.value
-      })).slice(0, 3);
+      }));
     }
 
     if (temperatureData.rc === 0 && temperatureData.ret) {
@@ -86,7 +86,7 @@ const fetchTop5Data = async () => {
         deviceName: item.deviceName,
         workshopName: item.workshopName,
         value: item.value
-      })).slice(0, 3);
+      }));
     }
   } catch (error) {
     console.error('获取Top5数据失败:', error);
@@ -102,18 +102,18 @@ const fetchStatsData = async () => {
 
     statsData.value = [
       { title: '健康设备数', number: stats.healthyDeviceCount },
-      { title: '报警设备数', number: stats.alertDeviceCount },
+      { title: '故障报警设备', number: stats.alertDeviceCount },
       { title: '监控总设备数', number: stats.totalDeviceCount },
-      { title: '预警设备数', number: stats.totalPointCount }
+      { title: '趋势预警设备', number: stats.totalPointCount }
     ];
   } catch (error) {
     console.error('获取统计数据失败:', error);
     // 使用默认值
     statsData.value = [
       { title: '健康设备数', number: 0 },
-      { title: '报警设备数', number: 0 },
+      { title: '故障报警设备', number: 0 },
       { title: '监控总设备数', number: 0 },
-      { title: '预警设备数', number: 0 }
+      { title: '趋势预警设备', number: 0 }
     ];
   }
 };
@@ -133,9 +133,11 @@ onMounted(() => {
 
   .top-section {
     height: 60%;
+    min-height: 0;
+    min-width: 0;
     display: flex;
-    gap: 15px;
-    padding-bottom: 15px;
+    gap: clamp(8px, 1.5vw, 15px);
+    padding-bottom: clamp(8px, 1.5vw, 15px);
     box-sizing: border-box;
   }
 

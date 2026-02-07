@@ -4,11 +4,11 @@
         <div v-for="(metric, index) in metrics" :key="index" class="chart-container">
             <h3 class="metric-title">{{ metric.title }}</h3>
             <div v-if="metric.unit" class="metric-unit">{{ metric.unit }}</div>
-            <!-- 排名列表：按指标排序显示设备 -->
+            <!-- 排名列表：仅显示前 3 条 -->
             <div class="rankings">
                 <div v-if="getRankings(index).length === 0" class="no-data">暂无数据</div>
                 <template v-else>
-                    <div v-for="(rank, rankIndex) in getRankings(index)" :key="rankIndex" class="ranking-item"
+                    <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex" class="ranking-item"
                         @click="goToDeviceDetail(rank)" style="cursor: pointer;">
                         <span class="rank-device">
                             {{ rankIndex + 1 }}.&nbsp;
@@ -19,12 +19,37 @@
                     </div>
                 </template>
             </div>
+            <div v-if="getRankings(index).length > 0" class="more-wrap">
+                <span class="more-btn" @click="openRankDialog(index)">更多</span>
+            </div>
             <slot :name="'metric-' + index"></slot>
         </div>
+
+        <el-dialog v-model="rankDialogVisible" width="480px" class="rank-dialog" destroy-on-close
+            @close="rankDialogMetricIndex = -1">
+            <template #header>
+                <span class="dialog-header-inner">
+                    <span>{{ rankDialogTitle }}</span>
+                    <span v-if="rankDialogMetricIndex >= 0 && metrics[rankDialogMetricIndex]?.unit"
+                        class="dialog-unit-inline">{{ metrics[rankDialogMetricIndex]?.unit }}</span>
+                </span>
+            </template>
+            <div class="dialog-rankings">
+                <div v-for="(rank, rankIndex) in dialogRankings" :key="rankIndex" class="dialog-ranking-item"
+                    @click="goToDeviceDetail(rank)">
+                    <span class="rank-num">{{ rankIndex + 1 }}.</span>
+                    <span class="rank-device">{{ rank.deviceName }}
+                        <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
+                    </span>
+                    <span v-if="rank.value !== undefined" class="rank-value">{{ rank.value }}</span>
+                </div>
+            </div>
+        </el-dialog>
     </div>
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import type { MetricItem } from '@/types/device'
@@ -132,7 +157,7 @@ const rankingData = props.rankings || [
 ];
 
 /**
- * 获取指定指标的排名数据
+ * 获取指定指标的排名数据（完整列表）
  */
 const getRankings = (index: number): RankingItem[] => {
     if (rankingData[index] && rankingData[index].length > 0) {
@@ -140,7 +165,6 @@ const getRankings = (index: number): RankingItem[] => {
     }
 
     const devices: RankingItem[] = [];
-
     const traverse = (nodes: DeviceNode[]) => {
         nodes.forEach(node => {
             if (node.type === 'device') {
@@ -150,15 +174,35 @@ const getRankings = (index: number): RankingItem[] => {
                     deviceId: node.id
                 });
             }
-            if (node.children) {
-                traverse(node.children);
-            }
+            if (node.children) traverse(node.children);
         });
     };
-
     traverse(deviceTreeStore.deviceTreeData);
+    return devices;
+};
 
-    return devices.slice(0, 3);
+/** 列表只显示前 3 条 */
+const displayRankings = (index: number): RankingItem[] => {
+    return getRankings(index).slice(0, 3);
+};
+
+const rankDialogVisible = ref(false);
+const rankDialogMetricIndex = ref(-1);
+
+const rankDialogTitle = computed(() => {
+    const m = props.metrics[rankDialogMetricIndex.value];
+    if (rankDialogMetricIndex.value < 0 || !m) return '全部排名';
+    return m.title.replace('Top3', '') + '全部排名';
+});
+
+const dialogRankings = computed(() => {
+    if (rankDialogMetricIndex.value < 0) return [];
+    return getRankings(rankDialogMetricIndex.value);
+});
+
+const openRankDialog = (index: number) => {
+    rankDialogMetricIndex.value = index;
+    rankDialogVisible.value = true;
 };
 </script>
 
@@ -205,11 +249,28 @@ const getRankings = (index: number): RankingItem[] => {
             display: block !important;
         }
 
+        .more-wrap {
+            flex-shrink: 0;
+            text-align: center;
+            padding: 4px 0 2px;
+
+            .more-btn {
+                font-size: clamp(12px, 1.5vw, 14px);
+                color: #fff;
+                cursor: pointer;
+                user-select: none;
+
+                &:hover {
+                    text-decoration: underline;
+                }
+            }
+        }
+
         .rankings {
             display: flex;
             flex-direction: column;
             gap: 5px;
-            margin-bottom: 10px;
+            margin-bottom: 4px;
             flex: 1;
             min-height: 0;
             overflow: hidden;
@@ -308,6 +369,64 @@ const getRankings = (index: number): RankingItem[] => {
         font-size: clamp(12px, 2vw, 16px) !important;
         margin-bottom: 5px !important;
         display: block !important;
+    }
+}
+
+.rank-dialog :deep(.el-dialog__header) {
+    color: #606266;
+}
+
+.dialog-header-inner {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    color: #606266;
+
+    .dialog-unit-inline {
+        font-size: 12px;
+        color: #909399;
+        font-weight: normal;
+    }
+}
+
+.dialog-rankings {
+    max-height: 60vh;
+    overflow-y: auto;
+
+    .dialog-ranking-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 8px;
+        margin-bottom: 6px;
+        background: #f5f7fa;
+        cursor: pointer;
+        transition: background 0.2s;
+
+        &:hover {
+            background: #ecf5ff;
+        }
+
+        .rank-num {
+            flex-shrink: 0;
+            width: 28px;
+            font-weight: bold;
+            color: #409eff;
+        }
+
+        .rank-device {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .rank-value {
+            flex-shrink: 0;
+            font-weight: bold;
+            margin-left: 8px;
+        }
     }
 }
 </style>

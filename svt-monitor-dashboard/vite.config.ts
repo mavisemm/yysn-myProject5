@@ -34,7 +34,8 @@ export default defineConfig({
       },
       // 其他 /taicang 接口 -> 8006
       '/taicang': {
-        target: 'http://122.224.196.178:8006',
+        // target: 'http://122.224.196.178:8006',
+        target: 'http://192.168.0.199:36001',
         changeOrigin: true,
         secure: false,
       },

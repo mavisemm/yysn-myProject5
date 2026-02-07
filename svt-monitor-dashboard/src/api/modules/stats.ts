@@ -35,7 +35,7 @@ export const getTotalDeviceCount = (): Promise<StatsResponse> => {
   })
 }
 
-// 获取预警设备数量
+// 获取趋势预警设备量
 export const getWarningDeviceCount = (): Promise<StatsResponse> => {
   return request.get('/taicang/hardware/device/overview/healthy/number', {
     params: overviewParams,
@@ -66,7 +66,7 @@ export const getAllStats = async () => {
       healthyDeviceCount: healthyCount.ret,
       alertDeviceCount: alertCount.ret,
       totalDeviceCount: totalCount.ret,
-      totalPointCount: warningCount.ret  // 预警设备数
+      totalPointCount: warningCount.ret  // 趋势预警设备
     }
   } catch (error) {
     console.error('获取统计数据失败:', error)
