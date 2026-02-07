@@ -283,7 +283,7 @@ export interface DeviceInfoResponse {
 
 // 根据设备ID获取设备详情信息
 export const getDeviceInfoByDeviceId = (deviceId: string): Promise<DeviceInfoResponse> => {
-  return request.get(`/taicang/hardware/device/info/findByDeviceId`, {
+  return request.get(`/taicang/hardware/device/info/vibration/findByDeviceId`, {
     params: { deviceId },
     showLoading: true
   })
@@ -312,7 +312,7 @@ export interface DeviceEditResponse {
 
 // 编辑设备信息
 export const editDeviceInfo = (deviceId: string, deviceInfo: DeviceInfoDto): Promise<DeviceEditResponse> => {
-  return request.post(`/taicang/hardware/device/info/edit`, {
+  return request.post(`/taicang/hardware/device/info/vibration/edit`, {
     deviceId,
     deviceInfo
   }, {
@@ -337,7 +337,7 @@ export const getTemperatureTrend = (params: {
   start_time: string;
   end_time: string;
 }): Promise<TemperatureTrendResponse> => {
-  return request.get('/taicang/hardware/device/info/temperature/trend', {
+  return request.get('/taicang/hardware/device/info/vibration/temperature/trend', {
     params,
     showLoading: false
   })
@@ -386,7 +386,7 @@ export const getSoundTrend = (params: {
   start_time: string;
   end_time: string;
 }): Promise<SoundTrendResponse | SoundTrendItem[]> => {
-  return request.get('/taicang/hardware/device/info/sound/trend', {
+  return request.get('/taicang/hardware/device/info/vibration/sound/trend', {
     params,
     showLoading: false
   })
@@ -409,7 +409,7 @@ export const getDeviceHealth = (params: {
   deviceId: string;
   type: 'sound' | 'vibration';
 }): Promise<DeviceHealthResponse> => {
-  return request.post('/taicang/hardware/device/info/health', params, {
+  return request.post('/taicang/hardware/device/info/vibration/health', params, {
     showLoading: false
   })
 }

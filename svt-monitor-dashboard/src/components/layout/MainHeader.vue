@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <header class="main-header">
     <!-- 左侧按钮组 -->
     <div class="header-left">
@@ -39,15 +39,14 @@
       <h1 class="title">云音声脑声振温在线监测</h1>
     </div>
 
-    <!-- 退出按钮 -->
+    <!-- 右侧：退出 -->
     <div class="header-right">
-      <div class="user-info">
-        <el-avatar :size="32" :src="userAvatar" />
-        <span class="username">{{ userName }}</span>
+      <div class="nav-btn" @click="handleLogout">
+        <el-icon :size="24" color="#fff">
+          <SwitchButton />
+        </el-icon>
+        <span>退出</span>
       </div>
-      <el-tooltip content="退出登录" placement="bottom">
-        <el-button type="danger" :icon="SwitchButton" circle @click="handleLogout" />
-      </el-tooltip>
     </div>
   </header>
 </template>
@@ -59,7 +58,6 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 
 import {
-  Monitor,
   SwitchButton,
   House,
   Back,
@@ -125,9 +123,6 @@ const goToSound = () => {
   router.push({ name: 'SoundPoint', query: route.query })
 }
 
-const userName = ref('管理员')
-const userAvatar = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png')
-
 const handleLogout = () => {
   localStorage.removeItem('token')
 
@@ -138,6 +133,7 @@ const handleLogout = () => {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning',
+      customClass: 'logout-confirm-box',
     }
   ).then(() => {
     router.push('/login')
@@ -175,11 +171,11 @@ const handleLogout = () => {
       transition: all 0.3s;
       color: white;
       font-size: clamp(14px, 2vw, 18px);
-      /* 响应式字体大小，以36px为基准 */
       font-weight: 500;
+      border-radius: 8px;
 
       &:hover {
-        background: rgba(255, 255, 255, 0.2)
+        background: rgba(255, 255, 255, 0.2);
       }
     }
   }
@@ -195,57 +191,33 @@ const handleLogout = () => {
       font-size: clamp(30px, 4.5vw, 36px);
       /* 响应式字体大小，以36px为基准 */
       font-weight: 700;
-      color: white;
+      color: #00ffff;
     }
   }
 
   .header-right {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 15px;
+    gap: 8px;
     position: absolute;
     right: 15px;
-    top: 15px;
+    top: calc(8vh - 30px);
     z-index: 1;
-    height: 100%;
 
-    .user-info {
+    .nav-btn {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 15px;
-      padding: 6px 12px;
+      gap: 6px;
+      padding: 8px 12px;
       cursor: pointer;
+      transition: all 0.3s;
+      color: white;
+      font-size: clamp(14px, 2vw, 18px);
+      font-weight: 500;
+      border-radius: 8px;
 
       &:hover {
         background: rgba(255, 255, 255, 0.2);
-      }
-
-      .username {
-        color: white;
-        font-weight: 500;
-        font-size: clamp(14px, 2vw, 18px);
-        /* 响应式字体大小，以36px为基准 */
-      }
-    }
-
-    :deep(.el-button) {
-      width: 40px;
-      height: 40px;
-      background: rgba(245, 108, 108, 0.9);
-      border: none;
-      transition: all 0.3s;
-
-      &:hover {
-        background: #f56c6c;
-        transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(245, 108, 108, 0.4);
-      }
-
-      .el-icon {
-        font-size: clamp(16px, 2.5vw, 18px);
-        /* 响应式字体大小 */
       }
     }
   }
@@ -257,12 +229,19 @@ const handleLogout = () => {
 
     .header-center .title {
       font-size: clamp(24px, 3.5vw, 30px);
-      /* 响应式字体大小，以36px为基准 */
-    }
-
-    .user-info .username {
-      display: none;
     }
   }
+}
+</style>
+
+<style lang="scss">
+/* 退出登录确认框：取消按钮 #409eff，确定按钮白色（非 scoped，弹窗挂载在 body 下） */
+.el-message-box.logout-confirm-box .el-message-box__btns .el-button--default {
+  color: #409eff !important;
+}
+
+.el-message-box.logout-confirm-box .el-message-box__btns .el-button--primary,
+.el-message-box.logout-confirm-box .el-message-box__btns .el-button--warning {
+  color: #fff !important;
 }
 </style>

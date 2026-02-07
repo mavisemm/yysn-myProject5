@@ -21,7 +21,7 @@
                 <el-table-column prop="alarmValue" label="预警值" width="15%" />
                 <el-table-column label="操作" width="18%" align="center">
                     <template #default="{ row }">
-                        <el-button :type="row.hasAlarm ? 'danger' : 'primary'" size="small" :disabled="true"
+                        <el-button :type="row.hasAlarm ? 'danger' : 'primary'" size="small"
                             style="min-width: auto; width: fit-content; padding-left: 10px; padding-right: 10px; white-space: nowrap; overflow: visible;">
                             {{ row.hasAlarm ? '未处理' : '已处理' }}
                         </el-button>

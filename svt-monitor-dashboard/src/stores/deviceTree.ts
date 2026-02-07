@@ -67,6 +67,7 @@ export const useDeviceTreeStore = defineStore('deviceTree', () => {
 
   return {
     deviceTreeData,
+    loading,
     selectedDeviceId,
     expandedKeys,
     setSelectedDeviceId,

@@ -1,81 +1,72 @@
 import request from '../request'
 
-// 获取预警设备数量
-export const getAlertDeviceCount = () => {
-  // TODO: 替换为真实接口调用
-  // return request.get('/taicang/hardware/device/overview/healthy/number')
-  
-  // 使用假数据
-  return Promise.resolve({
-    rc: 0,
-    ret: 2,
-    err: null
-  })
-}
+const TENANT_ID = '2b410e834b4b4ae49ab8d52f6d49e967'
 
-// 获取总设备数量
-export const getTotalDeviceCount = () => {
-  // TODO: 替换为真实接口调用
-  // return request.get('/taicang/hardware/device/overview/totalnumber')
-  
-  // 使用假数据
-  return Promise.resolve({
-    rc: 0,
-    ret: 7,
-    err: null
-  })
-}
+const overviewParams = { tenantId: TENANT_ID }
 
-// 获取总点位数量
-export const getTotalPointCount = () => {
-  // TODO: 替换为真实接口调用
-  // return request.get('/taicang/hardware/device/overview/monit/point')
-  
-  // 使用假数据
-  return Promise.resolve({
-    rc: 0,
-    ret: 40,
-    err: null
-  })
+// 统计数据接口响应格式
+interface StatsResponse {
+  rc: number
+  ret: number
+  err: string | null
 }
 
 // 获取健康设备数量
-export const getHealthyDeviceCount = () => {
-  // TODO: 替换为真实接口调用
-  // return request.get('/taicang/hardware/device/overview/health/number')
-  
-  // 使用假数据
-  return Promise.resolve({
-    rc: 0,
-    ret: 5,
-    err: null
+export const getHealthyDeviceCount = (): Promise<StatsResponse> => {
+  return request.get('/taicang/hardware/device/overview/health/number', {
+    params: overviewParams,
+    showLoading: false
+  })
+}
+
+// 获取报警设备数量
+export const getAlertDeviceCount = (): Promise<StatsResponse> => {
+  return request.get('/taicang/hardware/device/overview/healthy/number', {
+    params: overviewParams,
+    showLoading: false
+  })
+}
+
+// 获取监控设备数量
+export const getTotalDeviceCount = (): Promise<StatsResponse> => {
+  return request.get('/taicang/hardware/device/overview/totalnumber', {
+    params: overviewParams,
+    showLoading: false
+  })
+}
+
+// 获取预警设备数量
+export const getWarningDeviceCount = (): Promise<StatsResponse> => {
+  return request.get('/taicang/hardware/device/overview/healthy/number', {
+    params: overviewParams,
+    showLoading: false
   })
 }
 
 // 统一获取所有统计信息
 export const getAllStats = async () => {
   try {
-    const [alertCount, totalCount, pointCount, healthyCount] = await Promise.all([
+    const [healthyCount, alertCount, totalCount, warningCount] = await Promise.all([
+      getHealthyDeviceCount(),
       getAlertDeviceCount(),
       getTotalDeviceCount(),
-      getTotalPointCount(),
-      getHealthyDeviceCount()
+      getWarningDeviceCount()
     ])
     
     if (
-      alertCount.rc !== 0 || 
-      totalCount.rc !== 0 || 
-      pointCount.rc !== 0 || 
-      healthyCount.rc !== 0
+      healthyCount.rc !== 0 ||
+      alertCount.rc !== 0 ||
+      totalCount.rc !== 0 ||
+      warningCount.rc !== 0
     ) {
       throw new Error('获取统计数据失败')
     }
     
     return {
+      healthyDeviceCount: healthyCount.ret,
       alertDeviceCount: alertCount.ret,
       totalDeviceCount: totalCount.ret,
-      totalPointCount: pointCount.ret,
-      healthyDeviceCount: healthyCount.ret
+      totalPointCount: warningCount.ret  // 预警设备数
     }
   } catch (error) {
     console.error('获取统计数据失败:', error)

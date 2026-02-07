@@ -12,7 +12,8 @@
                     <div v-if="showDropdown" class="dropdown-list">
                         <div v-for="device in filteredDevices" :key="device.id" class="dropdown-item"
                             @click="selectDevice(device)">
-                            {{ device.name }}
+                            <span class="device-name">{{ device.deviceName }}</span>
+                            <span class="workshop-name">({{ device.workshopName }})</span>
                         </div>
                     </div>
                 </div>
@@ -138,27 +139,30 @@ interface AlarmItem {
 
 interface DeviceItem {
     id: string | number;
-    name: string;
+    name: string; // 完整显示用：设备名（车间名）
+    deviceName: string;
+    workshopName: string;
 }
 
 const extractDevicesFromTree = (nodes: DeviceNode[]): DeviceItem[] => {
     const devices: DeviceItem[] = [];
 
-    const traverse = (nodeList: DeviceNode[]) => {
-        nodeList.forEach(node => {
-            if (node.type === 'device') {
-                devices.push({
-                    id: node.id,
-                    name: `${node.name}（${node.workshopName}）`
-                });
-            }
-            if (node.children) {
-                traverse(node.children);
-            }
+    // 与 DeviceSidebar 一致：按 factory -> workshop -> device 结构遍历，从父级 workshop 获取车间名
+    nodes.forEach(factory => {
+        factory.children?.forEach(workshop => {
+            workshop.children?.forEach(device => {
+                if (device.type === 'device') {
+                    devices.push({
+                        id: device.id,
+                        name: `${device.name}（${workshop.name}）`,
+                        deviceName: device.name,
+                        workshopName: workshop.name
+                    });
+                }
+            });
         });
-    };
+    });
 
-    traverse(nodes);
     return devices;
 };
 
@@ -415,8 +419,11 @@ const filteredDevices = computed(() => {
     if (!deviceSearch.value) {
         return allDevices.value;
     }
+    const search = deviceSearch.value.toLowerCase();
     return allDevices.value.filter(device =>
-        device.name.toLowerCase().includes(deviceSearch.value.toLowerCase())
+        device.deviceName.toLowerCase().includes(search) ||
+        device.workshopName.toLowerCase().includes(search) ||
+        device.name.toLowerCase().includes(search)
     );
 });
 
@@ -675,17 +682,24 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                         transition: background-color 0.2s;
                         font-size: clamp(10px, 1.2vw, 12px);
                         display: flex;
-                        align-items: center;
+                        flex-direction: column;
+                        align-items: flex-start;
+                        line-height: 1;
+                        text-align: left;
                         color: white;
 
                         &:hover {
                             background-color: #1a5fb4;
                         }
 
+                        .device-name {
+                            display: block;
+                        }
+
                         .workshop-name {
+                            display: block;
                             font-size: clamp(8px, 1vw, 10px);
-                            margin-left: 4px;
-                            flex-shrink: 0;
+                            margin-top: 2px;
                         }
                     }
 

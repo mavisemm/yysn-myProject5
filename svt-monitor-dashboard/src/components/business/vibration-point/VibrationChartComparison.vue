@@ -132,13 +132,12 @@ const updateFreqChart = () => {
 const updateTimeChart = () => {
     if (!timeChartInstance.value || timeDomainData.value.length === 0) return;
 
-    // 根据总时长和数据点数生成x轴坐标
+    // X轴：0 到 time，按 timedomaindata 长度均分；timedomaindata[0] 在 x=0，最后一个在 x=time
     const dataPoints = timeDomainData.value.length;
-    const step = totalTime.value / (dataPoints - 1);
+    const step = dataPoints > 1 ? totalTime.value / (dataPoints - 1) : 0;
 
-    // 生成 [x, y] 格式的二维数组
     const chartData = timeDomainData.value.map((value, index) => [
-        index * step,
+        dataPoints > 1 ? index * step : 0,
         value
     ]);
 
@@ -232,8 +231,11 @@ onMounted(async () => {
     try {
         const timeResponse = await getVibrationTimeDomainData();
         if (timeResponse.rc === 0 && timeResponse.ret) {
-            // 解析JSON字符串为数组
-            const timeDomainArray = JSON.parse(timeResponse.ret.timedomaindata);
+            // timedomaindata 为逗号分隔字符串，如 "91,48,46,48,53,..."
+            const timeDomainArray = timeResponse.ret.timedomaindata
+                .split(',')
+                .map((s) => parseFloat(s.trim()))
+                .filter((n) => !isNaN(n));
 
             // 更新时域图数据
             timeDomainData.value = timeDomainArray;

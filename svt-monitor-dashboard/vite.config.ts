@@ -15,17 +15,35 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/taicang': {
-        target: 'http://192.168.0.199:36000',
-        // target:'http://122.224.196.178:8003',
+      // 声音点位页接口 -> 8003
+      '/taicang/device/sound': {
+        target: 'http://122.224.196.178:8003',
         changeOrigin: true,
         secure: false,
       },
-      '/api':{
-        target:'http://192.168.1.219:36052',
+      '/taicang/hardware/device/standard-frequency-type': {
+        target: 'http://122.224.196.178:8003',
         changeOrigin: true,
         secure: false,
-      }
+      },
+      // 数据统计 overview 接口 -> 8003
+      '/taicang/hardware/device/overview': {
+        target: 'http://122.224.196.178:8003',
+        changeOrigin: true,
+        secure: false,
+      },
+      // 其他 /taicang 接口 -> 8006
+      '/taicang': {
+        target: 'http://122.224.196.178:8006',
+        changeOrigin: true,
+        secure: false,
+      },
+      // /api 接口 -> 8006
+      '/api': {
+        target: 'http://122.224.196.178:8006',
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
   css: {

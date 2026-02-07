@@ -100,7 +100,7 @@ export const getVibrationMetricData = (): Promise<NewApiResponse<VibrationMetric
 // 振动时域图数据接口
 export interface VibrationTimeDomainData {
   time: number
-  timedomaindata: string  // JSON字符串格式的数组
+  timedomaindata: string  // 逗号分隔的数值字符串，如 "91,48,46,48,53,..."
 }
 
 export const getVibrationTimeDomainData = (): Promise<NewApiResponse<VibrationTimeDomainData>> => {

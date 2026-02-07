@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <aside class="device-sidebar">
     <!-- 标题 -->
     <div class="sidebar-header">
@@ -45,9 +45,10 @@
 
           <!-- 设备下拉框 -->
           <div v-if="showDeviceDropdown" class="dropdown-menu device-dropdown">
-            <div v-for="device in filteredDevices" :key="device.id" class="dropdown-item" @click="selectDevice(device)">
+            <div v-for="device in filteredDevices" :key="device.id" class="dropdown-item device-dropdown-item"
+              @click="selectDevice(device)">
               <span class="device-name">{{ device.name }}</span>
-              <span class="workshop-name">（{{ device.workshopName }}）</span>
+              <span class="workshop-name">({{ device.workshopName }})</span>
             </div>
 
             <div v-if="filteredDevices.length === 0" class="dropdown-empty">
@@ -61,7 +62,8 @@
     <!-- 设备树 -->
     <div class="device-tree-container">
       <el-scrollbar class="tree-scrollbar">
-        <el-tree ref="deviceTreeRef" :data="displayTreeData" :props="treeProps" :expand-on-click-node="false"
+        <div v-if="!deviceTreeStore.loading && displayTreeData.length === 0" class="no-data">暂无数据</div>
+        <el-tree v-else ref="deviceTreeRef" :data="displayTreeData" :props="treeProps" :expand-on-click-node="false"
           :highlight-current="false" :default-expanded-keys="expandedKeys" node-key="id" @node-click="handleNodeClick">
           <template #default="{ node, data }">
             <div class="tree-node" :data-type="data.type" :class="{ 'is-selected': isNodeSelected(data) }">
@@ -434,13 +436,10 @@ const displayTreeData = computed<DeviceNode[]>(() => {
 
       return true
     })
-
-    if (factory.children.length === 0) {
-      return false
-    }
   })
 
-  return resultData
+  // 筛掉没有匹配车间的工厂（如筛选车间A时，只保留包含车间A的 Main Factory，移除 East Branch Factory）
+  return resultData.filter((factory: DeviceNode) => factory.children && factory.children.length > 0)
 })
 
 const getFirstWorkshopId = (): string | null => {
@@ -774,6 +773,22 @@ onUnmounted(() => {
             }
           }
 
+          &.device-dropdown .device-dropdown-item {
+            flex-direction: column;
+            align-items: flex-start;
+            line-height: 1.2;
+            text-align: left;
+
+            .device-name {
+              display: block;
+            }
+
+            .workshop-name {
+              margin-left: 0;
+              display: block;
+            }
+          }
+
           .dropdown-empty {
             padding: 12px;
             text-align: center;
@@ -793,6 +808,15 @@ onUnmounted(() => {
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
+
+    .no-data {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: clamp(14px, 2vw, 16px);
+    }
 
     .tree-scrollbar {
       flex: 1;

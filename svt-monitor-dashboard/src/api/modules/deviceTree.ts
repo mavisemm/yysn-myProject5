@@ -53,61 +53,16 @@ export interface PointData {
 export const getDeviceTreeData = (): Promise<DeviceTreeResponse> => {
   console.log('正在请求设备树数据...');
   // 直接使用完整路径，让Vite代理处理
-  return request.get<DeviceTreeResponse>('/taicang/hardware/device/tree')
+  return request.get<DeviceTreeResponse>('/taicang/hardware/device/vibration/tree')
     .then(response => {
       console.log('设备树API响应成功:', response);
       return response;
     })
     .catch(error => {
-      console.error('设备树API请求失败，将使用默认数据:', error);
+      console.error('设备树API请求失败:', error);
       console.error('错误详情:', error.message || error);
-      // 返回带有预警信息的默认模拟数据
-      const defaultResponse: DeviceTreeResponse = {
-        rc: 0,
-        ret: [
-          {
-            factoryId: "FAC001",
-            factoryName: "Main Factory",
-            children: [
-              {
-                workshopId: "WSH001",
-                workshopName: "Workshop A",
-                children: [
-                  {
-                    equipmentId: "ff8081819a4cd984019a4d524e0d0000",
-                    equipmentName: "五线三路风机",
-                    children: [
-                      {
-                        pointName: "3",
-                        pointId: "lfpznaj5u6RsUgMzQH4",
-                        warningTime: "2026-02-02 17:11:59",
-                        warningValue: 88,
-                        warningType: "temperature"
-                      },
-                      {
-                        pointName: "2",
-                        pointId: "ofC6mcZeoOhmtZOcdnL",
-                        warningTime: "2026-02-04 17:11:43",
-                        warningValue: 1116,
-                        warningType: "vibration"
-                      },
-                      {
-                        pointName: "1",
-                        pointId: "9sXGsnoV80oz7uB7AMv",
-                        warningTime: "2026-02-03 17:11:39",
-                        warningValue: 6,
-                        warningType: "temperature"
-                      }
-                    ]
-                  }
-                ]
-              }
-            ]
-          }
-        ],
-        err: null
-      };
-      return defaultResponse;
+      // 接口不通时返回空数据，由前端显示"暂无数据"
+      return { rc: 1, ret: [], err: error?.message || '接口请求失败' };
     });
 }
 
@@ -134,6 +89,7 @@ export const transformDeviceTreeData = (responseData: DeviceTreeResponse): Devic
         name: equipment.equipmentName,
         type: 'device',
         status: 'normal', // 默认状态
+        workshopName: workshop.workshopName, // 所属车间名，供预警总览等使用
         children: equipment.children.map(point => ({
           id: point.pointId || point.receiverId || '', // 优先使用pointId，如果没有则使用receiverId
           name: point.pointName,

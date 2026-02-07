@@ -6,14 +6,18 @@
             <div v-if="metric.unit" class="metric-unit">{{ metric.unit }}</div>
             <!-- 排名列表：按指标排序显示设备 -->
             <div class="rankings">
-                <div v-for="(rank, rankIndex) in getRankings(index)" :key="rankIndex" class="ranking-item"
-                    @click="goToDeviceDetail(rank)" style="cursor: pointer;">
-                    <span class="rank-device">
-                        {{ rankIndex + 1 }}.&nbsp;
-                        {{ rank.deviceName }}
-                        <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
-                        <span v-if="rank.value !== undefined" class="rank-value">&nbsp;{{ rank.value }}</span></span>
-                </div>
+                <div v-if="getRankings(index).length === 0" class="no-data">暂无数据</div>
+                <template v-else>
+                    <div v-for="(rank, rankIndex) in getRankings(index)" :key="rankIndex" class="ranking-item"
+                        @click="goToDeviceDetail(rank)" style="cursor: pointer;">
+                        <span class="rank-device">
+                            {{ rankIndex + 1 }}.&nbsp;
+                            {{ rank.deviceName }}
+                            <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
+                        </span>
+                        <span v-if="rank.value !== undefined" class="rank-value">{{ rank.value }}</span>
+                    </div>
+                </template>
             </div>
             <slot :name="'metric-' + index"></slot>
         </div>
@@ -210,10 +214,18 @@ const getRankings = (index: number): RankingItem[] => {
             min-height: 0;
             overflow: hidden;
 
-            .ranking-item {
+            .no-data {
+                flex: 1;
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                font-size: clamp(14px, 2vw, 16px);
+            }
+
+            .ranking-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
                 background: rgba(255, 255, 255, 0.2);
                 border-radius: 14px;
                 padding: 6px 15px;
@@ -231,7 +243,8 @@ const getRankings = (index: number): RankingItem[] => {
 
                 .rank-device {
                     flex: 1;
-                    text-align: center;
+                    min-width: 0;
+                    text-align: left;
                     margin-right: 8px;
                     white-space: nowrap;
                     overflow: hidden;
@@ -239,7 +252,9 @@ const getRankings = (index: number): RankingItem[] => {
                 }
 
                 .rank-value {
+                    flex-shrink: 0;
                     font-weight: bold;
+                    text-align: right;
                 }
             }
         }
