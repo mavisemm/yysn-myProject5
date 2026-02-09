@@ -143,7 +143,7 @@ const handleLogin = async () => {
 
             .main-title {
                 color: #00ffff;
-                font-weight: 700;
+                font-weight: 500;
                 font-size: 55px;
                 margin: 0 0 20px 0;
                 text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
@@ -188,7 +188,7 @@ const handleLogin = async () => {
                         margin-bottom: 20px;
 
                         .el-input__wrapper {
-                            background: rgba(255, 255, 255, 0.2);
+                            background: rgba(150, 150, 150, 0.2);
                             border: 1px solid rgba(255, 255, 255, 0.3);
                             backdrop-filter: blur(5px);
 

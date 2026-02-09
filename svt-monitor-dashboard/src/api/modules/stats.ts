@@ -43,6 +43,67 @@ export const getWarningDeviceCount = (): Promise<StatsResponse> => {
   })
 }
 
+// 趋势预警设备列表项
+export interface TrendWarningDeviceItem {
+  id: string
+  deviceName: string
+  workshopName: string
+}
+
+const modalParams = { userId: '', tenantId: TENANT_ID }
+
+// 获取趋势预警设备列表（点击「趋势预警设备」弹窗用）
+export const getTrendWarningDeviceList = (): Promise<{ rc: number; ret: TrendWarningDeviceItem[]; err: string | null }> => {
+  return request.get('/taicang/hardware/device/overview/device/waring/detail', {
+    params: { ...modalParams, _t: Date.now() },
+    showLoading: true
+  })
+}
+
+// 打开弹窗时触发的接口：测点信息（POST，body 传参）
+export const getCheckPointPointMessage = (): Promise<any> => {
+  return request.post('/taicang/hardware/device/check-point/find/point/message', {
+    filterPropertyMap: [
+      { code: 'tenantId', operate: 'EQ', value: TENANT_ID }
+    ],
+    pageIndex: 0,
+    pageSize: 1000
+  }, {
+    showLoading: false
+  })
+}
+
+// 打开弹窗时触发的接口：设备名称下拉
+export const getDeviceNameDropdownList = (): Promise<any> => {
+  return request.get('/taicang/hardware/device/name/getDropdownList', {
+    params: { ...modalParams, _t: Date.now() },
+    showLoading: false
+  })
+}
+
+// 打开弹窗时触发的接口：事件类型下拉
+export const getEventTypeDropdownList = (): Promise<any> => {
+  return request.get('/taicang/hardware/eventType/getDropdownList', {
+    params: { ...modalParams, _t: Date.now() },
+    showLoading: false
+  })
+}
+
+// 打开弹窗时触发的接口：事件查询（POST，body 传参）
+export const getEventFind = (): Promise<any> => {
+  return request.post('/taicang/event/find', {
+    filterPropertyMap: [
+      { code: 'statusCode', operate: 'EQ', value: 'VALID' },
+      { code: 'tenantId', operate: 'EQ', value: TENANT_ID }
+    ],
+    pageIndex: 0,
+    pageSize: 30,
+    sortValueMap: [{ code: 'time', sort: 'desc' }]
+  }, {
+    showLoading: false
+  })
+}
+
 // 统一获取所有统计信息
 export const getAllStats = async () => {
   try {

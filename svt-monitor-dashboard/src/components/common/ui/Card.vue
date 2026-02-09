@@ -131,7 +131,7 @@ const headerCursor = computed(() => {
     margin: 0;
     font-size: clamp(14px, 2.5vw, 16px);
     /* 响应式字体大小 */
-    font-weight: 600;
+    font-weight: 500;
     color: #303133;
 }
 

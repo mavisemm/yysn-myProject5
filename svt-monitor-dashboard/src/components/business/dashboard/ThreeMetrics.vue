@@ -3,19 +3,20 @@
     <div class="metrics-area">
         <div v-for="(metric, index) in metrics" :key="index" class="chart-container">
             <h3 class="metric-title">{{ metric.title }}</h3>
-            <div v-if="metric.unit" class="metric-unit">{{ metric.unit }}</div>
+            <div v-if="metric.unit" class="metric-unit special-font-color">{{ metric.unit }}</div>
             <!-- 排名列表：仅显示前 3 条 -->
             <div class="rankings">
                 <div v-if="getRankings(index).length === 0" class="no-data">暂无数据</div>
                 <template v-else>
                     <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex" class="ranking-item"
                         @click="goToDeviceDetail(rank)" style="cursor: pointer;">
-                        <span class="rank-device">
+                        <span class="rank-device special-font-color">
                             {{ rankIndex + 1 }}.&nbsp;
                             {{ rank.deviceName }}
                             <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
                         </span>
-                        <span v-if="rank.value !== undefined" class="rank-value">{{ rank.value }}</span>
+                        <span v-if="rank.value !== undefined" class="rank-value special-font-color">{{ rank.value
+                            }}</span>
                     </div>
                 </template>
             </div>
@@ -37,11 +38,11 @@
             <div class="dialog-rankings">
                 <div v-for="(rank, rankIndex) in dialogRankings" :key="rankIndex" class="dialog-ranking-item"
                     @click="goToDeviceDetail(rank)">
-                    <span class="rank-num">{{ rankIndex + 1 }}.</span>
-                    <span class="rank-device">{{ rank.deviceName }}
+                    <span class="rank-num special-font-color">{{ rankIndex + 1 }}.</span>
+                    <span class="rank-device special-font-color">{{ rank.deviceName }}
                         <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
                     </span>
-                    <span v-if="rank.value !== undefined" class="rank-value">{{ rank.value }}</span>
+                    <span v-if="rank.value !== undefined" class="rank-value special-font-color">{{ rank.value }}</span>
                 </div>
             </div>
         </el-dialog>
@@ -120,29 +121,21 @@ const isValidDevice = (deviceId: string): boolean => {
 
 
 /**
- * 跳转到设备详情页
+ * 跳转到设备详情页（Top3 列表与「更多」弹窗内点击设备均会调用）
  */
 const goToDeviceDetail = (rank: RankingItem) => {
-
     let deviceId = rank.deviceId;
-
     if (!deviceId) {
         deviceId = deviceNameToIdMap[rank.deviceName];
-        if (deviceId) {
-        } else {
-        }
     }
-
     if (deviceId && isValidDevice(deviceId)) {
+        rankDialogVisible.value = false;
         deviceTreeStore.setSelectedDeviceId(deviceId);
         router.push({
             name: 'DeviceDetail',
             params: { id: deviceId },
-            query: { deviceName: rank.deviceName, workshopName: rank.workshopName }
-        }).then(() => {
-        }).catch(err => {
-        });
-    } else {
+            query: { deviceName: rank.deviceName, workshopName: rank.workshopName || '' }
+        }).catch(() => { });
     }
 }
 
@@ -256,7 +249,6 @@ const openRankDialog = (index: number) => {
 
             .more-btn {
                 font-size: clamp(12px, 1.5vw, 14px);
-                color: #fff;
                 cursor: pointer;
                 user-select: none;
 
@@ -287,7 +279,7 @@ const openRankDialog = (index: number) => {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                background: rgba(255, 255, 255, 0.2);
+                background: rgba(150, 150, 150, 0.2);
                 border-radius: 14px;
                 padding: 6px 15px;
                 font-size: clamp(14px, 1.8vw, 16px);

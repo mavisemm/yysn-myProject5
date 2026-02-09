@@ -5,9 +5,12 @@
         </div>
         <div class="point-table-container">
             <el-table ref="pointTableRef" :data="pointList" height="100%" :fit="true"
-                :header-cell-style="{ background: 'transparent', color: 'white', 'text-align': 'center' }"
-                :cell-style="{ background: 'transparent', color: 'white', 'text-align': 'center' }"
+                :header-cell-style="{ background: 'transparent', color: 'var(--special-font-color)', 'text-align': 'center' }"
+                :cell-style="{ background: 'transparent', color: 'var(--special-font-color)', 'text-align': 'center' }"
                 @row-click="onRowClick" highlight-current-row>
+                <template #empty>
+                    <div class="empty-text">暂无数据</div>
+                </template>
                 <el-table-column prop="id" label="点位" width="15%" />
                 <el-table-column prop="name" label="点位名称" width="20%" />
                 <el-table-column prop="lastAlarmTime" label="预警时间" width="20%" />
@@ -133,7 +136,7 @@ defineExpose({
             margin: 0;
             font-size: clamp(18px, 2.5vw, 22px);
             /* 更小的字体范围以适应小屏幕 */
-            font-weight: 600;
+            font-weight: 500;
         }
     }
 
@@ -147,6 +150,11 @@ defineExpose({
         padding: 20px;
         display: flex;
         align-items: stretch;
+    }
+
+    .empty-text {
+        color: rgba(255, 255, 255, 0.6);
+        padding: 20px;
     }
 
     :deep(.el-table) {
@@ -178,7 +186,9 @@ defineExpose({
         }
 
         .el-table__header-wrapper {
-            background: rgba(255, 255, 255, 0.3) !important;
+            background: rgba(150, 150, 150, 0.2) !important;
+            border-radius: 6px 6px 0 0 !important;
+            overflow: hidden;
         }
 
         tr {
@@ -188,8 +198,8 @@ defineExpose({
         tbody tr {
             background: transparent !important;
 
-            &:hover {
-                background: rgba(255, 255, 255, 0.2) !important;
+            &:hover:not(.current-row) {
+                background: rgba(150, 150, 150, 0.1) !important;
             }
         }
 
@@ -203,7 +213,7 @@ defineExpose({
 
         th {
             background: transparent !important;
-            color: white !important;
+            color: var(--special-font-color) !important;
             font-size: clamp(10px, 1.5vw, 12px);
             white-space: nowrap;
             overflow: hidden;
@@ -212,7 +222,7 @@ defineExpose({
 
         td {
             background: transparent !important;
-            color: white !important;
+            color: var(--special-font-color) !important;
             font-size: clamp(10px, 1.5vw, 12px);
             white-space: nowrap;
             overflow: hidden;
@@ -232,7 +242,41 @@ defineExpose({
         }
 
         .el-table__body tr.current-row>td {
-            background-color: rgb(103, 157, 215) !important;
+            background-color: rgb(150, 150, 150, 0.2) !important;
+        }
+
+        // 表头圆角效果
+        .el-table__header-wrapper {
+            border-radius: 6px !important;
+            overflow: hidden;
+        }
+
+        // 表体圆角效果
+        .el-table__body-wrapper {
+            border-radius: 0 0 6px 6px;
+            overflow: hidden;
+        }
+
+        // 整行圆角效果
+        .el-table__body tr td:first-child {
+            border-top-left-radius: 6px;
+            border-bottom-left-radius: 6px;
+        }
+
+        .el-table__body tr td:last-child {
+            border-top-right-radius: 6px;
+            border-bottom-right-radius: 6px;
+        }
+
+        // 选中行的圆角效果
+        .el-table__body tr.current-row td:first-child {
+            border-top-left-radius: 6px;
+            border-bottom-left-radius: 6px;
+        }
+
+        .el-table__body tr.current-row td:last-child {
+            border-top-right-radius: 6px;
+            border-bottom-right-radius: 6px;
         }
     }
 }

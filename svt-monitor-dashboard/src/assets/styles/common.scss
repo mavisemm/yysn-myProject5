@@ -1,5 +1,6 @@
 @use './variables.scss';
 @use './responsive-typography.scss';
+@use './custom-colors.scss';
 
 * {
   margin: 0;
@@ -9,6 +10,7 @@
 
 :root {
   --global-font-color: white;
+  --special-font-color: #99F0FF;
 }
 
 /* 全局字体颜色设置 */
@@ -17,26 +19,88 @@ html, body {
   height: 100%;
   overflow: hidden;
   color: var(--global-font-color);
+  font-weight: 500;
 }
 
 #app {
   width: 100%;
   height: 100vh;
   color: var(--global-font-color);
+  font-weight: 500;
 }
 
 /* 确保Element Plus组件的文本可读性 */
 .el-input__wrapper,
 .el-button,
 .el-tag,
-.el-tree-node__label {
-  color: inherit !important;
+.el-tree-node__label,
+.el-table,
+.el-table__header,
+.el-table__body,
+.el-table__footer,
+.el-pagination,
+.el-dialog,
+.el-message-box,
+.el-dropdown,
+.el-menu,
+.el-tabs,
+.el-steps,
+.el-timeline,
+.el-alert,
+.el-notification,
+.el-popover,
+.el-tooltip,
+.el-drawer {
+  color: var(--global-font-color) !important;
+}
+
+/* Element UI 按钮特殊处理 */
+.el-button {
+  color: #606266 !important;
+}
+
+.el-button--primary {
+  color: white !important;
+}
+
+.el-button--success {
+  color: white !important;
+}
+
+.el-button--warning {
+  color: white !important;
+}
+
+.el-button--danger {
+  color: white !important;
+}
+
+.el-button--info {
+  color: white !important;
 }
 
 /* 保留特殊组件的原有颜色，避免过度覆盖 */
 .el-progress-bar__innerText,
-.special-colored-text {
-  color: initial;
+.special-colored-text,
+.el-input__inner,
+.el-textarea__inner,
+.el-select .el-input__inner,
+.el-cascader .el-input__inner {
+  color: inherit !important;
+}
+
+/* 全局placeholder颜色设置 */
+::placeholder {
+  color: white !important;
+  opacity: 0.7 !important;
+}
+
+input::placeholder,
+textarea::placeholder,
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder {
+  color: white !important;
+  opacity: 0.7 !important;
 }
 
 /* 退出登录确认框：取消按钮 #409eff，确定按钮白色（按顺序：第1个取消，第2个确定） */
@@ -54,25 +118,25 @@ html, body {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(150,150,150, 0.1);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(150,150,150, 0.1);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(150,150,150, 0.1);
 }
 
 /* Element Plus滚动条定制 */
 :deep(.el-scrollbar) {
   --el-scrollbar-opacity: 0.3;
-  --el-scrollbar-bg-color: rgba(255, 255, 255, 0.1);
+  --el-scrollbar-bg-color: rgba(150,150,150, 0.1);
   --el-scrollbar-hover-opacity: 0.5;
-  --el-scrollbar-hover-bg-color: rgba(255, 255, 255, 0.1);
+  --el-scrollbar-hover-bg-color: rgba(150,150,150, 0.1);
   height: 100%;
   overflow: hidden;
   position: relative;

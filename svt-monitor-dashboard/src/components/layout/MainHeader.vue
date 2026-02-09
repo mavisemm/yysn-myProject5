@@ -3,32 +3,32 @@
     <!-- 左侧按钮组 -->
     <div class="header-left">
       <!-- 首页按钮 -->
-      <div v-if="showHomeButton" class="nav-btn" @click="goHome">
-        <el-icon :size="24" color="#fff">
+      <div v-if="showHomeButton" class="nav-btn special-font-color" @click="goHome">
+        <el-icon :size="24" color="var(--special-font-color)">
           <House />
         </el-icon>
         <span>首页</span>
       </div>
 
       <!-- 返回设备按钮 -->
-      <div v-if="showReturnDeviceButton" class="nav-btn" @click="goToDevice">
-        <el-icon :size="24" color="#fff">
+      <div v-if="showReturnDeviceButton" class="nav-btn special-font-color" @click="goToDevice">
+        <el-icon :size="24" color="var(--special-font-color)">
           <Back />
         </el-icon>
         <span>返回设备</span>
       </div>
 
       <!-- 振动按钮 -->
-      <div v-if="showVibrationButton" class="nav-btn" @click="goToVibration">
-        <el-icon :size="24" color="#fff">
+      <div v-if="showVibrationButton" class="nav-btn special-font-color" @click="goToVibration">
+        <el-icon :size="24" color="var(--special-font-color)">
           <Lightning />
         </el-icon>
         <span>振动</span>
       </div>
 
       <!-- 声音按钮 -->
-      <div v-if="showSoundButton" class="nav-btn" @click="goToSound">
-        <el-icon :size="24" color="#fff">
+      <div v-if="showSoundButton" class="nav-btn special-font-color" @click="goToSound">
+        <el-icon :size="24" color="var(--special-font-color)">
           <Microphone />
         </el-icon>
         <span>声音</span>
@@ -41,8 +41,8 @@
 
     <!-- 右侧：退出 -->
     <div class="header-right">
-      <div class="nav-btn" @click="handleLogout">
-        <el-icon :size="24" color="#fff">
+      <div class="nav-btn special-font-color" @click="handleLogout">
+        <el-icon :size="24" color="var(--special-font-color)">
           <SwitchButton />
         </el-icon>
         <span>退出</span>
@@ -169,13 +169,14 @@ const handleLogout = () => {
       padding: 8px 12px;
       cursor: pointer;
       transition: all 0.3s;
-      color: white;
+      color: var(--special-font-color);
       font-size: clamp(14px, 2vw, 18px);
       font-weight: 500;
       border-radius: 8px;
 
       &:hover {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(150, 150, 150, 0.2);
+        color: var(--special-font-color);
       }
     }
   }
@@ -190,7 +191,7 @@ const handleLogout = () => {
       margin: 0;
       font-size: clamp(30px, 4.5vw, 36px);
       /* 响应式字体大小，以36px为基准 */
-      font-weight: 700;
+      font-weight: 500;
       color: #00ffff;
     }
   }
@@ -211,13 +212,14 @@ const handleLogout = () => {
       padding: 8px 12px;
       cursor: pointer;
       transition: all 0.3s;
-      color: white;
+      color: var(--special-font-color);
       font-size: clamp(14px, 2vw, 18px);
       font-weight: 500;
       border-radius: 8px;
 
       &:hover {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(150, 150, 150, 0.2);
+        color: var(--special-font-color);
       }
     }
   }

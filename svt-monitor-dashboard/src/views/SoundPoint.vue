@@ -14,22 +14,36 @@
       <SoundPointInfo :point-name="pointName" :device-name="deviceName" :current-data-time="currentDataTime"
         :audio-path="audioPath" :cluster-name="clusterName" :production-equipment="productionEquipment"
         :sub-component="subComponent" :detection-equipment="detectionEquipment" :microphone="microphone"
-        :deviation-value="currentDeviationValue" :upload-time="currentDataTime" />
+        :deviation-value="currentDeviationValue" />
     </div>
   </div>
 
-  <!-- 详情弹窗 -->
-  <el-dialog v-model="voiceVisible" title="详情" width="90%" destroy-on-close>
+  <!-- 详情弹窗（查看曲线） -->
+  <el-dialog v-model="voiceVisible" title="详情" width="90%" destroy-on-close @closed="handleModalClosed">
     <div ref="modalChartRef" style="width: 100%; height: 500px;"></div>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, shallowRef } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, shallowRef, computed, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import * as echarts from 'echarts';
 import { ElMessage, ElDialog } from 'element-plus';
 import { enableMouseWheelZoom } from '@/utils/chart';
-import { getLatestDeviationByReceiver, getStandardFrequencyList, type SoundDeviationItem } from '@/api/modules/voiceSound';
+import { useDeviceTreeStore } from '@/stores/deviceTree';
+
+const deviceTreeStore = useDeviceTreeStore();
+import {
+  getLatestDeviationByReceiver,
+  getStandardFrequencyList,
+  findLatestFrequencyById,
+  getWavByFreqGroupIdUrl,
+  type SoundDeviationItem
+} from '@/api/modules/voiceSound';
+
+const route = useRoute();
+const pointIdFromQuery = computed(() => (route.query.pointId as string) || '');
+const deviceIdFromQuery = computed(() => (route.query.deviceId as string) || '');
 
 // 导入新组件
 import SoundPointCharts from '@/components/business/sound-point/SoundPointCharts.vue';
@@ -44,17 +58,17 @@ const modalChartInstance = shallowRef<echarts.ECharts | null>(null);
 const audioPath = ref('');
 const voiceVisible = ref(false);
 
-// 基础信息
-const pointName = ref('北侧电机监听点');
-const deviceName = ref('1号传送带电机');
+// 基础信息（由接口返回或路由对应的真实点位填充，不写死）
+const pointName = ref('');
+const deviceName = ref('');
 const currentDataTime = ref('');
 
-// 详细信息字段
-const clusterName = ref('生产设备：五线三路风机');
-const productionEquipment = ref('五线三路风机');
-const subComponent = ref('1.进风口位置');
-const detectionEquipment = ref('五线3路');
-const microphone = ref('1');
+// 详细信息字段（由接口首条填充，切换点位会随 loadDeviationList 更新）
+const clusterName = ref('');
+const productionEquipment = ref('');
+const subComponent = ref('');
+const detectionEquipment = ref('');
+const microphone = ref('');
 const currentDeviationValue = ref('0.00');
 
 // 颜色池
@@ -77,6 +91,14 @@ interface DeviationListItem {
   filePath?: string;
   receiverId?: string;
   sampleSec?: number;
+  /** 用于点击播放时更新右侧详情 */
+  deviceName?: string;
+  pointName?: string;
+  clusterName?: string;
+  productionEquipment?: string;
+  subComponent?: string;
+  detectionEquipment?: string;
+  microphone?: string;
 }
 
 const deviationList = ref<DeviationListItem[]>([]);
@@ -113,6 +135,7 @@ const normalizeDeviationList = (list: SoundDeviationItem[]): DeviationListItem[]
   return list.map((item, index) => {
     const freqLength = (item.dbArray && item.dbArray.length) ? item.dbArray.length : (item.densityArray?.length || 0);
     const freqs = freqLength ? Array.from({ length: freqLength }, (_, i) => String(i + 1)) : [];
+    const raw = item as any;
     return {
       id: String(item.id ?? index),
       time: formatDateTime(item.time),
@@ -124,14 +147,24 @@ const normalizeDeviationList = (list: SoundDeviationItem[]): DeviationListItem[]
       freqs,
       filePath: item.filePath,
       receiverId: item.receiverId,
-      sampleSec: item.sampleSec
+      sampleSec: item.sampleSec,
+      deviceName: raw.deviceName ?? '',
+      pointName: raw.pointName ?? '',
+      clusterName: raw.sceneName ?? raw.titleGroupName ?? '',
+      productionEquipment: raw.deviceName ?? raw.productName ?? raw.productionFactory ?? '',
+      subComponent: raw.subProductName ?? '',
+      detectionEquipment: raw.detectorName ?? raw.deviceName ?? '',
+      microphone: raw.receiverName ?? raw.pointName ?? (raw.pointId != null ? String(raw.pointId) : '')
     };
   });
 };
 
 const loadDeviationList = async () => {
   try {
-    const res = await getLatestDeviationByReceiver();
+    const res = await getLatestDeviationByReceiver({
+      pointId: pointIdFromQuery.value || undefined,
+      receiverId: pointIdFromQuery.value || undefined
+    });
     const rawList = Array.isArray(res)
       ? res
       : Array.isArray((res as any)?.data)
@@ -142,9 +175,34 @@ const loadDeviationList = async () => {
     const mapped = normalizeDeviationList(rawList);
     deviationList.value = mapped;
 
+    const firstRaw = rawList[0] as any;
     const firstItem = mapped[0];
     if (firstItem) {
       currentDataTime.value = firstItem.time;
+      currentDeviationValue.value = firstItem.deviationValue.toFixed(2);
+    }
+    if (firstRaw && typeof firstRaw === 'object') {
+      // 与另一项目对应；生产设备 = 点位的设备（deviceName）
+      pointName.value = firstRaw.pointName ?? '';
+      deviceName.value = firstRaw.deviceName ?? '';
+      clusterName.value = firstRaw.sceneName ?? firstRaw.titleGroupName ?? '';
+      productionEquipment.value = firstRaw.deviceName ?? firstRaw.productName ?? firstRaw.productionFactory ?? '';
+      subComponent.value = firstRaw.subProductName ?? '';
+      detectionEquipment.value = firstRaw.detectorName ?? firstRaw.deviceName ?? '';
+      // 本项用 pointId，另一项用 receiverId；听筒显示优先 receiverName，无则 pointName 或 pointId
+      microphone.value = firstRaw.receiverName ?? firstRaw.pointName ?? (firstRaw.pointId != null ? String(firstRaw.pointId) : '');
+      if (firstItem?.id) {
+        audioPath.value = getWavByFreqGroupIdUrl(firstItem.id);
+      }
+    } else {
+      pointName.value = '';
+      deviceName.value = '';
+      clusterName.value = '';
+      productionEquipment.value = '';
+      subComponent.value = '';
+      detectionEquipment.value = '';
+      microphone.value = '';
+      audioPath.value = '';
     }
 
     await loadFrequencyData();
@@ -167,7 +225,7 @@ const applyFrequencyResponse = (freqs: number[], responseList: any[], mode: 'ene
       : (sourceArr.length > 0 ? Array.from({ length: sourceArr.length }, (_, i) => i + 1) : target.freqs.map(f => Number(f)));
 
     if (xFreqs && xFreqs.length > 0) {
-      target.freqs = xFreqs.map(f => String(f));
+      target.freqs = xFreqs.map(f => Number(f).toFixed(1));
     }
 
     if (mode === 'energy') {
@@ -216,72 +274,123 @@ const loadFrequencyData = async () => {
   }
 };
 
-// 操作方法
-const viewDetails = (row: any) => {
-  voiceVisible.value = true;
-  nextTick(() => {
-    if (modalChartRef.value) {
-      modalChartInstance.value = echarts.init(modalChartRef.value);
-      modalChartInstance.value.setOption({
-        title: { text: `${row.time} 详细频谱`, left: 'center' },
-        tooltip: {
-          trigger: 'axis',
-          backgroundColor: 'rgba(50,50,50,0.8)',
-          borderColor: 'rgba(50,50,50,0.8)',
-          textStyle: {
-            color: '#fff'
-          },
-          position: function (pos: any, params: any, el: any, elRect: any, size: any) {
-            const [mouseX, mouseY] = pos;
-            const [contentWidth, contentHeight] = size.contentSize;
-            const [viewWidth, viewHeight] = size.viewSize;
-            let x = mouseX + 20;
-            if (x + contentWidth > viewWidth) {
-              x = mouseX - contentWidth - 20;
-            }
-            let y = Math.max(0, mouseY - contentHeight / 2);
-            return [x, y];
-          }
-        },
-        grid: { left: 30, right: 20, top: 40, bottom: 50 },
-        legend: { show: true, top: 30 },
-        xAxis: { type: 'category', data: row.freqs, boundaryGap: false },
-        yAxis: [
-          { type: 'value', name: 'dB' },
-          { type: 'value', name: '密度' }
-        ],
-        dataZoom: [
-          { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-          {
-            type: 'slider',
-            xAxisIndex: [0],
-            bottom: 10,
-            height: 20,
-            fillerColor: 'rgba(126, 203, 161, 0.3)',
-            borderColor: 'rgba(126, 203, 161, 0.5)',
-            handleStyle: { color: '#7ecba1' },
-            filterMode: 'none'
-          }
-        ],
-        series: [
-          { name: '能量', type: 'line', data: row.dbArr, symbolSize: 1 },
-          { name: '密度', type: 'line', data: row.densityArr, yAxisIndex: 1, symbolSize: 1 }
-        ]
-      });
+// 查看曲线：请求 findLatestFrequencyById 并渲染弹窗图表（与另一项目一致）
+const viewDetails = async (row: any) => {
+  try {
+    const res = await findLatestFrequencyById({ id: row.id, type: 2 });
+    const ret = (res as any)?.ret ?? res;
+    const soundFrequencyDtoList = ret?.soundFrequencyDtoList ?? [];
+    const soundAvgFrequencyDtoList = ret?.soundAvgFrequencyDtoList ?? [];
 
-      enableMouseWheelZoom(modalChartInstance.value);
+    const XARR: string[] = [];
+    const nowdbArr: (number | undefined)[] = [];
+    const nowdensityArr: number[] = [];
+    const avgdbArr: (number | undefined)[] = [];
+    const avgdensityArr: number[] = [];
+
+    for (let i = 0; i < soundFrequencyDtoList.length; i++) {
+      const item = soundFrequencyDtoList[i];
+      const f1 = Number(item?.freq1 ?? 0);
+      const f2 = Number(item?.freq2 ?? 0);
+      XARR.push(Number(Math.sqrt(f1 * f2)).toFixed(1));
+      nowdbArr.push(item?.db != null ? Number(Number(item.db).toFixed(2)) : undefined);
+      nowdensityArr.push(Number(Number(item?.density ?? 0).toFixed(4)));
     }
+    if (Array.isArray(soundAvgFrequencyDtoList)) {
+      for (let i = 0; i < soundAvgFrequencyDtoList.length; i++) {
+        const item = soundAvgFrequencyDtoList[i];
+        avgdbArr.push(item?.db != null ? Number(Number(item.db).toFixed(2)) : undefined);
+        avgdensityArr.push(Number(Number(item?.density ?? 0).toFixed(4)));
+      }
+    }
+
+    voiceVisible.value = true;
+    nextTick(() => {
+      if (modalChartRef.value) {
+        if (modalChartInstance.value) {
+          modalChartInstance.value.dispose();
+          modalChartInstance.value = null;
+        }
+        modalChartInstance.value = echarts.init(modalChartRef.value);
+        const legendData = avgdensityArr.length > 0 ? ['密度', '能量', '标准密度线', '标准能量线'] : ['密度', '能量'];
+        modalChartInstance.value.setOption({
+          title: { text: `${row.time} 详细频谱`, left: 'center' },
+          tooltip: { trigger: 'axis' },
+          grid: { left: 30, right: 20, top: 40, bottom: 50 },
+          legend: { show: true, top: 30, data: legendData },
+          xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],
+          yAxis: [
+            { type: 'value', name: 'dB' },
+            { type: 'value', name: '密度' }
+          ],
+          dataZoom: [
+            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+            { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' }
+          ],
+          series: [
+            { name: '密度', type: 'line', data: nowdensityArr, symbolSize: 1 },
+            { name: '能量', type: 'line', data: nowdbArr, symbolSize: 1 },
+            ...(avgdensityArr.length > 0
+              ? [
+                  { name: '标准密度线', type: 'line', data: avgdensityArr, yAxisIndex: 1, symbolSize: 1 },
+                  { name: '标准能量线', type: 'line', data: avgdbArr, symbolSize: 1 }
+                ]
+              : [])
+          ]
+        });
+        enableMouseWheelZoom(modalChartInstance.value);
+      }
+    });
+  } catch (e) {
+    console.error('查看曲线失败', e);
+    ElMessage.error('加载曲线数据失败');
+  }
+};
+
+// 下载文件：使用 findWavByFreqGroupId 地址，下载完成后提示
+const downloadFile = async (id: string) => {
+  const url = getWavByFreqGroupIdUrl(id);
+  ElMessage.info('正在下载文件');
+  try {
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) throw new Error(res.statusText);
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `sound_${id}.wav`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    ElMessage.success('下载完成');
+  } catch {
+    window.location.href = url;
+    setTimeout(() => ElMessage.success('下载完成'), 2000);
+  }
+};
+
+// 播放：更新右侧详细信息 + 音频地址（freqGroupId），并播放
+const playAudio = (row: DeviationListItem) => {
+  pointName.value = row.pointName ?? '';
+  deviceName.value = row.deviceName ?? '';
+  clusterName.value = row.clusterName ?? '';
+  productionEquipment.value = row.productionEquipment ?? '';
+  subComponent.value = row.subComponent ?? '';
+  detectionEquipment.value = row.detectionEquipment ?? '';
+  microphone.value = row.microphone ?? '';
+  currentDataTime.value = row.time;
+  currentDeviationValue.value = row.deviationValue.toFixed(2);
+  audioPath.value = getWavByFreqGroupIdUrl(row.id);
+  nextTick(() => {
+    const el = document.querySelector('.info-section-right audio') as HTMLAudioElement;
+    if (el) el.play().catch(() => {});
   });
+  ElMessage.success('正在播放音频');
 };
 
-const downloadFile = (id: string) => {
-  ElMessage.success(`正在下载文件: ${id}`);
-};
-
-const playAudio = (id: string) => {
-  audioPath.value = `http://mock-audio-server/play?id=${id}`;
-  // 音频播放功能现在由 SoundPointInfo 组件处理
-  ElMessage.success(`正在播放音频: ${id}`);
+const handleModalClosed = () => {
+  if (modalChartInstance.value) {
+    modalChartInstance.value.dispose();
+    modalChartInstance.value = null;
+  }
 };
 
 const handleResize = () => {
@@ -296,7 +405,23 @@ const handleResize = () => {
   // 图表调整大小现在由 SoundPointCharts 组件处理
 };
 
+// 设备树切换点位时路由 query 会变，需重新拉取数据并更新选中状态
+watch(
+  () => route.query.pointId,
+  (newId, oldId) => {
+    if (newId !== oldId) {
+      if (newId) {
+        deviceTreeStore.setSelectedDeviceId(newId as string);
+      }
+      loadDeviationList();
+    }
+  }
+);
+
 onMounted(() => {
+  if (pointIdFromQuery.value) {
+    deviceTreeStore.setSelectedDeviceId(pointIdFromQuery.value);
+  }
   loadDeviationList();
   window.addEventListener('resize', handleResize);
 });

@@ -1,0 +1,13 @@
+// 自定义颜色变量
+$special-font-color: #99F0FF;
+$element-ui-safe-color: white;
+
+// 特殊模块字体颜色类
+.special-font-color {
+  color: $special-font-color !important;
+}
+
+// Element UI 安全字体颜色类
+.element-ui-safe {
+  color: $element-ui-safe-color !important;
+}

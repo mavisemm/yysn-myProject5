@@ -5,7 +5,10 @@
             <div class="card-header">
                 <div class="card-title">振动频域图</div>
             </div>
-            <div ref="freqChartRef" class="chart-container"></div>
+            <div class="chart-container">
+                <div ref="freqChartRef" class="chart-inner"></div>
+                <div v-if="!freqData.frequency.length" class="chart-empty">暂无数据</div>
+            </div>
         </div>
 
         <!-- 振动时域图卡片 -->
@@ -13,7 +16,10 @@
             <div class="card-header">
                 <div class="card-title">振动时域图</div>
             </div>
-            <div ref="timeChartRef" class="chart-container"></div>
+            <div class="chart-container">
+                <div ref="timeChartRef" class="chart-inner"></div>
+                <div v-if="!timeDomainData.length" class="chart-empty">暂无数据</div>
+            </div>
         </div>
     </div>
 </template>
@@ -64,26 +70,26 @@ const initCharts = () => {
 const updateFreqChart = () => {
     if (!freqChartInstance.value) return;
 
-    // 将两个数组组合成 [x, y] 格式的二维数组
-    const chartData = freqData.value.frequency.map((freq, index) => [
-        freq,
-        freqData.value.freqSpeedData[index] || 0
-    ]);
+    // 将两个数组组合成 [x, y] 格式的二维数组，并按 x（频率）升序排序，折线才不会乱序
+    const chartData = freqData.value.frequency
+        .map((freq, index) => [freq, freqData.value.freqSpeedData[index] ?? 0] as [number, number])
+        .sort((a, b) => a[0] - b[0]);
+
+    const xMax = chartData.length > 0 ? Math.max(...freqData.value.frequency, 2000) : 2000;
 
     freqChartInstance.value.setOption({
         tooltip: {
             trigger: 'axis',
             backgroundColor: 'rgba(50, 50, 50, 0.9)',
             borderColor: 'rgba(50, 50, 50, 0.9)',
-            textStyle: { color: '#fff' },
-            axisPointer: { type: 'shadow' }
+            textStyle: { color: '#fff' }
         },
-        grid: { top: 30, left: 40, right: 30, bottom: 50 },
+        grid: { top: 30, left: 40, right: 40, bottom: 50 },
         xAxis: {
             type: 'value',
             name: 'Hz',
             min: 0,
-            max: Math.max(...freqData.value.frequency, 2000),
+            max: xMax,
             nameTextStyle: { color: '#fff' },
             axisLabel: { color: '#fff' },
             axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
@@ -92,9 +98,8 @@ const updateFreqChart = () => {
         yAxis: {
             type: 'value',
             name: 'm/s²',
-            min: 0,
             nameTextStyle: { color: '#fff' },
-            axisLabel: { color: '#fff', formatter: '{value}' },
+            axisLabel: { color: '#fff' },
             axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
             splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
         },
@@ -112,14 +117,16 @@ const updateFreqChart = () => {
             }
         ],
         series: [{
-            type: 'bar',
-            barWidth: 2,
+            type: 'line',
+            smooth: false,
+            showSymbol: false,
+            sampling: 'lttb',
             data: chartData,
-            itemStyle: {
+            lineStyle: { color: '#7ecba1', width: 1 },
+            areaStyle: {
                 color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: '#7ecba1' },
-                    { offset: 0.5, color: '#5fb98b' },
-                    { offset: 1, color: '#d4a853' }
+                    { offset: 0, color: 'rgba(126, 203, 161, 0.8)' },
+                    { offset: 1, color: 'rgba(126, 203, 161, 0.2)' }
                 ])
             }
         }]
@@ -287,6 +294,23 @@ onUnmounted(() => {
         width: 100%;
         min-height: 0;
         padding: 20px;
+        position: relative;
+
+        .chart-inner {
+            width: 100%;
+            height: 100%;
+            min-height: 100px;
+        }
+
+        .chart-empty {
+            position: absolute;
+            inset: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
     }
 }
 

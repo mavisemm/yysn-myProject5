@@ -698,7 +698,7 @@ onUnmounted(() => {
 
     .sidebar-title {
       font-size: clamp(22px, 3vw, 26px);
-      font-weight: 600;
+      font-weight: 500;
     }
   }
 
@@ -840,7 +840,7 @@ onUnmounted(() => {
           cursor: pointer;
 
           &:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(150, 150, 150, 0.1);
           }
         }
 
@@ -852,7 +852,7 @@ onUnmounted(() => {
 
         // 自定义选中样式 - 基于 .is-selected 类，完全不依赖 el-tree 的 is-current
         .el-tree-node__content:has(.tree-node.is-selected) {
-          background: rgb(103, 157, 215) !important;
+          background: rgb(150, 150, 150, 0.2) !important;
         }
       }
     }
@@ -871,7 +871,7 @@ onUnmounted(() => {
       transition: transform 0.2s;
       font-size: clamp(14px, 2.5vw, 16px);
       /* 响应式字体大小，以16px为基准 */
-      color: #fff;
+      color: var(--special-font-color);
     }
 
     .no-select {
@@ -891,7 +891,7 @@ onUnmounted(() => {
     .node-icon {
       display: flex;
       align-items: center;
-      color: #fff;
+      color: var(--special-font-color);
       flex-shrink: 0;
 
       .el-icon {
@@ -907,6 +907,7 @@ onUnmounted(() => {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      color: var(--special-font-color);
     }
 
     .node-count {

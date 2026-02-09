@@ -32,10 +32,38 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // 弹窗用：测点、设备名下拉、事件类型下拉 -> 8003
+      '/taicang/hardware/device/check-point': {
+        target: 'http://122.224.196.178:8003',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/taicang/hardware/device/name': {
+        target: 'http://122.224.196.178:8003',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/taicang/hardware/eventType': {
+        target: 'http://122.224.196.178:8003',
+        changeOrigin: true,
+        secure: false,
+      },
+      // 弹窗用：事件查询 -> 8003
+      '/taicang/event': {
+        target: 'http://122.224.196.178:8003',
+        changeOrigin: true,
+        secure: false,
+      },
+      // 声音点位页：wav 播放/下载（与另一项目一致，36052）
+      '/jiepai': {
+        target: 'http://122.224.196.178:36052',
+        changeOrigin: true,
+        secure: false,
+      },
       // 其他 /taicang 接口 -> 8006
       '/taicang': {
-        // target: 'http://122.224.196.178:8006',
-        target: 'http://192.168.0.199:36001',
+        target: 'http://122.224.196.178:8006',
+        // target: 'http://192.168.0.199:36001',
         changeOrigin: true,
         secure: false,
       },

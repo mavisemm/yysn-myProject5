@@ -3,7 +3,7 @@
   <div class="dashboard">
     <!-- 顶部区域：统计数据和告警概览 -->
     <div class="top-section">
-      <DashboardStats :stats="statsData" />
+      <DashboardStats :stats="statsData" @click-trend-warning="showTrendWarningModal = true" />
       <AlarmOverview>
         <template #alarms>
         </template>
@@ -19,6 +19,9 @@
 
       </ThreeMetrics>
     </div>
+
+    <!-- 趋势预警设备弹窗 -->
+    <TrendWarningDeviceModal v-model="showTrendWarningModal" />
   </div>
 </template>
 
@@ -27,6 +30,7 @@ import { onMounted, ref, reactive } from 'vue';
 import DashboardStats from '@/components/business/dashboard/DashboardStats.vue';
 import AlarmOverview from '@/components/business/dashboard/AlarmOverview.vue';
 import ThreeMetrics from '@/components/business/dashboard/ThreeMetrics.vue';
+import TrendWarningDeviceModal from '@/components/business/dashboard/TrendWarningDeviceModal.vue';
 import { getTop5Devices } from '@/api/modules/hardware';
 import { getAllStats } from '@/api/modules/stats';
 
@@ -35,6 +39,7 @@ import { getAllStats } from '@/api/modules/stats';
  * 排名项目类型定义
  */
 interface RankingItem {
+  deviceId?: string;
   deviceName: string;
   workshopName: string;
   value?: number;
@@ -45,6 +50,8 @@ const rankings = ref<RankingItem[][]>([
   [],
   []
 ]);
+
+const showTrendWarningModal = ref(false);
 
 // 统计数据
 const statsData = ref([
@@ -67,6 +74,7 @@ const fetchTop5Data = async () => {
 
     if (vibrationData.rc === 0 && vibrationData.ret) {
       rankings.value[0] = vibrationData.ret.map(item => ({
+        deviceId: item.deviceId,
         deviceName: item.deviceName,
         workshopName: item.workshopName,
         value: item.value
@@ -75,6 +83,7 @@ const fetchTop5Data = async () => {
 
     if (soundData.rc === 0 && soundData.ret) {
       rankings.value[1] = soundData.ret.map(item => ({
+        deviceId: item.deviceId,
         deviceName: item.deviceName,
         workshopName: item.workshopName,
         value: item.value
@@ -83,6 +92,7 @@ const fetchTop5Data = async () => {
 
     if (temperatureData.rc === 0 && temperatureData.ret) {
       rankings.value[2] = temperatureData.ret.map(item => ({
+        deviceId: item.deviceId,
         deviceName: item.deviceName,
         workshopName: item.workshopName,
         value: item.value
@@ -108,7 +118,6 @@ const fetchStatsData = async () => {
     ];
   } catch (error) {
     console.error('获取统计数据失败:', error);
-    // 使用默认值
     statsData.value = [
       { title: '健康设备数', number: 0 },
       { title: '故障报警设备', number: 0 },

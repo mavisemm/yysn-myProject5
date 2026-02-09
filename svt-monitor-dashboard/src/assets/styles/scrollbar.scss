@@ -5,17 +5,17 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(150,150,150, 0.1);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(150,150,150, 0.1);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(150,150,150, 0.1);
 }
 
 /* 针对特定容器的滚动条样式 */
@@ -24,15 +24,15 @@
 }
 
 .module-content::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(150,150,150, 0.1);
   border-radius: 4px;
 }
 
 .module-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(150,150,150, 0.1);
   border-radius: 4px;
 }
 
 .module-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(150,150,150, 0.1);
 }

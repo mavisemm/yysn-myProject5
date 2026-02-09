@@ -14,83 +14,81 @@
             </div>
         </div>
         <div class="device-main">
-            <div class="device-basic-info" v-show="!isCollapsed">
+            <div v-if="!hasDeviceInfo" class="device-no-data">暂无数据</div>
+            <div v-else class="device-basic-info" v-show="!isCollapsed">
                 <div class="info-row" v-if="!isEditing">
                     <div class="info-item">
-                        <span class="info-label">设备名称：</span>
-                        <span class="info-value">{{ deviceInfo.deviceName }}</span>
+                        <span class="info-label special-font-color">设备名称：</span>
+                        <span class="info-value special-font-color">{{ deviceInfo.deviceName }}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">设备型号：</span>
-                        <span class="info-value">{{ deviceInfo.deviceModel }}</span>
+                        <span class="info-label special-font-color">设备型号：</span>
+                        <span class="info-value special-font-color">{{ deviceInfo.deviceModel }}</span>
                     </div>
                 </div>
 
                 <div class="info-row" v-else>
                     <div class="info-item">
-                        <span class="info-label">设备名称：</span>
+                        <span class="info-label special-font-color">设备名称：</span>
                         <el-input v-model="editForm.deviceName" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
-                        <span class="info-label">设备型号：</span>
+                        <span class="info-label special-font-color">设备型号：</span>
                         <el-input v-model="editForm.deviceModel" size="small" class="info-input" />
                     </div>
                 </div>
 
                 <div class="info-row" v-if="!isEditing">
                     <div class="info-item">
-                        <span class="info-label">生产厂家：</span>
-                        <span class="info-value">{{ deviceInfo.deviceFactory }}</span>
+                        <span class="info-label special-font-color">生产厂家：</span>
+                        <span class="info-value special-font-color">{{ deviceInfo.deviceFactory }}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">安装位置：</span>
-                        <span class="info-value">{{ deviceInfo.locationDetail }}</span>
+                        <span class="info-label special-font-color">安装位置：</span>
+                        <span class="info-value special-font-color">{{ deviceInfo.locationDetail }}</span>
                     </div>
                 </div>
                 <div class="info-row" v-else>
                     <div class="info-item">
-                        <span class="info-label">生产厂家：</span>
+                        <span class="info-label special-font-color">生产厂家：</span>
                         <el-input v-model="editForm.deviceFactory" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
-                        <span class="info-label">安装位置：</span>
+                        <span class="info-label special-font-color">安装位置：</span>
                         <el-input v-model="editForm.locationDetail" size="small" class="info-input" />
                     </div>
                 </div>
 
                 <div class="info-row" v-if="!isEditing">
                     <div class="info-item">
-                        <span class="info-label">工作转速：</span>
-                        <span class="info-value">{{ deviceInfo.rotationSpeed }} rpm</span>
+                        <span class="info-label special-font-color">工作转速：</span>
+                        <span class="info-value special-font-color">{{ deviceInfo.rotationSpeed }} rpm</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">设计流量：</span>
-                        <span class="info-value">{{ deviceInfo.designFlow }} m³/h</span>
+                        <span class="info-label special-font-color">设计流量：</span>
+                        <span class="info-value special-font-color">{{ deviceInfo.designFlow }} m³/h</span>
                     </div>
                 </div>
                 <div class="info-row" v-else>
                     <div class="info-item">
-                        <span class="info-label">工作转速：</span>
+                        <span class="info-label special-font-color">工作转速：</span>
                         <el-input v-model="editForm.rotationSpeed" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
-                        <span class="info-label">设计流量：</span>
+                        <span class="info-label special-font-color">设计流量：</span>
                         <el-input v-model="editForm.designFlow" size="small" class="info-input" />
                     </div>
                 </div>
 
                 <div class="info-row" v-if="!isEditing">
                     <div class="info-item">
-                        <span class="info-label">压力：</span>
-                        <span class="info-value">{{ deviceInfo.pressure }} MPa</span>
-                    </div>
-                    <div class="info-item">
-                        <!-- 在线状态已移除 -->
+                        <span class="info-label special-font-color">压力：</span>
+                        <span class="info-value special-font-color">{{ deviceInfo.pressure }} MPa</span>
                     </div>
                 </div>
                 <div class="info-row" v-else>
                     <div class="info-item">
-                        <span class="info-label">压力：</span>
+                        <span class="info-label special-font-color">压力：</span>
                         <el-input v-model="editForm.pressure" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
@@ -145,11 +143,17 @@ const props = defineProps<{
     deviceId: string
 }>()
 
+const emit = defineEmits<{
+    (e: 'edit-status-change', status: { isEditing: boolean; hasChanges: boolean }): void
+}>()
+
+const hasDeviceInfo = ref(true);
+
 // 设备信息响应式数据
 const deviceInfo = ref<DeviceInfo>({
     id: 0,
     deviceId: '',
-    deviceName: '加载中...',
+    deviceName: '',
     deviceModel: '',
     deviceFactory: '',
     locationDetail: '',
@@ -169,12 +173,13 @@ const loadDeviceInfo = async () => {
         const response = await getDeviceInfoByDeviceId(props.deviceId);
         if (response.rc === 0 && response.ret) {
             deviceInfo.value = response.ret;
+            hasDeviceInfo.value = true;
         } else {
-            ElMessage.error('获取设备信息失败');
+            hasDeviceInfo.value = false;
         }
     } catch (error) {
         console.error('获取设备信息失败:', error);
-        ElMessage.error('获取设备信息失败');
+        hasDeviceInfo.value = false;
     }
 }
 
@@ -355,6 +360,7 @@ const toggleEdit = async () => {
                 Object.assign(deviceInfo.value, editForm.value);
                 ElMessage.success('设备信息更新成功');
                 isEditing.value = false;
+                emit('edit-status-change', { isEditing: false, hasChanges: false });
             } else {
                 ElMessage.error(response.err || '设备信息更新失败');
             }
@@ -366,6 +372,7 @@ const toggleEdit = async () => {
         // 进入编辑模式
         Object.assign(editForm.value, deviceInfo.value)
         isEditing.value = true;
+        emit('edit-status-change', { isEditing: true, hasChanges: false });
     }
 }
 
@@ -525,7 +532,7 @@ onUnmounted(() => {
             .module-title {
                 margin: 0;
                 font-size: clamp(18px, 2.5vw, 22px);
-                font-weight: 600;
+                font-weight: 500;
             }
 
             .header-actions {
@@ -548,6 +555,12 @@ onUnmounted(() => {
     .device-main {
         padding: 20px;
         flex: 1;
+
+        .device-no-data {
+            color: rgba(255, 255, 255, 0.6);
+            padding: 20px;
+        }
+
         width: 100%;
         display: flex;
         flex-direction: column;
@@ -570,12 +583,10 @@ onUnmounted(() => {
 
                     .info-label {
                         font-size: 12px;
-                        color: #ccc;
                     }
 
                     .info-value {
                         font-size: 14px;
-                        color: #fff;
                         margin-bottom: 5px;
                         font-weight: 500;
                         white-space: normal;
@@ -597,6 +608,7 @@ onUnmounted(() => {
                             .el-input__inner {
                                 white-space: normal;
                                 word-wrap: break-word;
+                                color: #333 !important; // 编辑状态下输入文字颜色为黑色，强制覆盖全局样式
                             }
                         }
                     }

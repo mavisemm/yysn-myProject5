@@ -26,10 +26,10 @@
 
                 <el-table-column label="操作栏" width="40%" align="center">
                     <template #default="{ row }">
-                        <div class="operate-btns">
-                            <el-button link type="primary" @click="viewDetails(row)">查看曲线</el-button>
-                            <el-button link type="primary" @click="downloadFile(row.id)">下载文件</el-button>
-                            <el-button link type="primary" @click="playAudio(row.id)">播放</el-button>
+                        <div class="operate-btns" @click.stop>
+                            <el-button link type="primary" @click.stop="viewDetails(row)">查看曲线</el-button>
+                            <el-button link type="primary" @click.stop="downloadFile(row.id)">下载文件</el-button>
+                            <el-button link type="primary" @click.stop="playAudio(row)">播放</el-button>
                         </div>
                     </template>
                 </el-table-column>
@@ -105,8 +105,8 @@ const downloadFile = (id: string) => {
     emit('download-file', id);
 };
 
-const playAudio = (id: string) => {
-    emit('play-audio', id);
+const playAudio = (row: any) => {
+    emit('play-audio', row);
 };
 </script>
 
@@ -172,7 +172,7 @@ const playAudio = (id: string) => {
             background: transparent !important;
 
             &:hover {
-                background: rgba(255, 255, 255, 0.2) !important;
+                background: rgba(150, 150, 150, 0.2) !important;
             }
         }
 

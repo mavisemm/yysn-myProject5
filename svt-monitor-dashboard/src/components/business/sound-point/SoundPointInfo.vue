@@ -44,12 +44,6 @@
                     <span class="info-value">{{ deviationValue }}</span>
                 </span>
             </div>
-            <div class="info-item">
-                <span class="info-content">
-                    <span class="info-label">采集数据上传时间：</span>
-                    <span class="info-value">{{ uploadTime }}</span>
-                </span>
-            </div>
         </div>
         <div class="audio-player">
             <audio ref="audioRef" :src="audioPath" controls preload="auto"></audio>
@@ -76,14 +70,13 @@ const props = defineProps<{
 
 const audioRef = ref<HTMLAudioElement | null>(null);
 
-// 设置默认值
-const clusterName = computed(() => props.clusterName || '未分类');
-const productionEquipment = computed(() => props.productionEquipment || props.deviceName || '未知设备');
-const subComponent = computed(() => props.subComponent || '1.进风口位置');
-const detectionEquipment = computed(() => props.detectionEquipment || '五线3路');
-const microphone = computed(() => props.microphone || '1');
-const deviationValue = computed(() => props.deviationValue !== undefined ? props.deviationValue : '0.00');
-const uploadTime = computed(() => props.uploadTime || props.currentDataTime || '暂无数据');
+// 无值就空着，不填占位符（保持每行固定高度由 CSS 控制，下一行不会挤上来）
+const productionEquipment = computed(() => props.productionEquipment || props.deviceName || '');
+const clusterName = computed(() => props.clusterName || '');
+const subComponent = computed(() => props.subComponent || '');
+const detectionEquipment = computed(() => props.detectionEquipment || '');
+const microphone = computed(() => props.microphone || '');
+const deviationValue = computed(() => (props.deviationValue !== undefined && props.deviationValue !== '') ? props.deviationValue : '');
 
 // 当音频路径变化时自动播放
 watch(() => props.audioPath, (newPath) => {
@@ -122,17 +115,23 @@ watch(() => props.audioPath, (newPath) => {
 
         .info-item {
             padding: 8px 0;
+            min-height: 28px;
+            display: flex;
+            align-items: center;
 
             .info-content {
                 display: flex;
                 align-items: center;
                 gap: 8px;
+                width: 100%;
+                min-height: 28px;
 
                 .info-label {
                     font-weight: bold;
                     font-size: clamp(12px, 1.5vw, 16px);
                     color: #ccc;
                     white-space: nowrap;
+                    flex-shrink: 0;
                 }
 
                 .info-value {
@@ -142,6 +141,7 @@ watch(() => props.audioPath, (newPath) => {
                     overflow: hidden;
                     text-overflow: ellipsis;
                     flex: 1;
+                    min-height: 1.2em;
                 }
             }
         }

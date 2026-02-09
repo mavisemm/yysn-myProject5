@@ -5,7 +5,7 @@
             <div class="chart-item">
                 <div class="chart-header">
                     <span class="chart-title">烈度随时间变化</span>
-                    <span class="chart-unit">（单位：mm/s）</span>
+                    <span class="chart-unit special-font-color">（单位：mm/s）</span>
                 </div>
                 <div ref="vibChartRef" class="chart"></div>
             </div>
@@ -14,7 +14,7 @@
             <div class="chart-item">
                 <div class="chart-header">
                     <span class="chart-title">温度随时间变化</span>
-                    <span class="chart-unit">（单位：℃）</span>
+                    <span class="chart-unit special-font-color">（单位：℃）</span>
                 </div>
                 <div ref="tempChartRef" class="chart"></div>
             </div>
@@ -23,7 +23,7 @@
             <div class="chart-item">
                 <div class="chart-header">
                     <span class="chart-title">响度随时间变化</span>
-                    <span class="chart-unit">（单位：dB）</span>
+                    <span class="chart-unit special-font-color">（单位：dB）</span>
                 </div>
                 <div ref="soundChartRef" class="chart"></div>
             </div>
@@ -58,8 +58,7 @@
                                     range-separator="-" start-placeholder="开始日期" end-placeholder="结束日期"
                                     format="YYYY-MM-DD HH:mm:ss" value-format="YYYY-MM-DD HH:mm:ss" size="small"
                                     style="width: 100%;" popper-class="custom-datepicker-popper"
-                                    :default-time="defaultTime" :disabled-date="disabledDate"
-                                    @calendar-change="handleCalendarChange" />
+                                    :default-time="defaultTime" :disabled-date="disabledDate" />
                             </el-form-item>
 
                             <el-button type="primary" @click="analyzeTrend" style="width: 100%; margin-top: 10px;">
@@ -92,6 +91,7 @@ import * as echarts from 'echarts'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { enableMouseWheelZoomForCharts, connectCharts } from '@/utils/chart'
 import { getTemperatureTrend, getVibrationTrend, getSoundTrend } from '@/api/modules/hardware'
+import { handleDatePickerChange, disabledFutureDate } from '@/utils/datetime'
 
 // 定义点位信息类型
 interface PointInfo {
@@ -109,7 +109,7 @@ interface AnalysisResult {
 }
 
 // 定义日期范围类型，兼容Element Plus的日期选择器
-export type DateRange = [Date, Date] | null
+export type DateRange = [string, string] | null
 
 // 定义属性
 const props = defineProps<{
@@ -127,9 +127,7 @@ let soundChart: echarts.ECharts | null = null
 let vibChart: echarts.ECharts | null = null
 
 // 趋势分析相关
-const disabledDate = (time: Date) => {
-    return time.getTime() > Date.now();
-};
+const disabledDate = disabledFutureDate;
 
 
 
@@ -138,21 +136,10 @@ const defaultTime = computed<[Date, Date]>(() => {
     return [new Date(2000, 1, 1, 0, 0, 0), now];
 });
 
-const handleCalendarChange = (val: DateRange) => {
-    if (val) {
-        const [start, end] = val;
-        if (end) {
-            const now = new Date();
-            const endDay = new Date(end);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            // 如果结束日期是今天，则结束时间设置为当前时间
-            endDay.setHours(0, 0, 0, 0);
-            if (endDay.getTime() === today.getTime()) {
-                analysisForm.value.dateRange = [start, now];
-            }
-        }
+const handleCalendarChange = (val: [Date, Date] | null) => {
+    const result = handleDatePickerChange(val);
+    if (result) {
+        analysisForm.value.dateRange = result;
     }
 };
 
@@ -161,6 +148,26 @@ const analysisForm = ref({
     days: 1,
     dateRange: null as DateRange
 })
+
+// 监听日期范围变化，自动处理结束时间逻辑
+watch(() => analysisForm.value.dateRange, (newVal) => {
+    // 处理空值情况 - 如果清空了选择，保持空状态
+    if (!newVal || newVal.length !== 2 || !newVal[0] || !newVal[1]) {
+        // 保持空状态，不进行任何处理
+        return;
+    }
+
+    const result = handleDatePickerChange([new Date(newVal[0]), new Date(newVal[1])]);
+    if (result) {
+        // 只有当处理后的结果与当前值不同时才更新，避免无限循环
+        if (result[0] !== newVal[0] || result[1] !== newVal[1]) {
+            analysisForm.value.dateRange = result;
+        }
+    } else if (result === null && (newVal[0] || newVal[1])) {
+        // 如果处理结果为null但原值不为空，说明用户清空了选择
+        analysisForm.value.dateRange = ['', ''];
+    }
+}, { deep: true });
 
 const analysisResult = ref<AnalysisResult>({
     deviation: '0.25',
@@ -213,7 +220,11 @@ const loadTemperatureData = async (pointId: string) => {
                 const dt = item.dateTime || ''
                 if (dt.includes(' ')) return (dt.split(' ')[1] || dt).trim()
                 if (dt.includes('T')) return (dt.split('T')[1] || dt).substring(0, 8)
-                return dt || '--'
+                // 当没有有效时间时，显示"无时间"而不是生成假数据
+                if (!dt) {
+                    return '无时间';
+                }
+                return dt;
             })
             const tempData = response.ret.map(item => item.temperature)
             const dataMin = tempData.length ? Math.min(...tempData) : 0
@@ -221,19 +232,63 @@ const loadTemperatureData = async (pointId: string) => {
             const { min: yMin, max: yMax } = computeTempYAxisRange(dataMin, dataMax)
 
             tempChart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(50,50,50,0.8)',
+                    borderColor: 'rgba(50,50,50,0.8)',
+                    textStyle: {
+                        color: '#fff'
+                    },
+                    position: function (pos: any, params: any, el: any, elRect: any, size: any) {
+                        const [mouseX, mouseY] = pos;
+                        const [contentWidth, contentHeight] = size.contentSize;
+                        const [viewWidth, viewHeight] = size.viewSize;
+                        let x = mouseX + 20;
+                        if (x + contentWidth > viewWidth) {
+                            x = mouseX - contentWidth - 20;
+                        }
+                        let y = Math.max(0, mouseY - contentHeight / 2);
+                        return [x, y];
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '22%',
+                    top: '10%',
+                    containLabel: true
+                },
+                dataZoom: [
+                    { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+                    {
+                        type: 'slider',
+                        xAxisIndex: [0],
+                        bottom: '5%',
+                        height: '10%',
+                        fillerColor: 'rgba(255, 206, 86, 0.3)',
+                        borderColor: 'rgba(255, 206, 86, 0.5)',
+                        handleStyle: { color: '#FFCE56' },
+                        filterMode: 'none'
+                    }
+                ],
                 xAxis: {
                     show: true,
                     data: timeData,
+                    nameTextStyle: { color: '#fff' },
                     axisLabel: {
                         show: true,
                         interval: 0,
                         fontSize: 12,
                         color: '#fff',
                         margin: 10
-                    }
+                    },
+                    axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
+                    axisTick: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
+                    splitLine: { show: false }
                 },
                 yAxis: {
                     type: 'value',
+                    name: '℃',
                     scale: true,
                     min: yMin,
                     max: yMax,
@@ -244,11 +299,16 @@ const loadTemperatureData = async (pointId: string) => {
                     },
                     axisLine: { lineStyle: { color: '#fff' } },
                     axisTick: { lineStyle: { color: '#fff' } },
-                    splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.2)' } },
-                    splitNumber: 8
+                    splitLine: { lineStyle: { color: 'rgba(150,150,150, 0.2)' } },
+                    splitNumber: 8,
+                    nameTextStyle: { color: '#fff' }
                 },
                 series: [{
-                    data: tempData
+                    data: tempData,
+                    type: 'line',
+                    smooth: true,
+                    symbolSize: 4,
+                    lineStyle: { width: 2 }
                 }]
             })
         } else {
@@ -271,7 +331,13 @@ const setTempChartFallback = () => {
             data: TEMP_FALLBACK_TIMES,
             axisLabel: { show: true, interval: 0, fontSize: 12, color: '#fff', margin: 10 }
         },
-        series: [{ data: TEMP_FALLBACK_DATA }]
+        series: [{
+            data: TEMP_FALLBACK_DATA,
+            type: 'line',
+            smooth: true,
+            symbolSize: 4,
+            lineStyle: { width: 2 }
+        }]
     })
 }
 
@@ -336,7 +402,7 @@ const loadVibrationData = async (pointId: string) => {
                     },
                     axisLine: { lineStyle: { color: '#fff' } },
                     axisTick: { lineStyle: { color: '#fff' } },
-                    splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.2)' } },
+                    splitLine: { lineStyle: { color: 'rgba(150,150,150, 0.2)' } },
                     splitNumber: 8
                 },
                 series: [{
@@ -412,7 +478,7 @@ const loadSoundData = async (_pointId: string) => {
                     },
                     axisLine: { lineStyle: { color: '#fff' } },
                     axisTick: { lineStyle: { color: '#fff' } },
-                    splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.2)' } },
+                    splitLine: { lineStyle: { color: 'rgba(150,150,150, 0.2)' } },
                     splitNumber: 8
                 },
                 series: [{
@@ -475,7 +541,7 @@ const initTempChart = () => {
             left: '3%',
             right: '4%',
             bottom: '22%',
-            top: '5%',
+            top: '10%',
             containLabel: true
         },
         dataZoom: [
@@ -483,11 +549,11 @@ const initTempChart = () => {
             {
                 type: 'slider',
                 xAxisIndex: [0],
-                bottom: '3%',
-                height: '8%',
-                fillerColor: 'rgba(255, 99, 132, 0.3)',
-                borderColor: 'rgba(255, 99, 132, 0.5)',
-                handleStyle: { color: '#FF6384' },
+                bottom: '5%',
+                height: '10%',
+                fillerColor: 'rgba(255, 206, 86, 0.3)',
+                borderColor: 'rgba(255, 206, 86, 0.5)',
+                handleStyle: { color: '#FFCE56' },
                 filterMode: 'none'
             }
         ],
@@ -495,6 +561,7 @@ const initTempChart = () => {
             type: 'category',
             show: true,
             data: FALLBACK_TIME_LABELS,
+            nameTextStyle: { color: '#fff' },
             axisLabel: {
                 show: true,
                 interval: 0,
@@ -502,18 +569,9 @@ const initTempChart = () => {
                 color: '#fff',
                 margin: 10
             },
-            axisLine: {
-                show: true,
-                lineStyle: {
-                    color: '#fff'
-                }
-            },
-            axisTick: {
-                show: true,
-                lineStyle: {
-                    color: '#fff'
-                }
-            }
+            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
+            axisTick: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
+            splitLine: { show: false }
         },
         yAxis: {
             type: 'value',
@@ -526,21 +584,10 @@ const initTempChart = () => {
                 color: '#fff',
                 formatter: (value: number) => String(Math.round(Number(value)))
             },
-            axisLine: {
-                lineStyle: {
-                    color: '#fff'
-                }
-            },
-            axisTick: {
-                lineStyle: {
-                    color: '#fff'
-                }
-            },
-            splitLine: {
-                lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.2)'
-                }
-            },
+            axisLine: { lineStyle: { color: '#fff' } },
+            axisTick: { lineStyle: { color: '#fff' } },
+            splitLine: { lineStyle: { color: 'rgba(150,150,150, 0.2)' } },
+            nameTextStyle: { color: '#fff' },
             splitNumber: 8
         },
         series: [{
@@ -674,7 +721,7 @@ const initSoundChart = () => {
             },
             splitLine: {
                 lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.2)'
+                    color: 'rgba(150,150,150, 0.2)'
                 }
             }
         },
@@ -809,7 +856,7 @@ const initVibChart = () => {
             },
             splitLine: {
                 lineStyle: {
-                    color: 'rgba(255, 255, 255, 0.2)'
+                    color: 'rgba(150,150,150, 0.2)'
                 }
             }
         },
@@ -1151,7 +1198,7 @@ onUnmounted(() => {
                         .result-label {
                             font-size: 12px;
                             color: #fff;
-                            font-weight: 600;
+                            font-weight: 500;
                         }
 
                         .result-value {
@@ -1204,8 +1251,8 @@ onUnmounted(() => {
             :deep(.el-input__wrapper) {
                 height: 26px !important;
                 padding: 0 6px !important;
-                background: rgba(255, 255, 255, 0.1) !important;
-                border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                background: rgba(150, 150, 150, 0.1) !important;
+                border: 1px solid rgba(150, 150, 150, 0.2) !important;
                 box-shadow: none !important;
                 border-radius: 3px !important;
             }

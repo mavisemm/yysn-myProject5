@@ -2,7 +2,7 @@
 <template>
   <div class="device-detail">
     <!-- 左侧设备信息模块：显示设备基本信息 -->
-    <DeviceInfoModule v-if="deviceId" :device-id="deviceId" />
+    <DeviceInfoModule v-if="deviceId" :device-id="deviceId" @edit-status-change="handleEditStatusChange" />
 
     <!-- 右侧内容模块：包含点位列表和图表分析 -->
     <div class="right-content">
@@ -17,8 +17,9 @@
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
+import { useRoute, onBeforeRouteLeave } from 'vue-router'
 import { watch, ref, computed, onMounted, nextTick, onUnmounted } from 'vue'
+import { ElMessageBox } from 'element-plus'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import { getSelectCheckPointIn } from '@/api/modules/hardware'
 import DeviceInfoModule from '@/components/business/device-detail/DeviceInfoModule.vue'
@@ -55,6 +56,10 @@ interface PointInfo {
 const pointList = ref<PointInfo[]>([])
 const pointListModuleRef = ref<ComponentPublicInstance & PointListModuleType>()
 const selectedPointId = ref<string>('')
+
+// 编辑状态跟踪
+const isEditing = ref(false)
+const hasUnsavedChanges = ref(false)
 
 const analysisForm = ref({
   pointId: '',
@@ -165,6 +170,43 @@ const setupPageResizeObserver = () => {
     resizeObserver.observe(pageContainer);
   }
 }
+
+// 监听DeviceInfoModule的编辑状态
+const handleEditStatusChange = (status: { isEditing: boolean; hasChanges: boolean }) => {
+  isEditing.value = status.isEditing;
+  hasUnsavedChanges.value = status.hasChanges;
+}
+
+// 路由离开前的确认对话框
+onBeforeRouteLeave(async (to, from, next) => {
+  if (hasUnsavedChanges.value) {
+    try {
+      await ElMessageBox.confirm(
+        '您有未保存的编辑内容，是否保存后再离开？',
+        '确认离开',
+        {
+          confirmButtonText: '保存',
+          cancelButtonText: '取消',
+          type: 'warning',
+          distinguishCancelAndClose: true
+        }
+      )
+      // 用户点击保存
+      // 这里可以触发保存操作
+      next()
+    } catch (action) {
+      if (action === 'cancel') {
+        // 用户点击取消，阻止跳转
+        next(false)
+      } else {
+        // 用户关闭对话框，也阻止跳转
+        next(false)
+      }
+    }
+  } else {
+    next()
+  }
+})
 
 onUnmounted(() => {
   if (resizeObserver) {

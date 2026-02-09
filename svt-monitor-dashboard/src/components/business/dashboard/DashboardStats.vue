@@ -2,7 +2,9 @@
 <template>
     <div class="stats-area">
         <div class="stats-grid">
-            <div v-for="(stat, index) in stats" :key="index" class="stat-card" :class="`stat-card-${index}`">
+            <div v-for="(stat, index) in stats" :key="index" class="stat-card"
+                :class="[`stat-card-${index}`, stat.title === '趋势预警设备' ? 'stat-card-trend' : '']"
+                @click="stat.title === '趋势预警设备' ? $emit('clickTrendWarning') : undefined">
                 <div class="stat-content">
                     <div class="stat-icon">
                         <img v-if="index === 0" src="@/assets/images/background/首页-健康设备数.png" alt="健康设备数"
@@ -37,6 +39,10 @@ interface Props {
 }
 
 defineProps<Props>();
+
+defineEmits<{
+    (e: 'clickTrendWarning'): void;
+}>();
 </script>
 
 <style lang="scss" scoped>
@@ -71,6 +77,18 @@ defineProps<Props>();
             font-weight: bold;
             color: white;
             box-sizing: border-box;
+            border-radius: 8px;
+
+            &.stat-card-trend {
+                cursor: pointer;
+                transition: all 0.3s ease;
+
+                &:hover {
+                    background: rgba(150, 150, 150, 0.1);
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                }
+            }
         }
 
         .stat-content {

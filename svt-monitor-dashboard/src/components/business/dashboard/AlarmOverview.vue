@@ -5,7 +5,7 @@
         <div class="header-section">
             <h3>预警总览</h3>
             <div class="search-section">
-                <div class="device-search-wrapper">
+                <!-- <div class="device-search-wrapper">
                     <el-input v-model="deviceSearch" placeholder="请输入设备名称" :prefix-icon="Search" size="small" clearable
                         style="width: 140px;" @focus="showDeviceDropdown" @blur="hideDeviceDropdown"
                         @keyup.enter="handleSearch" @clear="handleClear" class="custom-search-input" />
@@ -16,15 +16,14 @@
                             <span class="workshop-name">({{ device.workshopName }})</span>
                         </div>
                     </div>
-                </div>
+                </div> -->
 
                 <div class="time-section">
                     <el-date-picker v-model="dateRange" type="datetimerange" range-separator="-"
                         start-placeholder="开始日期" end-placeholder="结束日期" format="YYYY-MM-DD HH:mm:ss"
                         value-format="YYYY-MM-DD HH:mm:ss" size="small" style="width: 320px;" class="time-search-input"
                         popper-class="custom-datepicker-popper" :default-time="defaultTime"
-                        :disabled-date="disabledDate" :picker-options="pickerOptions" :locale="zhCn"
-                        @calendar-change="handleCalendarChange" />
+                        :disabled-date="disabledDate" :locale="zhCn" />
                     <el-button @click="toggleSortOrder" class="sort-btn" :icon="sortIcon">
                     </el-button>
                 </div>
@@ -32,7 +31,8 @@
         </div>
 
         <!-- 主内容区域 -->
-        <div class="alarm-grid" :style="{
+        <div v-if="filteredAlarms.length === 0" class="alarm-empty">暂无数据</div>
+        <div v-else class="alarm-grid" :style="{
             'grid-template-columns': `repeat(${responsivePageSize.columns}, 1fr)`,
             'grid-auto-rows': '1fr'
         }">
@@ -58,7 +58,7 @@
         </div>
 
         <!-- 底部分页 -->
-        <div class="pagination-wrapper">
+        <div v-if="filteredAlarms.length > 0" class="pagination-wrapper">
             <el-pagination v-model:current-page="currentPage" :page-size="pageSize" :total="filteredAlarms.length"
                 layout="prev, pager, next, jumper" @current-change="handleCurrentChange" />
         </div>
@@ -66,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, reactive } from 'vue';
+import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDeviceTreeStore } from '@/stores/deviceTree';
 import { Search, Sort } from '@element-plus/icons-vue';
@@ -74,51 +74,14 @@ import { ElInput, ElButton, ElDatePicker, ElPagination } from 'element-plus';
 import { useLocale } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import type { DeviceNode } from '@/types/device';
+import { formatDateTime, handleDatePickerChange, disabledFutureDate, getDefaultDateRange } from '@/utils/datetime';
 
 const { t } = useLocale();
 
 const router = useRouter()
 const deviceTreeStore = useDeviceTreeStore();
 
-const disabledDate = (time: Date) => {
-    return time.getTime() > Date.now();
-};
-
-/**
- * 日期选择器快捷选项
- */
-const pickerOptions = {
-    shortcuts: [
-        {
-            text: '今天',
-            onClick(picker: any) {
-                const start = new Date();
-                const end = new Date();
-                start.setHours(0, 0, 0, 0);
-                picker.$emit('pick', [start, end]);
-            }
-        },
-        {
-            text: '昨天',
-            onClick(picker: any) {
-                const start = new Date(Date.now() - 86400000);
-                const end = new Date(Date.now() - 86400000);
-                start.setHours(0, 0, 0, 0);
-                end.setHours(23, 59, 59, 999);
-                picker.$emit('pick', [start, end]);
-            }
-        },
-        {
-            text: '一周前',
-            onClick(picker: any) {
-                const start = new Date(Date.now() - 7 * 86400000);
-                const end = new Date();
-                start.setHours(0, 0, 0, 0);
-                picker.$emit('pick', [start, end]);
-            }
-        }
-    ]
-};
+const disabledDate = disabledFutureDate;
 
 // 定义类型
 interface MeasurementPoint {
@@ -152,7 +115,7 @@ const extractDevicesFromTree = (nodes: DeviceNode[]): DeviceItem[] => {
         factory.children?.forEach(workshop => {
             workshop.children?.forEach(device => {
                 if (device.type === 'device') {
-                    devices.push({
+                devices.push({
                         id: device.id,
                         name: `${device.name}（${workshop.name}）`,
                         deviceName: device.name,
@@ -176,32 +139,29 @@ const defaultTime = computed(() => {
     return [new Date(2000, 1, 1, 0, 0, 0), now] as [Date, Date];
 });
 
-const handleCalendarChange = (val: [Date, Date]) => {
-    if (val && val.length === 2) {
-        const [start, end] = val;
-        if (end) {
-            const now = new Date();
-            const endDay = new Date(end);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            endDay.setHours(0, 0, 0, 0);
-            if (endDay.getTime() === today.getTime()) {
-                dateRange.value = [formatDate(start), formatDate(now)];
-            }
-        }
+// 监听日期范围变化，自动处理结束时间逻辑
+watch(dateRange, (newVal) => {
+    // 处理空值情况 - 如果清空了选择，保持空状态
+    if (!newVal || newVal.length !== 2 || !newVal[0] || !newVal[1]) {
+        // 保持空状态，不进行任何处理
+        return;
     }
-};
 
-const formatDate = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-};
+    // 将字符串转换为Date对象进行处理
+    const startDate = new Date(newVal[0]);
+    const endDate = new Date(newVal[1]);
+
+    const result = handleDatePickerChange([startDate, endDate]);
+    if (result) {
+        // 只有当处理后的结果与当前值不同时才更新，避免无限循环
+        if (result[0] !== newVal[0] || result[1] !== newVal[1]) {
+            dateRange.value = result;
+        }
+    } else if (result === null && (newVal[0] || newVal[1])) {
+        // 如果处理结果为null但原值不为空，说明用户清空了选择
+        dateRange.value = ['', ''];
+    }
+}, { deep: true });
 
 const containerWidth = ref(window.innerWidth);
 const containerHeight = ref(window.innerHeight);
@@ -240,176 +200,14 @@ const pageSize = ref(responsivePageSize.value.pageSize);
 
 const sortOrder = ref<'asc' | 'desc'>("desc");
 
-// 模拟告警数据 - 基于真实设备树结构
-const alarms = computed<AlarmItem[]>(() => {
-    // 使用真实的设备树数据
-    const realDeviceTree = [
-        {
-            "factoryId": "FAC001",
-            "factoryName": "Main Factory",
-            "children": [
-                {
-                    "workshopId": "WSH001",
-                    "workshopName": "Workshop A",
-                    "children": [
-                        {
-                            "equipmentId": "ff8081819a4cd984019a4d524e0d0000",
-                            "equipmentName": "五线三路风机",
-                            "children": [
-                                { "pointName": "3", "pointId": "lfpznaj5u6RsUgMzQH4" },
-                                { "pointName": "2", "pointId": "ofC6mcZeoOhmtZOcdnL" },
-                                { "pointName": "1", "pointId": "9sXGsnoV80oz7uB7AMv" },
-                                { "pointName": "8", "pointId": "afuBOPygDME90Ocf4Nl" },
-                                { "pointName": "7", "pointId": "3kZpxW0Ti67uYxy04Wd" },
-                                { "pointName": "6", "pointId": "AiWdaUEqTCYa6CF4mYr" },
-                                { "pointName": "5", "pointId": "2jSWm5mguSklnzJLXQ3" },
-                                { "pointName": "4", "pointId": "ymnelvApbJkig1714Jh" },
-                                { "pointName": "JXA24F5308", "pointId": "CHl6tUtNe5C7pHLTkJK" },
-                                { "pointName": "JXA24F5307", "pointId": "9lzwOputwMwgnLChIpG" }
-                            ]
-                        },
-                        {
-                            "equipmentId": "ff8081819a623bff019a71fbec550018",
-                            "equipmentName": "往复式压缩机",
-                            "children": [
-                                { "pointName": "JS32F21", "pointId": "Y9zzIRfcHLOihs9w8c8" },
-                                { "pointName": "JS32F20", "pointId": "0T1dvp6P17FTM5QcpaX" },
-                                { "pointName": "JS32F19", "pointId": "01wL5Y4luluaWHUur00" },
-                                { "pointName": "JS32F18", "pointId": "GrVcQ9rPRT7qNBcjtZf" },
-                                { "pointName": "JS32F17", "pointId": "jxF3AMdUlheGf374F4Q" },
-                                { "pointName": "JS32F16", "pointId": "x56tm1lmnVgg2jrHAmz" },
-                                { "pointName": "JS32F15", "pointId": "Tm9gTzgmKD4wRA8abmD" },
-                                { "pointName": "JS32F14", "pointId": "iiT3Jj5OVkoNDV0673J" },
-                                { "pointName": "JS32F13", "pointId": "syjlTFYJqVbxPvIGkbn" },
-                                { "pointName": "JS32F12", "pointId": "aDRI7krlKWE1kQhLGF3" }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "workshopId": "WSH002",
-                    "workshopName": "Workshop B",
-                    "children": [
-                        {
-                            "equipmentId": "ff8081819a623bff019a71ee6a950000",
-                            "equipmentName": "五线一路风机",
-                            "children": [
-                                { "pointName": "JXA29F6106", "pointId": "kHXkZgnoUDglfey75DG" },
-                                { "pointName": "JXA29F6105", "pointId": "mEE2HiiLmrlOtbtzrlW" },
-                                { "pointName": "JXA29F6104", "pointId": "RJYERBkadHWRg3HL6aF" },
-                                { "pointName": "JXA29F6103", "pointId": "xvAd4v5aXEQE6HmQIdm" },
-                                { "pointName": "JXA29F6102", "pointId": "RhaSNWozeQpsbL39IhD" },
-                                { "pointName": "JXA29F6101", "pointId": "a5nIlFdxnIGqiWFu3Mc" },
-                                { "pointName": "JXA29F6107", "pointId": "cVwuOHYFy0pUttJNLrV" },
-                                { "pointName": "JXA29F6108", "pointId": "tCrBMi4H9a0g80Yqqgn" }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "factoryId": "FAC002",
-            "factoryName": "East Branch Factory",
-            "children": [
-                {
-                    "workshopId": "WSH003",
-                    "workshopName": "Workshop C",
-                    "children": [
-                        {
-                            "equipmentId": "ff8081819a623bff019a71f434130009",
-                            "equipmentName": "七线一路风机",
-                            "children": [
-                                { "pointName": "JXA29F8108", "pointId": "yoH4519rucZJWLvznRF" },
-                                { "pointName": "JXA29F8107", "pointId": "tQ3by7SBR7jv2sSc6e9" },
-                                { "pointName": "JXA29F8106", "pointId": "CCW9gAmMTcJjCd8ZNM5" },
-                                { "pointName": "JXA29F8105", "pointId": "wCfB2K6IzUOJZiLDwvI" },
-                                { "pointName": "JXA29F8102", "pointId": "Rxe4UwGmf8uQs7zB9KT" },
-                                { "pointName": "JXA29F8101", "pointId": "oRxw9NT9Uid0zJDAI2e" },
-                                { "pointName": "JXA29F8104", "pointId": "gtrCHbhSmXYOkqh03Hr" },
-                                { "pointName": "JXA29F8103", "pointId": "mWp4H5tOt7SsAT52n6b" }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "workshopId": "WSH004",
-                    "workshopName": "Workshop D",
-                    "children": [
-                        {
-                            "equipmentId": "ff8081819a909f21019a918dcbf00000",
-                            "equipmentName": "旋压机",
-                            "children": [
-                                { "pointName": "尾顶电磁阀1号点位", "pointId": "gFlE5Ph0jNKHDUtOhcc" },
-                                { "pointName": "SHJY-XYJ1号点位", "pointId": "TUQ4qCulrC0Hw7ODkhZ" }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        }
-    ];
-
-    // 将设备树数据转换为告警数据格式
-    const alarmItems: AlarmItem[] = [];
-
-    realDeviceTree.forEach(factory => {
-        factory.children.forEach(workshop => {
-            workshop.children.forEach(equipment => {
-                // 随机生成设备状态（健康或预警）
-                const isWarning = Math.random() > 0.7; // 30%概率为预警
-                const status = isWarning ? 'warning' : 'healthy';
-                const statusText = isWarning ? '预警' : '健康';
-
-                // 生成随机的时间（如果是预警状态）
-                let time = '';
-                if (isWarning) {
-                    const now = new Date();
-                    const randomHours = Math.floor(Math.random() * 48); // 48小时内随机时间
-                    const alarmTime = new Date(now.getTime() - randomHours * 60 * 60 * 1000);
-                    time = formatDate(alarmTime);
-                }
-
-                // 生成测点数据（最多10个测点用于展示）
-                const measurementPoints: MeasurementPoint[] = [];
-                const pointCount = Math.min(10, equipment.children.length); // 最多显示10个测点
-
-                for (let i = 0; i < pointCount; i++) {
-                    const isPointWarning = isWarning && Math.random() > 0.6; // 如果设备预警，测点有40%概率预警
-                    const point = equipment.children[i];
-                    if (point) {
-                        measurementPoints.push({
-                            name: point.pointName,
-                            status: isPointWarning ? 'warning' : 'healthy'
-                        });
-                    }
-                }
-
-                // 如果测点少于10个，补充虚拟测点
-                while (measurementPoints.length < 10) {
-                    const isPointWarning = isWarning && Math.random() > 0.6;
-                    measurementPoints.push({
-                        name: `测点${measurementPoints.length + 1}`,
-                        status: isPointWarning ? 'warning' : 'healthy'
-                    });
-                }
-
-                alarmItems.push({
-                    id: equipment.equipmentId,
-                    deviceName: equipment.equipmentName,
-                    shopName: workshop.workshopName,
-                    deviceNameWithShop: `${equipment.equipmentName}（${workshop.workshopName}）`,
-                    status,
-                    statusText,
-                    time,
-                    measurementPoints
-                });
-            });
-        });
-    });
-
-    return alarmItems;
-});
+// 预警总览写死数据（用户指定用死数据）
+const alarms = ref<AlarmItem[]>([
+    { id: 'ff8081819a4cd984019a4d524e0d0000', deviceName: '五线三路风机', shopName: '车间A', deviceNameWithShop: '五线三路风机（车间A）', status: 'warning', statusText: '预警', time: '2026-01-15 10:32:00', measurementPoints: [{ name: '3', status: 'warning' }, { name: '2', status: 'healthy' }, { name: '1', status: 'healthy' }, { name: '8', status: 'healthy' }, { name: '7', status: 'warning' }, { name: '6', status: 'healthy' }, { name: '5', status: 'healthy' }, { name: '4', status: 'healthy' }, { name: 'JXA24F5308', status: 'healthy' }, { name: 'JXA24F5307', status: 'healthy' }] },
+    { id: 'ff8081819a623bff019a71fbec550018', deviceName: '往复式压缩机', shopName: '车间A', deviceNameWithShop: '往复式压缩机（车间A）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: 'JS32F21', status: 'healthy' }, { name: 'JS32F20', status: 'healthy' }, { name: 'JS32F19', status: 'healthy' }, { name: 'JS32F18', status: 'healthy' }, { name: 'JS32F17', status: 'healthy' }, { name: 'JS32F16', status: 'healthy' }, { name: 'JS32F15', status: 'healthy' }, { name: 'JS32F14', status: 'healthy' }, { name: 'JS32F13', status: 'healthy' }, { name: 'JS32F12', status: 'healthy' }] },
+    { id: 'ff8081819a623bff019a71ee6a950000', deviceName: '五线一路风机', shopName: '车间B', deviceNameWithShop: '五线一路风机（车间B）', status: 'warning', statusText: '预警', time: '2026-01-14 16:20:00', measurementPoints: [{ name: 'JXA29F6106', status: 'healthy' }, { name: 'JXA29F6105', status: 'warning' }, { name: 'JXA29F6104', status: 'healthy' }, { name: 'JXA29F6103', status: 'healthy' }, { name: 'JXA29F6102', status: 'healthy' }, { name: 'JXA29F6101', status: 'healthy' }, { name: 'JXA29F6107', status: 'healthy' }, { name: 'JXA29F6108', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
+    { id: 'ff8081819a623bff019a71f434130009', deviceName: '七线一路风机', shopName: '车间C', deviceNameWithShop: '七线一路风机（车间C）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: 'JXA29F8108', status: 'healthy' }, { name: 'JXA29F8107', status: 'healthy' }, { name: 'JXA29F8106', status: 'healthy' }, { name: 'JXA29F8105', status: 'healthy' }, { name: 'JXA29F8102', status: 'healthy' }, { name: 'JXA29F8101', status: 'healthy' }, { name: 'JXA29F8104', status: 'healthy' }, { name: 'JXA29F8103', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
+    { id: 'ff8081819a909f21019a918dcbf00000', deviceName: '旋压机', shopName: '车间D', deviceNameWithShop: '旋压机（车间D）', status: 'warning', statusText: '预警', time: '2026-01-13 08:15:00', measurementPoints: [{ name: '尾顶电磁阀1号点位', status: 'warning' }, { name: 'SHJY-XYJ1号点位', status: 'healthy' }, { name: '测点3', status: 'healthy' }, { name: '测点4', status: 'healthy' }, { name: '测点5', status: 'healthy' }, { name: '测点6', status: 'healthy' }, { name: '测点7', status: 'healthy' }, { name: '测点8', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] }
+]);
 
 const allDevices = computed(() => {
     return extractDevicesFromTree(deviceTreeStore.deviceTreeData);
@@ -467,7 +265,7 @@ const filteredAlarms = computed(() => {
         }
 
         result = result.filter(alarm => {
-            if (!alarm.time) return true;
+            if (!alarm.time) return false; // 筛选时间范围内不显示无预警时间的设备
             const alarmDateTime = new Date(alarm.time);
             return alarmDateTime >= startDate && alarmDateTime <= endDate;
         });
@@ -608,7 +406,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 <style lang="scss" scoped>
 .alarm-overview {
     flex: 0 0 60%;
-    padding: 10px;
+    padding: 20px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -626,7 +424,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         h3 {
             margin: 0;
             font-size: clamp(22px, 3vw, 26px);
-            font-weight: 600;
+            font-weight: 500;
             white-space: nowrap;
         }
 
@@ -748,12 +546,21 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         }
     }
 
+    .alarm-empty {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 14px;
+    }
+
     .alarm-grid {
         display: grid;
         gap: 15px;
         flex: 1;
         overflow-y: auto;
-        padding: 8px 0;
+        padding-top: 20px;
         width: 100%;
         box-sizing: border-box;
         -ms-overflow-style: none;
@@ -778,7 +585,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             cursor: pointer;
 
             &:hover {
-                background: rgba(255, 255, 255, 0.2);
                 transform: translateY(-2px);
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
@@ -970,8 +776,8 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             :deep(.el-input__wrapper) {
                 height: 26px !important;
                 padding: 0 6px !important;
-                background: rgba(255, 255, 255, 0.1) !important;
-                border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                background: rgba(150, 150, 150, 0.1) !important;
+                border: 1px solid rgba(150, 150, 150, 0.2) !important;
                 box-shadow: none !important;
                 border-radius: 3px !important;
             }
