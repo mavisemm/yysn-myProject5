@@ -254,7 +254,7 @@ const loadTemperatureData = async (pointId: string) => {
                 grid: {
                     left: '3%',
                     right: '4%',
-                    bottom: '22%',
+                    bottom: '15%', // 与烈度随时间变化保持一致
                     top: '10%',
                     containLabel: true
                 },
@@ -271,20 +271,24 @@ const loadTemperatureData = async (pointId: string) => {
                         filterMode: 'none'
                     }
                 ],
+                // x 轴樣式與「烈度随时间变化」保持一致
                 xAxis: {
-                    show: true,
+                    type: 'category',
                     data: timeData,
-                    nameTextStyle: { color: '#fff' },
                     axisLabel: {
-                        show: true,
-                        interval: 0,
-                        fontSize: 12,
-                        color: '#fff',
-                        margin: 10
+                        fontSize: 10,
+                        color: '#fff'
                     },
-                    axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-                    axisTick: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-                    splitLine: { show: false }
+                    axisLine: {
+                        lineStyle: {
+                            color: '#fff'
+                        }
+                    },
+                    axisTick: {
+                        lineStyle: {
+                            color: '#fff'
+                        }
+                    }
                 },
                 yAxis: {
                     type: 'value',
@@ -327,9 +331,22 @@ const setTempChartFallback = () => {
     if (!tempChart) return
     tempChart.setOption({
         xAxis: {
-            show: true,
+            type: 'category',
             data: TEMP_FALLBACK_TIMES,
-            axisLabel: { show: true, interval: 0, fontSize: 12, color: '#fff', margin: 10 }
+            axisLabel: {
+                fontSize: 10,
+                color: '#fff'
+            },
+            axisLine: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            },
+            axisTick: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            }
         },
         series: [{
             data: TEMP_FALLBACK_DATA,
@@ -540,7 +557,7 @@ const initTempChart = () => {
         grid: {
             left: '3%',
             right: '4%',
-            bottom: '22%',
+            bottom: '15%', // 与烈度随时间变化保持一致
             top: '10%',
             containLabel: true
         },
@@ -557,21 +574,24 @@ const initTempChart = () => {
                 filterMode: 'none'
             }
         ],
+        // x 轴樣式完全複用「烈度随时间变化」配置
         xAxis: {
             type: 'category',
-            show: true,
             data: FALLBACK_TIME_LABELS,
-            nameTextStyle: { color: '#fff' },
             axisLabel: {
-                show: true,
-                interval: 0,
-                fontSize: 12,
-                color: '#fff',
-                margin: 10
+                fontSize: 10,
+                color: '#fff'
             },
-            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-            axisTick: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-            splitLine: { show: false }
+            axisLine: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            },
+            axisTick: {
+                lineStyle: {
+                    color: '#fff'
+                }
+            }
         },
         yAxis: {
             type: 'value',
@@ -595,11 +615,12 @@ const initTempChart = () => {
             type: 'line',
             smooth: true,
             symbolSize: 1,
+            // 颜色样式与“烈度随时间变化”一致
             itemStyle: {
-                color: '#FF6384'
+                color: '#FFCE56'
             },
             lineStyle: {
-                color: '#FF6384',
+                color: '#FFCE56',
                 width: 2
             },
             areaStyle: {
@@ -607,9 +628,9 @@ const initTempChart = () => {
                     type: 'linear',
                     x: 0, y: 0, x2: 0, y2: 1,
                     colorStops: [{
-                        offset: 0, color: 'rgba(255, 99, 132, 0.5)' // color with opacity
+                        offset: 0, color: 'rgba(255, 206, 86, 0.5)'
                     }, {
-                        offset: 1, color: 'rgba(255, 99, 132, 0.1)' // color with opacity
+                        offset: 1, color: 'rgba(255, 206, 86, 0.1)'
                     }]
                 },
                 opacity: 0.3
@@ -1113,7 +1134,7 @@ onUnmounted(() => {
 
                 .chart-title {
                     font-size: 14px;
-                    font-weight: bold;
+                    //font-weight: bold;
                     color: white;
                 }
 
@@ -1153,7 +1174,7 @@ onUnmounted(() => {
 
                 .module-title {
                     font-size: 14px;
-                    font-weight: bold;
+                    //font-weight: bold;
                     color: white;
                 }
             }

@@ -1,10 +1,9 @@
 <!-- 预警设备详情弹窗：两条死数据来自设备树（两个不同设备），表格展示设备名称、点位名称、听筒名称 -->
 <template>
-    <el-dialog v-model="visible" title="预警设备详情" width="900px" :close-on-click-modal="true"
+    <el-dialog v-model="visible" :title="props.title" width="900px" :close-on-click-modal="true"
         class="trend-warning-modal" @close="handleClose">
         <div class="modal-body">
-            <el-table :data="tableData" stripe class="warning-table" max-height="400"
-                @row-click="handleRowClick">
+            <el-table :data="tableData" stripe class="warning-table" max-height="400" @row-click="handleRowClick">
                 <el-table-column prop="deviceName" label="设备名称" min-width="120" />
                 <el-table-column prop="pointName" label="点位名称" min-width="120" />
                 <el-table-column prop="receiverName" label="听筒名称" min-width="120" />
@@ -21,9 +20,13 @@ import type { DeviceNode } from '@/types/device';
 
 const router = useRouter();
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     modelValue: boolean;
-}>();
+    /** 弹窗标题，默认“预警设备详情” */
+    title?: string;
+}>(), {
+    title: '预警设备详情'
+});
 
 const emit = defineEmits<{
     (e: 'update:modelValue', v: boolean): void;
@@ -105,6 +108,11 @@ watch(visible, (val) => {
         max-height: 480px;
         overflow-y: auto;
     }
+
+    /* 弹窗标题“预警设备详情”文字颜色 */
+    :deep(.el-dialog__header .el-dialog__title) {
+        color: #606266 !important;
+    }
 }
 
 .modal-body {
@@ -113,8 +121,35 @@ watch(visible, (val) => {
 
 .warning-table {
     width: 100%;
+
     :deep(.el-table__row) {
         cursor: pointer;
+    }
+
+    /* 表头与单元格文字颜色改为偏灰，避免过黑 */
+    :deep(.el-table__header th) {
+        color: #606266 !important;
+    }
+
+    :deep(.el-table__body td) {
+        color: #606266 !important;
+    }
+}
+</style>
+
+<!-- 额外的全局样式，进一步提高优先级，防止主题样式覆盖 -->
+<style lang="scss">
+.trend-warning-modal {
+    .el-dialog__header .el-dialog__title {
+        color: #606266 !important;
+    }
+
+    .warning-table {
+
+        .el-table__header th,
+        .el-table__body td {
+            color: #606266 !important;
+        }
     }
 }
 </style>

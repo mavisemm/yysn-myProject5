@@ -1,6 +1,6 @@
 <template>
     <div class="info-section-right">
-        <div class="section-title">详细信息</div>
+        <div class="section-title app-section-title">详细信息</div>
         <div class="info-scroll-area">
             <div class="info-item">
                 <span class="info-content">
@@ -102,7 +102,6 @@ watch(() => props.audioPath, (newPath) => {
     .section-title {
         padding: 20px 20px 0 20px;
         font-size: clamp(18px, 2.5vw, 24px);
-        font-weight: bold;
     }
 
     .info-scroll-area {
@@ -127,7 +126,7 @@ watch(() => props.audioPath, (newPath) => {
                 min-height: 28px;
 
                 .info-label {
-                    font-weight: bold;
+                    //font-weight: bold;
                     font-size: clamp(12px, 1.5vw, 16px);
                     color: #ccc;
                     white-space: nowrap;

@@ -3,7 +3,7 @@
         <!-- 振动频域图卡片 -->
         <div class="card-item freq-card">
             <div class="card-header">
-                <div class="card-title">振动频域图</div>
+                <div class="card-title app-section-title">振动频域图</div>
             </div>
             <div class="chart-container">
                 <div ref="freqChartRef" class="chart-inner"></div>
@@ -14,7 +14,7 @@
         <!-- 振动时域图卡片 -->
         <div class="card-item time-card">
             <div class="card-header">
-                <div class="card-title">振动时域图</div>
+                <div class="card-title app-section-title">振动时域图</div>
             </div>
             <div class="chart-container">
                 <div ref="timeChartRef" class="chart-inner"></div>
@@ -284,7 +284,7 @@ onUnmounted(() => {
 
         .card-title {
             font-size: clamp(16px, 1.5vw, 20px);
-            font-weight: bold;
+            //font-weight: bold;
             color: #fff;
         }
     }

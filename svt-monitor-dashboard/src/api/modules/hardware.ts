@@ -421,8 +421,11 @@ export interface DeviceHealthResponse {
   ret: {
     deviceId: string;
     deviceName: string;
-    healthScore: number;
+    // 声音健康度分數，振动場景可能為 null
+    healthScore: number | null;
     type: 'sound' | 'vibration';
+    // 按后端约定增加健康等级（A/B/C/D），用于仪表盘区间与颜色映射
+    healthGrade?: 'A' | 'B' | 'C' | 'D' | string;
   };
   err: string | null;
 }

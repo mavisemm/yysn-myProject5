@@ -3,8 +3,8 @@
     <div class="stats-area">
         <div class="stats-grid">
             <div v-for="(stat, index) in stats" :key="index" class="stat-card"
-                :class="[`stat-card-${index}`, stat.title === '趋势预警设备' ? 'stat-card-trend' : '']"
-                @click="stat.title === '趋势预警设备' ? $emit('clickTrendWarning') : undefined">
+                :class="[`stat-card-${index}`, (stat.title === '趋势预警设备' || stat.title === '故障报警设备') ? 'stat-card-trend' : '']"
+                @click="handleCardClick(stat.title)">
                 <div class="stat-content">
                     <div class="stat-icon">
                         <img v-if="index === 0" src="@/assets/images/background/首页-健康设备数.png" alt="健康设备数"
@@ -40,9 +40,18 @@ interface Props {
 
 defineProps<Props>();
 
-defineEmits<{
+const emit = defineEmits<{
     (e: 'clickTrendWarning'): void;
+    (e: 'clickFaultWarning'): void;
 }>();
+
+const handleCardClick = (title: string) => {
+    if (title === '趋势预警设备') {
+        emit('clickTrendWarning');
+    } else if (title === '故障报警设备') {
+        emit('clickFaultWarning');
+    }
+};
 </script>
 
 <style lang="scss" scoped>
@@ -74,7 +83,7 @@ defineEmits<{
             align-items: center;
             justify-content: center;
             font-size: clamp(10px, 1.8vw, 16px);
-            font-weight: bold;
+            // font-weight: bold;
             color: white;
             box-sizing: border-box;
             border-radius: 8px;
@@ -131,17 +140,21 @@ defineEmits<{
             width: 100%;
             max-width: 100%;
             min-width: 0;
+            font-weight: 500;
+            letter-spacing: 1.22px;
         }
 
         .stat-number {
             font-size: clamp(14px, 2.5vw, 30px);
-            font-weight: bold;
+            // font-weight: bold;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             width: 100%;
             max-width: 100%;
             min-width: 0;
+            font-weight: 500;
+            letter-spacing: 1.22px;
         }
     }
 }

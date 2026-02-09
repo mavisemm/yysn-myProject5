@@ -2,7 +2,7 @@
   <aside class="device-sidebar">
     <!-- 标题 -->
     <div class="sidebar-header">
-      <h3 class="sidebar-title">设备列表</h3>
+      <h3 class="sidebar-title app-section-title">设备列表</h3>
     </div>
 
     <!-- 搜索区域 -->
@@ -695,11 +695,6 @@ onUnmounted(() => {
     flex-shrink: 0;
     justify-content: space-between;
     padding: 20px 20px 0 20px;
-
-    .sidebar-title {
-      font-size: clamp(22px, 3vw, 26px);
-      font-weight: 500;
-    }
   }
 
   .search-area {
@@ -864,14 +859,16 @@ onUnmounted(() => {
     gap: 8px;
     width: 100%;
     padding: 2px 0;
-    color: #fff;
+    /* 设备树整行文字基础颜色 */
+    color: rgba(153, 240, 255, 1);
 
     .expand-icon {
       cursor: pointer;
       transition: transform 0.2s;
       font-size: clamp(14px, 2.5vw, 16px);
       /* 响应式字体大小，以16px为基准 */
-      color: var(--special-font-color);
+      /* 展开/收起图标颜色 */
+      color: rgba(153, 240, 255, 1) !important;
     }
 
     .no-select {
@@ -891,12 +888,14 @@ onUnmounted(() => {
     .node-icon {
       display: flex;
       align-items: center;
-      color: var(--special-font-color);
+      /* 设备树图标颜色 */
+      color: rgba(153, 240, 255, 1) !important;
       flex-shrink: 0;
 
       .el-icon {
         font-size: clamp(14px, 2.5vw, 16px);
         /* 响应式字体大小，以16px为基准 */
+        color: inherit !important; // 继承 node-icon 颜色，保持与文字一致
       }
     }
 
@@ -907,13 +906,15 @@ onUnmounted(() => {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      color: var(--special-font-color);
+      /* 节点文字颜色 */
+      color: rgba(153, 240, 255, 1);
     }
 
     .node-count {
       margin-left: 8px;
       flex-shrink: 0;
-      color: black;
+      /* 统计文字颜色（设备数/点位数），与设备树文字保持一致 */
+      color: rgba(153, 240, 255, 1);
     }
   }
 }

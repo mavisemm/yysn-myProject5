@@ -10,7 +10,7 @@
 
 :root {
   --global-font-color: white;
-  --special-font-color: #99F0FF;
+  --special-font-color: rgba(153, 240, 255, 1);
 }
 
 /* 全局字体颜色设置 */
@@ -27,6 +27,14 @@ html, body {
   height: 100vh;
   color: var(--global-font-color);
   font-weight: 500;
+}
+
+/* 通用模块标题样式：统一各处标题，如“设备列表”“设备信息”“点位列表”等 */
+.app-section-title {
+  font-weight: 500;
+  letter-spacing: 1.22px;
+  color: rgba(255, 255, 255, 1);
+  font-size: clamp(22px,3vw,26px);
 }
 
 /* 确保Element Plus组件的文本可读性 */
@@ -81,7 +89,11 @@ html, body {
 
 /* 保留特殊组件的原有颜色，避免过度覆盖 */
 .el-progress-bar__innerText,
-.special-colored-text,
+.special-colored-text {
+  color: inherit !important;
+}
+
+/* 表单类组件：统一用深色文字，避免全局白色导致看不清 */
 .el-input__inner,
 .el-textarea__inner,
 .el-select .el-input__inner,
@@ -89,18 +101,19 @@ html, body {
   color: inherit !important;
 }
 
-/* 全局placeholder颜色设置 */
+/* 全局placeholder颜色设置（普通文本仍可用白色） */
 ::placeholder {
   color: white !important;
-  opacity: 0.7 !important;
+  // opacity: 0.7 !important;
 }
 
+/* 表单输入类 placeholder 改为灰色，提升可读性 */
 input::placeholder,
 textarea::placeholder,
 .el-input__inner::placeholder,
 .el-textarea__inner::placeholder {
-  color: white !important;
-  opacity: 0.7 !important;
+  color: #999 !important;
+  opacity: 1 !important;
 }
 
 /* 退出登录确认框：取消按钮 #409eff，确定按钮白色（按顺序：第1个取消，第2个确定） */

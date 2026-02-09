@@ -1,11 +1,11 @@
 <template>
     <div class="charts-section">
         <div class="chart-item">
-            <div class="chart-title">能量曲线</div>
+            <div class="chart-title app-section-title">能量曲线</div>
             <div ref="energyChartRef" class="chart-container"></div>
         </div>
         <div class="chart-item">
-            <div class="chart-title">密度曲线</div>
+            <div class="chart-title app-section-title">密度曲线</div>
             <div ref="densityChartRef" class="chart-container"></div>
         </div>
     </div>
@@ -224,7 +224,6 @@ defineExpose({
 
         .chart-title {
             font-size: clamp(18px, 2.5vw, 24px);
-            font-weight: bold;
             text-align: center;
             padding: 20px 20px 0 20px;
         }

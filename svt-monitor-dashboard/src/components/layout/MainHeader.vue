@@ -3,32 +3,32 @@
     <!-- 左侧按钮组 -->
     <div class="header-left">
       <!-- 首页按钮 -->
-      <div v-if="showHomeButton" class="nav-btn special-font-color" @click="goHome">
-        <el-icon :size="24" color="var(--special-font-color)">
+      <div v-if="showHomeButton" class="nav-btn " @click="goHome">
+        <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <House />
         </el-icon>
         <span>首页</span>
       </div>
 
       <!-- 返回设备按钮 -->
-      <div v-if="showReturnDeviceButton" class="nav-btn special-font-color" @click="goToDevice">
-        <el-icon :size="24" color="var(--special-font-color)">
+      <div v-if="showReturnDeviceButton" class="nav-btn " @click="goToDevice">
+        <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <Back />
         </el-icon>
         <span>返回设备</span>
       </div>
 
       <!-- 振动按钮 -->
-      <div v-if="showVibrationButton" class="nav-btn special-font-color" @click="goToVibration">
-        <el-icon :size="24" color="var(--special-font-color)">
+      <div v-if="showVibrationButton" class="nav-btn " @click="goToVibration">
+        <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <Lightning />
         </el-icon>
         <span>振动</span>
       </div>
 
       <!-- 声音按钮 -->
-      <div v-if="showSoundButton" class="nav-btn special-font-color" @click="goToSound">
-        <el-icon :size="24" color="var(--special-font-color)">
+      <div v-if="showSoundButton" class="nav-btn " @click="goToSound">
+        <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <Microphone />
         </el-icon>
         <span>声音</span>
@@ -36,13 +36,13 @@
     </div>
 
     <div class="header-center">
-      <h1 class="title">云音声脑声振温在线监测</h1>
+      <h1 class="title">云音声脑在线监测</h1>
     </div>
 
     <!-- 右侧：退出 -->
     <div class="header-right">
-      <div class="nav-btn special-font-color" @click="handleLogout">
-        <el-icon :size="24" color="var(--special-font-color)">
+      <div class="nav-btn " @click="handleLogout">
+        <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <SwitchButton />
         </el-icon>
         <span>退出</span>
@@ -169,14 +169,15 @@ const handleLogout = () => {
       padding: 8px 12px;
       cursor: pointer;
       transition: all 0.3s;
-      color: var(--special-font-color);
+      /* 首页/返回设备/振动/声音按钮文字颜色 */
+      color: rgba(153, 240, 255, 1);
       font-size: clamp(14px, 2vw, 18px);
       font-weight: 500;
       border-radius: 8px;
 
       &:hover {
         background: rgba(150, 150, 150, 0.2);
-        color: var(--special-font-color);
+        color: rgba(153, 240, 255, 1);
       }
     }
   }
@@ -190,9 +191,11 @@ const handleLogout = () => {
     .title {
       margin: 0;
       font-size: clamp(30px, 4.5vw, 36px);
-      /* 响应式字体大小，以36px为基准 */
-      font-weight: 500;
-      color: #00ffff;
+      font-weight: 400;
+      letter-spacing: 0px;
+      color: rgba(0, 255, 255, 1);
+      text-align: center;
+      vertical-align: top;
     }
   }
 
@@ -212,14 +215,15 @@ const handleLogout = () => {
       padding: 8px 12px;
       cursor: pointer;
       transition: all 0.3s;
-      color: var(--special-font-color);
+      /* 退出登录按钮文字颜色 */
+      color: rgba(153, 240, 255, 1);
       font-size: clamp(14px, 2vw, 18px);
       font-weight: 500;
       border-radius: 8px;
 
       &:hover {
         background: rgba(150, 150, 150, 0.2);
-        color: var(--special-font-color);
+        color: rgba(153, 240, 255, 1);
       }
     }
   }

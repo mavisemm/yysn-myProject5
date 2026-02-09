@@ -1,6 +1,6 @@
 <template>
     <div class="table-section-left">
-        <div class="section-title">声音数据分析</div>
+        <div class="section-title app-section-title">声音数据分析</div>
         <div class="voiceDetail-table-container">
             <el-table :data="deviationList" height="100%" @row-click="handleRowClick"
                 :header-cell-style="{ background: 'rgba(255, 255, 255, 0.3)', color: 'white', textAlign: 'center' }"
@@ -121,7 +121,6 @@ const playAudio = (row: any) => {
 
     .section-title {
         font-size: clamp(18px, 2.5vw, 24px);
-        font-weight: bold;
         padding: 20px 20px 0 20px;
     }
 

@@ -2,7 +2,7 @@
     <div class="device-info-module">
         <div class="module-header">
             <div class="header-main">
-                <h3 class="module-title">设备信息</h3>
+                <h3 class="module-title app-section-title">设备信息</h3>
                 <div class="header-actions">
                     <el-button type="primary" size="small" @click="toggleEdit" class="edit-btn">
                         {{ isEditing ? '保存' : '编辑' }}
@@ -18,77 +18,77 @@
             <div v-else class="device-basic-info" v-show="!isCollapsed">
                 <div class="info-row" v-if="!isEditing">
                     <div class="info-item">
-                        <span class="info-label special-font-color">设备名称：</span>
-                        <span class="info-value special-font-color">{{ deviceInfo.deviceName }}</span>
+                        <span class="info-label  ">设备名称：</span>
+                        <span class="info-value  ">{{ deviceInfo.deviceName }}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label special-font-color">设备型号：</span>
-                        <span class="info-value special-font-color">{{ deviceInfo.deviceModel }}</span>
+                        <span class="info-label  ">设备型号：</span>
+                        <span class="info-value  ">{{ deviceInfo.deviceModel }}</span>
                     </div>
                 </div>
 
                 <div class="info-row" v-else>
                     <div class="info-item">
-                        <span class="info-label special-font-color">设备名称：</span>
+                        <span class="info-label  ">设备名称：</span>
                         <el-input v-model="editForm.deviceName" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
-                        <span class="info-label special-font-color">设备型号：</span>
+                        <span class="info-label  ">设备型号：</span>
                         <el-input v-model="editForm.deviceModel" size="small" class="info-input" />
                     </div>
                 </div>
 
                 <div class="info-row" v-if="!isEditing">
                     <div class="info-item">
-                        <span class="info-label special-font-color">生产厂家：</span>
-                        <span class="info-value special-font-color">{{ deviceInfo.deviceFactory }}</span>
+                        <span class="info-label  ">生产厂家：</span>
+                        <span class="info-value  ">{{ deviceInfo.deviceFactory }}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label special-font-color">安装位置：</span>
-                        <span class="info-value special-font-color">{{ deviceInfo.locationDetail }}</span>
+                        <span class="info-label  ">安装位置：</span>
+                        <span class="info-value  ">{{ deviceInfo.locationDetail }}</span>
                     </div>
                 </div>
                 <div class="info-row" v-else>
                     <div class="info-item">
-                        <span class="info-label special-font-color">生产厂家：</span>
+                        <span class="info-label  ">生产厂家：</span>
                         <el-input v-model="editForm.deviceFactory" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
-                        <span class="info-label special-font-color">安装位置：</span>
+                        <span class="info-label  ">安装位置：</span>
                         <el-input v-model="editForm.locationDetail" size="small" class="info-input" />
                     </div>
                 </div>
 
                 <div class="info-row" v-if="!isEditing">
                     <div class="info-item">
-                        <span class="info-label special-font-color">工作转速：</span>
-                        <span class="info-value special-font-color">{{ deviceInfo.rotationSpeed }} rpm</span>
+                        <span class="info-label  ">工作转速：</span>
+                        <span class="info-value  ">{{ deviceInfo.rotationSpeed }} rpm</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label special-font-color">设计流量：</span>
-                        <span class="info-value special-font-color">{{ deviceInfo.designFlow }} m³/h</span>
+                        <span class="info-label  ">设计流量：</span>
+                        <span class="info-value  ">{{ deviceInfo.designFlow }} m³/h</span>
                     </div>
                 </div>
                 <div class="info-row" v-else>
                     <div class="info-item">
-                        <span class="info-label special-font-color">工作转速：</span>
+                        <span class="info-label  ">工作转速：</span>
                         <el-input v-model="editForm.rotationSpeed" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
-                        <span class="info-label special-font-color">设计流量：</span>
+                        <span class="info-label  ">设计流量：</span>
                         <el-input v-model="editForm.designFlow" size="small" class="info-input" />
                     </div>
                 </div>
 
                 <div class="info-row" v-if="!isEditing">
                     <div class="info-item">
-                        <span class="info-label special-font-color">压力：</span>
-                        <span class="info-value special-font-color">{{ deviceInfo.pressure }} MPa</span>
+                        <span class="info-label  ">压力：</span>
+                        <span class="info-value  ">{{ deviceInfo.pressure }} MPa</span>
                     </div>
                 </div>
                 <div class="info-row" v-else>
                     <div class="info-item">
-                        <span class="info-label special-font-color">压力：</span>
+                        <span class="info-label  ">压力：</span>
                         <el-input v-model="editForm.pressure" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
@@ -206,7 +206,12 @@ const loadDeviceDataParallel = async () => {
 
         // 处理健康度响应
         if (healthResponse.rc === 0 && healthResponse.ret) {
-            currentHealthScore.value = healthResponse.ret.healthScore;
+            // 初次並行加載的是聲音健康度（type: 'sound'），直接用 healthScore
+            const ret: any = healthResponse.ret
+            const score = typeof ret.healthScore === 'number' ? ret.healthScore : 0
+            currentHealthScore.value = score
+            // 同時記錄等級，供顏色映射使用（如果後端也返回聲音等級）
+            healthGrade.value = extractHealthGrade(ret)
             nextTick(() => {
                 initGaugeChart();
             });
@@ -234,6 +239,8 @@ const isCollapsed = ref(false)
 // 健康度相关
 const healthType = ref('声音')
 const currentHealthScore = ref(98) // 默认声音健康度分数
+// 按接口返回的 healthGrade 划分 A/B/C/D 四个等级（兼容大小写）
+const healthGrade = ref<'A' | 'B' | 'C' | 'D' | ''>('')
 const healthTitle = ref('声音健康度')
 const gaugeRef = ref<HTMLDivElement>()
 let gaugeChart: echarts.ECharts | null = null
@@ -250,18 +257,66 @@ const calculateResponsiveDistance = (baseDistance: number, containerWidth: numbe
     return Math.max(baseDistance * scaleRatio, baseDistance * 0.5)
 }
 
+// 从接口原始对象里解析健康等级（兼容大小寫和不同字段命名）
+const extractHealthGrade = (ret: any): 'A' | 'B' | 'C' | 'D' | '' => {
+    if (!ret) return ''
+    const raw = ret.healthGrade ?? ret.health_grade ?? ret.grade ?? ''
+    if (!raw || typeof raw !== 'string') return ''
+    const upper = raw.toUpperCase()
+    if (upper === 'A' || upper === 'B' || upper === 'C' || upper === 'D') {
+        return upper
+    }
+    return ''
+}
+
+// 将健康等级映射到一个代表分值，用於儀表盤指針位置（振动健康度使用）
+const mapGradeToScore = (grade: 'A' | 'B' | 'C' | 'D' | ''): number => {
+    switch (grade) {
+        case 'A':
+            return 90 // 深綠，高健康
+        case 'B':
+            return 70 // 淡綠
+        case 'C':
+            return 40 // 橙色
+        case 'D':
+            return 15 // 紅色
+        default:
+            return 0
+    }
+}
+
 // 根据当前容器尺寸生成仪表盘 option（resize 时用新尺寸重新调用，实现自适应字体与布局）
 const buildGaugeOption = (containerWidth: number, containerHeight: number) => {
     const score = currentHealthScore.value
-    let healthColor = ''
-    if (score >= 80) healthColor = '#309735'
-    else if (score >= 60) healthColor = '#85ea8c'
-    else if (score >= 20) healthColor = '#f2b504'
-    else healthColor = '#ff5722'
+
+    // 根据 healthGrade 映射颜色：A 深绿、B 淡绿、C 橙色、D 红色
+    let healthColor = '#309735'
+    const grade = healthGrade.value // 已经是大写
+    if (grade === 'D') {
+        healthColor = '#ff5722'
+    } else if (grade === 'C') {
+        healthColor = '#f2b504'
+    } else if (grade === 'B') {
+        healthColor = '#85ea8c'
+    } else if (grade === 'A') {
+        healthColor = '#309735'
+    } else {
+        // 兼容老数据，没有 healthGrade 时按分数区间判断
+        if (score >= 80) healthColor = '#309735'
+        else if (score >= 60) healthColor = '#85ea8c'
+        else if (score >= 20) healthColor = '#f2b504'
+        else healthColor = '#ff5722'
+    }
 
     const axisLabelFontSize = Math.round(calculateResponsiveFontSize(15, containerWidth, containerHeight))
     const titleFontSize = Math.round(calculateResponsiveFontSize(20, containerWidth, containerHeight))
     const detailFontSize = Math.round(calculateResponsiveFontSize(24, containerWidth, containerHeight))
+
+    // 仪表盘区间按 10, 8, 8, 10 的比例划分为 D/C/B/A 四个区段
+    const total = 10 + 8 + 8 + 10
+    const dEnd = 10 / total      // 红色 D 区结尾
+    const cEnd = (10 + 8) / total // 橙色 C 区结尾
+    const bEnd = (10 + 8 + 8) / total // 淡绿 B 区结尾
 
     return {
         series: [{
@@ -279,17 +334,48 @@ const buildGaugeOption = (containerWidth: number, containerHeight: number) => {
                 roundCap: true,  // 使用 Sausage 形状绘制弧线，两端圆润（lineStyle 的 cap/join 对 gauge 不生效）
                 lineStyle: {
                     width: Math.round(12 * Math.min(containerWidth / 300, 2)),
-                    color: [[0.2, '#ff5722'], [0.6, '#f2b504'], [0.8, '#85ea8c'], [1, '#309735']]
+                    // 按 10,8,8,10 比例划分 D/C/B/A 四个颜色区间
+                    color: [
+                        [dEnd, '#ff5722'],   // D：红色
+                        [cEnd, '#f2b504'],   // C：橙色
+                        [bEnd, '#85ea8c'],   // B：淡绿色
+                        [1, '#309735']       // A：深绿色
+                    ]
                 }
             },
             axisTick: { show: false },
             splitLine: { show: false },
             axisLabel: {
                 show: true,
-                distance: calculateResponsiveDistance(-105, containerWidth, containerHeight),
+                // 振动健康度的文字再往裡（遠離刻度線）一點，避免與刻度線/色帶重疊
+                distance: calculateResponsiveDistance(
+                    healthType.value === '振动' ? -130 : -105,
+                    containerWidth,
+                    containerHeight
+                ),
                 fontSize: axisLabelFontSize,
                 color: '#fff',
                 formatter: function (value: number) {
+                    // 振动健康度：在各自颜色区间中間附近顯示 A/B/C/D（使用實際刻度值 10/40/60/90）
+                    if (healthType.value === '振动') {
+                        // 根據 10,8,8,10 比例計算每段的中點，再對齊到最接近的 10 刻度
+                        const total = 10 + 8 + 8 + 10
+                        const dEnd = 10 / total
+                        const cEnd = (10 + 8) / total
+                        const bEnd = (10 + 8 + 8) / total
+                        const roundToTick = (percent: number) => Math.round(percent / 10) * 10
+                        const dCenter = roundToTick((0 + dEnd * 100) / 2)      // 約 10
+                        const cCenter = roundToTick(((dEnd + cEnd) * 100) / 2) // 約 40
+                        const bCenter = roundToTick(((cEnd + bEnd) * 100) / 2) // 約 60
+                        const aCenter = roundToTick(((bEnd + 1) * 100) / 2)    // 約 90
+
+                        if (value === dCenter) return '{gradeD|D\n不允许}'
+                        if (value === cCenter) return '{gradeC|C\n注意}'
+                        if (value === bCenter) return '{gradeB|B\n可接受}'
+                        if (value === aCenter) return '{gradeA|A\n良好}'
+                        return ''
+                    }
+                    // 声音健康度：保留原來的文字刻度
                     if (value === 0) return '{stop|0}'
                     if (value === 10) return '{stop|停机}'
                     if (value === 20) return '{stop|20}'
@@ -305,7 +391,12 @@ const buildGaugeOption = (containerWidth: number, containerHeight: number) => {
                     stop: { color: '#ff5722', fontSize: axisLabelFontSize },
                     inspect: { color: '#f2b504', fontSize: axisLabelFontSize },
                     focus: { color: '#85ea8c', fontSize: axisLabelFontSize },
-                    health: { color: '#309735', fontSize: axisLabelFontSize }
+                    health: { color: '#309735', fontSize: axisLabelFontSize },
+                    // 振动健康度 A/B/C/D 標籤：字稍微小一點，兩行顯示（字母在上，中文在下）
+                    gradeD: { color: '#ff5722', fontSize: Math.round(axisLabelFontSize * 0.85), fontWeight: 'bold', lineHeight: axisLabelFontSize },
+                    gradeC: { color: '#f2b504', fontSize: Math.round(axisLabelFontSize * 0.85), fontWeight: 'bold', lineHeight: axisLabelFontSize },
+                    gradeB: { color: '#85ea8c', fontSize: Math.round(axisLabelFontSize * 0.85), fontWeight: 'bold', lineHeight: axisLabelFontSize },
+                    gradeA: { color: '#309735', fontSize: Math.round(axisLabelFontSize * 0.85), fontWeight: 'bold', lineHeight: axisLabelFontSize }
                 }
             },
             anchor: { show: false },
@@ -321,7 +412,13 @@ const buildGaugeOption = (containerWidth: number, containerHeight: number) => {
                 offsetCenter: [0, '-30%'],
                 fontSize: detailFontSize,
                 fontWeight: 'bolder',
-                formatter: '{value}',
+                // 声音顯示分數，振动顯示等級字母
+                formatter: function (value: number) {
+                    if (healthType.value === '振动') {
+                        return healthGrade.value || '-'
+                    }
+                    return String(Math.round(value))
+                },
                 color: healthColor
             },
             data: [{ value: score, name: healthTitle.value }]
@@ -387,9 +484,22 @@ const toggleHealthType = async () => {
         });
 
         if (response.rc === 0 && response.ret) {
+            const ret: any = response.ret
             healthType.value = newType
             healthTitle.value = newType + '健康度'
-            currentHealthScore.value = response.ret.healthScore
+
+            if (newType === '声音') {
+                // 声音健康度：用接口返回的 healthScore
+                const score = typeof ret.healthScore === 'number' ? ret.healthScore : 0
+                currentHealthScore.value = score
+                healthGrade.value = extractHealthGrade(ret)
+            } else {
+                // 振动健康度：用接口返回的 healthGrade 來決定分數與顏色
+                const grade = extractHealthGrade(ret)
+                healthGrade.value = grade
+                currentHealthScore.value = mapGradeToScore(grade)
+            }
+
             nextTick(() => {
                 initGaugeChart()
             })
@@ -531,8 +641,6 @@ onUnmounted(() => {
 
             .module-title {
                 margin: 0;
-                font-size: clamp(18px, 2.5vw, 22px);
-                font-weight: 500;
             }
 
             .header-actions {
@@ -582,6 +690,7 @@ onUnmounted(() => {
                     flex-direction: column;
 
                     .info-label {
+                        color: #ccc;
                         font-size: 12px;
                     }
 
@@ -608,7 +717,7 @@ onUnmounted(() => {
                             .el-input__inner {
                                 white-space: normal;
                                 word-wrap: break-word;
-                                color: #333 !important; // 编辑状态下输入文字颜色为黑色，强制覆盖全局样式
+                                // color: #333 !important; // 编辑状态下输入文字颜色为黑色，强制覆盖全局样式
                             }
                         }
                     }
@@ -651,7 +760,7 @@ onUnmounted(() => {
 
                     .gauge-score {
                         font-size: 20px;
-                        font-weight: bold;
+                        //font-weight: bold;
                         color: white;
                     }
                 }

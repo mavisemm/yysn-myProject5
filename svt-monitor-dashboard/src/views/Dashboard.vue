@@ -3,7 +3,8 @@
   <div class="dashboard">
     <!-- 顶部区域：统计数据和告警概览 -->
     <div class="top-section">
-      <DashboardStats :stats="statsData" @click-trend-warning="showTrendWarningModal = true" />
+      <DashboardStats :stats="statsData" @click-trend-warning="showTrendWarningModal = true"
+        @click-fault-warning="showFaultWarningModal = true" />
       <AlarmOverview>
         <template #alarms>
         </template>
@@ -21,7 +22,10 @@
     </div>
 
     <!-- 趋势预警设备弹窗 -->
-    <TrendWarningDeviceModal v-model="showTrendWarningModal" />
+    <TrendWarningDeviceModal v-model="showTrendWarningModal" title="趋势预警设备详情" />
+
+    <!-- 故障报警设备弹窗 -->
+    <TrendWarningDeviceModal v-model="showFaultWarningModal" title="故障报警设备详情" />
   </div>
 </template>
 
@@ -52,6 +56,7 @@ const rankings = ref<RankingItem[][]>([
 ]);
 
 const showTrendWarningModal = ref(false);
+const showFaultWarningModal = ref(false);
 
 // 统计数据
 const statsData = ref([

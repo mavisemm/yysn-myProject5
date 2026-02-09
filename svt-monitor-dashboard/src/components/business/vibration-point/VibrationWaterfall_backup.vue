@@ -227,7 +227,7 @@ onUnmounted(() => {
 
         .card-title {
             font-size: clamp(16px, 1.5vw, 20px);
-            font-weight: bold;
+            //font-weight: bold;
             color: #fff;
         }
     }

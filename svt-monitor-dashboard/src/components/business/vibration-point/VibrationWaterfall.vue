@@ -1,7 +1,7 @@
 <template>
     <div class="card-item waterfall-card">
         <div class="card-header">
-            <div class="card-title">频域瀑布图</div>
+            <div class="card-title app-section-title">频域瀑布图</div>
             <div class="time-section">
                 <el-date-picker v-model="dateRange" type="datetimerange" range-separator="-" start-placeholder="开始日期"
                     end-placeholder="结束日期" format="YYYY-MM-DD HH:mm:ss" value-format="YYYY-MM-DD HH:mm:ss" size="small"
@@ -267,15 +267,15 @@ onUnmounted(() => {
 
         .card-title {
             font-size: clamp(16px, 1.5vw, 20px);
-            font-weight: bold;
+            //font-weight: bold;
             color: #fff;
         }
 
         .time-section {
             .time-search-input {
                 :deep(.el-input__wrapper) {
-                    background: url('@/assets/images/background/首页-搜索框背景.png') no-repeat center center;
-                    background-size: 100% 100%;
+                    // background: url('@/assets/images/background/首页-搜索框背景.png') no-repeat center center;
+                    // background-size: 100% 100%;
                     border-radius: 4px;
                     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
                     border: none;
@@ -310,14 +310,14 @@ onUnmounted(() => {
 <style lang="scss">
 .custom-datepicker-popper {
     .el-date-range-picker {
-        background: url('@/assets/images/background/首页-预警总览背景.png') no-repeat center center;
-        background-size: 100% 100%;
-        border: 1px solid rgba(150, 150, 150, 0.2);
+        // background: url('@/assets/images/background/首页-预警总览背景.png') no-repeat center center;
+        // background-size: 100% 100%;
+        // border: 1px solid rgba(150, 150, 150, 0.2);
         border-radius: 6px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 
         .el-picker-panel__body {
-            padding: 12px;
+            // padding: 12px;
 
             .el-date-editor {
                 width: 100% !important;

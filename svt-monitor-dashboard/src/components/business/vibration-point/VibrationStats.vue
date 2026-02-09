@@ -1,7 +1,7 @@
 <template>
     <div class="card-item stats-card">
         <div class="card-header">
-            <div class="card-title">基本指标</div>
+            <div class="card-title app-section-title">基本指标</div>
         </div>
         <div class="stats-grid">
             <div class="stat-box">
@@ -82,7 +82,7 @@ onMounted(() => {
 
         .card-title {
             font-size: clamp(16px, 1.5vw, 20px);
-            font-weight: bold;
+            //font-weight: bold;
             color: #fff;
         }
     }
@@ -125,7 +125,7 @@ onMounted(() => {
 
             .stat-value {
                 font-size: 20px;
-                font-weight: bold;
+                //font-weight: bold;
                 color: #00f2fe;
 
                 .unit {

@@ -3,7 +3,7 @@
     <div class="alarm-overview">
         <!-- 顶部区域：标题和搜索栏 -->
         <div class="header-section">
-            <h3>预警总览</h3>
+            <h3 class="app-section-title">预警总览</h3>
             <div class="search-section">
                 <!-- <div class="device-search-wrapper">
                     <el-input v-model="deviceSearch" placeholder="请输入设备名称" :prefix-icon="Search" size="small" clearable
@@ -115,7 +115,7 @@ const extractDevicesFromTree = (nodes: DeviceNode[]): DeviceItem[] => {
         factory.children?.forEach(workshop => {
             workshop.children?.forEach(device => {
                 if (device.type === 'device') {
-                devices.push({
+                    devices.push({
                         id: device.id,
                         name: `${device.name}（${workshop.name}）`,
                         deviceName: device.name,
@@ -518,7 +518,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
                 .time-search-input {
                     :deep(.el-input__wrapper) {
-                        background: url('@/assets/images/background/首页-搜索框背景.png') no-repeat center center;
                         background-size: 100% 100%;
                         border-radius: 4px;
                         box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -541,6 +540,11 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                     background: transparent;
                     border: none;
                     padding: 0;
+                    color: #fff;
+
+                    :deep(.el-icon) {
+                        color: #fff;
+                    }
                 }
             }
         }
@@ -596,7 +600,10 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                 margin-bottom: 8px;
 
                 .device-name {
-                    font-weight: bold;
+                    /* 设备名（车间名）文字样式 */
+                    font-weight: 600;
+                    letter-spacing: 1px;
+                    color: rgba(255, 255, 255, 1);
                     font-size: clamp(12px, 1.5vw, 16px);
                     white-space: nowrap;
                     overflow: hidden;
@@ -628,7 +635,11 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             }
 
             .alarm-time {
+                /* 时间文字样式 */
                 font-size: clamp(12px, 1.4vw, 16px);
+                font-weight: 400;
+                letter-spacing: 0.78px;
+                color: rgba(255, 255, 255, 1);
                 white-space: nowrap;
                 margin-bottom: 12px;
                 text-align: left;
@@ -713,7 +724,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
             &.is-active {
                 font-size: clamp(14px, 1.4vw, 16px);
-                color: #409EFF;
+                color: rgba(153, 240, 255, 0.7);
                 background-color: transparent;
                 border: 1px solid transparent;
             }
@@ -729,7 +740,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             color: white !important;
 
             &:hover {
-                color: #409EFF !important;
+                color: rgba(153, 240, 255, 0.7) !important;
             }
 
             &.is-disabled {
@@ -741,7 +752,8 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         .el-pagination__jump .el-input__inner {
             height: 18px;
             background-color: transparent;
-            color: #111;
+            /* “前往 X 页” 数字输入框字体颜色改为黑色（提升优先级防止被全局样式覆盖） */
+            color: #111 !important;
             font-size: clamp(10px, 1vw, 12px);
         }
     }

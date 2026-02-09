@@ -2,7 +2,7 @@
 <template>
     <div class="metrics-area">
         <div v-for="(metric, index) in metrics" :key="index" class="chart-container">
-            <h3 class="metric-title">{{ metric.title }}</h3>
+            <h3 class="metric-title app-section-title">{{ metric.title }}</h3>
             <div v-if="metric.unit" class="metric-unit special-font-color">{{ metric.unit }}</div>
             <!-- 排名列表：仅显示前 3 条 -->
             <div class="rankings">
@@ -16,7 +16,7 @@
                             <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
                         </span>
                         <span v-if="rank.value !== undefined" class="rank-value special-font-color">{{ rank.value
-                            }}</span>
+                        }}</span>
                     </div>
                 </template>
             </div>
@@ -233,6 +233,10 @@ const openRankDialog = (index: number) => {
             font-size: clamp(18px, 2.5vw, 24px);
             display: block !important;
             width: 100% !important;
+            /* Top3 标题样式统一 */
+            font-weight: 400;
+            letter-spacing: 0px;
+            color: rgba(153, 240, 255, 1);
         }
 
         .chart-container .metric-unit {
@@ -306,7 +310,7 @@ const openRankDialog = (index: number) => {
 
                 .rank-value {
                     flex-shrink: 0;
-                    font-weight: bold;
+                    //font-weight: bold;
                     text-align: right;
                 }
             }
@@ -402,7 +406,7 @@ const openRankDialog = (index: number) => {
         .rank-num {
             flex-shrink: 0;
             width: 28px;
-            font-weight: bold;
+            //font-weight: bold;
             color: #409eff;
         }
 
@@ -416,7 +420,7 @@ const openRankDialog = (index: number) => {
 
         .rank-value {
             flex-shrink: 0;
-            font-weight: bold;
+            //font-weight: bold;
             margin-left: 8px;
         }
     }

@@ -142,7 +142,7 @@ const handleLogin = async () => {
             gap: 30px;
 
             .main-title {
-                color: #00ffff;
+                color: rgba(153, 240, 255, 0.7);
                 font-weight: 500;
                 font-size: 55px;
                 margin: 0 0 20px 0;
@@ -150,7 +150,7 @@ const handleLogin = async () => {
             }
 
             .sub-title {
-                color: #00ffff;
+                color: rgba(153, 240, 255, 0.7);
                 font-size: 50px;
                 font-weight: 500;
                 margin: 0;

@@ -1,7 +1,7 @@
 <template>
     <div class="point-list-module">
         <div class="module-header">
-            <h3 class="module-title">点位列表</h3>
+            <h3 class="module-title app-section-title">点位列表</h3>
         </div>
         <div class="point-table-container">
             <el-table ref="pointTableRef" :data="pointList" height="100%" :fit="true"
@@ -134,9 +134,6 @@ defineExpose({
 
         .module-title {
             margin: 0;
-            font-size: clamp(18px, 2.5vw, 22px);
-            /* 更小的字体范围以适应小屏幕 */
-            font-weight: 500;
         }
     }
 
@@ -213,20 +210,34 @@ defineExpose({
 
         th {
             background: transparent !important;
-            color: var(--special-font-color) !important;
             font-size: clamp(10px, 1.5vw, 12px);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+
+
+            font-weight: 400;
+            letter-spacing: 0px;
+            color: rgba(153, 240, 255, 0.7) !important;
+            text-align: center;
+            vertical-align: top;
+
         }
 
         td {
             background: transparent !important;
-            color: var(--special-font-color) !important;
             font-size: clamp(10px, 1.5vw, 12px);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+
+
+            font-weight: 400;
+            letter-spacing: 0px;
+            color: rgba(153, 240, 255, 0.7) !important;
+            text-align: center;
+            vertical-align: top;
+
         }
 
         /* 为操作列取消ellipsis效果 */
