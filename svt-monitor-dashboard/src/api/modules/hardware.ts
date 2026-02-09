@@ -312,6 +312,65 @@ export const getSelectCheckPointIn = (deviceId: string): Promise<SelectCheckPoin
   })
 }
 
+// 趋势分析接口
+export interface TrendAnalysisRequest {
+  tenantId: string
+  time: number
+  startTime: number
+  pointIdList: number[]
+  type: number
+  days: number
+}
+
+export interface TrendAnalysisItem {
+  id: number
+  time: string
+  deviceId: string | null
+  deviceName: string | null
+  fileFlag: boolean | null
+  filePath: string | null
+  productId: string | null
+  productName: string | null
+  subProductId: string | null
+  subProductName: string | null
+  pointId: number
+  pointGroupId: number | null
+  pointName: string | null
+  status: number | null
+  standardValue: number | null
+  avgFrequencyDtoList: {
+    id: number | null
+    freq1: number
+    freq2: number
+    db: number
+    density: number
+    groupId: number | null
+    pointId: number | null
+    filePath: string | null
+    groupCount: number
+  }[]
+}
+
+export interface TrendAnalysisResult {
+  pointName: string
+  pointId: number
+  value: number
+  list: TrendAnalysisItem[]
+}
+
+export interface TrendAnalysisResponse {
+  rc: number
+  ret: TrendAnalysisResult[]
+  err: string | null
+}
+
+// 趋势分析接口
+export const getTrendAnalysis = (params: TrendAnalysisRequest): Promise<TrendAnalysisResponse> => {
+  return request.post('http://122.224.196.178:8003/taicang/hardware/device/sound/monitor/point-rank', params, {
+    showLoading: true
+  })
+}
+
 // 设备编辑信息类型定义
 export interface DeviceInfoDto {
   id: number;

@@ -31,6 +31,12 @@ const routes: RouteRecordRaw[] = [
         name: 'VibrationPoint',
         component: () => import('@/views/VibrationPoint.vue'),
         meta: { title: 'Vibration Point' }
+      },
+      {
+        path: 'datetime-test',
+        name: 'DateTimeTest',
+        component: () => import('@/views/DateTimeTest.vue'),
+        meta: { title: 'DateTime Test' }
       }
     ]
   },

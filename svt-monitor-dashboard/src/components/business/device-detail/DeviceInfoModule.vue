@@ -691,7 +691,7 @@ onUnmounted(() => {
 
                     .info-label {
                         color: #ccc;
-                        font-size: 12px;
+                        font-size: 14px;
                     }
 
                     .info-value {

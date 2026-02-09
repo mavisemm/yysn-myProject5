@@ -16,7 +16,7 @@
                             <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
                         </span>
                         <span v-if="rank.value !== undefined" class="rank-value special-font-color">{{ rank.value
-                        }}</span>
+                            }}</span>
                     </div>
                 </template>
             </div>
@@ -369,18 +369,18 @@ const openRankDialog = (index: number) => {
 }
 
 .rank-dialog :deep(.el-dialog__header) {
-    color: #606266;
+    color: #606266 !important;
 }
 
 .dialog-header-inner {
     display: flex;
     align-items: baseline;
     gap: 8px;
-    color: #606266;
+    color: #606266 !important;
 
     .dialog-unit-inline {
         font-size: 12px;
-        color: #909399;
+        color: #606266 !important;
         font-weight: normal;
     }
 }
@@ -407,7 +407,7 @@ const openRankDialog = (index: number) => {
             flex-shrink: 0;
             width: 28px;
             //font-weight: bold;
-            color: #409eff;
+            color: #606266 !important;
         }
 
         .rank-device {
@@ -416,12 +416,14 @@ const openRankDialog = (index: number) => {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            color: #606266 !important;
         }
 
         .rank-value {
             flex-shrink: 0;
             //font-weight: bold;
             margin-left: 8px;
+            color: #606266 !important;
         }
     }
 }

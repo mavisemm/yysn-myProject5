@@ -65,6 +65,41 @@ export function handleDatePickerChange(dateRange: [Date, Date] | null): [string,
 }
 
 /**
+ * 获取时间选择器的默认结束时间
+ * 如果结束日期是今天，则默认结束时间为此时此刻
+ * 如果结束日期不是今天，则默认结束时间为23:59:59
+ * 
+ * @param endDate 结束日期
+ * @returns 默认的结束时间字符串
+ */
+export function getDefaultEndTime(endDate: Date): string {
+    const now = new Date();
+    
+    // 判断结束日期是否为今天
+    if (isToday(endDate)) {
+        // 如果是今天，结束时间设为当前时刻
+        return formatDateTime(now);
+    } else {
+        // 如果不是今天，结束时间设为23:59:59
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        return formatDateTime(endOfDay);
+    }
+}
+
+/**
+ * 初始化时间范围的默认值
+ * @param startDate 开始日期
+ * @param endDate 结束日期
+ * @returns [开始时间字符串, 结束时间字符串]
+ */
+export function initializeDateRange(startDate: Date, endDate: Date): [string, string] {
+    const startTime = formatDateTime(startDate);
+    const endTime = getDefaultEndTime(endDate);
+    return [startTime, endTime];
+}
+
+/**
  * 获取默认时间范围（最近7天）
  * @returns [开始日期字符串, 结束日期字符串]
  */

@@ -1,6 +1,7 @@
 @use './variables.scss';
 @use './responsive-typography.scss';
 @use './custom-colors.scss';
+@use './datetime-picker.scss';
 
 * {
   margin: 0;
@@ -93,19 +94,14 @@ html, body {
   color: inherit !important;
 }
 
-/* 表单类组件：统一用深色文字，避免全局白色导致看不清 */
+/* 表单类组件：统一用灰色文字，避免全局白色导致看不清 */
 .el-input__inner,
 .el-textarea__inner,
 .el-select .el-input__inner,
 .el-cascader .el-input__inner {
-  color: inherit !important;
+  color: #606266 !important;
 }
 
-/* 全局placeholder颜色设置（普通文本仍可用白色） */
-::placeholder {
-  color: white !important;
-  // opacity: 0.7 !important;
-}
 
 /* 表单输入类 placeholder 改为灰色，提升可读性 */
 input::placeholder,

@@ -99,11 +99,27 @@ const goToDevice = () => {
   let deviceId = route.params.id as string
 
   if (!deviceId && (route.name === 'SoundPoint' || route.name === 'VibrationPoint')) {
+    // 优先从query中获取deviceId
     const queryDeviceId = route.query.deviceId
     if (queryDeviceId) {
       const resolvedId = Array.isArray(queryDeviceId) ? queryDeviceId[0] : queryDeviceId
       if (resolvedId) {
         deviceId = resolvedId
+      }
+    }
+
+    // 如果query中没有deviceId，则尝试从pointId推断设备ID
+    if (!deviceId) {
+      const pointId = route.query.pointId
+      if (pointId) {
+        const resolvedPointId = Array.isArray(pointId) ? pointId[0] : pointId
+        if (resolvedPointId) {
+          // 从点位ID中提取设备ID（假设点位ID格式为 设备ID-其他信息）
+          const devicePart = resolvedPointId.split('-')[0]
+          if (devicePart) {
+            deviceId = devicePart
+          }
+        }
       }
     }
   }

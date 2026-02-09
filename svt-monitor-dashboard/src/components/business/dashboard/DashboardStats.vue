@@ -133,7 +133,8 @@ const handleCardClick = (title: string) => {
         }
 
         .stat-text {
-            font-size: clamp(11px, 1.8vw, 24px);
+            /* 以 22px 為主的自適應字體大小 */
+            font-size: clamp(18px, 2vw, 22px);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -145,7 +146,8 @@ const handleCardClick = (title: string) => {
         }
 
         .stat-number {
-            font-size: clamp(14px, 2.5vw, 30px);
+            /* 以 26px 為主的自適應字體大小 */
+            font-size: clamp(20px, 2.5vw, 26px);
             // font-weight: bold;
             white-space: nowrap;
             overflow: hidden;

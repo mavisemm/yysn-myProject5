@@ -6,7 +6,6 @@
             <el-table :data="tableData" stripe class="warning-table" max-height="400" @row-click="handleRowClick">
                 <el-table-column prop="deviceName" label="设备名称" min-width="120" />
                 <el-table-column prop="pointName" label="点位名称" min-width="120" />
-                <el-table-column prop="receiverName" label="听筒名称" min-width="120" />
             </el-table>
         </div>
     </el-dialog>

@@ -19,11 +19,7 @@
                 </div> -->
 
                 <div class="time-section">
-                    <el-date-picker v-model="dateRange" type="datetimerange" range-separator="-"
-                        start-placeholder="开始日期" end-placeholder="结束日期" format="YYYY-MM-DD HH:mm:ss"
-                        value-format="YYYY-MM-DD HH:mm:ss" size="small" style="width: 320px;" class="time-search-input"
-                        popper-class="custom-datepicker-popper" :default-time="defaultTime"
-                        :disabled-date="disabledDate" :locale="zhCn" />
+                    <CommonDateTimePicker v-model="dateRange" width="320px" />
                     <el-button @click="toggleSortOrder" class="sort-btn" :icon="sortIcon">
                     </el-button>
                 </div>
@@ -75,13 +71,12 @@ import { useLocale } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import type { DeviceNode } from '@/types/device';
 import { formatDateTime, handleDatePickerChange, disabledFutureDate, getDefaultDateRange } from '@/utils/datetime';
+import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue';
 
 const { t } = useLocale();
 
 const router = useRouter()
 const deviceTreeStore = useDeviceTreeStore();
-
-const disabledDate = disabledFutureDate;
 
 // 定义类型
 interface MeasurementPoint {
@@ -133,35 +128,6 @@ const deviceSearch = ref('');
 const dateRange = ref<[string, string]>(['', '']);
 const showDropdown = ref(false);
 const currentPage = ref(1);
-
-const defaultTime = computed(() => {
-    const now = new Date();
-    return [new Date(2000, 1, 1, 0, 0, 0), now] as [Date, Date];
-});
-
-// 监听日期范围变化，自动处理结束时间逻辑
-watch(dateRange, (newVal) => {
-    // 处理空值情况 - 如果清空了选择，保持空状态
-    if (!newVal || newVal.length !== 2 || !newVal[0] || !newVal[1]) {
-        // 保持空状态，不进行任何处理
-        return;
-    }
-
-    // 将字符串转换为Date对象进行处理
-    const startDate = new Date(newVal[0]);
-    const endDate = new Date(newVal[1]);
-
-    const result = handleDatePickerChange([startDate, endDate]);
-    if (result) {
-        // 只有当处理后的结果与当前值不同时才更新，避免无限循环
-        if (result[0] !== newVal[0] || result[1] !== newVal[1]) {
-            dateRange.value = result;
-        }
-    } else if (result === null && (newVal[0] || newVal[1])) {
-        // 如果处理结果为null但原值不为空，说明用户清空了选择
-        dateRange.value = ['', ''];
-    }
-}, { deep: true });
 
 const containerWidth = ref(window.innerWidth);
 const containerHeight = ref(window.innerHeight);
@@ -755,112 +721,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             /* “前往 X 页” 数字输入框字体颜色改为黑色（提升优先级防止被全局样式覆盖） */
             color: #111 !important;
             font-size: clamp(10px, 1vw, 12px);
-        }
-    }
-}
-</style>
-<style lang="scss">
-.el-picker-panel.el-date-range-picker {
-    width: 440px !important;
-    font-size: 12px !important;
-
-    .el-input__wrapper {
-        width: 90px !important;
-    }
-
-    .el-date-range-picker__time-header {
-        width: 400px !important;
-    }
-
-    .el-date-range-picker__time-header {
-        display: flex;
-        justify-content: space-between;
-        padding: 8px 10px !important;
-        gap: 6px;
-
-        >.el-scrollbar {
-            width: calc(50% - 3px) !important;
-        }
-
-        .el-date-editor {
-            width: 100% !important;
-
-            :deep(.el-input__wrapper) {
-                height: 26px !important;
-                padding: 0 6px !important;
-                background: rgba(150, 150, 150, 0.1) !important;
-                border: 1px solid rgba(150, 150, 150, 0.2) !important;
-                box-shadow: none !important;
-                border-radius: 3px !important;
-            }
-
-            :deep(.el-input__inner) {
-                height: 26px !important;
-                line-height: 26px !important;
-                font-size: 11px !important;
-                padding: 0 4px !important;
-                color: white !important;
-                background: transparent !important;
-            }
-        }
-    }
-
-    .el-date-range-picker__header {
-        font-size: 12px !important;
-        font-weight: normal !important;
-        padding: 4px 0 !important;
-        line-height: 1.2 !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-    }
-
-    .el-picker-panel__icon-btn {
-        width: 14px !important;
-        height: 14px !important;
-        line-height: 14px !important;
-        font-size: 11px !important;
-    }
-
-    .el-date-range-picker__content {
-        width: 180px !important;
-        padding: 6px !important;
-
-        .el-date-table {
-            font-size: 10.5px !important;
-
-            th,
-            td {
-                padding: 2px 0 !important;
-                height: 22px !important;
-                line-height: 22px !important;
-            }
-        }
-    }
-
-    .el-time-panel {
-        padding: 6px !important;
-
-        .el-time-spinner__wrapper {
-            padding: 0 3px !important;
-        }
-
-        .el-time-spinner__input {
-            :deep(.el-input__inner) {
-                height: 22px !important;
-                line-height: 22px !important;
-                font-size: 11px !important;
-                padding: 0 3px !important;
-            }
-        }
-    }
-
-    .el-picker-panel__footer {
-        padding: 6px 10px !important;
-
-        .el-button--text {
-            font-size: 11px !important;
-            padding: 2px 6px !important;
         }
     }
 }

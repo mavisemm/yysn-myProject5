@@ -54,11 +54,7 @@
                             </div>
 
                             <el-form-item label="时间选择">
-                                <el-date-picker v-model="analysisForm.dateRange" type="datetimerange"
-                                    range-separator="-" start-placeholder="开始日期" end-placeholder="结束日期"
-                                    format="YYYY-MM-DD HH:mm:ss" value-format="YYYY-MM-DD HH:mm:ss" size="small"
-                                    style="width: 100%;" popper-class="custom-datepicker-popper"
-                                    :default-time="defaultTime" :disabled-date="disabledDate" />
+                                <CommonDateTimePicker v-model="analysisForm.dateRange" width="100%" />
                             </el-form-item>
 
                             <el-button type="primary" @click="analyzeTrend" style="width: 100%; margin-top: 10px;">
@@ -74,9 +70,24 @@
                         </div>
                         <div class="result-row">
                             <span class="result-label">点位名称：</span>
-                            <span class="result-value">{{ analysisResult.pointName }}</span>
+                            <span class="result-value clickable" @click="showTrendChart">{{ analysisResult.pointName
+                                }}</span>
                         </div>
                     </div>
+
+                    <!-- 趋势分析图表弹窗 -->
+                    <el-dialog v-model="chartDialogVisible" title="趋势分析图表" width="900px" :close-on-click-modal="true">
+                        <div class="trend-charts-container">
+                            <div class="chart-wrapper">
+                                <div class="chart-title">能量(dB)趋势分析</div>
+                                <div ref="dbChartRef" class="chart-box"></div>
+                            </div>
+                            <div class="chart-wrapper">
+                                <div class="chart-title">密度趋势分析</div>
+                                <div ref="densityChartRef" class="chart-box"></div>
+                            </div>
+                        </div>
+                    </el-dialog>
                 </div>
 
             </div>
@@ -86,12 +97,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, onUnmounted, watch, computed } from 'vue'
-import { ElForm, ElFormItem, ElSelect, ElOption, ElInputNumber, ElDatePicker, ElButton, ElMessage } from 'element-plus'
+import { ElForm, ElFormItem, ElSelect, ElOption, ElInputNumber, ElDatePicker, ElButton, ElMessage, ElDialog } from 'element-plus'
 import * as echarts from 'echarts'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { enableMouseWheelZoomForCharts, connectCharts } from '@/utils/chart'
-import { getTemperatureTrend, getVibrationTrend, getSoundTrend } from '@/api/modules/hardware'
+import { getTemperatureTrend, getVibrationTrend, getSoundTrend, getTrendAnalysis } from '@/api/modules/hardware'
 import { handleDatePickerChange, disabledFutureDate } from '@/utils/datetime'
+import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
 
 // 定义点位信息类型
 interface PointInfo {
@@ -127,14 +139,6 @@ let soundChart: echarts.ECharts | null = null
 let vibChart: echarts.ECharts | null = null
 
 // 趋势分析相关
-const disabledDate = disabledFutureDate;
-
-
-
-const defaultTime = computed<[Date, Date]>(() => {
-    const now = new Date();
-    return [new Date(2000, 1, 1, 0, 0, 0), now];
-});
 
 const handleCalendarChange = (val: [Date, Date] | null) => {
     const result = handleDatePickerChange(val);
@@ -174,6 +178,597 @@ const analysisResult = ref<AnalysisResult>({
     pointName: '进风口位置'
 })
 
+// 图表弹窗相关
+const chartDialogVisible = ref(false)
+const dbChartRef = ref<HTMLDivElement>()
+const densityChartRef = ref<HTMLDivElement>()
+let dbChart: echarts.ECharts | null = null
+let densityChart: echarts.ECharts | null = null
+let resizeTimer: number | null = null
+
+// 存储趋势分析数据用于图表展示
+const trendAnalysisData = ref<any[]>([])
+
+// 显示趋势图表
+const showTrendChart = () => {
+    if (trendAnalysisData.value.length === 0) {
+        ElMessage.warning('暂无趋势分析数据')
+        return
+    }
+    chartDialogVisible.value = true
+    nextTick(() => {
+        initTrendChart()
+    })
+}
+
+// 计算dB最大差值信息
+const calcDbMaxDiff = (totalArr: any[], xArr: any[]) => {
+    const diffInfo = {
+        diff: 0,
+        freq: '',
+        index: -1,
+        maxValue: 0,
+        minValue: 0
+    }
+
+    if (!totalArr.length || !xArr.length) return diffInfo
+
+    for (let xIndex = 0; xIndex < xArr.length; xIndex++) {
+        const currentFreq = xArr[xIndex]
+        const dbValues: number[] = []
+
+        for (let groupIndex = 0; groupIndex < totalArr.length; groupIndex++) {
+            const dbValue = totalArr[groupIndex].dbArr?.[xIndex]
+            if (dbValue != null && !isNaN(Number(dbValue))) {
+                dbValues.push(Number(dbValue))
+            }
+        }
+
+        if (dbValues.length < 2) continue
+
+        const currentMax = Math.max(...dbValues)
+        const currentMin = Math.min(...dbValues)
+        const currentDiff = currentMax - currentMin
+
+        if (currentDiff > diffInfo.diff) {
+            diffInfo.diff = currentDiff
+            diffInfo.freq = currentFreq
+            diffInfo.index = xIndex
+            diffInfo.maxValue = currentMax
+            diffInfo.minValue = currentMin
+        }
+    }
+
+    return diffInfo
+}
+
+// 更新tooltip格式化器
+const updateDbEchartsTooltip = (option: any, totalArr: any[], xArr: any[]) => {
+    option.tooltip = {
+        ...option.tooltip,
+        hideDelay: 10000,
+        formatter: (params: any) => {
+            if (!params || !params.length) return ''
+
+            const xIndex = params[0].dataIndex
+            const currentFreq = xArr[xIndex] || '未知频率'
+
+            const dbValues: number[] = []
+            for (let groupIndex = 0; groupIndex < totalArr.length; groupIndex++) {
+                const dbValue = totalArr[groupIndex].dbArr?.[xIndex]
+                if (dbValue != null && !isNaN(Number(dbValue))) {
+                    dbValues.push(Number(dbValue))
+                }
+            }
+
+            let currentDiffStr = '当前差值：无有效数据'
+            let currentMax = null
+            if (dbValues.length >= 2) {
+                currentMax = Math.max(...dbValues)
+                const currentMin = Math.min(...dbValues)
+                const currentDiff = currentMax - currentMin
+                currentDiffStr = `当前差值：${currentDiff.toFixed(4)}<br/>最大值：${currentMax.toFixed(4)}<br/>最小值：${currentMin.toFixed(4)}`
+            }
+
+            let tooltipContent = ''
+            tooltipContent += currentDiffStr
+            tooltipContent += `<br/><hr style="border: none; border-top: 1px solid #ccc; margin: 6px 0;"/>`
+            tooltipContent += `${currentFreq}Hz<br/>`
+            params.forEach((item: any) => {
+                const colorCircle = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${item.color};margin-right:4px;"></span>`
+                const isMaxValue = currentMax !== null && Math.abs(Number(item.data) - currentMax) < 0.0001
+                if (isMaxValue) {
+                    tooltipContent += `${colorCircle}<span style="color: #ff6a6aff; font-size: 16px; font-weight: 500;">${item.seriesName}：${item.data || '无数据'}</span><br/>`
+                } else {
+                    tooltipContent += `${colorCircle}${item.seriesName}：${item.data || '无数据'}<br/>`
+                }
+            })
+
+            return tooltipContent
+        }
+    }
+    return option
+}
+
+// 生成时间渐变色
+const generateTimeGradientColors = (totalCount: number) => {
+    const colors: string[] = []
+    const count = Math.max(totalCount, 1)
+    const step = count > 1 ? 255 / (count - 1) : 0
+
+    for (let i = 0; i < count; i++) {
+        const r = 255
+        const g = Math.floor(i * step)
+        const b = 0
+        colors.push(`rgb(${r}, ${g}, ${b})`)
+    }
+    return colors
+}
+
+// 初始化趋势图表
+const initTrendChart = () => {
+    if ((!dbChartRef.value && !densityChartRef.value) || trendAnalysisData.value.length === 0) return
+
+    // 清理现有的图表实例
+    if (dbChart) {
+        dbChart.dispose()
+        dbChart = null
+    }
+    if (densityChart) {
+        densityChart.dispose()
+        densityChart = null
+    }
+
+    // 处理数据 - 仿照zPoint.js的方式
+    let totalArr: any[] = []
+    let xArr: any[] = []
+
+    // 构造数据结构
+    for (let i = 0; i < trendAnalysisData.value.length; i++) {
+        const item = trendAnalysisData.value[i]
+        let dbArr: any[] = []
+        let densityArr: any[] = []
+
+        if (item.avgFrequencyDtoList && item.avgFrequencyDtoList.length > 0) {
+            for (let j = 0; j < item.avgFrequencyDtoList.length; j++) {
+                const temp = item.avgFrequencyDtoList[j]
+                dbArr.push(temp.db ? temp.db.toFixed(4) : undefined)
+                densityArr.push(temp.density ? temp.density.toFixed(4) : undefined)
+
+                // 只在第一次循环时设置x轴数据
+                if (i === 0) {
+                    const freq = Math.sqrt(Number(temp.freq1) * Number(temp.freq2)).toFixed(4)
+                    xArr.push(freq)
+                }
+            }
+        }
+
+        totalArr.push({
+            ...item,
+            dbArr,
+            densityArr,
+            time: new Date(item.time).toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            })
+        })
+    }
+
+    // 按时间排序
+    const sortedTotalArr = [...totalArr].sort((a, b) => {
+        return new Date(b.time).getTime() - new Date(a.time).getTime()
+    })
+
+    // 生成时间渐变色
+    const timeGradientColors = generateTimeGradientColors(sortedTotalArr.length)
+
+    // 构造系列数据
+    let finallyDbArr: any[] = []
+    let finallyDensityArr: any[] = []
+
+    for (let j = 0; j < totalArr.length; j++) {
+        const currentColor = timeGradientColors[j]
+
+        finallyDbArr.push({
+            name: totalArr[j].time,
+            type: "line",
+            data: totalArr[j].dbArr,
+            itemStyle: {
+                color: currentColor
+            },
+            lineStyle: {
+                color: currentColor,
+            }
+        })
+
+        finallyDensityArr.push({
+            name: totalArr[j].time,
+            type: "line",
+            data: totalArr[j].densityArr,
+            itemStyle: {
+                color: currentColor
+            },
+            lineStyle: {
+                color: currentColor,
+            }
+        })
+    }
+
+    // 计算最大差值
+    const dbMaxDiffInfo = calcDbMaxDiff(totalArr, xArr)
+
+    // 初始化dB图表
+    if (dbChartRef.value) {
+        dbChart = echarts.init(dbChartRef.value)
+
+        const dbOption = {
+            backgroundColor: 'transparent',
+            title: {
+                text: '能量(dB)趋势分析',
+                textStyle: {
+                    color: '#ffffff',
+                    fontSize: 16,
+                    fontWeight: 'bold'
+                },
+                left: 'center',
+                top: 10
+            },
+            tooltip: {
+                trigger: 'axis',
+                backgroundColor: 'rgba(25, 25, 25, 0.9)',
+                borderColor: '#4a90e2',
+                borderWidth: 1,
+                textStyle: {
+                    color: '#ffffff',
+                    fontSize: 12
+                },
+                padding: 12,
+                extraCssText: 'box-shadow: 0 2px 8px rgba(0,0,0,0.3);'
+            },
+            legend: {
+                data: finallyDbArr.map(item => item.name),
+                textStyle: {
+                    color: '#e0e0e0',
+                    fontSize: 11
+                },
+                top: 40,
+                type: 'scroll',
+                pageTextStyle: {
+                    color: '#e0e0e0'
+                }
+            },
+            grid: {
+                left: '8%',
+                right: '8%',
+                bottom: '12%',
+                top: '22%',
+                containLabel: true
+            },
+            xAxis: [{
+                type: 'category',
+                data: xArr,
+                axisLabel: {
+                    fontSize: 11,
+                    color: '#cccccc',
+                    rotate: 45,
+                    margin: 15
+                },
+                axisLine: {
+                    lineStyle: {
+                        color: '#555555',
+                        width: 1
+                    }
+                },
+                axisTick: {
+                    alignWithLabel: true,
+                    lineStyle: { color: '#555555' }
+                },
+                splitLine: {
+                    show: false
+                }
+            }],
+            yAxis: {
+                type: 'value',
+                name: 'dB',
+                nameTextStyle: {
+                    color: '#cccccc',
+                    fontSize: 12
+                },
+                axisLabel: {
+                    fontSize: 11,
+                    color: '#cccccc'
+                },
+                axisLine: {
+                    lineStyle: {
+                        color: '#555555',
+                        width: 1
+                    }
+                },
+                axisTick: {
+                    lineStyle: { color: '#555555' }
+                },
+                splitLine: {
+                    lineStyle: {
+                        color: 'rgba(85, 85, 85, 0.3)',
+                        type: 'solid'
+                    }
+                }
+            },
+            dataZoom: [
+                {
+                    type: 'inside',
+                    start: 0,
+                    end: 100,
+                    xAxisIndex: [0]
+                },
+                {
+                    type: 'slider',
+                    start: 0,
+                    end: 100,
+                    xAxisIndex: [0],
+                    bottom: 10,
+                    height: 20,
+                    borderColor: '#555555',
+                    textStyle: {
+                        color: '#cccccc'
+                    },
+                    handleStyle: {
+                        color: '#4a90e2',
+                        borderColor: '#4a90e2'
+                    },
+                    fillerColor: 'rgba(74, 144, 226, 0.2)',
+                    brushSelect: false
+                }
+            ],
+            series: finallyDbArr.map((series, index) => ({
+                ...series,
+                smooth: true,
+                symbol: 'circle',
+                symbolSize: 6,
+                lineStyle: {
+                    width: 2.5,
+                    shadowBlur: 3,
+                    shadowColor: 'rgba(0,0,0,0.2)'
+                },
+                itemStyle: {
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    shadowBlur: 4,
+                    shadowColor: 'rgba(0,0,0,0.3)'
+                },
+                emphasis: {
+                    focus: 'series',
+                    itemStyle: {
+                        borderWidth: 3,
+                        borderColor: '#ffffff'
+                    }
+                }
+            }))
+        }
+
+        // 为第一个系列添加最大差值标记
+        if (finallyDbArr.length > 0 && dbMaxDiffInfo.index !== -1) {
+            dbOption.series[0].markPoint = {
+                enabled: true,
+                symbol: 'pin',
+                symbolSize: 20,
+                z: 10,
+                label: {
+                    show: true,
+                    formatter: `${dbMaxDiffInfo.freq}Hz\n最大差值\n${dbMaxDiffInfo.diff.toFixed(4)}`,
+                    color: '#fff',
+                    fontSize: 10,
+                    fontWeight: 'bold',
+                    position: 'top'
+                },
+                itemStyle: {
+                    color: '#f56954',
+                    borderColor: '#fff',
+                    borderWidth: 2
+                },
+                data: [{
+                    name: `@${dbMaxDiffInfo.freq}Hz`,
+                    xAxis: dbMaxDiffInfo.index,
+                    yAxis: dbMaxDiffInfo.maxValue,
+                    value: dbMaxDiffInfo.diff.toFixed(4)
+                }]
+            }
+        }
+
+        dbChart.setOption(dbOption)
+
+        // 监听dataZoom事件实现联动
+        dbChart.on('dataZoom', function (params: any) {
+            if (densityChart && (!params.fromAction || params.fromAction === 'dataZoom')) {
+                const zoomState = dbChart!.getOption().dataZoom[0];
+                densityChart!.dispatchAction({
+                    type: 'dataZoom',
+                    start: zoomState.start,
+                    end: zoomState.end,
+                    silent: true
+                });
+            }
+        });
+
+        dbChart.on('finished', () => {
+            dbChart?.resize()
+        })
+    }
+
+    // 初始化密度图表
+    if (densityChartRef.value) {
+        densityChart = echarts.init(densityChartRef.value)
+
+        const densityOption = {
+            backgroundColor: 'transparent',
+            title: {
+                text: '密度趋势分析',
+                textStyle: {
+                    color: '#ffffff',
+                    fontSize: 16,
+                    fontWeight: 'bold'
+                },
+                left: 'center',
+                top: 10
+            },
+            tooltip: {
+                trigger: 'axis',
+                backgroundColor: 'rgba(25, 25, 25, 0.9)',
+                borderColor: '#4a90e2',
+                borderWidth: 1,
+                textStyle: {
+                    color: '#ffffff',
+                    fontSize: 12
+                },
+                padding: 12,
+                extraCssText: 'box-shadow: 0 2px 8px rgba(0,0,0,0.3);'
+            },
+            legend: {
+                data: finallyDensityArr.map(item => item.name),
+                textStyle: {
+                    color: '#e0e0e0',
+                    fontSize: 11
+                },
+                top: 40,
+                type: 'scroll',
+                pageTextStyle: {
+                    color: '#e0e0e0'
+                }
+            },
+            grid: {
+                left: '8%',
+                right: '8%',
+                bottom: '12%',
+                top: '22%',
+                containLabel: true
+            },
+            xAxis: [{
+                type: 'category',
+                data: xArr,
+                axisLabel: {
+                    fontSize: 11,
+                    color: '#cccccc',
+                    rotate: 45,
+                    margin: 15
+                },
+                axisLine: {
+                    lineStyle: {
+                        color: '#555555',
+                        width: 1
+                    }
+                },
+                axisTick: {
+                    alignWithLabel: true,
+                    lineStyle: { color: '#555555' }
+                },
+                splitLine: {
+                    show: false
+                }
+            }],
+            yAxis: {
+                type: 'value',
+                name: '密度',
+                nameTextStyle: {
+                    color: '#cccccc',
+                    fontSize: 12
+                },
+                axisLabel: {
+                    fontSize: 11,
+                    color: '#cccccc'
+                },
+                axisLine: {
+                    lineStyle: {
+                        color: '#555555',
+                        width: 1
+                    }
+                },
+                axisTick: {
+                    lineStyle: { color: '#555555' }
+                },
+                splitLine: {
+                    lineStyle: {
+                        color: 'rgba(85, 85, 85, 0.3)',
+                        type: 'solid'
+                    }
+                }
+            },
+            dataZoom: [
+                {
+                    type: 'inside',
+                    start: 0,
+                    end: 100,
+                    xAxisIndex: [0]
+                },
+                {
+                    type: 'slider',
+                    start: 0,
+                    end: 100,
+                    xAxisIndex: [0],
+                    bottom: 10,
+                    height: 20,
+                    borderColor: '#555555',
+                    textStyle: {
+                        color: '#cccccc'
+                    },
+                    handleStyle: {
+                        color: '#4a90e2',
+                        borderColor: '#4a90e2'
+                    },
+                    fillerColor: 'rgba(74, 144, 226, 0.2)',
+                    brushSelect: false
+                }
+            ],
+            series: finallyDensityArr.map((series, index) => ({
+                ...series,
+                smooth: true,
+                symbol: 'circle',
+                symbolSize: 6,
+                lineStyle: {
+                    width: 2.5,
+                    shadowBlur: 3,
+                    shadowColor: 'rgba(0,0,0,0.2)'
+                },
+                itemStyle: {
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    shadowBlur: 4,
+                    shadowColor: 'rgba(0,0,0,0.3)'
+                },
+                emphasis: {
+                    focus: 'series',
+                    itemStyle: {
+                        borderWidth: 3,
+                        borderColor: '#ffffff'
+                    }
+                }
+            }))
+        }
+
+        densityChart.setOption(densityOption)
+
+        // 监听dataZoom事件实现反向联动
+        densityChart.on('dataZoom', function (params: any) {
+            if (dbChart && (!params.fromAction || params.fromAction === 'dataZoom')) {
+                const zoomState = densityChart!.getOption().dataZoom[0];
+                dbChart!.dispatchAction({
+                    type: 'dataZoom',
+                    start: zoomState.start,
+                    end: zoomState.end,
+                    silent: true
+                });
+            }
+        });
+
+        densityChart.on('finished', () => {
+            densityChart?.resize()
+        })
+    }
+}
+
 // 初始化图表
 onMounted(() => {
     // 使用 nextTick 确保 DOM 已渲染
@@ -185,6 +780,9 @@ onMounted(() => {
             initVibChart();
         }, 100);
     });
+
+    // 添加窗口大小变化监听
+    window.addEventListener('resize', handleWindowResize);
 })
 
 // 根据数据范围计算 y 轴 min/max（支持负数，取整到合适刻度）
@@ -209,7 +807,7 @@ const loadTemperatureData = async (pointId: string) => {
         const endTime = '2026-02-04 23:59:59'
 
         const response = await getTemperatureTrend({
-            point_id: 'PT-001-A',
+            point_id: 'P001',
             start_time: startTime,
             end_time: endTime
         })
@@ -381,7 +979,7 @@ const loadVibrationData = async (pointId: string) => {
         const endTime = '2026-02-04 23:59:59'
 
         const response = await getVibrationTrend({
-            point_id: 'PT-001-A',
+            point_id: 'P001',
             start_time: startTime,
             end_time: endTime
         })
@@ -457,7 +1055,7 @@ const loadSoundData = async (_pointId: string) => {
         const endTime = '2026-02-04 23:59:59'
 
         const response = await getSoundTrend({
-            point_id: 'PT-001-A',
+            point_id: 'P001',
             start_time: startTime,
             end_time: endTime
         })
@@ -585,7 +1183,9 @@ const initTempChart = () => {
             axisLine: {
                 lineStyle: {
                     color: '#fff'
+                    // 不論 y 軸是否有負值，x 軸始終貼底顯示
                 }
+                , onZero: false
             },
             axisTick: {
                 lineStyle: {
@@ -715,7 +1315,9 @@ const initSoundChart = () => {
             axisLine: {
                 lineStyle: {
                     color: '#fff'
+                    // 不論 y 軸是否有負值，x 軸始終貼底顯示
                 }
+                , onZero: false
             },
             axisTick: {
                 lineStyle: {
@@ -913,13 +1515,52 @@ const initVibChart = () => {
 }
 
 // 分析趋势
-const analyzeTrend = () => {
-    // 模拟分析结果
-    analysisResult.value.deviation = (Math.random() * 0.5).toFixed(2)
-    const selectedPoint = props.pointList.find(p => p.id === analysisForm.value.pointId)
-    analysisResult.value.pointName = selectedPoint ? String(selectedPoint.name) : '未知点位'
+const analyzeTrend = async () => {
+    if (!analysisForm.value.pointId) {
+        ElMessage.warning('请选择点位')
+        return
+    }
 
-    ElMessage.success('趋势分析完成')
+    if (!analysisForm.value.dateRange || analysisForm.value.dateRange.length !== 2) {
+        ElMessage.warning('请选择时间范围')
+        return
+    }
+
+    try {
+        // 构造请求参数
+        const startTime = new Date(analysisForm.value.dateRange[0]).getTime()
+        const endTime = new Date(analysisForm.value.dateRange[1]).getTime()
+        const currentTime = Date.now()
+
+        const params = {
+            tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
+            time: currentTime,
+            startTime: startTime,
+            pointIdList: [293], // 写死测试pointId
+            type: 1,
+            days: analysisForm.value.days
+        }
+
+        const response = await getTrendAnalysis(params)
+
+        if (response.rc === 0 && response.ret && response.ret.length > 0) {
+            const result = response.ret[0]
+            if (result) {
+                analysisResult.value.deviation = result.value.toString()
+                analysisResult.value.pointName = result.pointName
+                // 存储趋势分析数据用于图表展示
+                trendAnalysisData.value = result.list || []
+                ElMessage.success('趋势分析完成')
+            } else {
+                ElMessage.error('趋势分析返回数据格式错误')
+            }
+        } else {
+            ElMessage.error('趋势分析失败: ' + (response.err || '未知错误'))
+        }
+    } catch (error) {
+        console.error('趋势分析请求失败:', error)
+        ElMessage.error('趋势分析请求失败')
+    }
 }
 
 let resizeObserver: ResizeObserver | null = null
@@ -1075,15 +1716,50 @@ onMounted(() => {
     });
 })
 
+// 窗口大小变化处理
+const handleWindowResize = () => {
+    // 使用防抖避免频繁触发
+    if (resizeTimer) {
+        window.clearTimeout(resizeTimer)
+    }
+
+    resizeTimer = window.setTimeout(() => {
+        // 重新调整主图表大小
+        if (tempChart && typeof tempChart.resize === 'function') {
+            tempChart.resize()
+        }
+        if (soundChart && typeof soundChart.resize === 'function') {
+            soundChart.resize()
+        }
+        if (vibChart && typeof vibChart.resize === 'function') {
+            vibChart.resize()
+        }
+
+        // 重新调整趋势分析图表大小
+        if (dbChart && typeof dbChart.resize === 'function' && chartDialogVisible.value) {
+            dbChart.resize()
+        }
+        if (densityChart && typeof densityChart.resize === 'function' && chartDialogVisible.value) {
+            densityChart.resize()
+        }
+    }, 300) // 300ms防抖
+}
+
 // 组件卸载时清理资源
 onUnmounted(() => {
     if (tempChart) tempChart.dispose()
     if (soundChart) soundChart.dispose()
     if (vibChart) vibChart.dispose()
+    if (dbChart) dbChart.dispose()
+    if (densityChart) densityChart.dispose()
 
     if (resizeObserver) {
         resizeObserver.disconnect();
         resizeObserver = null;
+    }
+
+    if (resizeTimer) {
+        window.clearTimeout(resizeTimer)
     }
 
     // 清理重试图表初始化的定时器
@@ -1158,8 +1834,7 @@ onUnmounted(() => {
             padding: 10px;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
-            /* 统一overflow处理 */
+            /* 移除 overflow: hidden 以允许下拉框正常显示 */
             min-height: 0;
             /* 确保flex子项可以收缩 */
             min-width: 0;
@@ -1226,7 +1901,44 @@ onUnmounted(() => {
                             font-size: 12px;
                             color: white;
                             font-weight: 500;
+
+                            &.clickable {
+                                cursor: pointer;
+                                text-decoration: underline;
+
+                                &:hover {
+                                    color: #409eff;
+                                }
+                            }
                         }
+                    }
+                }
+            }
+
+            // 趋势分析图表弹窗样式
+            .trend-charts-container {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+
+                .chart-wrapper {
+                    .chart-title {
+                        text-align: center;
+                        font-size: 16px;
+                        font-weight: bold;
+                        color: #fff;
+                        margin-bottom: 15px;
+                        padding: 10px;
+                        background: rgba(0, 0, 0, 0.2);
+                        border-radius: 4px;
+                    }
+
+                    .chart-box {
+                        width: 100%;
+                        height: 350px;
+                        background: rgba(0, 0, 0, 0.1);
+                        border-radius: 4px;
+                        border: 1px solid rgba(255, 255, 255, 0.1);
                     }
                 }
             }
@@ -1234,125 +1946,6 @@ onUnmounted(() => {
 
 
 
-        }
-    }
-}
-
-/* === 精细化调整 Element Plus 日期范围选择器 === */
-.el-picker-panel.el-date-range-picker {
-    width: 440px !important;
-    font-size: 12px !important;
-
-    .el-input__wrapper {
-        width: 90px !important;
-    }
-
-    .el-date-range-picker__time-header {
-        width: 400px !important;
-    }
-
-    /* --- 1. 压缩顶部“开始/结束 时间输入区域” --- */
-    .el-date-range-picker__time-header {
-        display: flex;
-        justify-content: space-between;
-        padding: 8px 10px !important;
-        gap: 6px;
-        /* 控制左右两组之间的间隙 */
-
-        /* 每组：日期 + 时间 */
-        >.el-scrollbar {
-            width: calc(50% - 3px) !important;
-            /* 两等分，减去 gap 的一半 */
-        }
-
-        /* 日期输入框 */
-        .el-date-editor {
-            width: 100% !important;
-
-            :deep(.el-input__wrapper) {
-                height: 26px !important;
-                padding: 0 6px !important;
-                background: rgba(150, 150, 150, 0.1) !important;
-                border: 1px solid rgba(150, 150, 150, 0.2) !important;
-                box-shadow: none !important;
-                border-radius: 3px !important;
-            }
-
-            :deep(.el-input__inner) {
-                height: 26px !important;
-                line-height: 26px !important;
-                font-size: 11px !important;
-                padding: 0 4px !important;
-                color: white !important;
-                background: transparent !important;
-            }
-        }
-    }
-
-    /* --- 2. 缩小日历顶部“2026年1月”标题 --- */
-    .el-date-range-picker__header {
-        font-size: 12px !important;
-        /* 原为 14px+ */
-        font-weight: normal !important;
-        padding: 4px 0 !important;
-        line-height: 1.2 !important;
-        // 防止文字过长换行或溢出
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-    }
-
-    /* 左右切换箭头也缩小 */
-    .el-picker-panel__icon-btn {
-        width: 14px !important;
-        height: 14px !important;
-        line-height: 14px !important;
-        font-size: 11px !important;
-    }
-
-    /* --- 3. 日历内容区继续紧凑 --- */
-    .el-date-range-picker__content {
-        width: 180px !important;
-        /* 每个日历 180px */
-        padding: 6px !important;
-
-        .el-date-table {
-            font-size: 10.5px !important;
-
-            th,
-            td {
-                padding: 2px 0 !important;
-                height: 22px !important;
-                line-height: 22px !important;
-            }
-        }
-    }
-
-    /* --- 4. 时间选择器（如果展开）--- */
-    .el-time-panel {
-        padding: 6px !important;
-
-        .el-time-spinner__wrapper {
-            padding: 0 3px !important;
-        }
-
-        .el-time-spinner__input {
-            :deep(.el-input__inner) {
-                height: 22px !important;
-                line-height: 22px !important;
-                font-size: 11px !important;
-                padding: 0 3px !important;
-            }
-        }
-    }
-
-    /* --- 5. Footer 按钮 --- */
-    .el-picker-panel__footer {
-        padding: 6px 10px !important;
-
-        .el-button--text {
-            font-size: 11px !important;
-            padding: 2px 6px !important;
         }
     }
 }

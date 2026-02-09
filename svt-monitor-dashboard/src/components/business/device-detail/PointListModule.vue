@@ -29,7 +29,8 @@
                 <el-table-column label="操作" width="18%" align="center">
                     <template #default="{ row }">
                         <el-button :type="row.hasAlarm ? 'danger' : 'primary'" size="small"
-                            style="min-width: auto; width: fit-content; padding-left: 10px; padding-right: 10px; white-space: nowrap; overflow: visible;">
+                            style="min-width: auto; width: fit-content; padding-left: 10px; padding-right: 10px; white-space: nowrap; overflow: visible;"
+                            @click.stop="handleUnprocessedClick(row)">
                             {{ row.hasAlarm ? '未处理' : '已处理' }}
                         </el-button>
                     </template>
@@ -42,6 +43,7 @@
 <script setup lang="ts">
 import { ElTable, ElTableColumn, ElButton } from 'element-plus'
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 interface PointInfo {
     id: string
@@ -88,9 +90,47 @@ const getAlarmValueUnit = (type: string) => {
 }
 
 const pointTableRef = ref<any>(null)
+const router = useRouter()
+const route = useRoute()
 
 const onRowClick = (row: PointInfo) => {
     emit('point-selected', row.id)
+}
+
+// 处理未处理按钮点击事件
+const handleUnprocessedClick = (row: PointInfo) => {
+    if (!row.hasAlarm) return // 如果是已处理状态，不执行跳转
+
+    // 获取当前设备ID用于返回时识别
+    const currentDeviceId = route.params.id as string || ''
+
+    switch (row.alarmType) {
+        case '声音':
+            // 跳转到声音点位页，同时传递设备ID
+            router.push({
+                name: 'SoundPoint',
+                query: {
+                    pointId: row.id,
+                    deviceId: currentDeviceId
+                }
+            })
+            break
+        case '振动':
+            // 跳转到振动点位页，同时传递设备ID
+            router.push({
+                name: 'VibrationPoint',
+                query: {
+                    pointId: row.id,
+                    deviceId: currentDeviceId
+                }
+            })
+            break
+        case '温度':
+        default:
+            // 温度类型保持在当前页面，只选中该行
+            emit('point-selected', row.id)
+            break
+    }
 }
 
 // 设置默认选中第一行

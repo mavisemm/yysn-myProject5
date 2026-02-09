@@ -186,7 +186,7 @@ const playAudio = (row: any) => {
         th {
             background: transparent !important;
             color: white !important;
-            font-size: clamp(10px, 1.5vw, 12px);
+            font-size: clamp(12px, 1.8vw, 14px);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -195,7 +195,7 @@ const playAudio = (row: any) => {
         td {
             background: transparent !important;
             color: white !important;
-            font-size: clamp(10px, 1.5vw, 12px);
+            font-size: clamp(12px, 1.8vw, 14px);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -205,7 +205,7 @@ const playAudio = (row: any) => {
     .hint-text {
         color: #f56c6c;
         text-align: center;
-        font-size: 12px;
+        font-size: clamp(12px, 1.5vw, 14px);
         padding: 20px;
     }
 
