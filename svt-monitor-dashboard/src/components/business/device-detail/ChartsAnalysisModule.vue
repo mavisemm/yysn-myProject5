@@ -78,6 +78,11 @@
                     <!-- 趋势分析图表弹窗 -->
                     <el-dialog v-model="chartDialogVisible" title="趋势分析图表" :close-on-click-modal="true" destroy-on-close
                         class="trend-chart-dialog" @opened="onTrendDialogOpened" @closed="onTrendDialogClosed">
+                        <template #header>
+                            <div class="trend-chart-dialog-header">
+                                <span class="el-dialog__title trend-chart-title">趋势分析图表</span>
+                            </div>
+                        </template>
                         <div class="trend-charts-container">
                             <div class="chart-wrapper">
                                 <div ref="dbChartRef" class="chart-box"></div>
@@ -418,7 +423,7 @@ const initTrendChart = () => {
             title: {
                 text: '能量趋势分析',
                 textStyle: {
-                    color: '#ffffff',
+                    color: '#333333',
                     fontSize: 16,
                     fontWeight: 'bold'
                 },
@@ -427,28 +432,28 @@ const initTrendChart = () => {
             },
             tooltip: {
                 trigger: 'axis',
-                backgroundColor: 'rgba(25, 25, 25, 0.9)',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
                 borderColor: '#4a90e2',
                 borderWidth: 1,
                 textStyle: {
-                    color: '#ffffff',
+                    color: '#333333',
                     fontSize: 12
                 },
                 padding: 12,
-                extraCssText: 'box-shadow: 0 2px 8px rgba(0,0,0,0.3);'
+                extraCssText: 'box-shadow: 0 2px 8px rgba(0,0,0,0.1);'
             },
-            legend: {
-                data: finallyDbArr.map(item => item.name),
-                textStyle: {
-                    color: '#e0e0e0',
-                    fontSize: 11
-                },
-                top: 40,
-                type: 'scroll',
-                pageTextStyle: {
-                    color: '#e0e0e0'
-                }
-            },
+            // legend: {
+            //     data: finallyDbArr.map(item => item.name),
+            //     textStyle: {
+            //         color: '#666666',
+            //         fontSize: 11
+            //     },
+            //     top: 40,
+            //     type: 'scroll',
+            //     pageTextStyle: {
+            //         color: '#666666'
+            //     }
+            // },
             grid: {
                 left: '8%',
                 right: '8%',
@@ -461,19 +466,19 @@ const initTrendChart = () => {
                 data: xArr,
                 axisLabel: {
                     fontSize: 11,
-                    color: '#cccccc',
+                    color: '#666666',
                     rotate: 45,
                     margin: 15
                 },
                 axisLine: {
                     lineStyle: {
-                        color: '#555555',
+                        color: '#cccccc',
                         width: 1
                     }
                 },
                 axisTick: {
                     alignWithLabel: true,
-                    lineStyle: { color: '#555555' }
+                    lineStyle: { color: '#cccccc' }
                 },
                 splitLine: {
                     show: false
@@ -483,20 +488,20 @@ const initTrendChart = () => {
                 type: 'value',
                 axisLabel: {
                     fontSize: 11,
-                    color: '#cccccc'
+                    color: '#666666'
                 },
                 axisLine: {
                     lineStyle: {
-                        color: '#555555',
+                        color: '#cccccc',
                         width: 1
                     }
                 },
                 axisTick: {
-                    lineStyle: { color: '#555555' }
+                    lineStyle: { color: '#cccccc' }
                 },
                 splitLine: {
                     lineStyle: {
-                        color: 'rgba(85, 85, 85, 0.3)',
+                        color: 'rgba(204, 204, 204, 0.3)',
                         type: 'solid'
                     }
                 }
@@ -515,9 +520,9 @@ const initTrendChart = () => {
                     xAxisIndex: [0],
                     bottom: 10,
                     height: 20,
-                    borderColor: '#555555',
+                    borderColor: '#cccccc',
                     textStyle: {
-                        color: '#cccccc'
+                        color: '#666666'
                     },
                     handleStyle: {
                         color: '#4a90e2',
@@ -563,7 +568,7 @@ const initTrendChart = () => {
                 label: {
                     show: true,
                     formatter: `${dbMaxDiffInfo.freq}Hz\n最大差值\n${dbMaxDiffInfo.diff.toFixed(4)}`,
-                    color: '#fff',
+                    color: '#333333',
                     fontSize: 10,
                     fontWeight: 'bold',
                     position: 'top'
@@ -594,7 +599,7 @@ const initTrendChart = () => {
             title: {
                 text: '密度趋势分析',
                 textStyle: {
-                    color: '#ffffff',
+                    color: '#333333',
                     fontSize: 16,
                     fontWeight: 'bold'
                 },
@@ -603,28 +608,28 @@ const initTrendChart = () => {
             },
             tooltip: {
                 trigger: 'axis',
-                backgroundColor: 'rgba(25, 25, 25, 0.9)',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
                 borderColor: '#4a90e2',
                 borderWidth: 1,
                 textStyle: {
-                    color: '#ffffff',
+                    color: '#333333',
                     fontSize: 12
                 },
                 padding: 12,
                 extraCssText: 'box-shadow: 0 2px 8px rgba(0,0,0,0.3);'
             },
-            legend: {
-                data: finallyDensityArr.map(item => item.name),
-                textStyle: {
-                    color: '#e0e0e0',
-                    fontSize: 11
-                },
-                top: 40,
-                type: 'scroll',
-                pageTextStyle: {
-                    color: '#e0e0e0'
-                }
-            },
+            // legend: {
+            //     data: finallyDensityArr.map(item => item.name),
+            //     textStyle: {
+            //         color: '#666666',
+            //         fontSize: 11
+            //     },
+            //     top: 40,
+            //     type: 'scroll',
+            //     pageTextStyle: {
+            //         color: '#666666'
+            //     }
+            // },
             grid: {
                 left: '8%',
                 right: '8%',
@@ -637,19 +642,19 @@ const initTrendChart = () => {
                 data: xArr,
                 axisLabel: {
                     fontSize: 11,
-                    color: '#cccccc',
+                    color: '#666666',
                     rotate: 45,
                     margin: 15
                 },
                 axisLine: {
                     lineStyle: {
-                        color: '#555555',
+                        color: '#cccccc',
                         width: 1
                     }
                 },
                 axisTick: {
                     alignWithLabel: true,
-                    lineStyle: { color: '#555555' }
+                    lineStyle: { color: '#cccccc' }
                 },
                 splitLine: {
                     show: false
@@ -659,25 +664,25 @@ const initTrendChart = () => {
                 type: 'value',
                 name: '密度',
                 nameTextStyle: {
-                    color: '#cccccc',
+                    color: '#666666',
                     fontSize: 12
                 },
                 axisLabel: {
                     fontSize: 11,
-                    color: '#cccccc'
+                    color: '#666666'
                 },
                 axisLine: {
                     lineStyle: {
-                        color: '#555555',
+                        color: '#cccccc',
                         width: 1
                     }
                 },
                 axisTick: {
-                    lineStyle: { color: '#555555' }
+                    lineStyle: { color: '#cccccc' }
                 },
                 splitLine: {
                     lineStyle: {
-                        color: 'rgba(85, 85, 85, 0.3)',
+                        color: 'rgba(204, 204, 204, 0.3)',
                         type: 'solid'
                     }
                 }
@@ -696,9 +701,9 @@ const initTrendChart = () => {
                     xAxisIndex: [0],
                     bottom: 10,
                     height: 20,
-                    borderColor: '#555555',
+                    borderColor: '#cccccc',
                     textStyle: {
-                        color: '#cccccc'
+                        color: '#666666'
                     },
                     handleStyle: {
                         color: '#4a90e2',
@@ -1894,9 +1899,9 @@ onUnmounted(() => {
                         width: 100%;
                         height: 350px;
                         min-height: 300px;
-                        background: rgba(0, 0, 0, 0.1);
+                        background: transparent;
                         border-radius: 4px;
-                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        border: 1px solid #e4e7ed;
                     }
                 }
             }
@@ -1915,7 +1920,9 @@ onUnmounted(() => {
     margin-top: 2.5vh !important;
     display: flex;
     flex-direction: column;
-    background-color: #054b9c !important;
+    background-color: #ffffff !important;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 
     .el-dialog__body {
         flex: 1;
@@ -1924,6 +1931,7 @@ onUnmounted(() => {
         display: flex;
         flex-direction: column;
         min-height: 0;
+        background-color: #ffffff;
     }
 
     .trend-charts-container {
@@ -1939,6 +1947,7 @@ onUnmounted(() => {
         min-height: 40vh;
         display: flex;
         flex-direction: column;
+        background-color: #ffffff;
     }
 
     .chart-wrapper .chart-box {
@@ -1946,12 +1955,62 @@ onUnmounted(() => {
         min-height: 0;
         width: 100%;
         background: transparent;
+        border: 1px solid #e4e7ed;
+        border-radius: 4px;
     }
 
     :deep(.el-dialog__header.show-close) {
         font-weight: 500 !important;
         letter-spacing: 1.22px !important;
-        color: rgb(255, 255, 255) !important;
+        color: #333333 !important;
+        font-size: clamp(22px, 3vw, 26px) !important;
+        background-color: #ffffff !important;
+        border-bottom: 1px solid #e4e7ed;
+    }
+}
+</style>
+
+<!-- 全局样式确保弹窗标题样式生效 -->
+<style lang="scss">
+:root {
+    --dialog-title-weight: 500;
+    --dialog-title-spacing: 1.22px;
+    --dialog-title-color: #333333;
+    --dialog-title-size: clamp(22px, 3vw, 26px);
+}
+
+/* 多层选择器确保样式生效 */
+.trend-chart-dialog,
+.el-dialog.trend-chart-dialog,
+.el-overlay-dialog .trend-chart-dialog {
+
+    .el-dialog__header,
+    .el-dialog__header.show-close {
+        .el-dialog__title {
+            font-weight: var(--dialog-title-weight) !important;
+            letter-spacing: var(--dialog-title-spacing) !important;
+            color: var(--dialog-title-color) !important;
+            font-size: var(--dialog-title-size) !important;
+        }
+    }
+}
+
+/* 最终兜底样式 */
+.el-dialog__title {
+    &.trend-chart-title {
+        font-weight: 500 !important;
+        letter-spacing: 1.22px !important;
+        color: #333333 !important;
+        font-size: clamp(22px, 3vw, 26px) !important;
+    }
+}
+
+/* 自定义头部样式 */
+.trend-chart-dialog-header {
+    .trend-chart-title {
+        font-weight: 500 !important;
+        letter-spacing: 1.22px !important;
+        color: #333333 !important;
         font-size: clamp(22px, 3vw, 26px) !important;
     }
 }

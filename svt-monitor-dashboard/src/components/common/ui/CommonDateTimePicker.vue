@@ -2,22 +2,24 @@
     <el-date-picker v-model="localDateRange" type="datetimerange" range-separator="-" start-placeholder="开始日期"
         end-placeholder="结束日期" format="YYYY-MM-DD HH:mm:ss" value-format="YYYY-MM-DD HH:mm:ss" size="small"
         :style="{ width: width }" class="common-datetime-picker" popper-class="custom-datepicker-popper"
-        :disabled-date="disabledFutureDate" :locale="zhCn" :teleported="true"
-        :unlink-panels="true" @change="handleChange" @visible-change="handleVisibleChange" />
+        :disabled-date="disabledFutureDate" :locale="zhCn" :teleported="true" :unlink-panels="true"
+        @change="handleChange" @visible-change="handleVisibleChange" />
 </template>
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
 import { ElDatePicker } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import { disabledFutureDate, formatDateTime } from '@/utils/datetime'
+import { disabledFutureDate, formatDateTime, isToday, initializeDateRange } from '@/utils/datetime'
 
 // 定义组件属性
 const props = withDefaults(defineProps<{
     modelValue: [string, string] | null
     width?: string
+    enableDefaultTime?: boolean  // 是否启用默认时间逻辑
 }>(), {
-    width: '320px'
+    width: '320px',
+    enableDefaultTime: true  // 默认启用
 })
 
 // 定义事件
@@ -37,16 +39,49 @@ const handleChange = (val: [Date, Date] | null) => {
     }
 
     const [startDate, endDate] = val
-    const result: [string, string] = [formatDateTime(startDate), formatDateTime(endDate)]
+
+    // 应用默认时间逻辑
+    const processedDates = applyDefaultTimeLogic(startDate, endDate)
+    const result: [string, string] = [
+        formatDateTime(processedDates[0]),
+        formatDateTime(processedDates[1])
+    ]
 
     localDateRange.value = result
     emit('update:modelValue', result)
+}
+
+// 应用默认时间逻辑
+const applyDefaultTimeLogic = (startDate: Date, endDate: Date): [Date, Date] => {
+    if (!props.enableDefaultTime) {
+        return [startDate, endDate]
+    }
+    return initializeDateRange(startDate, endDate)
 }
 
 // 监听外部值变化
 watch(
     () => props.modelValue,
     (newVal) => {
+        // 如果启用了默认时间逻辑，且是程序赋值（非用户交互）
+        if (props.enableDefaultTime && newVal && newVal.length === 2) {
+            const [startStr, endStr] = newVal
+            if (startStr && endStr) {
+                const startDate = new Date(startStr)
+                const endDate = new Date(endStr)
+
+                // 检查结束时间是否为 00:00:00，如果是则应用默认时间逻辑
+                const endDateTime = new Date(endStr)
+                if (endDateTime.getHours() === 0 && endDateTime.getMinutes() === 0 && endDateTime.getSeconds() === 0) {
+                    const processedDates = applyDefaultTimeLogic(startDate, endDate)
+                    localDateRange.value = [
+                        formatDateTime(processedDates[0]),
+                        formatDateTime(processedDates[1])
+                    ]
+                    return
+                }
+            }
+        }
         localDateRange.value = newVal
     },
     { immediate: true }

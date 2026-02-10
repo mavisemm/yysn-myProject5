@@ -93,7 +93,7 @@ const handleCardClick = (title: string) => {
                 transition: all 0.3s ease;
 
                 &:hover {
-                    background: rgba(150, 150, 150, 0.1);
+                    background: rgba(255, 255, 255, 0.1);
                     transform: translateY(-2px);
                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
                 }

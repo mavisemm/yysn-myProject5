@@ -25,11 +25,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, shallowRef } from 'vue';
+import { ref, onMounted, onUnmounted, shallowRef, computed } from 'vue';
+import { useRoute } from 'vue-router';
 import * as echarts from 'echarts';
 import { useChartResize } from '@/composables/useChart';
 import { enableMouseWheelZoomForCharts, connectCharts } from '@/utils/chart';
 import { getVibrationFrequencyData, getVibrationTimeDomainData, type VibrationFrequencyData, type VibrationTimeDomainData, type NewApiResponse } from '@/api/modules/device';
+
+const route = useRoute();
+
+// 从路由获取真实参数
+const deviceId = computed(() => (route.query.deviceId as string) || '');
+const pointId = computed(() => (route.query.pointId as string) || '');
 
 const freqChartRef = ref<HTMLElement>();
 const timeChartRef = ref<HTMLElement>();
@@ -215,44 +222,82 @@ onMounted(async () => {
 
     // 请求频域图数据
     try {
-        const freqResponse = await getVibrationFrequencyData();
+        // 检查必要参数
+        if (!deviceId.value || !pointId.value) {
+            console.warn('缺少 deviceId 或 pointId 参数，无法加载频域图数据');
+            return;
+        }
+
+        const freqResponse = await getVibrationFrequencyData(deviceId.value, pointId.value);
         if (freqResponse.rc === 0 && freqResponse.ret) {
-            // 解析JSON字符串为数组
-            const frequencyArray = JSON.parse(freqResponse.ret.frequency);
-            const freqSpeedArray = JSON.parse(freqResponse.ret.freqSpeedData);
+            try {
+                // 解析JSON字符串为数组
+                const frequencyArray = JSON.parse(freqResponse.ret.frequency);
+                const freqSpeedArray = JSON.parse(freqResponse.ret.freqSpeedData);
 
-            // 更新数据
-            freqData.value = {
-                frequency: frequencyArray,
-                freqSpeedData: freqSpeedArray
-            };
+                // 验证数据有效性
+                if (Array.isArray(frequencyArray) && Array.isArray(freqSpeedArray) &&
+                    frequencyArray.length > 0 && freqSpeedArray.length > 0) {
+                    // 更新数据
+                    freqData.value = {
+                        frequency: frequencyArray,
+                        freqSpeedData: freqSpeedArray
+                    };
 
-            // 更新图表
-            updateFreqChart();
+                    // 更新图表
+                    updateFreqChart();
+                } else {
+                    console.warn('频域图数据为空或格式不正确');
+                }
+            } catch (parseError) {
+                console.error('解析频域图数据失败:', parseError);
+            }
+        } else {
+            console.warn('频域图接口返回错误或无数据:', freqResponse);
         }
     } catch (error) {
         console.error('获取振动频域数据失败:', error);
+        // 即使出错也要保持模块显示
     }
 
     // 请求时域图数据
     try {
-        const timeResponse = await getVibrationTimeDomainData();
+        // 检查必要参数
+        if (!deviceId.value || !pointId.value) {
+            console.warn('缺少 deviceId 或 pointId 参数，无法加载时域图数据');
+            return;
+        }
+
+        const timeResponse = await getVibrationTimeDomainData(deviceId.value, pointId.value);
         if (timeResponse.rc === 0 && timeResponse.ret) {
-            // timedomaindata 为逗号分隔字符串，如 "91,48,46,48,53,..."
-            const timeDomainArray = timeResponse.ret.timedomaindata
-                .split(',')
-                .map((s) => parseFloat(s.trim()))
-                .filter((n) => !isNaN(n));
+            try {
+                // timedomaindata 为逗号分隔字符串，如 "91,48,46,48,53,..."
+                const timeDomainArray = timeResponse.ret.timedomaindata
+                    .split(',')
+                    .map((s) => parseFloat(s.trim()))
+                    .filter((n) => !isNaN(n));
 
-            // 更新时域图数据
-            timeDomainData.value = timeDomainArray;
-            totalTime.value = timeResponse.ret.time;
+                // 验证数据有效性
+                if (Array.isArray(timeDomainArray) && timeDomainArray.length > 0 &&
+                    typeof timeResponse.ret.time === 'number' && timeResponse.ret.time > 0) {
+                    // 更新时域图数据
+                    timeDomainData.value = timeDomainArray;
+                    totalTime.value = timeResponse.ret.time;
 
-            // 更新时域图
-            updateTimeChart();
+                    // 更新时域图
+                    updateTimeChart();
+                } else {
+                    console.warn('时域图数据为空或格式不正确');
+                }
+            } catch (parseError) {
+                console.error('解析时域图数据失败:', parseError);
+            }
+        } else {
+            console.warn('时域图接口返回错误或无数据:', timeResponse);
         }
     } catch (error) {
         console.error('获取振动时域数据失败:', error);
+        // 即使出错也要保持模块显示
     }
 });
 
@@ -308,8 +353,9 @@ onUnmounted(() => {
             display: flex;
             align-items: center;
             justify-content: center;
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 14px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
         }
     }
 }

@@ -73,11 +73,11 @@ export interface VibrationFrequencyData {
   freqSpeedData: string
 }
 
-export const getVibrationFrequencyData = (): Promise<NewApiResponse<VibrationFrequencyData>> => {
+export const getVibrationFrequencyData = (deviceId: string, pointId: string): Promise<NewApiResponse<VibrationFrequencyData>> => {
   return request.post('/api/device/vibration/data/frequency', {
     tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
-    deviceId: 'ff8081819a4cd984019a4d524e0d0000',
-    pointId: 'PNT_A01'
+    deviceId: deviceId,
+    pointId: pointId
   })
 }
 
@@ -89,11 +89,11 @@ export interface VibrationMetricData {
   accelerationMax: number
 }
 
-export const getVibrationMetricData = (): Promise<NewApiResponse<VibrationMetricData>> => {
+export const getVibrationMetricData = (deviceId: string, pointId: string): Promise<NewApiResponse<VibrationMetricData>> => {
   return request.post('/api/device/vibration/data/metric/rms', {
     tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
-    deviceId: 'ff8081819a4cd984019a4d524e0d0000',
-    pointId: 'PNT_A01'
+    deviceId: deviceId,
+    pointId: pointId
   })
 }
 
@@ -103,10 +103,10 @@ export interface VibrationTimeDomainData {
   timedomaindata: string  // 逗号分隔的数值字符串，如 "91,48,46,48,53,..."
 }
 
-export const getVibrationTimeDomainData = (): Promise<NewApiResponse<VibrationTimeDomainData>> => {
+export const getVibrationTimeDomainData = (deviceId: string, pointId: string): Promise<NewApiResponse<VibrationTimeDomainData>> => {
   return request.post('/api/device/vibration/data/time', {
     tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
-    deviceId: 'ff8081819a4cd984019a4d524e0d0000',
-    pointId: 'PNT_A01'
+    deviceId: deviceId,
+    pointId: pointId
   })
 }

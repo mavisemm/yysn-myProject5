@@ -76,3 +76,29 @@ export function getDefaultDateRange(): [string, string] {
 export function disabledFutureDate(time: Date): boolean {
     return time.getTime() > Date.now();
 }
+
+/**
+ * 初始化日期范围的默认时间
+ * @param startDate 开始日期
+ * @param endDate 结束日期
+ * @returns 处理后的日期时间数组
+ */
+export function initializeDateRange(startDate: Date, endDate: Date): [Date, Date] {
+    // 开始日期设置为 00:00:00
+    const startWithDefaultTime = new Date(startDate);
+    startWithDefaultTime.setHours(0, 0, 0, 0);
+
+    // 结束日期根据是否为今天设置不同时间
+    const endWithDefaultTime = new Date(endDate);
+    
+    if (isToday(endDate)) {
+        // 如果是今天，设置为当前实时时间
+        const now = new Date();
+        endWithDefaultTime.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
+    } else {
+        // 如果不是今天，设置为 23:59:59
+        endWithDefaultTime.setHours(23, 59, 59, 999);
+    }
+
+    return [startWithDefaultTime, endWithDefaultTime];
+}

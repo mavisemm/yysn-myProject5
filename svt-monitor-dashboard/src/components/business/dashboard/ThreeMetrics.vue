@@ -283,7 +283,7 @@ const openRankDialog = (index: number) => {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                background: rgba(150, 150, 150, 0.2);
+                background: rgba(255, 255, 255, 0.1);
                 border-radius: 14px;
                 padding: 6px 15px;
                 font-size: clamp(14px, 1.8vw, 16px);
