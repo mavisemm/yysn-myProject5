@@ -71,19 +71,18 @@
                         <div class="result-row">
                             <span class="result-label">点位名称：</span>
                             <span class="result-value clickable" @click="showTrendChart">{{ analysisResult.pointName
-                                }}</span>
+                            }}</span>
                         </div>
                     </div>
 
                     <!-- 趋势分析图表弹窗 -->
-                    <el-dialog v-model="chartDialogVisible" title="趋势分析图表" width="900px" :close-on-click-modal="true">
+                    <el-dialog v-model="chartDialogVisible" title="趋势分析图表" :close-on-click-modal="true" destroy-on-close
+                        class="trend-chart-dialog" @opened="onTrendDialogOpened" @closed="onTrendDialogClosed">
                         <div class="trend-charts-container">
                             <div class="chart-wrapper">
-                                <div class="chart-title">能量(dB)趋势分析</div>
                                 <div ref="dbChartRef" class="chart-box"></div>
                             </div>
                             <div class="chart-wrapper">
-                                <div class="chart-title">密度趋势分析</div>
                                 <div ref="densityChartRef" class="chart-box"></div>
                             </div>
                         </div>
@@ -153,25 +152,7 @@ const analysisForm = ref({
     dateRange: null as DateRange
 })
 
-// 监听日期范围变化，自动处理结束时间逻辑
-watch(() => analysisForm.value.dateRange, (newVal) => {
-    // 处理空值情况 - 如果清空了选择，保持空状态
-    if (!newVal || newVal.length !== 2 || !newVal[0] || !newVal[1]) {
-        // 保持空状态，不进行任何处理
-        return;
-    }
-
-    const result = handleDatePickerChange([new Date(newVal[0]), new Date(newVal[1])]);
-    if (result) {
-        // 只有当处理后的结果与当前值不同时才更新，避免无限循环
-        if (result[0] !== newVal[0] || result[1] !== newVal[1]) {
-            analysisForm.value.dateRange = result;
-        }
-    } else if (result === null && (newVal[0] || newVal[1])) {
-        // 如果处理结果为null但原值不为空，说明用户清空了选择
-        analysisForm.value.dateRange = ['', ''];
-    }
-}, { deep: true });
+// 日期范围由 CommonDateTimePicker 负责默认时间逻辑，此处不再覆盖，以便用户可手动修改结束时间
 
 const analysisResult = ref<AnalysisResult>({
     deviation: '0.25',
@@ -196,9 +177,36 @@ const showTrendChart = () => {
         return
     }
     chartDialogVisible.value = true
+}
+
+// 弹窗完全打开后初始化图表并联动
+const onTrendDialogOpened = () => {
     nextTick(() => {
-        initTrendChart()
+        setTimeout(() => {
+            initTrendChart()
+            // 联动两个图表：缩放、拖拽同步
+            if (dbChart && densityChart) {
+                connectCharts([dbChart, densityChart])
+                enableMouseWheelZoomForCharts([dbChart, densityChart])
+                nextTick(() => {
+                    dbChart?.resize()
+                    densityChart?.resize()
+                })
+            }
+        }, 50)
     })
+}
+
+// 弹窗关闭时销毁图表
+const onTrendDialogClosed = () => {
+    if (dbChart) {
+        dbChart.dispose()
+        dbChart = null
+    }
+    if (densityChart) {
+        densityChart.dispose()
+        densityChart = null
+    }
 }
 
 // 计算dB最大差值信息
@@ -343,10 +351,12 @@ const initTrendChart = () => {
             }
         }
 
+        const rawTime = item.time != null ? new Date(item.time).getTime() : 0
         totalArr.push({
             ...item,
             dbArr,
             densityArr,
+            rawTime,
             time: new Date(item.time).toLocaleString('zh-CN', {
                 year: 'numeric',
                 month: '2-digit',
@@ -358,13 +368,11 @@ const initTrendChart = () => {
         })
     }
 
-    // 按时间排序
-    const sortedTotalArr = [...totalArr].sort((a, b) => {
-        return new Date(b.time).getTime() - new Date(a.time).getTime()
-    })
+    // 按时间正序（早→晚）
+    totalArr.sort((a, b) => (a.rawTime || 0) - (b.rawTime || 0))
 
     // 生成时间渐变色
-    const timeGradientColors = generateTimeGradientColors(sortedTotalArr.length)
+    const timeGradientColors = generateTimeGradientColors(totalArr.length)
 
     // 构造系列数据
     let finallyDbArr: any[] = []
@@ -408,7 +416,7 @@ const initTrendChart = () => {
         const dbOption = {
             backgroundColor: 'transparent',
             title: {
-                text: '能量(dB)趋势分析',
+                text: '能量趋势分析',
                 textStyle: {
                     color: '#ffffff',
                     fontSize: 16,
@@ -473,11 +481,6 @@ const initTrendChart = () => {
             }],
             yAxis: {
                 type: 'value',
-                name: 'dB',
-                nameTextStyle: {
-                    color: '#cccccc',
-                    fontSize: 12
-                },
                 axisLabel: {
                     fontSize: 11,
                     color: '#cccccc'
@@ -528,7 +531,7 @@ const initTrendChart = () => {
                 ...series,
                 smooth: true,
                 symbol: 'circle',
-                symbolSize: 6,
+                symbolSize: 1,
                 lineStyle: {
                     width: 2.5,
                     shadowBlur: 3,
@@ -580,23 +583,6 @@ const initTrendChart = () => {
         }
 
         dbChart.setOption(dbOption)
-
-        // 监听dataZoom事件实现联动
-        dbChart.on('dataZoom', function (params: any) {
-            if (densityChart && (!params.fromAction || params.fromAction === 'dataZoom')) {
-                const zoomState = dbChart!.getOption().dataZoom[0];
-                densityChart!.dispatchAction({
-                    type: 'dataZoom',
-                    start: zoomState.start,
-                    end: zoomState.end,
-                    silent: true
-                });
-            }
-        });
-
-        dbChart.on('finished', () => {
-            dbChart?.resize()
-        })
     }
 
     // 初始化密度图表
@@ -726,7 +712,7 @@ const initTrendChart = () => {
                 ...series,
                 smooth: true,
                 symbol: 'circle',
-                symbolSize: 6,
+                symbolSize: 1,
                 lineStyle: {
                     width: 2.5,
                     shadowBlur: 3,
@@ -749,23 +735,6 @@ const initTrendChart = () => {
         }
 
         densityChart.setOption(densityOption)
-
-        // 监听dataZoom事件实现反向联动
-        densityChart.on('dataZoom', function (params: any) {
-            if (dbChart && (!params.fromAction || params.fromAction === 'dataZoom')) {
-                const zoomState = densityChart!.getOption().dataZoom[0];
-                dbChart!.dispatchAction({
-                    type: 'dataZoom',
-                    start: zoomState.start,
-                    end: zoomState.end,
-                    silent: true
-                });
-            }
-        });
-
-        densityChart.on('finished', () => {
-            densityChart?.resize()
-        })
     }
 }
 
@@ -813,16 +782,12 @@ const loadTemperatureData = async (pointId: string) => {
         })
 
         if (response.rc === 0 && response.ret && Array.isArray(response.ret) && response.ret.length > 0) {
-            // 接口返回格式: [{ dateTime: "2026-02-04 00:55:52", temperature: -3.2 }, ...]
-            const timeData = response.ret.map(item => {
-                const dt = item.dateTime || ''
-                if (dt.includes(' ')) return (dt.split(' ')[1] || dt).trim()
+            // 接口可能返回 dateTime 或 time（与烈度接口一致），时间格式与烈度 chart 保持一致
+            const timeData = response.ret.map((item: { dateTime?: string; time?: string }) => {
+                const dt = item.dateTime || item.time || ''
+                if (dt.includes(' ')) return (dt.split(' ')[1] || dt).trim().substring(0, 8)
                 if (dt.includes('T')) return (dt.split('T')[1] || dt).substring(0, 8)
-                // 当没有有效时间时，显示"无时间"而不是生成假数据
-                if (!dt) {
-                    return '无时间';
-                }
-                return dt;
+                return dt || ''
             })
             const tempData = response.ret.map(item => item.temperature)
             const dataMin = tempData.length ? Math.min(...tempData) : 0
@@ -1069,9 +1034,6 @@ const loadSoundData = async (_pointId: string) => {
                 return dt
             })
             const soundData = list.map(item => item.value ?? item.soundLevel ?? 0)
-            const dataMin = soundData.length ? Math.min(...soundData) : 0
-            const dataMax = soundData.length ? Math.max(...soundData) : 100
-            const { min: yMin, max: yMax } = computeSoundYAxisRange(dataMin, dataMax)
 
             soundChart.setOption({
                 xAxis: {
@@ -1084,8 +1046,6 @@ const loadSoundData = async (_pointId: string) => {
                 yAxis: {
                     type: 'value',
                     scale: true,
-                    min: yMin,
-                    max: yMax,
                     axisLabel: {
                         fontSize: 10,
                         color: '#fff',
@@ -1328,6 +1288,7 @@ const initSoundChart = () => {
         yAxis: {
             type: 'value',
             name: 'dB',
+            scale: true,
             axisLabel: {
                 fontSize: 10,
                 color: '#fff'
@@ -1808,12 +1769,6 @@ onUnmounted(() => {
                 flex: 0 0 auto;
                 /* 固定头部高度 */
 
-                .chart-title {
-                    font-size: 14px;
-                    //font-weight: bold;
-                    color: white;
-                }
-
                 .chart-unit {
                     font-size: 12px;
                     color: #fff;
@@ -1915,13 +1870,15 @@ onUnmounted(() => {
                 }
             }
 
-            // 趋势分析图表弹窗样式
             .trend-charts-container {
                 display: flex;
                 flex-direction: column;
                 gap: 20px;
+                min-height: 400px;
 
                 .chart-wrapper {
+                    flex-shrink: 0;
+
                     .chart-title {
                         text-align: center;
                         font-size: 16px;
@@ -1936,6 +1893,7 @@ onUnmounted(() => {
                     .chart-box {
                         width: 100%;
                         height: 350px;
+                        min-height: 300px;
                         background: rgba(0, 0, 0, 0.1);
                         border-radius: 4px;
                         border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1947,6 +1905,54 @@ onUnmounted(() => {
 
 
         }
+    }
+}
+
+/* 趋势分析弹窗（teleported 到 body，需全局样式） */
+:global(.trend-chart-dialog) {
+    width: 70vw !important;
+    height: 95vh !important;
+    margin-top: 2.5vh !important;
+    display: flex;
+    flex-direction: column;
+    background-color: #054b9c !important;
+
+    .el-dialog__body {
+        flex: 1;
+        overflow: hidden;
+        padding: 0 20px 20px;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .trend-charts-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+    }
+
+    .chart-wrapper {
+        flex: 0 0 40vh;
+        min-height: 40vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chart-wrapper .chart-box {
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+        background: transparent;
+    }
+
+    :deep(.el-dialog__header.show-close) {
+        font-weight: 500 !important;
+        letter-spacing: 1.22px !important;
+        color: rgb(255, 255, 255) !important;
+        font-size: clamp(22px, 3vw, 26px) !important;
     }
 }
 </style>

@@ -68,7 +68,7 @@ const initCharts = () => {
  * 更新频域图数据
  */
 const updateFreqChart = () => {
-    if (!freqChartInstance.value) return;
+    if (!freqChartInstance.value || !freqData.value.frequency.length) return;
 
     // 将两个数组组合成 [x, y] 格式的二维数组，并按 x（频率）升序排序，折线才不会乱序
     const chartData = freqData.value.frequency
@@ -97,7 +97,7 @@ const updateFreqChart = () => {
         },
         yAxis: {
             type: 'value',
-            name: 'm/s²',
+            name: 'mm/s',
             nameTextStyle: { color: '#fff' },
             axisLabel: { color: '#fff' },
             axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
@@ -168,7 +168,7 @@ const updateTimeChart = () => {
         },
         yAxis: {
             type: 'value',
-            name: 'm/s²',
+            name: 'mm/s',
             nameTextStyle: { color: '#fff' },
             axisLabel: { color: '#fff' },
             axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },

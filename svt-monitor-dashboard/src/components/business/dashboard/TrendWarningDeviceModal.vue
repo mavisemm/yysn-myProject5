@@ -3,9 +3,21 @@
     <el-dialog v-model="visible" :title="props.title" width="900px" :close-on-click-modal="true"
         class="trend-warning-modal" @close="handleClose">
         <div class="modal-body">
-            <el-table :data="tableData" stripe class="warning-table" max-height="400" @row-click="handleRowClick">
-                <el-table-column prop="deviceName" label="设备名称" min-width="120" />
-                <el-table-column prop="pointName" label="点位名称" min-width="120" />
+            <el-table :data="tableData" stripe class="warning-table" max-height="400">
+                <el-table-column prop="deviceName" label="设备名称" min-width="120">
+                    <template #default="{ row }">
+                        <span v-if="row.deviceId" class="link-cell" @click.stop="goToDeviceDetail(row)">{{
+                            row.deviceName }}</span>
+                        <span v-else>{{ row.deviceName }}</span>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="pointName" label="点位名称" min-width="120">
+                    <template #default="{ row }">
+                        <span v-if="row.pointId && row.deviceId" class="link-cell"
+                            @click.stop="goToSoundPoint(row)">{{ row.pointName }}</span>
+                        <span v-else>{{ row.pointName }}</span>
+                    </template>
+                </el-table-column>
             </el-table>
         </div>
     </el-dialog>
@@ -77,8 +89,15 @@ const tableData = computed(() => {
     return [...fromTree, ...Array(need - fromTree.length).fill(null).map(() => ({ ...placeholder }))];
 });
 
-/** 点击点位行跳转声音点位页，传参使用当前行的 pointId、deviceId，不写死 */
-const handleRowClick = (row: TableRow) => {
+/** 点击设备名称跳转设备详情页 */
+const goToDeviceDetail = (row: TableRow) => {
+    if (!row.deviceId) return;
+    handleClose();
+    router.push({ name: 'DeviceDetail', params: { id: row.deviceId } });
+};
+
+/** 点击点位名称跳转声音点位页 */
+const goToSoundPoint = (row: TableRow) => {
     if (!row.pointId || !row.deviceId) return;
     handleClose();
     router.push({
@@ -121,8 +140,12 @@ watch(visible, (val) => {
 .warning-table {
     width: 100%;
 
-    :deep(.el-table__row) {
+    .link-cell {
+        color: var(--el-color-primary);
         cursor: pointer;
+        &:hover {
+            text-decoration: underline;
+        }
     }
 
     /* 表头与单元格文字颜色改为偏灰，避免过黑 */

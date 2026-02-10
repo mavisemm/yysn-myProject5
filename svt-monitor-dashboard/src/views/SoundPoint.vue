@@ -320,7 +320,7 @@ const viewDetails = async (row: any) => {
           legend: { show: true, top: 30, data: legendData },
           xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],
           yAxis: [
-            { type: 'value', name: 'dB' },
+            { type: 'value', name: '' },
             { type: 'value', name: '密度' }
           ],
           dataZoom: [
@@ -332,9 +332,9 @@ const viewDetails = async (row: any) => {
             { name: '能量', type: 'line', data: nowdbArr, symbolSize: 1 },
             ...(avgdensityArr.length > 0
               ? [
-                  { name: '标准密度线', type: 'line', data: avgdensityArr, yAxisIndex: 1, symbolSize: 1 },
-                  { name: '标准能量线', type: 'line', data: avgdbArr, symbolSize: 1 }
-                ]
+                { name: '标准密度线', type: 'line', data: avgdensityArr, yAxisIndex: 1, symbolSize: 1 },
+                { name: '标准能量线', type: 'line', data: avgdbArr, symbolSize: 1 }
+              ]
               : [])
           ]
         });
@@ -381,7 +381,7 @@ const playAudio = (row: DeviationListItem) => {
   audioPath.value = getWavByFreqGroupIdUrl(row.id);
   nextTick(() => {
     const el = document.querySelector('.info-section-right audio') as HTMLAudioElement;
-    if (el) el.play().catch(() => {});
+    if (el) el.play().catch(() => { });
   });
   ElMessage.success('正在播放音频');
 };

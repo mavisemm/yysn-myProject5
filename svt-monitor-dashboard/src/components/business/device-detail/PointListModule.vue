@@ -11,7 +11,7 @@
                 <template #empty>
                     <div class="empty-text">暂无数据</div>
                 </template>
-                <el-table-column prop="id" label="点位" width="15%" />
+                <el-table-column prop="id" label="点位编号" width="15%" />
                 <el-table-column prop="name" label="点位名称" width="20%" />
                 <el-table-column prop="lastAlarmTime" label="预警时间" width="20%" />
                 <el-table-column prop="alarmType" label="预警类型" width="15%">

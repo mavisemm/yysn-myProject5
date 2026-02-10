@@ -97,7 +97,6 @@ const updateCharts = () => {
         ...commonOption,
         yAxis: {
             type: 'value',
-            name: 'dB',
             axisLine: { lineStyle: { color: '#fff' } },
             axisLabel: { color: '#fff' },
             nameTextStyle: { color: '#fff' }

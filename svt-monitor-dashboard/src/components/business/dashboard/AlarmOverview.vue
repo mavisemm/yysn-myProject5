@@ -70,7 +70,7 @@ import { ElInput, ElButton, ElDatePicker, ElPagination } from 'element-plus';
 import { useLocale } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import type { DeviceNode } from '@/types/device';
-import { formatDateTime, handleDatePickerChange, disabledFutureDate, getDefaultDateRange } from '@/utils/datetime';
+import { formatDateTime, disabledFutureDate, getDefaultDateRange } from '@/utils/datetime';
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue';
 
 const { t } = useLocale();

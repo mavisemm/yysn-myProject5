@@ -115,7 +115,7 @@ const initChart = () => {
                 data: times
             },
             zAxis3D: {
-                name: '加速度有效值(m/s²)',
+                name: '速度有效值(mm/s)',
                 nameTextStyle: {
                     color: '#ffffff', // 白色字体
                     fontSize: 12, // 字体大小

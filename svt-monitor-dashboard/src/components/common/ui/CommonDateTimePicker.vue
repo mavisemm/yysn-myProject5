@@ -2,24 +2,22 @@
     <el-date-picker v-model="localDateRange" type="datetimerange" range-separator="-" start-placeholder="开始日期"
         end-placeholder="结束日期" format="YYYY-MM-DD HH:mm:ss" value-format="YYYY-MM-DD HH:mm:ss" size="small"
         :style="{ width: width }" class="common-datetime-picker" popper-class="custom-datepicker-popper"
-        :default-time="defaultTime" :disabled-date="disabledFutureDate" :locale="zhCn" :teleported="false"
+        :disabled-date="disabledFutureDate" :locale="zhCn" :teleported="true"
         :unlink-panels="true" @change="handleChange" @visible-change="handleVisibleChange" />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { ElDatePicker } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import { disabledFutureDate, handleDatePickerChange, getDefaultEndTime, initializeDateRange } from '@/utils/datetime'
+import { disabledFutureDate, formatDateTime } from '@/utils/datetime'
 
 // 定义组件属性
 const props = withDefaults(defineProps<{
     modelValue: [string, string] | null
     width?: string
-    enableDefaultTime?: boolean  // 是否启用默认时间逻辑
 }>(), {
-    width: '320px',
-    enableDefaultTime: true
+    width: '320px'
 })
 
 // 定义事件
@@ -30,12 +28,6 @@ const emit = defineEmits<{
 // 本地响应式数据
 const localDateRange = ref<[string, string] | null>(props.modelValue)
 
-// 默认时间计算属性
-const defaultTime = computed<[Date, Date]>(() => {
-    const now = new Date()
-    return [new Date(2000, 1, 1, 0, 0, 0), now]
-})
-
 // 处理值变化
 const handleChange = (val: [Date, Date] | null) => {
     if (!val || val.length !== 2 || !val[0] || !val[1]) {
@@ -45,18 +37,10 @@ const handleChange = (val: [Date, Date] | null) => {
     }
 
     const [startDate, endDate] = val
+    const result: [string, string] = [formatDateTime(startDate), formatDateTime(endDate)]
 
-    // 如果启用了默认时间逻辑
-    if (props.enableDefaultTime) {
-        const result = initializeDateRange(startDate, endDate)
-        localDateRange.value = result
-        emit('update:modelValue', result)
-    } else {
-        // 使用原有的处理逻辑
-        const result = handleDatePickerChange(val)
-        localDateRange.value = result
-        emit('update:modelValue', result)
-    }
+    localDateRange.value = result
+    emit('update:modelValue', result)
 }
 
 // 监听外部值变化
@@ -64,19 +48,6 @@ watch(
     () => props.modelValue,
     (newVal) => {
         localDateRange.value = newVal
-        // 如果启用了默认时间逻辑且有值，应用默认时间
-        if (props.enableDefaultTime && newVal && newVal.length === 2 && newVal[0] && newVal[1]) {
-            const [startDateStr, endDateStr] = newVal
-            const startDate = new Date(startDateStr)
-            const endDate = new Date(endDateStr)
-            // 只有当结束时间是 00:00:00 时才应用默认逻辑
-            const endDateObj = new Date(endDateStr)
-            if (endDateObj.getHours() === 0 && endDateObj.getMinutes() === 0 && endDateObj.getSeconds() === 0) {
-                const result = initializeDateRange(startDate, endDate)
-                localDateRange.value = result
-                emit('update:modelValue', result)
-            }
-        }
     },
     { immediate: true }
 )

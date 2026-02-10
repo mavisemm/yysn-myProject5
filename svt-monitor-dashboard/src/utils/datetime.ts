@@ -33,70 +33,27 @@ export function isToday(date: Date): boolean {
 
 /**
  * 处理时间选择器的日期范围变化
- * 如果结束日期是今天，则结束时间设为当前时刻
- * 如果结束日期不是今天，则结束时间设为23:59:59
- * 如果没有选择日期，则返回null保持空状态
- * 
+ * 将选中的日期范围格式化为字符串
+ *
  * @param dateRange 日期范围数组 [startDate, endDate] 或 null
  * @returns 处理后的日期范围字符串数组或null
  */
 export function handleDatePickerChange(dateRange: [Date, Date] | null): [string, string] | null {
-    // 如果没有选择日期，保持空状态
     if (!dateRange || dateRange.length !== 2 || !dateRange[0] || !dateRange[1]) {
         return null;
     }
-
     const [start, end] = dateRange;
-    const now = new Date();
-    const startDateStr = formatDateTime(start);
-    
-    // 判断结束日期是否为今天
-    if (isToday(end)) {
-        // 如果是今天，结束时间设为当前时刻
-        const endDateStr = formatDateTime(now);
-        return [startDateStr, endDateStr];
-    } else {
-        // 如果不是今天，结束时间设为23:59:59
-        const endOfDay = new Date(end);
-        endOfDay.setHours(23, 59, 59, 999);
-        const endDateStr = formatDateTime(endOfDay);
-        return [startDateStr, endDateStr];
-    }
+    return [formatDateTime(start), formatDateTime(end)];
 }
 
 /**
- * 获取时间选择器的默认结束时间
- * 如果结束日期是今天，则默认结束时间为此时此刻
- * 如果结束日期不是今天，则默认结束时间为23:59:59
- * 
- * @param endDate 结束日期
- * @returns 默认的结束时间字符串
+ * 获取最近24小时时间范围（当前时间往前24小时）
+ * @returns [开始日期字符串, 结束日期字符串]
  */
-export function getDefaultEndTime(endDate: Date): string {
-    const now = new Date();
-    
-    // 判断结束日期是否为今天
-    if (isToday(endDate)) {
-        // 如果是今天，结束时间设为当前时刻
-        return formatDateTime(now);
-    } else {
-        // 如果不是今天，结束时间设为23:59:59
-        const endOfDay = new Date(endDate);
-        endOfDay.setHours(23, 59, 59, 999);
-        return formatDateTime(endOfDay);
-    }
-}
-
-/**
- * 初始化时间范围的默认值
- * @param startDate 开始日期
- * @param endDate 结束日期
- * @returns [开始时间字符串, 结束时间字符串]
- */
-export function initializeDateRange(startDate: Date, endDate: Date): [string, string] {
-    const startTime = formatDateTime(startDate);
-    const endTime = getDefaultEndTime(endDate);
-    return [startTime, endTime];
+export function getLast24HoursRange(): [string, string] {
+    const end = new Date();
+    const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+    return [formatDateTime(start), formatDateTime(end)];
 }
 
 /**

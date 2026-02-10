@@ -721,7 +721,7 @@ onUnmounted(() => {
 
             // 修改输入框内部文字颜色，使其在浅色背景上更易读
             .el-input__inner {
-              color: white;
+              color: white !important;
               background: transparent;
             }
 
