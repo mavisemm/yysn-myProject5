@@ -160,8 +160,8 @@ const analysisForm = ref({
 // 日期范围由 CommonDateTimePicker 负责默认时间逻辑，此处不再覆盖，以便用户可手动修改结束时间
 
 const analysisResult = ref<AnalysisResult>({
-    deviation: '0.25',
-    pointName: '进风口位置'
+    deviation: '',
+    pointName: ''
 })
 
 // 图表弹窗相关
@@ -872,7 +872,7 @@ const loadTemperatureData = async (pointId: string) => {
                     axisLine: { lineStyle: { color: '#fff' } },
                     axisTick: { lineStyle: { color: '#fff' } },
                     splitLine: { lineStyle: { color: 'rgba(150,150,150, 0.2)' } },
-                    splitNumber: 8,
+                    splitNumber: 4,
                     nameTextStyle: { color: '#fff' }
                 },
                 series: [{
@@ -988,7 +988,7 @@ const loadVibrationData = async (pointId: string) => {
                     axisLine: { lineStyle: { color: '#fff' } },
                     axisTick: { lineStyle: { color: '#fff' } },
                     splitLine: { lineStyle: { color: 'rgba(150,150,150, 0.2)' } },
-                    splitNumber: 8
+                    splitNumber: 4
                 },
                 series: [{
                     data: vibData
@@ -1059,7 +1059,7 @@ const loadSoundData = async (_pointId: string) => {
                     axisLine: { lineStyle: { color: '#fff' } },
                     axisTick: { lineStyle: { color: '#fff' } },
                     splitLine: { lineStyle: { color: 'rgba(150,150,150, 0.2)' } },
-                    splitNumber: 8
+                    splitNumber: 4
                 },
                 series: [{
                     data: soundData
@@ -1173,7 +1173,7 @@ const initTempChart = () => {
             axisTick: { lineStyle: { color: '#fff' } },
             splitLine: { lineStyle: { color: 'rgba(150,150,150, 0.2)' } },
             nameTextStyle: { color: '#fff' },
-            splitNumber: 8
+            splitNumber: 4
         },
         series: [{
             data: tempData as number[],
@@ -1312,7 +1312,8 @@ const initSoundChart = () => {
                 lineStyle: {
                     color: 'rgba(150,150,150, 0.2)'
                 }
-            }
+            },
+            splitNumber: 4
         },
         series: [{
             data: soundData,
@@ -1447,7 +1448,8 @@ const initVibChart = () => {
                 lineStyle: {
                     color: 'rgba(150,150,150, 0.2)'
                 }
-            }
+            },
+            splitNumber: 4
         },
         series: [{
             data: vibData,
@@ -1848,7 +1850,7 @@ onUnmounted(() => {
 
                     .result-row {
                         display: flex;
-                        justify-content: space-between;
+                        justify-content: flex-start;
                         margin-bottom: 8px;
 
                         .result-label {

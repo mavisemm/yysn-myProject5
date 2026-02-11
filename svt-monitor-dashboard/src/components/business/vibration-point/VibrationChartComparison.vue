@@ -29,7 +29,6 @@ import { ref, onMounted, onUnmounted, shallowRef, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import * as echarts from 'echarts';
 import { useChartResize } from '@/composables/useChart';
-import { enableMouseWheelZoomForCharts, connectCharts } from '@/utils/chart';
 import { getVibrationFrequencyData, getVibrationTimeDomainData, type VibrationFrequencyData, type VibrationTimeDomainData, type NewApiResponse } from '@/api/modules/device';
 
 const route = useRoute();
@@ -63,11 +62,6 @@ const initCharts = () => {
     if (timeChartRef.value) {
         timeChartInstance.value = echarts.init(timeChartRef.value);
         updateTimeChart();
-
-        if (freqChartInstance.value && timeChartInstance.value) {
-            connectCharts([freqChartInstance.value, timeChartInstance.value]);
-            enableMouseWheelZoomForCharts([freqChartInstance.value, timeChartInstance.value]);
-        }
     }
 };
 
@@ -84,12 +78,56 @@ const updateFreqChart = () => {
 
     const xMax = chartData.length > 0 ? Math.max(...freqData.value.frequency, 2000) : 2000;
 
+    // 计算Y轴的最小值和最大值
+    const yValues = chartData.map(item => item[1]);
+    const yMin = yValues.length > 0 ? Math.min(...yValues) : 0;
+    const yMax = yValues.length > 0 ? Math.max(...yValues) : 1;
+
+    // 为Y轴添加一些边距，确保数据不会贴边显示
+    const yMargin = (yMax - yMin) * 0.1;
+    const yMinWithMargin = Math.max(0, yMin - yMargin);
+    const yMaxWithMargin = yMax + yMargin;
+
     freqChartInstance.value.setOption({
         tooltip: {
             trigger: 'axis',
             backgroundColor: 'rgba(50, 50, 50, 0.9)',
             borderColor: 'rgba(50, 50, 50, 0.9)',
-            textStyle: { color: '#fff' }
+            textStyle: { color: '#fff' },
+            formatter: function (params: any) {
+                const data = params[0];
+                const currentX = data.value[0];
+                const currentY = data.value[1];
+
+                // 获取图表数据用于查找倍频点
+                const chartData = freqData.value.frequency
+                    .map((freq, index) => [freq, freqData.value.freqSpeedData[index] ?? 0] as [number, number])
+                    .sort((a, b) => a[0] - b[0]);
+
+                const maxX = Math.max(...freqData.value.frequency, 2000);
+
+                let tooltipContent = `${currentX.toFixed(0)}hZ：${currentY.toFixed(10)}`;
+
+                // 查找2倍频点
+                const doubleFreq = currentX * 2;
+                if (doubleFreq <= maxX) {
+                    const doublePoint = chartData.find(item => Math.abs(item[0] - doubleFreq) < 1);
+                    if (doublePoint) {
+                        tooltipContent += `<br/>双倍频：${doubleFreq.toFixed(0)}hZ：${doublePoint[1].toFixed(10)}`;
+                    }
+                }
+
+                // 查找3倍频点
+                const tripleFreq = currentX * 3;
+                if (tripleFreq <= maxX) {
+                    const triplePoint = chartData.find(item => Math.abs(item[0] - tripleFreq) < 1);
+                    if (triplePoint) {
+                        tooltipContent += `<br/>三倍频：${tripleFreq.toFixed(0)}hZ：${triplePoint[1].toFixed(10)}`;
+                    }
+                }
+
+                return tooltipContent;
+            }
         },
         grid: { top: 30, left: 40, right: 40, bottom: 50 },
         xAxis: {
@@ -105,8 +143,15 @@ const updateFreqChart = () => {
         yAxis: {
             type: 'value',
             name: 'mm/s',
+            min: yMinWithMargin,
+            max: yMaxWithMargin,
             nameTextStyle: { color: '#fff' },
-            axisLabel: { color: '#fff' },
+            axisLabel: {
+                color: '#fff',
+                formatter: function (value: number) {
+                    return value.toFixed(2);
+                }
+            },
             axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
             splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
         },

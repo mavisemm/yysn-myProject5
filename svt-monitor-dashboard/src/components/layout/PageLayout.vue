@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="page-layout">
     <MainHeader />
     <div class="main-content">
@@ -13,9 +13,15 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import MainHeader from './MainHeader.vue'
 import DeviceSidebar from './DeviceSidebar.vue'
 import { RouterView } from 'vue-router'
+import { usePointMessageStore } from '@/stores/pointMessage'
+
+onMounted(() => {
+  usePointMessageStore().loadPointMessage()
+})
 </script>
 
 <style lang="scss" scoped>

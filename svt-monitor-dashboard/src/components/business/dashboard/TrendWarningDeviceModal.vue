@@ -1,6 +1,6 @@
 <!-- 预警设备详情弹窗：两条死数据来自设备树（两个不同设备），表格展示设备名称、点位名称、听筒名称 -->
 <template>
-    <el-dialog v-model="visible" :title="props.title" width="900px" :close-on-click-modal="true"
+    <el-dialog v-model="visible" :title="props.title" width="900px" :close-on-click-modal="true" draggable
         class="trend-warning-modal" @close="handleClose">
         <div class="modal-body">
             <el-table :data="tableData" stripe class="warning-table" max-height="400">
@@ -13,8 +13,8 @@
                 </el-table-column>
                 <el-table-column prop="pointName" label="点位名称" min-width="120">
                     <template #default="{ row }">
-                        <span v-if="row.pointId && row.deviceId" class="link-cell"
-                            @click.stop="goToSoundPoint(row)">{{ row.pointName }}</span>
+                        <span v-if="row.pointId && row.deviceId" class="link-cell" @click.stop="goToSoundPoint(row)">{{
+                            row.pointName }}</span>
                         <span v-else>{{ row.pointName }}</span>
                     </template>
                 </el-table-column>
@@ -143,6 +143,7 @@ watch(visible, (val) => {
     .link-cell {
         color: var(--el-color-primary);
         cursor: pointer;
+
         &:hover {
             text-decoration: underline;
         }

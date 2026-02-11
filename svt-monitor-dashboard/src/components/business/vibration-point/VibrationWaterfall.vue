@@ -120,7 +120,31 @@ const initChart = () => {
     });
 
     waterfallChartInstance.value.setOption({
+        tooltip: {
+            show: true,
+            trigger: 'item',
+            backgroundColor: 'rgba(50, 50, 50, 0.9)',
+            borderColor: 'rgba(50, 50, 50, 0.9)',
+            textStyle: { color: '#fff' },
+            formatter: (params: any) => {
+                const freq = params.value?.[0] ?? 0;
+                const seriesName = params.seriesName || '';
+                const value = params.value?.[2] ?? 0;
+                const timeLabel = seriesName || (typeof params.value?.[1] === 'number'
+                    ? times[params.value[1]] ?? ''
+                    : '');
+
+                return [
+                    `时间：${timeLabel}`,
+                    `频率：${freq.toFixed(0)} Hz`,
+                    `速度有效值：${value.toFixed(3)} mm/s`
+                ].join('<br/>');
+            }
+        },
         grid3D: {
+            // 调整3D盒子位置，为右侧图例留出空间
+            left: '-10%',
+            top: '-2%',
             viewControl: {
                 projection: 'orthographic',
                 alpha: 15, // 垂直角度
@@ -134,9 +158,8 @@ const initChart = () => {
             boxWidth: 100,
             boxHeight: 100,
             boxDepth: 100,
-            // 分隔线与 cross 改为灰色
             axisPointer: {
-                lineStyle: { color: '#999999' }
+                lineStyle: { color: '#063c83' }
             },
             splitLine: {
                 lineStyle: { color: '#999999' }
@@ -144,7 +167,7 @@ const initChart = () => {
             splitArea: {
                 show: true,
                 areaStyle: {
-                    color: '#ffffff',
+                    color: '#F0f0f0',
                     opacity: 1
                 }
             }
@@ -191,7 +214,9 @@ const initChart = () => {
             pageTextStyle: { color: '#ffffff' },
             pageIconColor: '#ffffff',
             pageIconInactiveColor: 'rgba(255,255,255,0.5)',
-            top: 10,
+            right: 10,
+            top: 'middle',
+            orient: 'vertical',
             type: 'scroll'
         },
         zAxis3D: {

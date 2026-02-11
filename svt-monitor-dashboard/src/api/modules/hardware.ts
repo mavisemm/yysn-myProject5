@@ -498,3 +498,50 @@ export const getDeviceHealth = (params: {
     showLoading: false
   })
 }
+
+// 点位详情（check-point/find/point/message）请求与响应类型
+export interface PointMessageFilterItem {
+  code: string;
+  operate: string;
+  value: string;
+}
+
+export interface PointMessageCheckPointDto {
+  id: number;
+  pointName: string;
+  detectorId: string;
+  detectorName: string;
+  receiverId: string;
+  receiverName: string;
+  productId: string;
+  productName: string;
+  subProductId: string;
+  subProductName: string;
+  groupId: number;
+  tenantId: string;
+  [key: string]: unknown;
+}
+
+export interface PointMessageGroupItem {
+  groupName: string;
+  checkPointDtos: PointMessageCheckPointDto[];
+}
+
+export interface PointMessageResponse {
+  rc: number;
+  ret: {
+    rowCount: number;
+    items: PointMessageGroupItem[];
+  };
+  err: string | null;
+}
+
+/** 获取点位详情列表（项目打开时调用，供声音点位页等按 receiverId/pointId 查详情） */
+export const getPointMessage = (params: {
+  filterPropertyMap: PointMessageFilterItem[];
+  pageIndex: number;
+  pageSize: number;
+}): Promise<PointMessageResponse> => {
+  // 后端实际端口为 8003，这里显式走 8003 避免走 8006 出错
+  return request.post('http://122.224.196.178:8003/taicang/hardware/device/check-point/find/point/message', params, { showLoading: false })
+}

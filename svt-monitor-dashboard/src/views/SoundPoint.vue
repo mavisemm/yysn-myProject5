@@ -18,9 +18,17 @@
     </div>
   </div>
 
-  <!-- 详情弹窗（查看曲线） -->
-  <el-dialog v-model="voiceVisible" title="详情" width="90%" destroy-on-close @closed="handleModalClosed">
-    <div ref="modalChartRef" style="width: 100%; height: 500px;"></div>
+  <!-- 详情弹窗（查看曲线）：能量一个 echarts，密度一个 echarts -->
+  <el-dialog v-model="voiceVisible" title="详情" width="70vw" align-center class="voice-detail-dialog" destroy-on-close
+    @opened="handleModalOpened" @closed="handleModalClosed">
+    <div class="modal-charts">
+      <div class="modal-chart-item">
+        <div ref="modalEnergyChartRef" class="modal-chart-dom"></div>
+      </div>
+      <div class="modal-chart-item">
+        <div ref="modalDensityChartRef" class="modal-chart-dom"></div>
+      </div>
+    </div>
   </el-dialog>
 </template>
 
@@ -31,8 +39,10 @@ import * as echarts from 'echarts';
 import { ElMessage, ElDialog } from 'element-plus';
 import { enableMouseWheelZoom } from '@/utils/chart';
 import { useDeviceTreeStore } from '@/stores/deviceTree';
+import { usePointMessageStore } from '@/stores/pointMessage';
 
 const deviceTreeStore = useDeviceTreeStore();
+const pointMessageStore = usePointMessageStore();
 import {
   getLatestDeviationByReceiver,
   getStandardFrequencyList,
@@ -50,9 +60,17 @@ import SoundPointCharts from '@/components/business/sound-point/SoundPointCharts
 import SoundDataTable from '@/components/business/sound-point/SoundDataTable.vue';
 import SoundPointInfo from '@/components/business/sound-point/SoundPointInfo.vue';
 const chartsComponentRef = ref<any>(null);
-const modalChartRef = ref<HTMLDivElement>();
+const modalEnergyChartRef = ref<HTMLDivElement>();
+const modalDensityChartRef = ref<HTMLDivElement>();
 
-const modalChartInstance = shallowRef<echarts.ECharts | null>(null);
+const modalEnergyChartInstance = shallowRef<echarts.ECharts | null>(null);
+const modalDensityChartInstance = shallowRef<echarts.ECharts | null>(null);
+/** 联动时避免 dataZoom 事件回环 */
+let dataZoomSyncing = false;
+/** 联动时避免 tooltip 事件回环 */
+let tooltipSyncing = false;
+/** 弹窗内图表容器 resize 监听 */
+let modalChartsResizeObserver: ResizeObserver | null = null;
 
 
 const audioPath = ref('');
@@ -102,6 +120,21 @@ interface DeviationListItem {
 }
 
 const deviationList = ref<DeviationListItem[]>([]);
+
+/** 从点位详情 store 填充右侧详情（生产设备=productName，子部件=subProductName，检测设备=detectorName，听筒=receiverName，点位名称=pointName） */
+function applyStorePointInfo() {
+  const pointId = pointIdFromQuery.value;
+  if (!pointId) return;
+  const point = pointMessageStore.getPointByKey(pointId);
+  if (!point) return;
+  clusterName.value = point.groupName ?? '';
+  productionEquipment.value = point.productName ?? '';
+  subComponent.value = point.subProductName ?? '';
+  detectionEquipment.value = point.detectorName ?? '';
+  microphone.value = point.receiverName ?? '';
+  pointName.value = point.pointName ?? '';
+  deviceName.value = point.productName ?? '';
+}
 
 const handleRowClick = (row: any) => {
   row.visible = !row.visible;
@@ -204,6 +237,8 @@ const loadDeviationList = async () => {
       microphone.value = '';
       audioPath.value = '';
     }
+    // 优先使用 check-point/find/point/message 接口缓存的点位详情
+    applyStorePointInfo();
 
     await loadFrequencyData();
   } catch (error) {
@@ -306,39 +341,110 @@ const viewDetails = async (row: any) => {
 
     voiceVisible.value = true;
     nextTick(() => {
-      if (modalChartRef.value) {
-        if (modalChartInstance.value) {
-          modalChartInstance.value.dispose();
-          modalChartInstance.value = null;
-        }
-        modalChartInstance.value = echarts.init(modalChartRef.value);
-        const legendData = avgdensityArr.length > 0 ? ['密度', '能量', '标准密度线', '标准能量线'] : ['密度', '能量'];
-        modalChartInstance.value.setOption({
-          title: { text: `${row.time} 详细频谱`, left: 'center' },
-          tooltip: { trigger: 'axis' },
-          grid: { left: 30, right: 20, top: 40, bottom: 50 },
-          legend: { show: true, top: 30, data: legendData },
-          xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],
-          yAxis: [
-            { type: 'value', name: '' },
-            { type: 'value', name: '密度' }
-          ],
-          dataZoom: [
-            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-            { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' }
-          ],
-          series: [
-            { name: '密度', type: 'line', data: nowdensityArr, symbolSize: 1 },
-            { name: '能量', type: 'line', data: nowdbArr, symbolSize: 1 },
-            ...(avgdensityArr.length > 0
-              ? [
-                { name: '标准密度线', type: 'line', data: avgdensityArr, yAxisIndex: 1, symbolSize: 1 },
-                { name: '标准能量线', type: 'line', data: avgdbArr, symbolSize: 1 }
+      const baseGrid = { left: 40, right: 20, top: 30, bottom: 50 };
+      const dataZoom = [
+        { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+        { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' }
+      ];
+
+      // 将 source 图表的 dataZoom 范围同步到 target 图表
+      const applyDataZoom = (source: echarts.ECharts, target: echarts.ECharts | null) => {
+        if (!target || dataZoomSyncing) return;
+        const opt = source.getOption();
+        const dz = (opt as any).dataZoom as Array<{ start?: number; end?: number }> | undefined;
+        const first = Array.isArray(dz) && dz.length > 0 ? dz[0] : undefined;
+        if (first) {
+          const start = first.start;
+          const end = first.end;
+          if (start != null && end != null) {
+            dataZoomSyncing = true;
+            target.setOption({
+              dataZoom: [
+                { type: 'inside', xAxisIndex: [0], filterMode: 'none', start, end },
+                { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none', start, end }
               ]
-              : [])
+            } as any);
+            setTimeout(() => { dataZoomSyncing = false; }, 0);
+          }
+        }
+      };
+
+      // 能量图表
+      if (modalEnergyChartRef.value) {
+        if (modalEnergyChartInstance.value) {
+          modalEnergyChartInstance.value.dispose();
+          modalEnergyChartInstance.value = null;
+        }
+        modalEnergyChartInstance.value = echarts.init(modalEnergyChartRef.value);
+        const energyLegend = avgdbArr.length > 0 ? ['能量', '标准能量线'] : ['能量'];
+        modalEnergyChartInstance.value.setOption({
+          tooltip: { trigger: 'axis' },
+          grid: baseGrid,
+          legend: { show: true, top: 10, data: energyLegend },
+          xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],
+          yAxis: [{ type: 'value', name: '能量' }],
+          dataZoom: [...dataZoom],
+          series: [
+            { name: '能量', type: 'line', data: nowdbArr, symbolSize: 1 },
+            ...(avgdbArr.length > 0 ? [{ name: '标准能量线', type: 'line', data: avgdbArr, symbolSize: 1 }] : [])
           ]
         });
-        enableMouseWheelZoom(modalChartInstance.value);
+        enableMouseWheelZoom(modalEnergyChartInstance.value);
+        modalEnergyChartInstance.value.on('dataZoom', () => {
+          const src = modalEnergyChartInstance.value;
+          const tgt = modalDensityChartInstance.value;
+          if (src && tgt) applyDataZoom(src, tgt);
+        });
+        modalEnergyChartInstance.value.on('updateAxisPointer', (event: any) => {
+          if (tooltipSyncing) return;
+          const other = modalDensityChartInstance.value;
+          const batch = event?.batch;
+          const dataIndex = Array.isArray(batch) && batch[0]?.dataIndex != null ? batch[0].dataIndex : undefined;
+          if (other && dataIndex != null) {
+            tooltipSyncing = true;
+            other.dispatchAction({ type: 'showTip', dataIndex });
+            setTimeout(() => { tooltipSyncing = false; }, 0);
+          }
+        });
+      }
+
+      // 密度图表
+      if (modalDensityChartRef.value) {
+        if (modalDensityChartInstance.value) {
+          modalDensityChartInstance.value.dispose();
+          modalDensityChartInstance.value = null;
+        }
+        modalDensityChartInstance.value = echarts.init(modalDensityChartRef.value);
+        const densityLegend = avgdensityArr.length > 0 ? ['密度', '标准密度线'] : ['密度'];
+        modalDensityChartInstance.value.setOption({
+          tooltip: { trigger: 'axis' },
+          grid: baseGrid,
+          legend: { show: true, top: 10, data: densityLegend },
+          xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],
+          yAxis: [{ type: 'value', name: '密度' }],
+          dataZoom: [...dataZoom],
+          series: [
+            { name: '密度', type: 'line', data: nowdensityArr, symbolSize: 1 },
+            ...(avgdensityArr.length > 0 ? [{ name: '标准密度线', type: 'line', data: avgdensityArr, symbolSize: 1 }] : [])
+          ]
+        });
+        enableMouseWheelZoom(modalDensityChartInstance.value);
+        modalDensityChartInstance.value.on('dataZoom', () => {
+          const src = modalDensityChartInstance.value;
+          const tgt = modalEnergyChartInstance.value;
+          if (src && tgt) applyDataZoom(src, tgt);
+        });
+        modalDensityChartInstance.value.on('updateAxisPointer', (event: any) => {
+          if (tooltipSyncing) return;
+          const other = modalEnergyChartInstance.value;
+          const batch = event?.batch;
+          const dataIndex = Array.isArray(batch) && batch[0]?.dataIndex != null ? batch[0].dataIndex : undefined;
+          if (other && dataIndex != null) {
+            tooltipSyncing = true;
+            other.dispatchAction({ type: 'showTip', dataIndex });
+            setTimeout(() => { tooltipSyncing = false; }, 0);
+          }
+        });
       }
     });
   } catch (e) {
@@ -386,23 +492,51 @@ const playAudio = (row: DeviationListItem) => {
   ElMessage.success('正在播放音频');
 };
 
+/** 弹窗打开后：禁止页面滚动，图表 resize，并监听弹窗内容区尺寸变化 */
+const handleModalOpened = () => {
+  document.body.style.overflow = 'hidden';
+  modalChartsResizeObserver?.disconnect();
+  modalChartsResizeObserver = null;
+  const doResize = () => {
+    try {
+      modalEnergyChartInstance.value?.resize();
+      modalDensityChartInstance.value?.resize();
+    } catch (error) {
+      console.warn('Modal chart resize failed:', error);
+    }
+  };
+  setTimeout(doResize, 0);
+  const container = document.querySelector('.voice-detail-dialog .el-dialog__body');
+  if (container) {
+    modalChartsResizeObserver = new ResizeObserver(() => setTimeout(doResize, 0));
+    modalChartsResizeObserver.observe(container);
+  }
+};
+
 const handleModalClosed = () => {
-  if (modalChartInstance.value) {
-    modalChartInstance.value.dispose();
-    modalChartInstance.value = null;
+  document.body.style.overflow = '';
+  modalChartsResizeObserver?.disconnect();
+  modalChartsResizeObserver = null;
+  if (modalEnergyChartInstance.value) {
+    modalEnergyChartInstance.value.dispose();
+    modalEnergyChartInstance.value = null;
+  }
+  if (modalDensityChartInstance.value) {
+    modalDensityChartInstance.value.dispose();
+    modalDensityChartInstance.value = null;
   }
 };
 
 const handleResize = () => {
-  // 使用 setTimeout 避免在主渲染过程中调用 resize
+  if (!voiceVisible.value) return;
   setTimeout(() => {
     try {
-      modalChartInstance.value?.resize();
+      modalEnergyChartInstance.value?.resize();
+      modalDensityChartInstance.value?.resize();
     } catch (error) {
       console.warn('Modal chart resize failed:', error);
     }
   }, 0);
-  // 图表调整大小现在由 SoundPointCharts 组件处理
 };
 
 // 设备树切换点位时路由 query 会变，需重新拉取数据并更新选中状态
@@ -412,6 +546,7 @@ watch(
     if (newId !== oldId) {
       if (newId) {
         deviceTreeStore.setSelectedDeviceId(newId as string);
+        applyStorePointInfo();
       }
       loadDeviationList();
     }
@@ -421,6 +556,7 @@ watch(
 onMounted(() => {
   if (pointIdFromQuery.value) {
     deviceTreeStore.setSelectedDeviceId(pointIdFromQuery.value);
+    applyStorePointInfo();
   }
   loadDeviationList();
   window.addEventListener('resize', handleResize);
@@ -428,7 +564,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
-  modalChartInstance.value?.dispose();
+  modalEnergyChartInstance.value?.dispose();
+  modalDensityChartInstance.value?.dispose();
 });
 </script>
 
@@ -444,6 +581,51 @@ onUnmounted(() => {
     gap: 20px;
     height: 50%;
     overflow: hidden;
+  }
+}
+
+/* 弹窗 70vw × 95vh，水平垂直居中，禁止出现滚动条 */
+:deep(.voice-detail-dialog) {
+  overflow: hidden !important;
+  .el-dialog {
+    height: 95vh;
+    max-height: 95vh;
+    margin: 0 !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .el-dialog__header {
+    flex-shrink: 0;
+  }
+  .el-dialog__body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden !important;
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.modal-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+  min-height: 0;
+  flex: 1;
+
+  .modal-chart-item {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+
+    .modal-chart-dom {
+      width: 100%;
+      height: 40vh;
+    }
   }
 }
 </style>

@@ -5,7 +5,8 @@
             <div class="info-item">
                 <span class="info-content">
                     <span class="info-label">聚类名称：</span>
-                    <span class="info-value">{{ clusterName }}</span>
+                    <!-- 当前项目无聚类名称对应字段，只保留标签，不展示具体值 -->
+                    <span class="info-value"></span>
                 </span>
             </div>
             <div class="info-item">
@@ -41,7 +42,8 @@
             <div class="info-item">
                 <span class="info-content">
                     <span class="info-label">偏差值：</span>
-                    <span class="info-value">{{ deviationValue }}</span>
+                    <!-- 当前项目暂不展示偏差值，只保留标签 -->
+                    <span class="info-value"></span>
                 </span>
             </div>
         </div>

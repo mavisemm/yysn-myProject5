@@ -4,7 +4,7 @@
             <!-- 左侧标题区域 -->
             <div class="left-title">
                 <h1 class="main-title">云音声脑</h1>
-                <h2 class="sub-title">声振温在线监测平台</h2>
+                <h2 class="sub-title">在线监测平台</h2>
             </div>
 
             <!-- 右侧登录区域 -->
@@ -79,31 +79,31 @@ const handleLogin = async () => {
     loading.value = true
 
     try {
-        // 调用登录API
-        // 在实际部署时，这里会真正调用后端API
-        // 目前使用静态验证模拟API响应
-        const response = {
-            rc: (loginForm.userName === 'admin' && loginForm.password === '123456') ? 0 : 1,
-            ret: (loginForm.userName === 'admin' && loginForm.password === '123456') ? 'mock-token-' + Date.now() : null,
-            err: (loginForm.userName === 'admin' && loginForm.password === '123456') ? '' : '用户名或密码错误'
+        // 调用实际后端登录接口（8003）
+        const res = await loginApi({
+            userName: loginForm.userName,
+            password: loginForm.password
+        })
+
+        // 接口约定：rc === 0 即为登录成功，ret 通常为 tenantId
+        if (!res || res.rc !== 0) {
+            throw new Error(res?.err || '登录失败')
         }
 
-        // 模拟API调用延迟
-        await new Promise(resolve => setTimeout(resolve, 800))
+        // 登录成功标记：路由守卫依赖 localStorage.token 判断是否已登录
+        // 这里只要 rc === 0，就写入一个非空 token
+        localStorage.setItem('token', res.ret ? String(res.ret) : 'login-ok')
 
-        if (response.rc === 0 && response.ret) {
-            // 登录成功，保存token
-            localStorage.setItem('token', response.ret)
-
-            // 显示成功消息
-            ElMessage.success('登录成功')
-
-            // 跳转到首页
-            router.push('/')
-        } else {
-            // 登录失败
-            throw new Error(response.err || '登录失败')
+        // 若后端返回了 tenantId，则写入 localStorage（供业务接口使用）
+        if (res.ret) {
+            localStorage.setItem('tenantId', String(res.ret))
         }
+
+        // 显示成功消息
+        ElMessage.success('登录成功')
+
+        // 跳转到首页
+        router.push('/')
     } catch (error) {
         console.error('登录错误:', error)
         ElMessage.error('登录失败，请重试')
@@ -142,7 +142,7 @@ const handleLogin = async () => {
             gap: 30px;
 
             .main-title {
-                color: rgba(153, 240, 255, 0.7);
+                color: #00ffff;
                 font-weight: 500;
                 font-size: 55px;
                 margin: 0 0 20px 0;
@@ -150,7 +150,7 @@ const handleLogin = async () => {
             }
 
             .sub-title {
-                color: rgba(153, 240, 255, 0.7);
+                color: #00ffff;
                 font-size: 50px;
                 font-weight: 500;
                 margin: 0;
@@ -193,7 +193,7 @@ const handleLogin = async () => {
                             backdrop-filter: blur(5px);
 
                             input {
-                                color: white;
+                                color: white !important;
 
                                 &::placeholder {
                                     color: rgba(255, 255, 255, 0.6);

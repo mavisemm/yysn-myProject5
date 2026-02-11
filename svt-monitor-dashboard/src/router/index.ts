@@ -1,4 +1,4 @@
-﻿import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import { setupRouterGuard } from './guard'
@@ -31,12 +31,6 @@ const routes: RouteRecordRaw[] = [
         name: 'VibrationPoint',
         component: () => import('@/views/VibrationPoint.vue'),
         meta: { title: 'Vibration Point' }
-      },
-      {
-        path: 'datetime-test',
-        name: 'DateTimeTest',
-        component: () => import('@/views/DateTimeTest.vue'),
-        meta: { title: 'DateTime Test' }
       }
     ]
   },
