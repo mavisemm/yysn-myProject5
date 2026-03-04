@@ -2,10 +2,10 @@
 <template>
     <div class="metrics-area">
         <div v-for="(metric, index) in metrics" :key="index" class="chart-container">
-            <h3 class="metric-title app-section-title">{{ metric.title }}</h3>
+            <h3 class="metric-title">{{ metric.title }}</h3>
             <div v-if="metric.unit" class="metric-unit special-font-color">{{ metric.unit }}</div>
-            <!-- 排名列表：仅显示前 3 条 -->
-            <div class="rankings">
+            <!-- 排名列表：根据可用高度动态显示前 N 条 -->
+            <div class="rankings" :ref="(el) => setRankingsEl(el, index)">
                 <div v-if="getRankings(index).length === 0" class="no-data">暂无数据</div>
                 <template v-else>
                     <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex" class="ranking-item"
@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import type { MetricItem } from '@/types/device'
@@ -174,9 +174,31 @@ const getRankings = (index: number): RankingItem[] => {
     return devices;
 };
 
-/** 列表只显示前 3 条 */
+/**
+ * 列表显示条数：参照「预警总览」的做法，按窗口高度自适应
+ * - 不再按容器高度做精确计算，避免各种 margin/padding 导致裁切
+ * - 高度越高，可见行数越多；始终最少显示 2 行
+ */
+const windowHeight = ref(window.innerHeight || 0);
+
+const updateWindowSize = () => {
+    windowHeight.value = window.innerHeight || 0;
+};
+
+const maxVisibleRows = computed(() => {
+    const h = windowHeight.value;
+    if (h >= 1000) return 5;
+    if (h >= 850) return 4;
+    if (h >= 780) return 3;
+    return 2;
+});
+
+// 兼容模板上的 ref 绑定（不再使用具体元素）
+const setRankingsEl = (_el: unknown, _index: number) => { };
+
 const displayRankings = (index: number): RankingItem[] => {
-    return getRankings(index).slice(0, 3);
+    const list = getRankings(index);
+    return list.slice(0, Math.min(maxVisibleRows.value, list.length));
 };
 
 const rankDialogVisible = ref(false);
@@ -197,13 +219,30 @@ const openRankDialog = (index: number) => {
     rankDialogMetricIndex.value = index;
     rankDialogVisible.value = true;
 };
+
+onMounted(async () => {
+    await nextTick();
+    window.addEventListener('resize', updateWindowSize);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('resize', updateWindowSize);
+});
+
+watch(
+    () => props.rankings,
+    async () => {
+        await nextTick();
+    },
+    { deep: true }
+);
 </script>
 
 <style lang="scss" scoped>
 .metrics-area {
     height: 100%;
     display: flex;
-    gap: 15px;
+    gap: 10px;
     overflow: hidden;
     box-sizing: border-box;
     background: url('@/assets/images/background/首页-Top5背景.png') no-repeat center center;
@@ -226,22 +265,9 @@ const openRankDialog = (index: number) => {
             background-color: lightblue;
         }
 
-        .chart-container h3.metric-title {
-            padding: 0 0 5px 0 !important;
-            margin: 0 auto !important;
-            text-align: center !important;
-            font-size: clamp(18px, 2.5vw, 24px);
-            display: block !important;
-            width: 100% !important;
-            /* Top3 标题样式统一 */
-            font-weight: 400;
-            letter-spacing: 0px;
-            color: rgba(153, 240, 255, 1);
-        }
-
         .chart-container .metric-unit {
             text-align: center !important;
-            font-size: clamp(12px, 2vw, 16px) !important;
+            font-size: 1rem !important;
             margin-bottom: 5px !important;
             display: block !important;
         }
@@ -249,10 +275,9 @@ const openRankDialog = (index: number) => {
         .more-wrap {
             flex-shrink: 0;
             text-align: center;
-            padding: 4px 0 2px;
 
             .more-btn {
-                font-size: clamp(12px, 1.5vw, 14px);
+                font-size: 0.9rem;
                 cursor: pointer;
                 user-select: none;
 
@@ -266,6 +291,7 @@ const openRankDialog = (index: number) => {
             display: flex;
             flex-direction: column;
             gap: 5px;
+            --ranking-row-height: 24px;
             margin-bottom: 4px;
             flex: 1;
             min-height: 0;
@@ -276,7 +302,7 @@ const openRankDialog = (index: number) => {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: clamp(14px, 2vw, 16px);
+                font-size: 1rem;
             }
 
             .ranking-item {
@@ -285,10 +311,12 @@ const openRankDialog = (index: number) => {
                 justify-content: space-between;
                 background: rgba(255, 255, 255, 0.1);
                 border-radius: 14px;
-                padding: 6px 15px;
-                font-size: clamp(14px, 1.8vw, 16px);
-                flex: 1;
-                min-height: 0;
+                box-sizing: border-box;
+                padding: 6px 10px;
+                /* 排名行字体，稍小于标题 */
+                font-size: 0.95rem;
+                height: var(--ranking-row-height);
+                flex: 0 0 auto;
                 cursor: pointer;
                 transition: all 0.3s ease;
 
@@ -319,32 +347,32 @@ const openRankDialog = (index: number) => {
         @media (max-width: 768px) {
             .rankings {
                 .ranking-item {
-                    font-size: clamp(10px, 1.2vw, 12px);
+                    font-size: 0.8rem;
                     padding: 6px 10px;
                 }
             }
         }
 
-        @media (max-height: 800px) {
+        @media (max-height: 1000px) {
             .ranking-item {
                 margin: 2px 10px;
-                padding: 6px 15px;
+                padding: 6px 10px;
             }
         }
 
-        @media (max-height: 656px) {
-            .ranking-item {
+        @media (max-height: 850px) {
+            .ranking-item { 
                 padding: 5px 12px;
-                font-size: clamp(11px, 1.3vw, 13px);
+                font-size: 0.85rem;
                 margin: 1px 10px;
             }
         }
 
-        @media (max-height: 600px) {
+        @media (max-height: 780px) {
             .ranking-item {
                 margin: 1px 10px;
                 padding: 4px 12px;
-                font-size: clamp(10px, 1.2vw, 12px);
+                font-size: 0.8rem;
             }
         }
     }
@@ -352,20 +380,23 @@ const openRankDialog = (index: number) => {
 
 :deep() {
     .chart-container h3.metric-title {
-        padding: 0 0 8px 0 !important;
+        font-weight: 400;
+        letter-spacing: 1.22px;
+        color: rgba(255, 255, 255, 1);
         margin: 0 auto !important;
         text-align: center !important;
-        font-size: clamp(18px, 2.5vw, 24px);
+        /* 使用 rem，相对根字号自适应 */
+        font-size: 1.2rem!important;
         display: block !important;
         width: 100% !important;
     }
 
-    .chart-container .metric-unit {
-        text-align: center !important;
-        font-size: clamp(12px, 2vw, 16px) !important;
-        margin-bottom: 5px !important;
-        display: block !important;
-    }
+        .chart-container .metric-unit {
+            text-align: center !important;
+            font-size: 1rem !important;
+            margin-bottom: 5px !important;
+            display: block !important;
+        }
 }
 
 .rank-dialog :deep(.el-dialog__header) {

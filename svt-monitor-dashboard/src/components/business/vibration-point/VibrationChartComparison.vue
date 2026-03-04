@@ -356,7 +356,7 @@ onUnmounted(() => {
 .bottom-row {
     display: flex;
     height: 40%;
-    gap: 15px;
+    gap: 10px;
     min-height: 0;
 }
 

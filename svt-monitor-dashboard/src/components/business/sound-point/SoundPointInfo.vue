@@ -111,7 +111,7 @@ watch(() => props.audioPath, (newPath) => {
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        gap: 15px;
+        gap: 10px;
         padding: 20px 20px 0 20px;
 
         .info-item {

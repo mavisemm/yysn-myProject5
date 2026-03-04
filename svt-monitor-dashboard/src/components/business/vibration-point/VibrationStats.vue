@@ -128,7 +128,7 @@ onMounted(() => {
         display: grid;
         grid-template-columns: 1fr 1fr;
         grid-template-rows: 1fr 1fr;
-        gap: 15px;
+        gap: 10px;
         flex: 1;
         padding: 20px;
 

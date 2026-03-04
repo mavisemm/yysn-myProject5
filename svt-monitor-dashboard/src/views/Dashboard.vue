@@ -1,30 +1,26 @@
-<!-- 首页仪表板：包含统计数据和指标排名 -->
+<!-- 首页仪表板：三个盒子纵向排列 -->
 <template>
   <div class="dashboard">
-    <!-- 顶部区域：统计数据和告警概览 -->
-    <div class="top-section">
+    <div class="dashboard-box dashboard-box-stats">
       <DashboardStats :stats="statsData" @click-trend-warning="showTrendWarningModal = true"
         @click-fault-warning="showFaultWarningModal = true" />
+    </div>
+    <div class="dashboard-box dashboard-box-alarm">
       <AlarmOverview>
         <template #alarms>
         </template>
       </AlarmOverview>
     </div>
-    <!-- 底部区域：三项指标排名 -->
-    <div class="bottom-section">
+    <div class="dashboard-box dashboard-box-metrics">
       <ThreeMetrics :metrics="[
-        { title: '振动烈度Top3', unit: '（单位：mm/s）' },
-        { title: '声音响度Top3', unit: '（单位：dB）' },
-        { title: '温度Top3', unit: '（单位：℃）' }
+        { title: '振动烈度排名', unit: '（单位：mm/s）' },
+        { title: '声音响度排名', unit: '（单位：dB）' },
+        { title: '温度排名', unit: '（单位：℃）' }
       ]" :rankings="rankings">
-
       </ThreeMetrics>
     </div>
 
-    <!-- 趋势预警设备弹窗 -->
     <TrendWarningDeviceModal v-model="showTrendWarningModal" title="趋势预警设备详情" />
-
-    <!-- 故障报警设备弹窗 -->
     <TrendWarningDeviceModal v-model="showFaultWarningModal" title="故障报警设备详情" />
   </div>
 </template>
@@ -60,10 +56,10 @@ const showFaultWarningModal = ref(false);
 
 // 统计数据
 const statsData = ref([
-  { title: '健康设备数', number: 0 },
-  { title: '故障报警设备', number: 0 },
   { title: '监控总设备数', number: 0 },
-  { title: '趋势预警设备', number: 0 }
+  { title: '健康设备数', number: 0 },
+  { title: '趋势预警设备', number: 0 },
+  { title: '故障报警设备', number: 0 }
 ]);
 
 /**
@@ -116,18 +112,18 @@ const fetchStatsData = async () => {
     const stats = await getAllStats();
 
     statsData.value = [
-      { title: '健康设备数', number: stats.healthyDeviceCount },
-      { title: '故障报警设备', number: stats.alertDeviceCount },
       { title: '监控总设备数', number: stats.totalDeviceCount },
-      { title: '趋势预警设备', number: stats.totalPointCount }
+      { title: '健康设备数', number: stats.healthyDeviceCount },
+      { title: '趋势预警设备', number: stats.totalPointCount },
+      { title: '故障报警设备', number: stats.alertDeviceCount }
     ];
   } catch (error) {
     console.error('获取统计数据失败:', error);
     statsData.value = [
-      { title: '健康设备数', number: 0 },
-      { title: '故障报警设备', number: 0 },
       { title: '监控总设备数', number: 0 },
-      { title: '趋势预警设备', number: 0 }
+      { title: '健康设备数', number: 0 },
+      { title: '趋势预警设备', number: 0 },
+      { title: '故障报警设备', number: 0 }
     ];
   }
 };
@@ -143,20 +139,27 @@ onMounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  gap: 10px;
   box-sizing: border-box;
 
-  .top-section {
-    height: 60%;
+  .dashboard-box {
+    flex: 0 0 auto;
     min-height: 0;
-    min-width: 0;
+    overflow: hidden;
     display: flex;
-    gap: clamp(8px, 1.5vw, 15px);
-    padding-bottom: clamp(8px, 1.5vw, 15px);
-    box-sizing: border-box;
+    flex-direction: column;
   }
 
-  .bottom-section {
-    height: 40%;
+  .dashboard-box-stats {
+    height: calc((100% - 20px) * 0.2);
+  }
+
+  .dashboard-box-alarm {
+    height: calc((100% - 20px) * 0.5);
+  }
+
+  .dashboard-box-metrics {
+    height: calc((100% - 20px) * 0.3);
   }
 }
 </style>

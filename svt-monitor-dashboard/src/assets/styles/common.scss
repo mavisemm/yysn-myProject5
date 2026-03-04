@@ -14,13 +14,15 @@
   --special-font-color: rgba(153, 240, 255, 1);
 }
 
-/* 全局字体颜色设置 */
+/* 全局字体颜色与字号设置：根字号随视口宽度变化 */
 html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
   color: var(--global-font-color);
   font-weight: 500;
+  /* 根字号随视口宽度线性变化，统一用 rem 控制各处字体 */
+  font-size: calc(12px + 0.4vw);
 }
 
 #app {
@@ -35,7 +37,8 @@ html, body {
   font-weight: 500;
   letter-spacing: 1.22px;
   color: rgba(255, 255, 255, 1);
-  font-size: clamp(22px,3vw,26px);
+  /* 使用 rem，相对根字号自适应，而不再使用 clamp */
+  font-size: 1.5rem;
 }
 
 /* 确保Element Plus组件的文本可读性 */

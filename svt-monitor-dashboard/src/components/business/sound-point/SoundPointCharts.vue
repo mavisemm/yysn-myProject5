@@ -209,9 +209,9 @@ defineExpose({
 .charts-section {
     display: flex;
     flex-direction: row;
-    gap: 15px;
+    gap: 10px;
     height: 50%;
-    padding-bottom: 15px;
+    padding-bottom: 10px;
 
     .chart-item {
         background: url('@/assets/images/background/首页-预警总览背景.png') no-repeat center center;

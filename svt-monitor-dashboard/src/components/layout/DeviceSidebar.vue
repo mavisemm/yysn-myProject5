@@ -694,16 +694,16 @@ onUnmounted(() => {
     align-items: center;
     flex-shrink: 0;
     justify-content: space-between;
-    padding: 20px 20px 0 20px;
+    padding: 10px 20px 0;
   }
 
   .search-area {
-    padding: 20px 20px 0 20px;
+    padding: 10px 20px 0;
     flex-shrink: 0;
 
     .search-row {
       display: flex;
-      gap: 15px;
+      gap: 10px;
       align-items: flex-start;
 
       .search-item {
@@ -797,7 +797,7 @@ onUnmounted(() => {
   }
 
   .device-tree-container {
-    padding: 20px;
+    padding: 10px 20px 20px;
     flex: 1;
     display: flex;
     flex-direction: column;

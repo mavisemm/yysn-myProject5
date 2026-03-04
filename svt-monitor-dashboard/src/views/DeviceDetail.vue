@@ -222,7 +222,7 @@ onUnmounted(() => {
 .device-detail {
   display: flex;
   height: 100%;
-  gap: 15px;
+  gap: 10px;
   box-sizing: border-box;
   color: white;
   min-width: 0;
@@ -232,7 +232,7 @@ onUnmounted(() => {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
     height: 100%;
     min-width: 0;
   }

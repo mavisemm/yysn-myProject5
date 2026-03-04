@@ -65,14 +65,14 @@ const goBack = () => {
     display: flex;
     flex-direction: column;
     height: 100%;
-    gap: 15px;
+    gap: 10px;
     box-sizing: border-box;
   }
 
   .top-row {
     display: flex;
     height: 60%;
-    gap: 15px;
+    gap: 10px;
     min-height: 0;
   }
 }

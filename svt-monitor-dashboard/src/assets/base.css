@@ -79,7 +79,8 @@ body {
     'Droid Sans',
     'Helvetica Neue',
     sans-serif;
-  font-size: clamp(14px, 2.5vw, 16px); /* 响应式字体大小 */
+  /* 具体字号由 common.scss 中的 html 根字号控制，这里保持 1rem 作为基准 */
+  font-size: 1rem;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

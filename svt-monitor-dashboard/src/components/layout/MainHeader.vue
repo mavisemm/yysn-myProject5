@@ -39,13 +39,23 @@
       <h1 class="title">云音声脑在线监测</h1>
     </div>
 
-    <!-- 右侧：退出 -->
+    <!-- 右侧：时间 + （上方悬浮的切换背景下拉） + 退出 -->
     <div class="header-right">
-      <div class="nav-btn " @click="handleLogout">
-        <el-icon :size="24" color="rgba(153, 240, 255, 1)">
-          <SwitchButton />
-        </el-icon>
-        <span>退出</span>
+      <HeaderClock />
+      <div class="logout-wrapper">
+        <div class="toggle-bg-btn" @click="toggleBackground">
+          <!-- <span>切换背景</span> -->
+          <!-- <div v-if="showBgDropdown" class="toggle-bg-dropdown">
+            <div class="dropdown-item" @click.stop="selectBackground('black')">黑色</div>
+            <div class="dropdown-item" @click.stop="selectBackground('purple')">紫色</div>
+          </div> -->
+        </div>
+        <div class="nav-btn" @click="handleLogout">
+          <el-icon :size="24" color="rgba(153, 240, 255, 1)">
+            <SwitchButton />
+          </el-icon>
+          <span>退出</span>
+        </div>
       </div>
     </div>
   </header>
@@ -56,6 +66,7 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
+import HeaderClock from './HeaderClock.vue'
 
 import {
   SwitchButton,
@@ -69,6 +80,12 @@ const router = useRouter()
 const route = useRoute()
 
 const deviceTreeStore = useDeviceTreeStore()
+
+const emit = defineEmits<{
+  (e: 'change-background', mode: 'black' | 'purple'): void
+}>()
+
+const showBgDropdown = ref(false)
 
 const showHomeButton = computed(() => {
   return route.name === 'DeviceDetail' ||
@@ -88,6 +105,15 @@ const showVibrationButton = computed(() => {
 const showSoundButton = computed(() => {
   return route.name === 'VibrationPoint'
 })
+
+const toggleBackground = () => {
+  showBgDropdown.value = !showBgDropdown.value
+}
+
+const selectBackground = (mode: 'black' | 'purple') => {
+  emit('change-background', mode)
+  showBgDropdown.value = false
+}
 
 const goHome = () => {
   // 重置设备树状态到初始状态
@@ -167,14 +193,14 @@ const handleLogout = () => {
   align-items: center;
   position: relative;
   z-index: 100;
-  padding: 15px;
+  padding: 10px;
 
   .header-left {
     display: flex;
     align-items: center;
     gap: 8px;
     position: absolute;
-    left: 15px;
+    left: 10px;
     top: calc(8vh - 30px);
     z-index: 1;
 
@@ -185,9 +211,9 @@ const handleLogout = () => {
       padding: 8px 12px;
       cursor: pointer;
       transition: all 0.3s;
-      /* 首页/返回设备/振动/声音按钮文字颜色 */
       color: rgba(153, 240, 255, 1);
-      font-size: clamp(14px, 2vw, 18px);
+      /* 使用 rem，相对根字号自适应 */
+      font-size: 1rem;
       font-weight: 500;
       border-radius: 8px;
 
@@ -206,7 +232,8 @@ const handleLogout = () => {
 
     .title {
       margin: 0;
-      font-size: clamp(30px, 4.5vw, 36px);
+      /* 主标题字号：相对根字号的倍数 */
+      font-size: 2rem;
       font-weight: 400;
       letter-spacing: 0px;
       color: rgba(0, 255, 255, 1);
@@ -218,11 +245,58 @@ const handleLogout = () => {
   .header-right {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     position: absolute;
-    right: 15px;
+    right: 10px;
     top: calc(8vh - 30px);
     z-index: 1;
+    
+    .logout-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .toggle-bg-btn {
+      position: absolute;
+      bottom: 85%;
+      left: 0;
+      transform: translateY(-6px);
+      padding: 4px 10px;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: rgba(153, 240, 255, 1);
+
+      &:hover {
+        background: rgba(150, 150, 150, 0.2);
+      }
+    }
+
+    .toggle-bg-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: 4px;
+      background: rgba(0, 0, 0, 0.8);
+      border-radius: 6px;
+      border: 1px solid rgba(153, 240, 255, 0.5);
+      overflow: hidden;
+      backdrop-filter: blur(4px);
+      min-width: 80px;
+
+      .dropdown-item {
+        padding: 4px 10px;
+        font-size: 12px;
+        color: rgba(153, 240, 255, 0.9);
+        cursor: pointer;
+        white-space: nowrap;
+
+        &:hover {
+          background: rgba(150, 150, 150, 0.2);
+        }
+      }
+    }
 
     .nav-btn {
       display: flex;
@@ -231,9 +305,8 @@ const handleLogout = () => {
       padding: 8px 12px;
       cursor: pointer;
       transition: all 0.3s;
-      /* 退出登录按钮文字颜色 */
       color: rgba(153, 240, 255, 1);
-      font-size: clamp(14px, 2vw, 18px);
+      font-size: 1rem;
       font-weight: 500;
       border-radius: 8px;
 
@@ -250,7 +323,8 @@ const handleLogout = () => {
     padding: 0 16px;
 
     .header-center .title {
-      font-size: clamp(24px, 3.5vw, 30px);
+      /* 小屏标题略小一点 */
+      font-size: 1.8rem;
     }
   }
 }

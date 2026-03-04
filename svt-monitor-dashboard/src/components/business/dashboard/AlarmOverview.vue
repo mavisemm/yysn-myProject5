@@ -3,7 +3,21 @@
     <div class="alarm-overview">
         <!-- 顶部区域：标题和搜索栏 -->
         <div class="header-section">
-            <h3 class="app-section-title">预警总览</h3>
+            <div class="title-with-legend">
+                <h3 class="app-section-title">预警总览</h3>
+                <!-- 颜色示例：红=报警，黄=预警，绿=健康 -->
+                <div class="status-legend">
+                    <span class="legend-item">
+                        <span class="legend-dot legend-dot-alarm"></span> 报警
+                    </span>
+                    <span class="legend-item">
+                        <span class="legend-dot legend-dot-warning"></span> 预警
+                    </span>
+                    <span class="legend-item">
+                        <span class="legend-dot legend-dot-healthy"></span> 健康
+                    </span>
+                </div>
+            </div>
             <div class="search-section">
                 <!-- <div class="device-search-wrapper">
                     <el-input v-model="deviceSearch" placeholder="请输入设备名称" :prefix-icon="Search" size="small" clearable
@@ -30,24 +44,25 @@
         <div v-if="filteredAlarms.length === 0" class="alarm-empty">暂无数据</div>
         <div v-else class="alarm-grid" :style="{
             'grid-template-columns': `repeat(${responsivePageSize.columns}, 1fr)`,
-            'grid-auto-rows': '1fr'
+            'grid-template-rows': `repeat(${responsivePageSize.rows}, 1fr)`
         }">
             <div v-for="(alarm, index) in displayedAlarms" :key="index" class="alarm-card"
                 @click="goToDeviceDetail(alarm)">
                 <!-- 第一部分：设备名和状态 -->
                 <div class="card-header">
-                    <span class="device-name" :title="alarm.deviceNameWithShop">{{ alarm.deviceNameWithShop }}</span>
-                    <span :class="['status-dot', alarm.status]"></span>
+                    <span class="device-name" :title="alarm.deviceName">{{ alarm.deviceName }}</span>
+                    <span :class="['status-dot', getDeviceDisplayStatus(alarm)]"></span>
                 </div>
 
-                <!-- 第二部分：报警时间 -->
-                <div class="alarm-time">{{ alarm.time || '暂无' }}</div>
+                <!-- 第二部分：厂区名 + 报警时间（仅时分） -->
+                <div class="alarm-time">{{ alarm.shopName ? alarm.shopName + ' ' : '' }}&nbsp;&nbsp;{{
+                    formatAlarmTime(alarm.time) }}</div>
 
                 <!-- 第三部分：测点网格 -->
                 <div class="measurement-grid">
-                    <div v-for="(point, pointIndex) in alarm.measurementPoints" :key="pointIndex"
-                        :class="['point-item', point.status]">
-                        {{ pointIndex + 1 }}
+                    <div v-for="item in getDisplayPoints(alarm.measurementPoints)" :key="item.pointNum"
+                        :class="['point-item', item.point.status]">
+                        {{ item.pointNum }}
                     </div>
                 </div>
             </div>
@@ -78,10 +93,10 @@ const { t } = useLocale();
 const router = useRouter()
 const deviceTreeStore = useDeviceTreeStore();
 
-// 定义类型
+// 定义类型：报警(alarm)、预警(warning)、健康(healthy) 三种状态
 interface MeasurementPoint {
     name: string;
-    status: 'healthy' | 'warning';
+    status: 'healthy' | 'warning' | 'alarm';
 }
 
 interface AlarmItem {
@@ -89,7 +104,7 @@ interface AlarmItem {
     deviceName: string;
     shopName: string;
     deviceNameWithShop: string;
-    status: 'warning' | 'healthy';
+    status: 'alarm' | 'warning' | 'healthy';
     statusText: string;
     time: string;
     measurementPoints: MeasurementPoint[];
@@ -132,29 +147,19 @@ const currentPage = ref(1);
 const containerWidth = ref(window.innerWidth);
 const containerHeight = ref(window.innerHeight);
 
+// 预警总览：列数随宽度变化，高度足够时显示两行
 const responsivePageSize = computed(() => {
     const width = containerWidth.value;
     const height = containerHeight.value;
-
-    if (width >= 1200) {
-        if (height >= 800) {
-            return { pageSize: 6, columns: 3, rows: 2 };
-        } else {
-            return { pageSize: 3, columns: 3, rows: 1 };
-        }
-    } else if (width >= 768) {
-        if (height >= 800) {
-            return { pageSize: 4, columns: 2, rows: 2 };
-        } else {
-            return { pageSize: 2, columns: 2, rows: 1 };
-        }
-    } else {
-        if (height >= 600) {
-            return { pageSize: 2, columns: 1, rows: 2 };
-        } else {
-            return { pageSize: 1, columns: 1, rows: 1 };
-        }
-    }
+    let columns = 1;
+    if (width >= 1600) columns = 6;
+    else if (width >= 1400) columns = 5;
+    else if (width >= 1200) columns = 4;
+    else if (width >= 992) columns = 4;
+    else if (width >= 768) columns = 3;
+    else if (width >= 576) columns = 2;
+    const rows = height >= 800 ? 2 : 1;
+    return { pageSize: columns * rows, columns, rows };
 });
 
 const rowsCount = computed(() => {
@@ -166,13 +171,18 @@ const pageSize = ref(responsivePageSize.value.pageSize);
 
 const sortOrder = ref<'asc' | 'desc'>("desc");
 
-// 预警总览写死数据（用户指定用死数据）
+// 预警总览写死数据（用户指定用死数据）；status：alarm=报警，warning=预警，healthy=健康
 const alarms = ref<AlarmItem[]>([
-    { id: 'ff8081819a4cd984019a4d524e0d0000', deviceName: '五线三路风机', shopName: '车间A', deviceNameWithShop: '五线三路风机（车间A）', status: 'warning', statusText: '预警', time: '2026-01-15 10:32:00', measurementPoints: [{ name: '3', status: 'warning' }, { name: '2', status: 'healthy' }, { name: '1', status: 'healthy' }, { name: '8', status: 'healthy' }, { name: '7', status: 'warning' }, { name: '6', status: 'healthy' }, { name: '5', status: 'healthy' }, { name: '4', status: 'healthy' }, { name: 'JXA24F5308', status: 'healthy' }, { name: 'JXA24F5307', status: 'healthy' }] },
+    { id: 'ff8081819a4cd984019a4d524e0d0000', deviceName: '五线三路风机', shopName: '车间A', deviceNameWithShop: '五线三路风机（车间A）', status: 'alarm', statusText: '报警', time: '2026-01-15 10:32:00', measurementPoints: [{ name: '3', status: 'alarm' }, { name: '2', status: 'healthy' }, { name: '1', status: 'healthy' }, { name: '8', status: 'healthy' }, { name: '7', status: 'warning' }, { name: '6', status: 'healthy' }, { name: '5', status: 'healthy' }, { name: '4', status: 'healthy' }, { name: 'JXA24F5308', status: 'healthy' }, { name: 'JXA24F5307', status: 'healthy' }] },
     { id: 'ff8081819a623bff019a71fbec550018', deviceName: '往复式压缩机', shopName: '车间A', deviceNameWithShop: '往复式压缩机（车间A）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: 'JS32F21', status: 'healthy' }, { name: 'JS32F20', status: 'healthy' }, { name: 'JS32F19', status: 'healthy' }, { name: 'JS32F18', status: 'healthy' }, { name: 'JS32F17', status: 'healthy' }, { name: 'JS32F16', status: 'healthy' }, { name: 'JS32F15', status: 'healthy' }, { name: 'JS32F14', status: 'healthy' }, { name: 'JS32F13', status: 'healthy' }, { name: 'JS32F12', status: 'healthy' }] },
     { id: 'ff8081819a623bff019a71ee6a950000', deviceName: '五线一路风机', shopName: '车间B', deviceNameWithShop: '五线一路风机（车间B）', status: 'warning', statusText: '预警', time: '2026-01-14 16:20:00', measurementPoints: [{ name: 'JXA29F6106', status: 'healthy' }, { name: 'JXA29F6105', status: 'warning' }, { name: 'JXA29F6104', status: 'healthy' }, { name: 'JXA29F6103', status: 'healthy' }, { name: 'JXA29F6102', status: 'healthy' }, { name: 'JXA29F6101', status: 'healthy' }, { name: 'JXA29F6107', status: 'healthy' }, { name: 'JXA29F6108', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
     { id: 'ff8081819a623bff019a71f434130009', deviceName: '七线一路风机', shopName: '车间C', deviceNameWithShop: '七线一路风机（车间C）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: 'JXA29F8108', status: 'healthy' }, { name: 'JXA29F8107', status: 'healthy' }, { name: 'JXA29F8106', status: 'healthy' }, { name: 'JXA29F8105', status: 'healthy' }, { name: 'JXA29F8102', status: 'healthy' }, { name: 'JXA29F8101', status: 'healthy' }, { name: 'JXA29F8104', status: 'healthy' }, { name: 'JXA29F8103', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
-    { id: 'ff8081819a909f21019a918dcbf00000', deviceName: '旋压机', shopName: '车间D', deviceNameWithShop: '旋压机（车间D）', status: 'warning', statusText: '预警', time: '2026-01-13 08:15:00', measurementPoints: [{ name: '尾顶电磁阀1号点位', status: 'warning' }, { name: 'SHJY-XYJ1号点位', status: 'healthy' }, { name: '测点3', status: 'healthy' }, { name: '测点4', status: 'healthy' }, { name: '测点5', status: 'healthy' }, { name: '测点6', status: 'healthy' }, { name: '测点7', status: 'healthy' }, { name: '测点8', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] }
+    { id: 'ff8081819a909f21019a918dcbf00000', deviceName: '旋压机', shopName: '车间D', deviceNameWithShop: '旋压机（车间D）', status: 'warning', statusText: '预警', time: '2026-01-13 08:15:00', measurementPoints: [{ name: '尾顶电磁阀1号点位', status: 'warning' }, { name: 'SHJY-XYJ1号点位', status: 'healthy' }, { name: '测点3', status: 'healthy' }, { name: '测点4', status: 'healthy' }, { name: '测点5', status: 'healthy' }, { name: '测点6', status: 'healthy' }, { name: '测点7', status: 'healthy' }, { name: '测点8', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
+    { id: 'ff8081819a4cd984019a4d524e0d0000', deviceName: '五线三路风机01', shopName: '车间A', deviceNameWithShop: '五线三路风机（车间A）', status: 'alarm', statusText: '报警', time: '2026-01-15 10:32:00', measurementPoints: [{ name: '3', status: 'alarm' }, { name: '2', status: 'healthy' }, { name: '1', status: 'healthy' }, { name: '8', status: 'healthy' }, { name: '7', status: 'warning' }, { name: '6', status: 'healthy' }, { name: '5', status: 'healthy' }, { name: '4', status: 'healthy' }, { name: 'JXA24F5308', status: 'healthy' }, { name: 'JXA24F5307', status: 'healthy' }] },
+    { id: 'ff8081819a623bff019a71fbec550018', deviceName: '往复式压缩机02', shopName: '车间A', deviceNameWithShop: '往复式压缩机（车间A）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: 'JS32F21', status: 'healthy' }, { name: 'JS32F20', status: 'healthy' }, { name: 'JS32F19', status: 'healthy' }, { name: 'JS32F18', status: 'healthy' }, { name: 'JS32F17', status: 'healthy' }, { name: 'JS32F16', status: 'healthy' }, { name: 'JS32F15', status: 'healthy' }, { name: 'JS32F14', status: 'healthy' }, { name: 'JS32F13', status: 'healthy' }, { name: 'JS32F12', status: 'healthy' }] },
+    { id: 'ff8081819a623bff019a71ee6a950000', deviceName: '五线一路风机03', shopName: '车间B', deviceNameWithShop: '五线一路风机（车间B）', status: 'warning', statusText: '预警', time: '2026-01-14 16:20:00', measurementPoints: [{ name: 'JXA29F6106', status: 'healthy' }, { name: 'JXA29F6105', status: 'warning' }, { name: 'JXA29F6104', status: 'healthy' }, { name: 'JXA29F6103', status: 'healthy' }, { name: 'JXA29F6102', status: 'healthy' }, { name: 'JXA29F6101', status: 'healthy' }, { name: 'JXA29F6107', status: 'healthy' }, { name: 'JXA29F6108', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
+    { id: 'ff8081819a623bff019a71f434130009', deviceName: '七线一路风机04', shopName: '车间C', deviceNameWithShop: '七线一路风机（车间C）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: 'JXA29F8108', status: 'healthy' }, { name: 'JXA29F8107', status: 'healthy' }, { name: 'JXA29F8106', status: 'healthy' }, { name: 'JXA29F8105', status: 'healthy' }, { name: 'JXA29F8102', status: 'healthy' }, { name: 'JXA29F8101', status: 'healthy' }, { name: 'JXA29F8104', status: 'healthy' }, { name: 'JXA29F8103', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
+    { id: 'ff8081819a909f21019a918dcbf00000', deviceName: '旋压机05', shopName: '车间D', deviceNameWithShop: '旋压机（车间D）', status: 'warning', statusText: '预警', time: '2026-01-13 08:15:00', measurementPoints: [{ name: '尾顶电磁阀1号点位', status: 'warning' }, { name: 'SHJY-XYJ1号点位', status: 'healthy' }, { name: '测点3', status: 'healthy' }, { name: '测点4', status: 'healthy' }, { name: '测点5', status: 'healthy' }, { name: '测点6', status: 'healthy' }, { name: '测点7', status: 'healthy' }, { name: '测点8', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] }
 ]);
 
 const allDevices = computed(() => {
@@ -237,17 +247,20 @@ const filteredAlarms = computed(() => {
         });
     }
 
+    // 仅按时间排序（纯时间顺序），不再按状态分组
     result.sort((a, b) => {
-        if (a.status === 'warning' && b.status === 'healthy') return -1;
-        if (a.status === 'healthy' && b.status === 'warning') return 1;
+        const timeA = a.time ? new Date(a.time).getTime() : NaN;
+        const timeB = b.time ? new Date(b.time).getTime() : NaN;
 
-        if (!a.time && !b.time) return 0;
-        if (!a.time) return 1;
-        if (!b.time) return -1;
+        const aHasTime = !isNaN(timeA);
+        const bHasTime = !isNaN(timeB);
 
-        const timeA = new Date(a.time).getTime();
-        const timeB = new Date(b.time).getTime();
+        // 有时间的排在前面，无时间的排在后面
+        if (aHasTime && !bHasTime) return -1;
+        if (!aHasTime && bHasTime) return 1;
+        if (!aHasTime && !bHasTime) return 0;
 
+        // 都有时间时，按 sortOrder 升降序
         if (sortOrder.value === 'desc') {
             return timeB - timeA;
         } else {
@@ -352,6 +365,46 @@ const isValidDevice = (deviceId: string): boolean => {
     return findDeviceInTree(deviceTreeStore.deviceTreeData);
 };
 
+/**
+ * 设备右侧状态圆点的展示逻辑（当报警与预警同时存在时）：
+ * 根据该设备下所有测点取最高等级：报警 > 预警 > 健康。
+ * 即：存在任一测点为「报警」则显示报警；否则存在任一测点为「预警」则显示预警；否则显示健康。
+ */
+function getDeviceDisplayStatus(alarm: AlarmItem): 'alarm' | 'warning' | 'healthy' {
+    const points = alarm.measurementPoints ?? [];
+    const hasAlarm = points.some(p => p.status === 'alarm');
+    const hasWarning = points.some(p => p.status === 'warning');
+    if (hasAlarm) return 'alarm';
+    if (hasWarning) return 'warning';
+    return 'healthy';
+}
+
+/** 获取用于展示的测点：报警/预警按点号排前（如 8 号报警则 8 号最前），最多 8 个，不足则全部显示 */
+function getDisplayPoints(points: MeasurementPoint[]): { point: MeasurementPoint; pointNum: number }[] {
+    const list = points ?? [];
+    const withNum = list.map((p, i) => ({ point: p, pointNum: i + 1 }));
+    const order = { alarm: 0, warning: 1, healthy: 2 };
+    const sorted = withNum.sort((a, b) => {
+        const statusDiff = order[a.point.status] - order[b.point.status];
+        if (statusDiff !== 0) return statusDiff;
+        return a.pointNum - b.pointNum;
+    });
+    return sorted.slice(0, 8);
+}
+
+/** 报警时间显示「月日 时分」，如 01-15 10:32 */
+function formatAlarmTime(time: string | undefined): string {
+    if (!time) return '暂无';
+    const d = new Date(time);
+    if (isNaN(d.getTime())) return '暂无';
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const h = d.getHours();
+    const m = d.getMinutes();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(month)}-${pad(day)} ${pad(h)}:${pad(m)}`;
+}
+
 const goToDeviceDetail = (alarm: AlarmItem) => {
 
     if (isValidDevice(alarm.id)) {
@@ -371,27 +424,70 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
 <style lang="scss" scoped>
 .alarm-overview {
-    flex: 0 0 60%;
-    padding: 20px;
+    height: 100%;
+    min-height: 0;
+    padding: 10px 20px 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    height: 100%;
-    background: url('@/assets/images/background/首页-预警总览背景.png') no-repeat center center;
+    background: url('@/assets/images/background/首页-Top5背景.png') no-repeat center center;
     background-size: 100% 100%;
 
     .header-section {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 15px;
+        gap: 10px;
+
+        .title-with-legend {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex: 0 0 auto;
+            min-width: 0;
+        }
 
         h3 {
             margin: 0;
-            font-size: clamp(22px, 3vw, 26px);
+            /* 标题字号使用 rem，随根字号变化 */
+            // font-size: 1.6rem;
             font-weight: 500;
             white-space: nowrap;
+        }
+
+        .status-legend {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.9rem;
+            white-space: nowrap;
+
+            .legend-item {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .legend-dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                display: inline-block;
+            }
+
+            .legend-dot-alarm {
+                background-color: #c21d1d; // 红色：报警
+            }
+
+            .legend-dot-warning {
+                background-color: #E5ED00; // 黄色：预警
+            }
+
+            .legend-dot-healthy {
+                background-color: #3ab000; // 绿色：健康
+            }
         }
 
         .search-section {
@@ -399,7 +495,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             flex-direction: column;
             justify-content: flex-end;
             align-items: flex-end;
-            gap: 15px;
+            gap: 10px;
             flex: 0 0 auto;
 
             .device-search-wrapper {
@@ -444,7 +540,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                         padding: 8px 12px;
                         cursor: pointer;
                         transition: background-color 0.2s;
-                        font-size: clamp(10px, 1.2vw, 12px);
+                        font-size: 0.75rem;
                         display: flex;
                         flex-direction: column;
                         align-items: flex-start;
@@ -462,7 +558,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
                         .workshop-name {
                             display: block;
-                            font-size: clamp(8px, 1vw, 10px);
+                            font-size: 0.7rem;
                             margin-top: 2px;
                         }
                     }
@@ -470,7 +566,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                     .dropdown-empty {
                         padding: 12px;
                         text-align: center;
-                        font-size: clamp(10px, 1.2vw, 12px);
+                        font-size: 0.8rem;
                         color: white;
                     }
                 }
@@ -522,15 +618,15 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         align-items: center;
         justify-content: center;
         color: rgba(255, 255, 255, 0.6);
-        font-size: 14px;
+        font-size: 0.9rem;
     }
 
     .alarm-grid {
         display: grid;
-        gap: 15px;
+        gap: 10px;
         flex: 1;
         overflow-y: auto;
-        padding-top: 20px;
+        padding-top: 10px;
         width: 100%;
         box-sizing: border-box;
         -ms-overflow-style: none;
@@ -560,7 +656,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
 
-            .card-header {
+                .card-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
@@ -571,7 +667,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                     font-weight: 600;
                     letter-spacing: 1px;
                     color: rgba(255, 255, 255, 1);
-                    font-size: clamp(12px, 1.5vw, 16px);
+                    font-size: 1rem;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
@@ -586,6 +682,13 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                     display: inline-block;
                     vertical-align: middle;
                     margin-left: 8px;
+
+                    &.alarm {
+                        background: url('@/assets/images/background/首页-报警设备.png') no-repeat center center;
+                        background-size: contain;
+                        background-color: #e6a23c;
+                        // animation: status-dot-blink 1.5s ease-in-out infinite;
+                    }
 
                     &.warning {
                         background: url('@/assets/images/background/首页-预警设备.png') no-repeat center center;
@@ -603,27 +706,28 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
             .alarm-time {
                 /* 时间文字样式 */
-                font-size: clamp(12px, 1.4vw, 16px);
+                font-size: 0.9rem;
                 font-weight: 400;
                 letter-spacing: 0.78px;
                 color: rgba(255, 255, 255, 1);
                 white-space: nowrap;
-                margin-bottom: 12px;
+                margin-bottom: 8px;
                 text-align: left;
             }
 
-            .measurement-grid {
+                .measurement-grid {
                 display: grid;
-                grid-template-columns: repeat(5, 1fr);
+                grid-template-columns: repeat(4, 1fr);
                 gap: 6px;
                 flex: 1;
                 min-height: 0;
-
+                
                 .point-item {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: clamp(8px, 1vw, 12px);
+                    max-height: 25px;
+                    font-size: 0.75rem;
                     white-space: nowrap;
                     text-align: center;
                     border-radius: 4px;
@@ -641,6 +745,11 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                         background: url('@/assets/images/background/首页-预警测点.png') no-repeat center center;
                         background-size: 100% 100%;
                     }
+
+                    &.alarm {
+                        background: url('@/assets/images/background/首页-报警测点.png') no-repeat center center;
+                        background-size: 100% 100%;
+                    }
                 }
             }
         }
@@ -653,32 +762,34 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         overflow: hidden;
     }
 
-    /* 响应式设计 */
-    @media (max-width: 1200px) {
-        .alarm-grid {
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    @keyframes status-dot-blink {
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.35;
         }
     }
 
-    @media (max-width: 768px) {
-        .alarm-grid {
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    @media (prefers-reduced-motion: reduce) {
+        .status-dot.alarm {
+            animation: none;
         }
+    }
 
+    /* 预警总览大盒子始终单行，列数由内联 style 根据宽度控制，此处不再覆盖 */
+    @media (max-width: 768px) {
         .header-section {
             flex-direction: column;
             align-items: stretch;
         }
     }
 
-    @media (max-width: 480px) {
-        .alarm-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
     :deep(.el-pagination) {
-        font-size: clamp(12px, 1.2vw, 14px);
+        font-size: 0.9rem;
 
         .el-pagination__jump {
             color: white;
@@ -690,7 +801,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             border: 1px solid transparent;
 
             &.is-active {
-                font-size: clamp(14px, 1.4vw, 16px);
+                font-size: 1rem;
                 color: rgba(153, 240, 255, 0.7);
                 background-color: transparent;
                 border: 1px solid transparent;
@@ -721,7 +832,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             background-color: transparent;
             /* “前往 X 页” 数字输入框字体颜色改为黑色（提升优先级防止被全局样式覆盖） */
             color: #111 !important;
-            font-size: clamp(10px, 1vw, 12px);
+            font-size: 0.8rem;
         }
     }
 }

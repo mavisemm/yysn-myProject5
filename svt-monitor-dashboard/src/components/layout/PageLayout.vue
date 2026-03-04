@@ -1,6 +1,12 @@
 <template>
-  <div class="page-layout">
-    <MainHeader />
+  <div
+    class="page-layout"
+    :class="{
+      'page-layout--black': backgroundMode === 'black',
+      'page-layout--purple': backgroundMode === 'purple'
+    }"
+  >
+    <MainHeader @change-background="handleChangeBackground" />
     <div class="main-content">
       <DeviceSidebar />
 
@@ -13,11 +19,17 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import MainHeader from './MainHeader.vue'
 import DeviceSidebar from './DeviceSidebar.vue'
 import { RouterView } from 'vue-router'
 import { usePointMessageStore } from '@/stores/pointMessage'
+
+const backgroundMode = ref<'image' | 'black' | 'purple'>('image')
+
+const handleChangeBackground = (mode: 'black' | 'purple') => {
+  backgroundMode.value = mode
+}
 
 onMounted(() => {
   usePointMessageStore().loadPointMessage()
@@ -35,20 +47,30 @@ onMounted(() => {
   background-size: 100vw 100vh;
   padding: 0 0.7vw 2.4vh 0.7vw;
 
+  &.page-layout--black {
+    background: #000000;
+    background-size: 100vw 100vh;
+  }
+
+  &.page-layout--purple {
+    background: linear-gradient(180deg, #1a0033 0%, #4b0082 50%, #b266ff 100%);
+    background-size: 100vw 100vh;
+  }
+
   .main-content {
     height: 92vh;
     flex: 1;
     display: flex;
     overflow: hidden;
     min-height: 0;
-    padding: 15px;
+    padding: 10px;
 
     .content-wrapper {
       flex: 1;
       display: flex;
       flex-direction: column;
       height: 100%;
-      padding-left: 15px;
+      padding-left: 8px;
 
 
       &::-webkit-scrollbar {

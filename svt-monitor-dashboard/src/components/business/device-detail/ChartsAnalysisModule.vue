@@ -1751,7 +1751,7 @@ onUnmounted(() => {
         display: grid;
         grid-template-columns: 1fr 1fr;
         grid-template-rows: 1fr 1fr;
-        gap: 15px;
+        gap: 10px;
         min-height: 0;
         overflow: auto;
 
@@ -1844,8 +1844,8 @@ onUnmounted(() => {
                 }
 
                 .analysis-result {
-                    margin-top: 15px;
-                    padding-top: 15px;
+                    margin-top: 10px;
+                    padding-top: 10px;
                     border-top: 1px solid #e4e7ed;
 
                     .result-row {
@@ -1891,7 +1891,7 @@ onUnmounted(() => {
                         font-size: 16px;
                         font-weight: bold;
                         color: #fff;
-                        margin-bottom: 15px;
+                        margin-bottom: 10px;
                         padding: 10px;
                         background: rgba(0, 0, 0, 0.2);
                         border-radius: 4px;
