@@ -291,7 +291,7 @@ watch(
             display: flex;
             flex-direction: column;
             gap: 5px;
-            --ranking-row-height: 24px;
+            --ranking-row-height: 22px;
             margin-bottom: 4px;
             flex: 1;
             min-height: 0;
@@ -380,7 +380,7 @@ watch(
 
 :deep() {
     .chart-container h3.metric-title {
-        font-weight: 400;
+        font-weight: 500;
         letter-spacing: 1.22px;
         color: rgba(255, 255, 255, 1);
         margin: 0 auto !important;

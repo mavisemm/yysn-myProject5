@@ -120,14 +120,13 @@ const playAudio = (row: any) => {
     flex-direction: column;
 
     .section-title {
-        font-size: clamp(18px, 2.5vw, 24px);
-        padding: 20px 20px 0 20px;
+        padding: 10px 20px 0 20px;
     }
 
     .voiceDetail-table-container {
         flex: 1;
         overflow: hidden;
-        padding: 20px 20px 0 20px;
+        padding: 10px 20px 0 20px;
         align-items: stretch;
     }
 
@@ -206,7 +205,7 @@ const playAudio = (row: any) => {
         color: #f56c6c;
         text-align: center;
         font-size: clamp(12px, 1.5vw, 14px);
-        padding: 20px;
+        padding: 10px 20px 20px 20px;
     }
 
     .operate-btns {

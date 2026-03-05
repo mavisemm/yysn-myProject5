@@ -129,7 +129,7 @@ async function main() {
           ),
           createHeading('2.2.1 数据统计区', HeadingLevel.HEADING_3),
           createParagraph(
-            '数据统计区以卡片形式展示“健康设备数”“故障报警设备”“监控总设备数”“趋势预警设备”等关键统计指标。点击“故障报警设备”或“趋势预警设备”卡片，可打开预警设备详情弹窗。'
+            '数据统计区以卡片形式展示“监控总设备”“健康设备”“趋势预警设备”“故障报警设备”等关键统计指标。点击“故障报警设备”或“趋势预警设备”卡片，可打开预警设备详情弹窗。'
           ),
           createHeading('2.2.2 预警总览区', HeadingLevel.HEADING_3),
           createParagraph(

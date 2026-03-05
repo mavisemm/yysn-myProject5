@@ -56,8 +56,8 @@ const showFaultWarningModal = ref(false);
 
 // 统计数据
 const statsData = ref([
-  { title: '监控总设备数', number: 0 },
-  { title: '健康设备数', number: 0 },
+  { title: '监控总设备', number: 0 },
+  { title: '健康设备', number: 0 },
   { title: '趋势预警设备', number: 0 },
   { title: '故障报警设备', number: 0 }
 ]);
@@ -112,16 +112,16 @@ const fetchStatsData = async () => {
     const stats = await getAllStats();
 
     statsData.value = [
-      { title: '监控总设备数', number: stats.totalDeviceCount },
-      { title: '健康设备数', number: stats.healthyDeviceCount },
+      { title: '监控总设备', number: stats.totalDeviceCount },
+      { title: '健康设备', number: stats.healthyDeviceCount },
       { title: '趋势预警设备', number: stats.totalPointCount },
       { title: '故障报警设备', number: stats.alertDeviceCount }
     ];
   } catch (error) {
     console.error('获取统计数据失败:', error);
     statsData.value = [
-      { title: '监控总设备数', number: 0 },
-      { title: '健康设备数', number: 0 },
+      { title: '监控总设备', number: 0 },
+      { title: '健康设备', number: 0 },
       { title: '趋势预警设备', number: 0 },
       { title: '故障报警设备', number: 0 }
     ];

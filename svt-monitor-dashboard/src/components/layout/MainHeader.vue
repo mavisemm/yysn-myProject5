@@ -39,16 +39,50 @@
       <h1 class="title">云音声脑在线监测</h1>
     </div>
 
-    <!-- 右侧：时间 + （上方悬浮的切换背景下拉） + 退出 -->
+    <!-- 右侧：时间 + 主题色块（多主题）+ 退出 -->
     <div class="header-right">
       <HeaderClock />
       <div class="logout-wrapper">
-        <div class="toggle-bg-btn" @click="toggleBackground">
-          <!-- <span>切换背景</span> -->
-          <!-- <div v-if="showBgDropdown" class="toggle-bg-dropdown">
-            <div class="dropdown-item" @click.stop="selectBackground('black')">黑色</div>
-            <div class="dropdown-item" @click.stop="selectBackground('purple')">紫色</div>
-          </div> -->
+        <div
+          class="theme-wrapper"
+          @mouseenter="showThemeDropdown = true"
+        >
+          <div
+            class="theme-trigger"
+            :class="`theme-trigger--${currentBackground}`"
+            title="切换背景"
+          />
+          <div
+            v-show="showThemeDropdown"
+            class="theme-dropdown"
+            @mouseleave="showThemeDropdown = false"
+          >
+            <!-- 下拉中只展示“非当前”的其他主题 -->
+            <div
+              v-if="currentBackground !== 'image'"
+              class="theme-square theme-square--image"
+              title="默认蓝色背景"
+              @click="selectBackground('image')"
+            />
+            <div
+              v-if="currentBackground !== 'gray'"
+              class="theme-square theme-square--gray"
+              title="灰色背景"
+              @click="selectBackground('gray')"
+            />
+            <div
+              v-if="currentBackground !== 'green'"
+              class="theme-square theme-square--green"
+              title="绿色背景"
+              @click="selectBackground('green')"
+            />
+            <div
+              v-if="currentBackground !== 'navy'"
+              class="theme-square theme-square--navy"
+              title="深蓝色背景"
+              @click="selectBackground('navy')"
+            />
+          </div>
         </div>
         <div class="nav-btn" @click="handleLogout">
           <el-icon :size="24" color="rgba(153, 240, 255, 1)">
@@ -81,11 +115,16 @@ const route = useRoute()
 
 const deviceTreeStore = useDeviceTreeStore()
 
+interface Props {
+  currentBackground?: 'image' | 'gray' | 'green' | 'navy'
+}
+withDefaults(defineProps<Props>(), { currentBackground: 'image' })
+
 const emit = defineEmits<{
-  (e: 'change-background', mode: 'black' | 'purple'): void
+  (e: 'change-background', mode: 'image' | 'gray' | 'green' | 'navy'): void
 }>()
 
-const showBgDropdown = ref(false)
+const showThemeDropdown = ref(false)
 
 const showHomeButton = computed(() => {
   return route.name === 'DeviceDetail' ||
@@ -106,13 +145,9 @@ const showSoundButton = computed(() => {
   return route.name === 'VibrationPoint'
 })
 
-const toggleBackground = () => {
-  showBgDropdown.value = !showBgDropdown.value
-}
-
-const selectBackground = (mode: 'black' | 'purple') => {
+const selectBackground = (mode: 'image' | 'gray' | 'green' | 'navy') => {
   emit('change-background', mode)
-  showBgDropdown.value = false
+  showThemeDropdown.value = false
 }
 
 const goHome = () => {
@@ -255,46 +290,86 @@ const handleLogout = () => {
       position: relative;
       display: flex;
       align-items: center;
+      gap: 10px;
     }
 
-    .toggle-bg-btn {
-      position: absolute;
-      bottom: 85%;
-      left: 0;
-      transform: translateY(-6px);
-      padding: 4px 10px;
+    .theme-wrapper {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .theme-trigger {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
       cursor: pointer;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      color: rgba(153, 240, 255, 1);
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      transition: box-shadow 0.2s;
 
       &:hover {
-        background: rgba(150, 150, 150, 0.2);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.35);
+      }
+
+      &--image {
+        background: #135ba9;
+      }
+
+      &--gray {
+        background: linear-gradient(135deg, #4a4a4a 0%, #6b7280 50%, #9ca3af 100%);
+      }
+      
+      &--green {
+        background: linear-gradient(135deg, #064e3b 0%, #10b981 45%, #6ee7b7 100%);
+      }
+
+      &--navy {
+        background: #061028;
       }
     }
 
-    .toggle-bg-dropdown {
+    .theme-dropdown {
       position: absolute;
       top: 100%;
-      left: 0;
-      margin-top: 4px;
-      background: rgba(0, 0, 0, 0.8);
-      border-radius: 6px;
-      border: 1px solid rgba(153, 240, 255, 0.5);
-      overflow: hidden;
-      backdrop-filter: blur(4px);
-      min-width: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 6px;
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.18);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    }
 
-      .dropdown-item {
-        padding: 4px 10px;
-        font-size: 12px;
-        color: rgba(153, 240, 255, 0.9);
-        cursor: pointer;
-        white-space: nowrap;
+    .theme-square {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s, box-shadow 0.2s;
 
-        &:hover {
-          background: rgba(150, 150, 150, 0.2);
-        }
+      &:hover {
+        transform: scale(1.1);
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+      }
+
+      &--image {
+        background: #135ba9;
+      }
+
+      &--gray {
+        background: linear-gradient(135deg, #4a4a4a 0%, #6b7280 50%, #9ca3af 100%);
+      }
+
+      &--green {
+        background: linear-gradient(135deg, #064e3b 0%, #10b981 45%, #6ee7b7 100%);
+      }
+
+      &--navy {
+        background: #061028;
       }
     }
 

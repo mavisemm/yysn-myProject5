@@ -37,8 +37,8 @@ const emit = defineEmits<{
 }>();
 
 const ICON_BY_TITLE: Record<string, string> = {
-    '健康设备数': new URL('@/assets/images/background/首页-健康设备数.png', import.meta.url).href,
-    '监控总设备数': new URL('@/assets/images/background/首页-监控总设备数.png', import.meta.url).href,
+    '健康设备': new URL('@/assets/images/background/首页-健康设备数.png', import.meta.url).href,
+    '监控总设备': new URL('@/assets/images/background/首页-监控总设备数.png', import.meta.url).href,
     '趋势预警设备': new URL('@/assets/images/background/首页-监测点位数.png', import.meta.url).href,
     '故障报警设备': new URL('@/assets/images/background/首页-预警设备数.png', import.meta.url).href,
 };
@@ -180,7 +180,7 @@ function isAlertOrWarning(stat: StatItem) {
 
         .stat-number {
             /* 数值文字 */
-            font-size: 1.6rem;
+            font-size: 1.8rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;

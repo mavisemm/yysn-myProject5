@@ -3,14 +3,6 @@
         <div class="module-header">
             <div class="header-main">
                 <h3 class="module-title app-section-title">设备详情</h3>
-                <div class="header-actions">
-                    <el-button type="primary" size="small" @click="openAddFieldDialog" class="add-field-btn">
-                        添加信息
-                    </el-button>
-                    <el-button type="primary" size="small" @click="toggleEdit" class="edit-btn">
-                        {{ isEditing ? '保存' : '编辑' }}
-                    </el-button>
-                </div>
             </div>
         </div>
         <div class="device-main">
@@ -33,6 +25,16 @@
                         <div ref="vibrationGaugeRef" class="gauge"></div>
                     </div>
                 </div>
+            </div>
+
+            <!-- 操作按钮：放在健康度下方、设备信息上方 -->
+            <div class="header-actions">
+                <el-button type="primary" size="small" @click="openAddFieldDialog" class="add-field-btn">
+                    添加信息
+                </el-button>
+                <el-button type="primary" size="small" @click="toggleEdit" class="edit-btn">
+                    {{ isEditing ? '保存' : '编辑' }}
+                </el-button>
             </div>
 
             <!-- 设备基本信息：排在最下方 -->
@@ -831,10 +833,7 @@ onUnmounted(() => {
 
 
     .module-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 20px 20px 0 20px;
+        padding: 10px 20px 0 20px;
 
         .header-main {
             display: flex;
@@ -845,29 +844,28 @@ onUnmounted(() => {
             .module-title {
                 margin: 0;
             }
+        }
+    }
 
-            .header-actions {
-                display: flex;
-                gap: 10px;
-            }
-            .add-field-btn{
-                margin-right: -12px;
-            }
+    /* 顶部健康度与下方设备信息之间的操作按钮区域 */
+    .header-actions {
+        margin-top: 12px;
+        margin-bottom: 4px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
 
-            .edit-btn {
-                font-size: 12px;
-            }
-
-            .collapse-btn {
-                font-size: 12px;
-            }
+        .add-field-btn {
+            margin-right: -12px;
         }
 
-
+        .edit-btn {
+            font-size: 12px;
+        }
     }
 
     .device-main {
-        padding: 20px;
+        padding: 10px 20px 20px 20px;
         flex: 1;
 
         .device-no-data {

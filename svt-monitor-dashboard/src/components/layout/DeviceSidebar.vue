@@ -712,22 +712,12 @@ onUnmounted(() => {
 
         .custom-search-input {
           :deep(.el-input__wrapper) {
-            height: 30px;
-            background: url('@/assets/images/background/首页-搜索框背景.png') no-repeat center center;
-            background-size: 100% 100%;
+            height: 24px;
             border-radius: 4px;
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-            border: none;
 
             // 修改输入框内部文字颜色，使其在浅色背景上更易读
             .el-input__inner {
-              color: white !important;
               background: transparent;
-            }
-
-            // 搜索图标颜色
-            .el-input__prefix {
-              color: white;
             }
           }
         }
@@ -737,8 +727,7 @@ onUnmounted(() => {
           top: 100%;
           left: 0;
           right: 0;
-          background-color: #0b44a3;
-          border: 1px solid #0558a8;
+          background-color: #fff;
           border-top: none;
           box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
           z-index: 2000;
@@ -754,10 +743,10 @@ onUnmounted(() => {
             /* 响应式字体大小 */
             display: flex;
             align-items: center;
-            color: white;
+            color: #606266;
 
             &:hover {
-              background-color: #1a5fb4;
+              background-color: #ccc;
             }
 
             .workshop-name {

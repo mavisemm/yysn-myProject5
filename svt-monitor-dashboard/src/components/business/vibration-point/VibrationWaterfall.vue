@@ -304,25 +304,6 @@ onUnmounted(() => {
                     font-size: 12px;
                 }
             }
-
-            .time-search-input {
-                :deep(.el-input__wrapper) {
-                    // background: url('@/assets/images/background/首页-搜索框背景.png') no-repeat center center;
-                    // background-size: 100% 100%;
-                    border-radius: 4px;
-                    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-                    border: none;
-
-                    .el-input__inner {
-                        color: white;
-                        background: transparent;
-                    }
-
-                    .el-input__prefix {
-                        color: white;
-                    }
-                }
-            }
         }
     }
 

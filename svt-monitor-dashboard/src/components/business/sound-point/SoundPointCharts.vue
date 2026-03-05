@@ -224,13 +224,13 @@ defineExpose({
         .chart-title {
             font-size: clamp(18px, 2.5vw, 24px);
             text-align: center;
-            padding: 20px 20px 0 20px;
+            padding: 10px 20px 0 20px;
         }
 
         .chart-container {
             flex: 1;
             min-height: 200px;
-            padding: 20px;
+            padding: 10px 20px 20px 20px;
         }
     }
 }

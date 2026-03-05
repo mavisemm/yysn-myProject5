@@ -19,10 +19,10 @@ export const getHealthyDeviceCount = (): Promise<StatsResponse> => {
   })
 }
 
-// 获取报警设备数量
-export const getAlertDeviceCount = (): Promise<StatsResponse> => {
-  return request.get('/taicang/hardware/device/overview/healthy/number', {
-    params: overviewParams,
+// 获取故障报警设备数量（确认数）
+export const getAffirmDeviceCount = (): Promise<StatsResponse> => {
+  return request.get('/taicang/hardware/device/overview/affirm/number', {
+    params: { userId: '', tenantId: TENANT_ID, _t: Date.now() },
     showLoading: false
   })
 }
@@ -108,7 +108,7 @@ export const getAllStats = async () => {
   try {
     const [healthyCount, alertCount, totalCount, warningCount] = await Promise.all([
       getHealthyDeviceCount(),
-      getAlertDeviceCount(),
+      getAffirmDeviceCount(),
       getTotalDeviceCount(),
       getWarningDeviceCount()
     ])

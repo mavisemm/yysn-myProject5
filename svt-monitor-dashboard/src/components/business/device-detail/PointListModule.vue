@@ -170,7 +170,7 @@ defineExpose({
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 20px 20px 0 20px;
+        padding: 10px 20px 0 20px;
 
         .module-title {
             margin: 0;
@@ -184,7 +184,7 @@ defineExpose({
         background: none !important;
         min-width: 0;
         /* 允许flex子项收缩 */
-        padding: 20px;
+        padding: 10px 20px 20px 20px;
         display: flex;
         align-items: stretch;
     }
