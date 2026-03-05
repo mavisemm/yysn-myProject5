@@ -27,6 +27,7 @@
         </div>
 
         <el-dialog v-model="rankDialogVisible" width="480px" class="rank-dialog" destroy-on-close
+            append-to-body
             @close="rankDialogMetricIndex = -1">
             <template #header>
                 <span class="dialog-header-inner">
@@ -187,10 +188,10 @@ const updateWindowSize = () => {
 
 const maxVisibleRows = computed(() => {
     const h = windowHeight.value;
-    if (h >= 1000) return 5;
-    if (h >= 850) return 4;
+    if (h >= 920) return 4;
     if (h >= 780) return 3;
-    return 2;
+    if (h >= 650) return 2;
+    return 1;
 });
 
 // 兼容模板上的 ref 绑定（不再使用具体元素）
@@ -314,7 +315,7 @@ watch(
                 box-sizing: border-box;
                 padding: 6px 10px;
                 /* 排名行字体，稍小于标题 */
-                font-size: 0.95rem;
+                font-size: 0.9rem;
                 height: var(--ranking-row-height);
                 flex: 0 0 auto;
                 cursor: pointer;
@@ -353,14 +354,15 @@ watch(
             }
         }
 
-        @media (max-height: 1000px) {
+        /* 根据窗口高度与 maxVisibleRows 断点保持一致的样式收缩 */
+        @media (max-height: 920px) {
             .ranking-item {
                 margin: 2px 10px;
                 padding: 6px 10px;
             }
         }
 
-        @media (max-height: 850px) {
+        @media (max-height: 780px) {
             .ranking-item { 
                 padding: 5px 12px;
                 font-size: 0.85rem;
@@ -368,7 +370,7 @@ watch(
             }
         }
 
-        @media (max-height: 780px) {
+        @media (max-height: 650px) {
             .ranking-item {
                 margin: 1px 10px;
                 padding: 4px 12px;
@@ -410,7 +412,6 @@ watch(
     color: #606266 !important;
 
     .dialog-unit-inline {
-        font-size: 12px;
         color: #606266 !important;
         font-weight: normal;
     }

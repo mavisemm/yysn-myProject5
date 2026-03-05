@@ -222,7 +222,6 @@ defineExpose({
         border-radius: 8px;
 
         .chart-title {
-            font-size: clamp(18px, 2.5vw, 24px);
             text-align: center;
             padding: 10px 20px 0 20px;
         }

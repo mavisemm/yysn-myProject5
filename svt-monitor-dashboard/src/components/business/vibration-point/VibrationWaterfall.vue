@@ -270,29 +270,28 @@ onUnmounted(() => {
     .card-header {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        padding: 20px 20px 0 20px;
+        padding: 10px 20px 0 20px;
 
         .card-title {
-            font-size: clamp(16px, 1.5vw, 20px);
-            //font-weight: bold;
             color: #fff;
         }
 
         .time-section {
+            width: 320px;
             display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
 
             .interval-input {
+                font-size: 0.9rem;
                 display: flex;
                 align-items: center;
+                justify-content: flex-end;
                 gap: 6px;
 
                 .interval-label {
                     color: #fff;
-                    font-size: 13px;
                 }
 
                 .interval-num {
@@ -301,7 +300,6 @@ onUnmounted(() => {
 
                 .interval-unit {
                     color: rgba(255, 255, 255, 0.8);
-                    font-size: 12px;
                 }
             }
         }

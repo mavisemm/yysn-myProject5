@@ -858,10 +858,6 @@ onUnmounted(() => {
         .add-field-btn {
             margin-right: -12px;
         }
-
-        .edit-btn {
-            font-size: 12px;
-        }
     }
 
     .device-main {
@@ -896,11 +892,11 @@ onUnmounted(() => {
 
                     .info-label {
                         color: #ccc;
-                        font-size: 14px;
+                        font-size: 0.9rem;
                     }
 
                     .info-value {
-                        font-size: 14px;
+                        font-size: 0.9rem;
                         margin-bottom: 5px;
                         font-weight: 500;
                         white-space: normal;
@@ -939,7 +935,6 @@ onUnmounted(() => {
                         width: 60px;
                         flex-shrink: 0;
                         color: #ccc;
-                        font-size: 14px;
                     }
                 }
             }
@@ -984,8 +979,6 @@ onUnmounted(() => {
                     text-align: center;
 
                     .gauge-score {
-                        font-size: 20px;
-                        //font-weight: bold;
                         color: white;
                     }
                 }

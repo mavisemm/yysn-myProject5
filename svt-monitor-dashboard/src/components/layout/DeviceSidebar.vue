@@ -2,7 +2,7 @@
   <aside class="device-sidebar">
     <!-- 标题 -->
     <div class="sidebar-header">
-      <h3 class="sidebar-title app-section-title">设备列表</h3>
+      <h3 class="sidebar-title">设备列表</h3>
     </div>
 
     <!-- 搜索区域 -->
@@ -226,24 +226,32 @@ let timeoutId: number | null = null;
 onMounted(async () => {
   await nextTick();
 
-  const stopWatch = watch(
-    () => deviceTreeStore.deviceTreeData,
-    (newData) => {
-      if (newData && newData.length > 0) {
-        stopWatch();
-
-        timeoutId = window.setTimeout(() => {
-          const firstWorkshopId = getFirstWorkshopId()
-          if (firstWorkshopId) {
-            deviceTreeStore.setExpandedKeys(['factory-1', firstWorkshopId])
-          } else {
-            deviceTreeStore.setExpandedKeys(['factory-1'])
-          }
-        }, 100);
+  const expandDefaultNodes = () => {
+    timeoutId = window.setTimeout(() => {
+      const firstWorkshopId = getFirstWorkshopId()
+      if (firstWorkshopId) {
+        deviceTreeStore.setExpandedKeys(['factory-1', firstWorkshopId])
+      } else {
+        deviceTreeStore.setExpandedKeys(['factory-1'])
       }
-    },
-    { immediate: true }
-  );
+    }, 100)
+  }
+
+  // 如果挂载时已经有数据，直接执行；否则监听到首次加载后执行一次并停止监听
+  if (deviceTreeStore.deviceTreeData && deviceTreeStore.deviceTreeData.length > 0) {
+    expandDefaultNodes()
+  } else {
+    const stopWatch = watch(
+      () => deviceTreeStore.deviceTreeData,
+      (newData) => {
+        if (newData && newData.length > 0) {
+          stopWatch()
+          expandDefaultNodes()
+        }
+      },
+      { immediate: false }
+    )
+  }
 
   watch(selectedDeviceId, updateSelection, { immediate: true })
 
@@ -695,6 +703,13 @@ onUnmounted(() => {
     flex-shrink: 0;
     justify-content: space-between;
     padding: 10px 20px 0;
+
+    .sidebar-title{
+      font-weight: 500;
+      letter-spacing: 1.22px;
+      color: rgba(255, 255, 255, 1);
+      font-size: 1.4rem;
+    }
   }
 
   .search-area {
@@ -739,7 +754,6 @@ onUnmounted(() => {
             padding: 8px 12px;
             cursor: pointer;
             transition: background-color 0.2s;
-            font-size: clamp(10px, 1.5vw, 12px);
             /* 响应式字体大小 */
             display: flex;
             align-items: center;
@@ -750,7 +764,6 @@ onUnmounted(() => {
             }
 
             .workshop-name {
-              font-size: clamp(10px, 1.5vw, 12px);
               /* 响应式字体大小 */
               margin-left: 4px;
               flex-shrink: 0;
@@ -776,7 +789,6 @@ onUnmounted(() => {
           .dropdown-empty {
             padding: 12px;
             text-align: center;
-            font-size: clamp(12px, 2vw, 14px);
             /* 响应式字体大小 */
             color: white;
           }
@@ -793,13 +805,16 @@ onUnmounted(() => {
     min-height: 0;
     overflow: hidden;
 
+    .node-label{
+      font-size: 0.9rem;
+    }
+
     .no-data {
       flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
       color: rgba(255, 255, 255, 0.7);
-      font-size: clamp(14px, 2vw, 16px);
     }
 
     .tree-scrollbar {
@@ -854,7 +869,6 @@ onUnmounted(() => {
     .expand-icon {
       cursor: pointer;
       transition: transform 0.2s;
-      font-size: clamp(14px, 2.5vw, 16px);
       /* 响应式字体大小，以16px为基准 */
       /* 展开/收起图标颜色 */
       color: rgba(153, 240, 255, 1) !important;
@@ -882,15 +896,12 @@ onUnmounted(() => {
       flex-shrink: 0;
 
       .el-icon {
-        font-size: clamp(14px, 2.5vw, 16px);
-        /* 响应式字体大小，以16px为基准 */
-        color: inherit !important; // 继承 node-icon 颜色，保持与文字一致
+        color: inherit !important;
       }
     }
 
     .node-label {
       flex: 1;
-      font-size: clamp(14px, 2.5vw, 16px);
       /* 响应式字体大小，以16px为基准 */
       overflow: hidden;
       text-overflow: ellipsis;

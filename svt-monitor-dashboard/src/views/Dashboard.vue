@@ -20,13 +20,14 @@
       </ThreeMetrics>
     </div>
 
-    <TrendWarningDeviceModal v-model="showTrendWarningModal" title="趋势预警设备详情" />
-    <TrendWarningDeviceModal v-model="showFaultWarningModal" title="故障报警设备详情" />
+    <TrendWarningDeviceModal v-model="showTrendWarningModal" title="趋势预警设备详情" mode="trend" />
+    <TrendWarningDeviceModal v-model="showFaultWarningModal" title="故障报警设备详情" mode="fault"
+      :count="faultAlertCount" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, reactive } from 'vue';
+import { onMounted, ref, reactive, computed } from 'vue';
 import DashboardStats from '@/components/business/dashboard/DashboardStats.vue';
 import AlarmOverview from '@/components/business/dashboard/AlarmOverview.vue';
 import ThreeMetrics from '@/components/business/dashboard/ThreeMetrics.vue';
@@ -61,6 +62,11 @@ const statsData = ref([
   { title: '趋势预警设备', number: 0 },
   { title: '故障报警设备', number: 0 }
 ]);
+
+const faultAlertCount = computed(() => {
+  const item = statsData.value.find(s => s.title === '故障报警设备');
+  return Number(item?.number ?? 0);
+});
 
 /**
  * 获取Top5设备数据

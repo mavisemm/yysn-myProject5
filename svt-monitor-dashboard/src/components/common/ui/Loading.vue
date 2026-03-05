@@ -75,7 +75,6 @@ const props = withDefaults(defineProps<Props>(), {
 .loading-text {
     margin-top: 10px;
     color: #fff;
-    font-size: clamp(12px, 2vw, 14px);
     /* 响应式字体大小 */
     text-align: center;
 }

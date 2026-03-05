@@ -103,7 +103,6 @@ watch(() => props.audioPath, (newPath) => {
 
     .section-title {
         padding: 10px 20px 0 20px;
-        font-size: clamp(18px, 2.5vw, 24px);
     }
 
     .info-scroll-area {
@@ -128,15 +127,14 @@ watch(() => props.audioPath, (newPath) => {
                 min-height: 28px;
 
                 .info-label {
-                    //font-weight: bold;
-                    font-size: clamp(12px, 1.5vw, 16px);
+                    font-size: 0.9rem;
                     color: #ccc;
                     white-space: nowrap;
                     flex-shrink: 0;
                 }
 
                 .info-value {
-                    font-size: clamp(14px, 2vw, 16px);
+                    font-size: 0.9rem;
                     color: #fff;
                     white-space: nowrap;
                     overflow: hidden;

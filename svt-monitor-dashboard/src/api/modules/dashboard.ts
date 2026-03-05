@@ -2,7 +2,6 @@ import request from '../request'
 
 // 仪表盘相关 API 接口
 
-// 仪表盘统计信息类型定义
 export interface DashboardStats {
   totalDevices: number
   onlineDevices: number
@@ -25,7 +24,7 @@ export interface DashboardStatsResponse {
 }
 
 export interface AlarmOverview {
-  level: string // 'critical' | 'high' | 'medium' | 'low'
+  level: string 
   count: number
   percentage: number
 }

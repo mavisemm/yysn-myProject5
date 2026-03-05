@@ -133,6 +133,7 @@ const playAudio = (row: any) => {
     :deep(.el-table) {
         background: transparent !important;
         --el-table-border-color: none !important;
+        font-size: 0.8rem;
 
         .el-table__header {
             width: 100% !important;
@@ -185,7 +186,6 @@ const playAudio = (row: any) => {
         th {
             background: transparent !important;
             color: white !important;
-            font-size: clamp(12px, 1.8vw, 14px);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -194,7 +194,6 @@ const playAudio = (row: any) => {
         td {
             background: transparent !important;
             color: white !important;
-            font-size: clamp(12px, 1.8vw, 14px);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -204,7 +203,6 @@ const playAudio = (row: any) => {
     .hint-text {
         color: #f56c6c;
         text-align: center;
-        font-size: clamp(12px, 1.5vw, 14px);
         padding: 10px 20px 20px 20px;
     }
 

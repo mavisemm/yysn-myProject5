@@ -370,11 +370,9 @@ onUnmounted(() => {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 20px 20px 0 20px;
+        padding: 10px 20px 0 20px;
 
         .card-title {
-            font-size: clamp(16px, 1.5vw, 20px);
-            //font-weight: bold;
             color: #fff;
         }
     }
@@ -399,7 +397,6 @@ onUnmounted(() => {
             align-items: center;
             justify-content: center;
             color: #fff;
-            font-size: 16px;
             font-weight: 500;
         }
     }

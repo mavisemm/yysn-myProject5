@@ -112,7 +112,7 @@ interface AlarmItem {
 
 interface DeviceItem {
     id: string | number;
-    name: string; // 完整显示用：设备名（车间名）
+    name: string; 
     deviceName: string;
     workshopName: string;
 }
@@ -120,7 +120,6 @@ interface DeviceItem {
 const extractDevicesFromTree = (nodes: DeviceNode[]): DeviceItem[] => {
     const devices: DeviceItem[] = [];
 
-    // 与 DeviceSidebar 一致：按 factory -> workshop -> device 结构遍历，从父级 workshop 获取车间名
     nodes.forEach(factory => {
         factory.children?.forEach(workshop => {
             workshop.children?.forEach(device => {
@@ -171,9 +170,8 @@ const pageSize = ref(responsivePageSize.value.pageSize);
 
 const sortOrder = ref<'asc' | 'desc'>("desc");
 
-// 预警总览写死数据（用户指定用死数据）；仅包含 2 个预警设备，无报警设备；status：warning=预警，healthy=健康
 const alarms = ref<AlarmItem[]>([
-    { id: 'ff8081819a623bff019a71ee6a950000', deviceName: '五线一路风机', shopName: '车间B', deviceNameWithShop: '五线一路风机（车间B）', status: 'warning', statusText: '预警', time: '2026-01-14 16:20:00', measurementPoints: [{ name: 'JXA29F6106', status: 'healthy' }, { name: 'JXA29F6105', status: 'warning' }, { name: 'JXA29F6104', status: 'healthy' }, { name: 'JXA29F6103', status: 'healthy' }, { name: 'JXA29F6102', status: 'healthy' }, { name: 'JXA29F6101', status: 'healthy' }, { name: 'JXA29F6107', status: 'healthy' }, { name: 'JXA29F6108', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
+    { id: 'ff8081819a623bff019a71ee6a950000', deviceName: '五线一路风机12', shopName: '车间B', deviceNameWithShop: '五线一路风机（车间B）', status: 'warning', statusText: '预警', time: '2026-01-14 16:20:00', measurementPoints: [{ name: 'JXA29F6106', status: 'healthy' }, { name: 'JXA29F6105', status: 'warning' }, { name: 'JXA29F6104', status: 'healthy' }, { name: 'JXA29F6103', status: 'healthy' }, { name: 'JXA29F6102', status: 'healthy' }, { name: 'JXA29F6101', status: 'healthy' }, { name: 'JXA29F6107', status: 'healthy' }, { name: 'JXA29F6108', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
     { id: 'ff8081819a909f21019a918dcbf00000', deviceName: '旋压机', shopName: '车间D', deviceNameWithShop: '旋压机（车间D）', status: 'warning', statusText: '预警', time: '2026-01-13 08:15:00', measurementPoints: [{ name: '尾顶电磁阀1号点位', status: 'warning' }, { name: 'SHJY-XYJ1号点位', status: 'healthy' }, { name: '测点3', status: 'healthy' }, { name: '测点4', status: 'healthy' }, { name: '测点5', status: 'healthy' }, { name: '测点6', status: 'healthy' }, { name: '测点7', status: 'healthy' }, { name: '测点8', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
     { id: 'ff8081819a4cd984019a4d524e0d0000', deviceName: '五线三路风机', shopName: '车间A', deviceNameWithShop: '五线三路风机（车间A）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: '3', status: 'healthy' }, { name: '2', status: 'healthy' }, { name: '1', status: 'healthy' }, { name: '8', status: 'healthy' }, { name: '7', status: 'healthy' }, { name: '6', status: 'healthy' }, { name: '5', status: 'healthy' }, { name: '4', status: 'healthy' }, { name: 'JXA24F5308', status: 'healthy' }, { name: 'JXA24F5307', status: 'healthy' }] },
     { id: 'ff8081819a623bff019a71fbec550018', deviceName: '往复式压缩机', shopName: '车间A', deviceNameWithShop: '往复式压缩机（车间A）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: 'JS32F21', status: 'healthy' }, { name: 'JS32F20', status: 'healthy' }, { name: 'JS32F19', status: 'healthy' }, { name: 'JS32F18', status: 'healthy' }, { name: 'JS32F17', status: 'healthy' }, { name: 'JS32F16', status: 'healthy' }, { name: 'JS32F15', status: 'healthy' }, { name: 'JS32F14', status: 'healthy' }, { name: 'JS32F13', status: 'healthy' }, { name: 'JS32F12', status: 'healthy' }] },

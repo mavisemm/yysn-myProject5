@@ -102,11 +102,9 @@ onMounted(() => {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 20px 20px 0 20px;
+        padding: 10px 20px 0 20px;
 
         .card-title {
-            font-size: clamp(16px, 1.5vw, 20px);
-            //font-weight: bold;
             color: #fff;
         }
     }
@@ -133,6 +131,7 @@ onMounted(() => {
         padding: 20px;
 
         .stat-box {
+            font-size: 0.9rem;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(150, 150, 150, 0.1);
             border-radius: 4px;
@@ -142,21 +141,19 @@ onMounted(() => {
             align-items: center;
 
             .stat-label {
-                font-size: 14px;
                 color: rgba(255, 255, 255, 0.7);
                 margin-bottom: 5px;
             }
 
             .stat-value {
-                font-size: 20px;
-                //font-weight: bold;
                 color: #00f2fe;
+                font-size: 1rem;
 
                 .unit {
-                    font-size: 12px;
                     font-weight: normal;
                     color: rgba(255, 255, 255, 0.5);
                     margin-left: 4px;
+                    font-size: 0.9rem;
                 }
             }
         }

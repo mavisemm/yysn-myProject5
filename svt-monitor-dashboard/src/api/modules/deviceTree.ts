@@ -51,16 +51,12 @@ export interface PointData {
  * 获取设备树数据
  */
 export const getDeviceTreeData = (): Promise<DeviceTreeResponse> => {
-  console.log('正在请求设备树数据...');
   // 直接使用完整路径，让Vite代理处理
   return request.get<DeviceTreeResponse>('/taicang/hardware/device/vibration/tree')
     .then(response => {
-      console.log('设备树API响应成功:', response);
       return response;
     })
     .catch(error => {
-      console.error('设备树API请求失败:', error);
-      console.error('错误详情:', error.message || error);
       // 接口不通时返回空数据，由前端显示"暂无数据"
       return { rc: 1, ret: [], err: error?.message || '接口请求失败' };
     });

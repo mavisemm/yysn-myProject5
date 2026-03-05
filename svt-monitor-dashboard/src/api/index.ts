@@ -9,7 +9,6 @@ import * as statsApi from './modules/stats'
 import * as voiceSoundApi from './modules/voiceSound'
 import * as zyServiceApi from './modules/zyservice'
 
-// 统一导出所有 API 模块
 export {
   deviceApi,
   loginApi,
@@ -22,6 +21,5 @@ export {
   zyServiceApi
 }
 
-// 默认导出 request 实例
 export { default } from './request'
 export * from './request'

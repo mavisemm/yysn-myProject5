@@ -13,18 +13,12 @@ export const useDeviceTreeStore = defineStore('deviceTree', () => {
   // 从API加载设备树数据
   const loadDeviceTreeData = async () => {
     try {
-      console.log('开始加载设备树数据...');
       loading.value = true;
       const response = await getDeviceTreeData();
-      console.log('收到API响应，开始转换数据...', response);
       const transformedData = transformDeviceTreeData(response);
-      console.log('数据转换完成，更新设备树...', transformedData);
       deviceTreeData.value = transformedData;
-      console.log('设备树数据更新完成，共有', transformedData.length, '个顶层节点');
     } catch (error) {
-      console.error('加载设备树数据失败:', error);
-      // 可以选择显示错误信息给用户
-      // 或者保持现有数据不变
+      
     } finally {
       loading.value = false;
     }

@@ -197,6 +197,7 @@ defineExpose({
     :deep(.el-table) {
         background: transparent !important;
         --el-table-border-color: none !important;
+        font-size: 0.8rem;
 
         .el-table__header {
             width: 100% !important;
@@ -250,7 +251,6 @@ defineExpose({
 
         th {
             background: transparent !important;
-            font-size: clamp(10px, 1.5vw, 12px);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -266,7 +266,6 @@ defineExpose({
 
         td {
             background: transparent !important;
-            font-size: clamp(10px, 1.5vw, 12px);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;

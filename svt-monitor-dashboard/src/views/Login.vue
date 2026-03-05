@@ -144,14 +144,12 @@ const handleLogin = async () => {
             .main-title {
                 color: #00ffff;
                 font-weight: 500;
-                font-size: 55px;
                 margin: 0 0 20px 0;
                 text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
             }
 
             .sub-title {
                 color: #00ffff;
-                font-size: 50px;
                 font-weight: 500;
                 margin: 0;
                 text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
@@ -176,7 +174,6 @@ const handleLogin = async () => {
 
                 .login-subtitle {
                     color: rgba(255, 255, 255, 0.8);
-                    font-size: 25px;
                     margin-bottom: 30px;
                     text-align: center;
                 }
@@ -209,7 +206,6 @@ const handleLogin = async () => {
                     :deep(.el-button) {
                         width: 100%;
                         height: 48px;
-                        font-size: 16px;
                         font-weight: 500;
                         letter-spacing: 1px;
                     }
@@ -231,14 +227,6 @@ const handleLogin = async () => {
                 padding-right: 0;
                 align-items: center;
                 margin-bottom: 30px;
-
-                .main-title {
-                    font-size: 36px;
-                }
-
-                .sub-title {
-                    font-size: 24px;
-                }
             }
 
             .right-login {

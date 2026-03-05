@@ -73,14 +73,10 @@ onUnmounted(() => {
     justify-content: center;
     line-height: 1.2;
     margin-right: 8px;
-
-    .clock-date {
-      font-size: clamp(12px, 1.2vw, 16px);
-    }
+    font-size: 0.9rem;
 
     .clock-week {
       margin-top: 2px;
-      font-size: clamp(12px, 1.2vw, 16px);
     }
   }
 
@@ -88,9 +84,9 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 1.2rem;
 
     .clock-time {
-      font-size: clamp(20px, 2.4vw, 24px);
       letter-spacing: 1px;
     }
   }

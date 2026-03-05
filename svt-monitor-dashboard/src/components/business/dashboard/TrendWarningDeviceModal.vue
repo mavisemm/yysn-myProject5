@@ -4,6 +4,9 @@
         class="trend-warning-modal" @close="handleClose">
         <div class="modal-body">
             <el-table :data="tableData" stripe class="warning-table" max-height="400">
+                <template #empty>
+                    <div class="table-empty">暂无数据</div>
+                </template>
                 <el-table-column prop="deviceName" label="设备名称" min-width="120">
                     <template #default="{ row }">
                         <span v-if="row.deviceId" class="link-cell" @click.stop="goToDeviceDetail(row)">{{
@@ -35,8 +38,18 @@ const props = withDefaults(defineProps<{
     modelValue: boolean;
     /** 弹窗标题，默认“预警设备详情” */
     title?: string;
+    /** 弹窗类型：trend=趋势预警；fault=故障报警（不展示假数据，空列表显示“暂无数据”） */
+    mode?: 'trend' | 'fault';
+    /**
+     * 故障报警设备数量（来自统计接口）
+     * - 0：显示空态“暂无数据”
+     * - 1/2：生成 1/2 条假数据（从设备树取，不足用占位补齐）
+     */
+    count?: number;
 }>(), {
-    title: '预警设备详情'
+    title: '预警设备详情',
+    mode: 'trend',
+    count: 0
 });
 
 const emit = defineEmits<{
@@ -78,13 +91,12 @@ function getOneRowPerDevice(nodes: DeviceNode[]): TableRow[] {
     return rows;
 }
 
-/** 两条死数据：取设备树中两个不同设备各一条，不足时用占位 */
 const tableData = computed(() => {
     const fromTree = getOneRowPerDevice(deviceTreeStore.deviceTreeData);
-    const need = 2;
-    if (fromTree.length >= need) {
-        return fromTree.slice(0, need);
-    }
+    const rawNeed = props.mode === 'fault' ? Number(props.count ?? 0) : 2;
+    const need = Math.min(Math.max(0, Math.floor(rawNeed)), 20);
+    if (need <= 0) return [];
+    if (fromTree.length >= need) return fromTree.slice(0, need);
     const placeholder: TableRow = { deviceName: '—', pointName: '—', receiverName: '—' };
     return [...fromTree, ...Array(need - fromTree.length).fill(null).map(() => ({ ...placeholder }))];
 });
@@ -139,6 +151,11 @@ watch(visible, (val) => {
 
 .warning-table {
     width: 100%;
+
+    .table-empty {
+        padding: 18px 0;
+        color: #909399;
+    }
 
     .link-cell {
         color: var(--el-color-primary);

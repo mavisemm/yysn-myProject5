@@ -12,7 +12,6 @@ import './assets/styles/common.scss'
 
 const app = createApp(App)
 
-// Register all icons
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }

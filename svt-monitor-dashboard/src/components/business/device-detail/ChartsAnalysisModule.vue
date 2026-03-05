@@ -1776,8 +1776,14 @@ onUnmounted(() => {
                 flex: 0 0 auto;
                 /* 固定头部高度 */
 
+                .chart-title {
+                    font-size: 1rem;
+                    font-weight: 500;
+                    color: #fff;
+                }
+
                 .chart-unit {
-                    font-size: 12px;
+                    font-size: 0.9rem;
                     color: #fff;
                 }
             }
@@ -1810,8 +1816,8 @@ onUnmounted(() => {
                 flex: 0 0 auto;
 
                 .module-title {
-                    font-size: 14px;
-                    //font-weight: bold;
+                    font-weight: 500;
+                    font-size: 1rem;
                     color: white;
                 }
             }
@@ -1836,8 +1842,9 @@ onUnmounted(() => {
                             margin-bottom: 12px;
 
                             :deep(.el-form-item__label) {
-                                font-size: 12px;
-                                color: white !important;
+                                /* 默认（非灰色主题）保持白字 */
+                                color: #fff;
+                                font-size: 0.8rem;
                             }
                         }
                     }
@@ -1854,13 +1861,13 @@ onUnmounted(() => {
                         margin-bottom: 8px;
 
                         .result-label {
-                            font-size: 12px;
+                            font-size: 0.8rem;
                             color: #fff;
                             font-weight: 500;
                         }
 
                         .result-value {
-                            font-size: 12px;
+                            font-size: 0.8rem;
                             color: white;
                             font-weight: 500;
 
@@ -1887,9 +1894,9 @@ onUnmounted(() => {
                     flex-shrink: 0;
 
                     .chart-title {
+                        font-size: 1rem!important;
                         text-align: center;
-                        font-size: 16px;
-                        font-weight: bold;
+                        font-weight: 500;
                         color: #fff;
                         margin-bottom: 10px;
                         padding: 10px;
@@ -1911,6 +1918,15 @@ onUnmounted(() => {
 
 
 
+        }
+    }
+}
+
+/* 灰色主题下（PageLayout 的 page-layout--gray），趋势分析表单 label 需要黑字 */
+:global(.page-layout--gray) .charts-analysis-module {
+    .analysis-form {
+        :deep(.el-form-item__label) {
+            color: #000 !important;
         }
     }
 }
@@ -1965,7 +1981,6 @@ onUnmounted(() => {
         font-weight: 500 !important;
         letter-spacing: 1.22px !important;
         color: #333333 !important;
-        font-size: clamp(22px, 3vw, 26px) !important;
         background-color: #ffffff !important;
         border-bottom: 1px solid #e4e7ed;
     }
@@ -2003,7 +2018,6 @@ onUnmounted(() => {
         font-weight: 500 !important;
         letter-spacing: 1.22px !important;
         color: #333333 !important;
-        font-size: clamp(22px, 3vw, 26px) !important;
     }
 }
 
@@ -2013,7 +2027,6 @@ onUnmounted(() => {
         font-weight: 500 !important;
         letter-spacing: 1.22px !important;
         color: #333333 !important;
-        font-size: clamp(22px, 3vw, 26px) !important;
     }
 }
 </style>
