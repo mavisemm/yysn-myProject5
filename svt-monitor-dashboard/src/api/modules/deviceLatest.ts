@@ -51,7 +51,7 @@ export interface ThermalImagingData {
     y: number
     temperature: number
   }
-  thermalImage: string // 热成像图片URL或base64
+  thermalImage: string
   capturedTime: string
   status: 'normal' | 'warning' | 'alarm'
 }

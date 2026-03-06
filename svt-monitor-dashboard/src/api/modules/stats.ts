@@ -61,7 +61,6 @@ export const getTrendWarningDeviceList = (): Promise<{ rc: number; ret: TrendWar
 }
 
 // 打开弹窗时触发的接口：测点信息（POST，body 传参）
-// 后端实际端口为 8003，这里显式走 8003 避免走 8006 出错
 export const getCheckPointPointMessage = (): Promise<any> => {
   return request.post('http://122.224.196.178:8003/taicang/hardware/device/check-point/find/point/message', {
     filterPropertyMap: [

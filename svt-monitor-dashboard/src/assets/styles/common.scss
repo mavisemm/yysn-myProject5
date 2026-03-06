@@ -1,6 +1,5 @@
-@use './variables.scss';
-@use './responsive-typography.scss';
-@use './custom-colors.scss';
+// @use './variables.scss';
+// @use './custom-colors.scss';
 @use './datetime-picker.scss';
 
 * {
@@ -21,7 +20,6 @@ html, body {
   overflow: hidden;
   color: var(--global-font-color);
   font-weight: 500;
-  /* 根字号随视口宽度线性变化，统一用 rem 控制各处字体 */
   font-size: calc(12px + 0.4vw);
 }
 
@@ -32,16 +30,13 @@ html, body {
   font-weight: 500;
 }
 
-/* 通用模块标题样式：统一各处标题，如“设备列表”“设备信息”“点位列表”等 */
 .app-section-title {
   font-weight: 500;
   letter-spacing: 1.22px;
   color: rgba(255, 255, 255, 1);
-  /* 使用 rem，相对根字号自适应，而不再使用 clamp */
   font-size: 1.2rem;
 }
 
-/* 确保Element Plus组件的文本可读性 */
 .el-input__wrapper,
 .el-button,
 .el-tag,
@@ -66,7 +61,6 @@ html, body {
   color: var(--global-font-color) !important;
 }
 
-/* Element UI 按钮特殊处理 */
 .el-button {
   color: #606266 !important;
 }
@@ -91,13 +85,11 @@ html, body {
   color: white !important;
 }
 
-/* 保留特殊组件的原有颜色，避免过度覆盖 */
 .el-progress-bar__innerText,
 .special-colored-text {
   color: inherit !important;
 }
 
-/* 表单类组件：统一用灰色文字，避免全局白色导致看不清 */
 .el-input__inner,
 .el-textarea__inner,
 .el-select .el-input__inner,
@@ -106,7 +98,6 @@ html, body {
 }
 
 
-/* 表单输入类 placeholder 改为灰色，提升可读性 */
 input::placeholder,
 textarea::placeholder,
 .el-input__inner::placeholder,
@@ -115,7 +106,6 @@ textarea::placeholder,
   opacity: 1 !important;
 }
 
-/* 退出登录确认框：取消按钮 #409eff，确定按钮白色（按顺序：第1个取消，第2个确定） */
 .el-message-box.logout-confirm-box .el-message-box__btns .el-button:nth-child(1) {
   color: #409eff !important;
 }
@@ -123,7 +113,6 @@ textarea::placeholder,
   color: #fff !important;
 }
 
-/* 全局滚动条样式 - 统一设计 */
 ::-webkit-scrollbar {
   width: 4px;
   height: 8px;
@@ -143,7 +132,6 @@ textarea::placeholder,
   background: rgba(150,150,150, 0.1);
 }
 
-/* Element Plus滚动条定制 */
 :deep(.el-scrollbar) {
   --el-scrollbar-opacity: 0.3;
   --el-scrollbar-bg-color: rgba(150,150,150, 0.1);

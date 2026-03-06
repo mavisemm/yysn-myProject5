@@ -29,7 +29,7 @@ const densityChartRef = ref<HTMLDivElement>();
 const energyChartInstance = shallowRef<echarts.ECharts | null>(null);
 const densityChartInstance = shallowRef<echarts.ECharts | null>(null);
 
-// 灰色主题下图表坐标轴/分割线用黑色，否则白色（与设备详情页一致）
+/** 主题：灰色时坐标轴/分割线为黑，否则白 */
 const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
 const isGrayTheme = computed(() => backgroundMode?.value === 'gray');
 const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'));

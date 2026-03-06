@@ -110,7 +110,6 @@ import { getTemperatureTrend, getVibrationTrend, getSoundTrend, getTrendAnalysis
 import { handleDatePickerChange, disabledFutureDate } from '@/utils/datetime'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
 
-// 定义点位信息类型
 interface PointInfo {
     id: string,
     name: string,
@@ -125,16 +124,13 @@ interface AnalysisResult {
     pointName: string
 }
 
-// 定义日期范围类型，兼容Element Plus的日期选择器
 export type DateRange = [string, string] | null
 
-// 定义属性
 const props = defineProps<{
     pointList: PointInfo[]
     selectedPointId?: string
 }>()
 
-// 图表相关
 const tempChartRef = ref<HTMLDivElement>()
 const soundChartRef = ref<HTMLDivElement>()
 const vibChartRef = ref<HTMLDivElement>()
@@ -148,8 +144,6 @@ const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefin
 const isGrayTheme = computed(() => backgroundMode?.value === 'gray')
 const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'))
 const chartSplitLineColor = computed(() => (isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(150,150,150, 0.2)'))
-
-// 趋势分析相关
 
 const handleCalendarChange = (val: [Date, Date] | null) => {
     const result = handleDatePickerChange(val);
@@ -847,7 +841,6 @@ const loadTemperatureData = async (pointId: string) => {
                         filterMode: 'none'
                     }
                 ],
-                // x 轴樣式與「烈度随时间变化」保持一致
                 xAxis: {
                     type: 'category',
                     data: timeData,
@@ -1085,10 +1078,8 @@ const loadSoundData = async (_pointId: string) => {
 const initTempChart = () => {
     if (!tempChartRef.value) return
 
-    // 检查容器元素是否具有有效尺寸
     const rect = tempChartRef.value.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) {
-        // 如果尺寸为0，推迟初始化
         setTimeout(() => {
             initTempChart();
         }, 100);
@@ -1101,7 +1092,6 @@ const initTempChart = () => {
 
     tempChart = echarts.init(tempChartRef.value)
 
-    // 写死时间用于 x 轴占位，便于排查接口问题
     const FALLBACK_TIME_LABELS = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00']
     const tempData = [32, 35, 38, 42, 45, 43, 40, 36, 33] // 写死对应的温度数据
 
@@ -1146,7 +1136,6 @@ const initTempChart = () => {
                 filterMode: 'none'
             }
         ],
-        // x 轴樣式完全複用「烈度随时间变化」配置
         xAxis: {
             type: 'category',
             data: FALLBACK_TIME_LABELS,
@@ -1155,11 +1144,8 @@ const initTempChart = () => {
                 color: chartAxisColor.value
             },
             axisLine: {
-                lineStyle: {
-                    color: chartAxisColor.value
-                    // 不論 y 軸是否有負值，x 軸始終貼底顯示
-                }
-                , onZero: false
+                lineStyle: { color: chartAxisColor.value },
+                onZero: false
             },
             axisTick: {
                 lineStyle: {
@@ -1189,7 +1175,6 @@ const initTempChart = () => {
             type: 'line',
             smooth: true,
             symbolSize: 1,
-            // 颜色样式与“烈度随时间变化”一致
             itemStyle: {
                 color: '#FFCE56'
             },
@@ -1220,10 +1205,8 @@ const initTempChart = () => {
 const initSoundChart = () => {
     if (!soundChartRef.value) return
 
-    // 检查容器元素是否具有有效尺寸
     const rect = soundChartRef.value.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) {
-        // 如果尺寸为0，推迟初始化
         setTimeout(() => {
             initSoundChart();
         }, 100);
@@ -1288,17 +1271,10 @@ const initSoundChart = () => {
                 color: chartAxisColor.value
             },
             axisLine: {
-                lineStyle: {
-                    color: chartAxisColor.value
-                    // 不論 y 軸是否有負值，x 軸始終貼底顯示
-                }
-                , onZero: false
+                lineStyle: { color: chartAxisColor.value },
+                onZero: false
             },
-            axisTick: {
-                lineStyle: {
-                    color: chartAxisColor.value
-                }
-            }
+            axisTick: { lineStyle: { color: chartAxisColor.value } }
         },
         yAxis: {
             type: 'value',
@@ -1360,10 +1336,8 @@ const initSoundChart = () => {
 const initVibChart = () => {
     if (!vibChartRef.value) return
 
-    // 检查容器元素是否具有有效尺寸
     const rect = vibChartRef.value.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) {
-        // 如果尺寸为0，推迟初始化
         setTimeout(() => {
             initVibChart();
         }, 100);
@@ -1493,7 +1467,7 @@ const initVibChart = () => {
     vibChart.setOption(option)
 }
 
-// 灰色/非灰色主题切换时，更新三个图表的坐标轴与分割线颜色
+/** 主题切换时更新三个图表的坐标轴与分割线颜色 */
 const updateChartsTheme = () => {
     const c = chartAxisColor.value
     const s = chartSplitLineColor.value
@@ -1517,7 +1491,6 @@ const updateChartsTheme = () => {
 }
 watch(() => backgroundMode?.value, () => updateChartsTheme(), { flush: 'post' })
 
-// 分析趋势
 const analyzeTrend = async () => {
     if (!analysisForm.value.pointId) {
         ElMessage.warning('请选择点位')

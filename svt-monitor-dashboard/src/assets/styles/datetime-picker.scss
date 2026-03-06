@@ -1,6 +1,5 @@
 /* === 全局时间选择器样式 === */
 .custom-datepicker-popper {
-  /* 确保弹出面板不会超出视窗边界 */
   max-width: 95vw !important;
   max-height: 90vh !important;
   
@@ -9,8 +8,6 @@
     font-size: 12px !important;
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    
-    /* 防止面板超出屏幕 */
     overflow: hidden !important;
 
     .el-input__wrapper {
@@ -19,8 +16,6 @@
 
     .el-date-range-picker__time-header {
       width: 400px !important;
-      
-      /* 压缩顶部"开始/结束 时间输入区域" */
       display: flex;
       justify-content: space-between;
       padding: 8px 10px !important;
@@ -30,7 +25,6 @@
         width: calc(50% - 3px) !important;
       }
 
-      /* 日期输入框 */
       .el-date-editor {
         width: 100% !important;
 
@@ -54,7 +48,6 @@
       }
     }
 
-    /* 缩小日历顶部标题 */
     .el-date-range-picker__header {
       font-size: 12px !important;
       font-weight: normal !important;
@@ -65,7 +58,6 @@
       text-overflow: ellipsis !important;
     }
 
-    /* 左右切换箭头 */
     .el-picker-panel__icon-btn {
       width: 14px !important;
       height: 14px !important;
@@ -73,7 +65,6 @@
       font-size: 11px !important;
     }
 
-    /* 日历内容区 */
     .el-date-range-picker__content {
       width: 180px !important;
       padding: 6px !important;
@@ -90,21 +81,15 @@
       }
     }
 
-    /* 时间选择器 */
     .el-time-panel {
       width: auto !important;
       min-width: 120px !important;
       max-width: 150px !important;
       padding: 6px !important;
-      
-      /* 确保时间面板不会超出视窗 */
       position: absolute !important;
       z-index: 2001 !important;
-      
-      /* 添加边界检查 */
       box-sizing: border-box !important;
       
-      /* 确保面板不会超出父容器 */
       &[style*="right: 0"] {
         left: auto !important;
         transform: translateX(-40px) !important;
@@ -124,10 +109,8 @@
       }
     }
 
-    /* 解决时间面板定位问题 */
     .el-picker-panel__body-wrapper {
       .el-time-panel {
-        /* 确保时间面板相对于日期选择器正确定位 */
         position: absolute !important;
         top: 100% !important;
         left: 0 !important;
@@ -136,20 +119,16 @@
       }
     }
 
-    /* 特别处理结束时间的时间面板 */
     .el-date-range-picker__time-header {
       .el-date-editor:last-child {
         .el-time-panel {
-          /* 结束时间面板向左对齐，避免超出 */
           left: auto !important;
           right: 0 !important;
-          /* 进一步向左偏移，确保完全可见 */
           transform: translateX(-20px) !important;
         }
       }
     }
 
-    /* Footer 按钮 */
     .el-picker-panel__footer {
       padding: 6px 10px !important;
 

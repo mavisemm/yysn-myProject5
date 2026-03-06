@@ -1,6 +1,5 @@
 <template>
     <div class="bottom-row">
-        <!-- 振动频域图卡片 -->
         <div class="card-item freq-card">
             <div class="card-header">
                 <div class="card-title app-section-title">振动频域图</div>
@@ -10,8 +9,6 @@
                 <div v-if="!freqData.frequency.length" class="chart-empty">暂无数据</div>
             </div>
         </div>
-
-        <!-- 振动时域图卡片 -->
         <div class="card-item time-card">
             <div class="card-header">
                 <div class="card-title app-section-title">振动时域图</div>
@@ -33,30 +30,21 @@ import { useChartResize } from '@/composables/useChart';
 import { getVibrationFrequencyData, getVibrationTimeDomainData, type VibrationFrequencyData, type VibrationTimeDomainData, type NewApiResponse } from '@/api/modules/device';
 
 const route = useRoute();
-
-// 从路由获取真实参数
 const deviceId = computed(() => (route.query.deviceId as string) || '');
 const pointId = computed(() => (route.query.pointId as string) || '');
 
 const freqChartRef = ref<HTMLElement>();
 const timeChartRef = ref<HTMLElement>();
-
 const freqChartInstance = shallowRef<echarts.ECharts | null>(null);
 const timeChartInstance = shallowRef<echarts.ECharts | null>(null);
 
-// 灰色主题下图表坐标轴/分割线用黑色，否则白色（与设备详情页一致）
+/** 主题：灰色时坐标轴/分割线为黑，否则白 */
 const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
 const isGrayTheme = computed(() => backgroundMode?.value === 'gray');
 const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'));
 const chartSplitLineColor = computed(() => (isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.1)'));
 
-// 存储接口返回的数据
-const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({
-    frequency: [],
-    freqSpeedData: []
-});
-
-// 存储时域图数据
+const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({ frequency: [], freqSpeedData: [] });
 const timeDomainData = ref<number[]>([]);
 const totalTime = ref<number>(0);
 
@@ -72,25 +60,18 @@ const initCharts = () => {
     }
 };
 
-/**
- * 更新频域图数据
- */
+/** 频域图：数据 [freq, value] 按频率升序，y 轴留边距 */
 const updateFreqChart = () => {
     if (!freqChartInstance.value || !freqData.value.frequency.length) return;
 
-    // 将两个数组组合成 [x, y] 格式的二维数组，并按 x（频率）升序排序，折线才不会乱序
     const chartData = freqData.value.frequency
         .map((freq, index) => [freq, freqData.value.freqSpeedData[index] ?? 0] as [number, number])
         .sort((a, b) => a[0] - b[0]);
 
     const xMax = chartData.length > 0 ? Math.max(...freqData.value.frequency, 2000) : 2000;
-
-    // 计算Y轴的最小值和最大值
     const yValues = chartData.map(item => item[1]);
     const yMin = yValues.length > 0 ? Math.min(...yValues) : 0;
     const yMax = yValues.length > 0 ? Math.max(...yValues) : 1;
-
-    // 为Y轴添加一些边距，确保数据不会贴边显示
     const yMargin = (yMax - yMin) * 0.1;
     const yMinWithMargin = Math.max(0, yMin - yMargin);
     const yMaxWithMargin = yMax + yMargin;
@@ -195,9 +176,7 @@ const updateFreqChart = () => {
     });
 };
 
-/**
- * 更新时域图数据
- */
+/** 时域图：按 totalTime 均分 x，y 为采样值 */
 const updateTimeChart = () => {
     if (!timeChartInstance.value || timeDomainData.value.length === 0) return;
 
@@ -278,36 +257,20 @@ watch(() => backgroundMode?.value, () => {
 }, { flush: 'post' });
 
 onMounted(async () => {
-    // 初始化图表
     initCharts();
     bindFreq();
     bindTime();
 
-    // 请求频域图数据
     try {
-        // 检查必要参数
-        if (!deviceId.value || !pointId.value) {
-            console.warn('缺少 deviceId 或 pointId 参数，无法加载频域图数据');
-            return;
-        }
-
+        if (!deviceId.value || !pointId.value) return;
         const freqResponse = await getVibrationFrequencyData(deviceId.value, pointId.value);
         if (freqResponse.rc === 0 && freqResponse.ret) {
             try {
-                // 解析JSON字符串为数组
                 const frequencyArray = JSON.parse(freqResponse.ret.frequency);
                 const freqSpeedArray = JSON.parse(freqResponse.ret.freqSpeedData);
-
-                // 验证数据有效性
                 if (Array.isArray(frequencyArray) && Array.isArray(freqSpeedArray) &&
                     frequencyArray.length > 0 && freqSpeedArray.length > 0) {
-                    // 更新数据
-                    freqData.value = {
-                        frequency: frequencyArray,
-                        freqSpeedData: freqSpeedArray
-                    };
-
-                    // 更新图表
+                    freqData.value = { frequency: frequencyArray, freqSpeedData: freqSpeedArray };
                     updateFreqChart();
                 } else {
                     console.warn('频域图数据为空或格式不正确');
@@ -320,34 +283,21 @@ onMounted(async () => {
         }
     } catch (error) {
         console.error('获取振动频域数据失败:', error);
-        // 即使出错也要保持模块显示
     }
 
-    // 请求时域图数据
     try {
-        // 检查必要参数
-        if (!deviceId.value || !pointId.value) {
-            console.warn('缺少 deviceId 或 pointId 参数，无法加载时域图数据');
-            return;
-        }
-
+        if (!deviceId.value || !pointId.value) return;
         const timeResponse = await getVibrationTimeDomainData(deviceId.value, pointId.value);
         if (timeResponse.rc === 0 && timeResponse.ret) {
             try {
-                // timedomaindata 为逗号分隔字符串，如 "91,48,46,48,53,..."
                 const timeDomainArray = timeResponse.ret.timedomaindata
                     .split(',')
                     .map((s) => parseFloat(s.trim()))
                     .filter((n) => !isNaN(n));
-
-                // 验证数据有效性
                 if (Array.isArray(timeDomainArray) && timeDomainArray.length > 0 &&
                     typeof timeResponse.ret.time === 'number' && timeResponse.ret.time > 0) {
-                    // 更新时域图数据
                     timeDomainData.value = timeDomainArray;
                     totalTime.value = timeResponse.ret.time;
-
-                    // 更新时域图
                     updateTimeChart();
                 } else {
                     console.warn('时域图数据为空或格式不正确');
@@ -360,7 +310,6 @@ onMounted(async () => {
         }
     } catch (error) {
         console.error('获取振动时域数据失败:', error);
-        // 即使出错也要保持模块显示
     }
 });
 

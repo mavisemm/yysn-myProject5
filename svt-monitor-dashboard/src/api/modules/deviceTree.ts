@@ -40,24 +40,22 @@ export interface EquipmentData {
 
 export interface PointData {
   pointName: string;
-  pointId?: string; // 点位ID，优先使用
-  receiverId?: string; // 接收器ID，作为后备
-  warningTime?: string; // 预警时间
-  warningType?: string; // 预警类型
-  warningValue?: number | string; // 预警值
+  pointId?: string;
+  receiverId?: string;
+  warningTime?: string;
+  warningType?: string;
+  warningValue?: number | string;
 }
 
 /**
  * 获取设备树数据
  */
 export const getDeviceTreeData = (): Promise<DeviceTreeResponse> => {
-  // 直接使用完整路径，让Vite代理处理
   return request.get<DeviceTreeResponse>('/taicang/hardware/device/vibration/tree')
     .then(response => {
       return response;
     })
     .catch(error => {
-      // 接口不通时返回空数据，由前端显示"暂无数据"
       return { rc: 1, ret: [], err: error?.message || '接口请求失败' };
     });
 }
@@ -74,26 +72,26 @@ export const transformDeviceTreeData = (responseData: DeviceTreeResponse): Devic
     id: factory.factoryId,
     name: factory.factoryName,
     type: 'factory',
-    status: 'normal', // 默认状态
+    status: 'normal', 
     children: factory.children.map(workshop => ({
       id: workshop.workshopId,
       name: workshop.workshopName,
       type: 'workshop',
-      status: 'normal', // 默认状态
+      status: 'normal', 
       children: workshop.children.map(equipment => ({
         id: equipment.equipmentId,
         name: equipment.equipmentName,
         type: 'device',
-        status: 'normal', // 默认状态
-        workshopName: workshop.workshopName, // 所属车间名，供预警总览等使用
+        status: 'normal', 
+        workshopName: workshop.workshopName,
         children: equipment.children.map(point => ({
-          id: point.pointId || point.receiverId || '', // 优先使用pointId，如果没有则使用receiverId
+          id: point.pointId || point.receiverId || '',
           name: point.pointName,
           type: 'point',
-          status: 'normal', // 默认状态
-          warningTime: point.warningTime, // 预警时间
-          warningType: point.warningType, // 预警类型
-          warningValue: point.warningValue  // 预警值
+          status: 'normal',
+          warningTime: point.warningTime,
+          warningType: point.warningType,
+          warningValue: point.warningValue
         }))
       }))
     }))

@@ -13,8 +13,6 @@
     />
     <div class="main-content">
       <DeviceSidebar />
-
-      <!-- 主要内容区域 -->
       <div class="content-wrapper">
         <RouterView />
       </div>
@@ -52,7 +50,7 @@ onMounted(() => {
   background-size: 100vw 100vh;
   padding: 0 0.7vw 2.4vh 0.7vw;
 
-  /* 灰色主题：背景 + 字体改为黑色 */
+  /* 灰色主题 */
   &.page-layout--gray {
     background:
       radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.9) 0, rgba(255, 255, 255, 0) 40%),
@@ -70,6 +68,7 @@ onMounted(() => {
       color: #fff !important;
     }
 
+    /* 卡片/模块：透明底 + 边框替代背景图 */
     :deep(.stats-area),
     :deep(.alarm-overview),
     :deep(.metrics-area),
@@ -92,6 +91,7 @@ onMounted(() => {
     }
   }
 
+  /* 绿色主题 */
   &.page-layout--green {
     background:
       radial-gradient(circle at 20% 0%, rgba(74, 222, 128, 0.25) 0, rgba(74, 222, 128, 0) 45%),
@@ -99,6 +99,7 @@ onMounted(() => {
       linear-gradient(145deg, #022c22 0%, #064e3b 35%, #047857 70%, #0f766e 100%);
     background-size: 100vw 100vh;
 
+    /* 卡片/模块：透明底 + 边框 */
     :deep(.stats-area),
     :deep(.alarm-overview),
     :deep(.metrics-area),
@@ -121,6 +122,7 @@ onMounted(() => {
     }
   }
 
+  /* 深蓝主题 */
   &.page-layout--navy {
     background:
       radial-gradient(circle at 15% 0%, rgba(59, 130, 246, 0.3) 0, rgba(15, 23, 42, 0) 45%),
@@ -145,7 +147,7 @@ onMounted(() => {
       background: transparent !important;
       background-image: none !important;
       border-radius: 12px;
-      border: 1px solid #38bdf8;
+      border: 1px solid #38bdf8; /* 亮蓝青 */
       backdrop-filter: blur(4px);
     }
   }

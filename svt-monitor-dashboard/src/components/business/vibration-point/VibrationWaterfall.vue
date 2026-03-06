@@ -28,20 +28,16 @@ import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vu
 const waterfallChartRef = ref<HTMLElement>();
 const waterfallChartInstance = shallowRef<echarts.ECharts | null>(null);
 
-// 灰色主题下图表坐标轴/字体用黑色，否则白色（与设备详情页一致）
+/** 主题：灰色时坐标轴/字体为黑，3D 网格线灰→黑；非灰为白/灰 */
 const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
 const isGrayTheme = computed(() => backgroundMode?.value === 'gray');
 const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#ffffff'));
-// 3D 平面网格线：非灰色主题保持灰色，灰色主题为黑色
 const chartGridLineColor = computed(() => (isGrayTheme.value ? '#000' : '#999999'));
 
-// 间隔时间（小时），默认 1
 const intervalHours = ref(1);
-
-// 时间选择器
 const dateRange = ref<[string, string] | null>(null);
 
-/** 根据时间范围和间隔生成 y 轴时间点；条数 = floor((结束-开始)/间隔) */
+/** 按时间范围和间隔生成 y 轴时间点，条数 = floor((结束-开始)/间隔) */
 function generateTimesFromRange(
     startStr: string,
     endStr: string,
@@ -66,7 +62,7 @@ function generateTimesFromRange(
         const s = String(d.getSeconds()).padStart(2, '0');
         times.push(sameDay ? `${h}:${m}:${s}` : `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${h}:${m}`);
     }
-    return times.reverse(); // 时间最新的在最前面
+    return times.reverse();
 }
 
 const initChart = () => {
@@ -76,18 +72,13 @@ const initChart = () => {
         waterfallChartInstance.value = echarts.init(waterfallChartRef.value);
     }
 
-    // 根据时间范围和间隔生成 y 轴时间点
     const [startStr, endStr] = dateRange.value && dateRange.value[0] && dateRange.value[1]
         ? dateRange.value
         : getLast24HoursRange();
     const times = generateTimesFromRange(startStr, endStr, intervalHours.value);
-
-    // x轴：频率 0-100000Hz
     const frequencies = Array.from({ length: 100 }, (_, i) => i * 1000);
-
-    // 颜色渐变：从黄到绿
-    const light = { r: 255, g: 215, b: 0 };   // 黄色
-    const dark = { r: 34, g: 139, b: 34 };    // 绿色
+    const light = { r: 255, g: 215, b: 0 };
+    const dark = { r: 34, g: 139, b: 34 };
     const generateGradientColors = (count: number) => {
         return Array.from({ length: count }, (_, i) => {
             const t = count > 1 ? i / (count - 1) : 1;
@@ -98,8 +89,6 @@ const initChart = () => {
         });
     };
     const curveColors = generateGradientColors(times.length);
-
-    // 按时间切片拆分为多条曲线，每条曲线一个 series
     const seriesList = times.map((time, timeIndex) => {
         const points = frequencies.map(freq => {
             const baseAcceleration = 0.5 + Math.sin(freq / 10000) * 0.3;
@@ -158,14 +147,13 @@ const initChart = () => {
             top: '-2%',
             viewControl: {
                 projection: 'orthographic',
-                alpha: 15, // 垂直角度
-                beta: 20,  // 水平角度
-                distance: 250, // 视距
-                rotateSensitivity: 1, // 旋转灵敏度
-                zoomSensitivity: 0.5, // 缩放灵敏度
-                panSensitivity: 1 // 平移灵敏度
+                alpha: 15,
+                beta: 20,
+                distance: 250,
+                rotateSensitivity: 1,
+                zoomSensitivity: 0.5,
+                panSensitivity: 1
             },
-            // 3D盒子尺寸
             boxWidth: 100,
             boxHeight: 100,
             boxDepth: 100,

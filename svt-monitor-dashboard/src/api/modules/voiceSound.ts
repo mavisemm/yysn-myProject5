@@ -12,8 +12,8 @@ export interface SoundData {
   soundType: string
   soundLevel: number
   frequency: number
-  waveform: string // 波形图数据
-  spectrum: SpectrumData[] // 频谱数据
+  waveform: string 
+  spectrum: SpectrumData[] 
   capturedTime: string
   duration: number
   status: 'normal' | 'warning' | 'alarm'
@@ -131,7 +131,6 @@ export interface SoundDeviationItem {
   sampleSec: number
   deviceModel: string | null
   productionFactory: string | null
-  /** 与另一项目对应：检测设备（React item.detectorName） */
   detectorName?: string | null
 }
 
@@ -246,7 +245,7 @@ export const getHistoricalSoundData = (params?: {
   })
 }
 
-// 声音频率曲线（勾选记录后获取频率列表，recordIdList 为整数 id，后端 pointId 为 Integer 勿传字符串）
+// 声音频率曲线
 export const getStandardFrequencyList = (payload: {
   recordIdList: (number | string)[]
   type: number
@@ -312,7 +311,7 @@ export const findLatestFrequencyById = (params: { id: string | number; type: num
   })
 }
 
-// 播放/下载：根据 freqGroupId 获取 wav 文件地址（与另一项目一致）
+// 播放/下载：根据 freqGroupId 获取 wav 文件地址
 const SOUND_WAV_BASE = import.meta.env.VITE_SOUND_WAV_BASE_URL || ''
 
 export const getWavByFreqGroupIdUrl = (freqGroupId: string | number): string => {

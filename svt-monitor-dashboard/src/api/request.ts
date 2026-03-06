@@ -89,18 +89,14 @@ service.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
-    // 对于某些路径（如 /taicang/*），我们不需要添加基础URL
-    // 所以对于这些路径，我们临时设置baseURL为空
     if (config.url && (config.url.startsWith('/taicang') || config.url.startsWith('/vortex') || config.url.startsWith('/jiepai') || config.url.startsWith('/cas') || config.url.startsWith('/zhongyuan'))) {
       config.baseURL = '';
     }
     
-    // 使用自定义基础URL
     if (config.customBaseURL) {
       config.baseURL = config.customBaseURL
     }
     
-    // 添加时间戳防止缓存（除非明确禁用）
     if (config.method === 'get' && config.cacheControl !== false) {
       config.params = {
         ...config.params,
@@ -108,10 +104,8 @@ service.interceptors.request.use(
       }
     }
     
-    // 添加请求到待处理队列
     addPendingRequest(config)
     
-    // 显示加载状态
     if (config.showLoading !== false) {
       showLoading();
     }
@@ -127,24 +121,19 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   (response: AxiosResponse) => {
-    // 从待处理队列中移除已完成的请求
     const reqKey = generateReqKey(response.config as InternalAxiosRequestConfig)
     if (pendingRequests.has(reqKey)) {
       pendingRequests.delete(reqKey)
     }
     
-    // 关闭加载状态
     if (response.config.showLoading !== false) {
       hideLoading();
     }
     
     const res = response.data
     
-    // 检查是否符合新的响应格式 (rc/ret/err)
     if (res.hasOwnProperty('rc')) {
-      // 新格式：rc为0表示成功，非0表示失败
       if (res.rc !== 0) {
-        // 隐藏通知如果配置了不显示
         if (!response.config.hideNotification) {
           ElMessage.error(res.err || '请求失败')
         }
@@ -154,9 +143,7 @@ service.interceptors.response.use(
         return res
       }
     } else {
-      // 旧格式：code不为200表示失败
       if (res.code && res.code !== 200) {
-        // 隐藏通知如果配置了不显示
         if (!response.config.hideNotification) {
           ElMessage.error(res.message || '请求失败')
         }
@@ -178,7 +165,6 @@ service.interceptors.response.use(
     }
   },
   (error: any) => {
-    // 从待处理队列中移除已失败的请求
     if (error.config) {
       const reqKey = generateReqKey(error.config as InternalAxiosRequestConfig)
       if (pendingRequests.has(reqKey)) {
@@ -186,7 +172,6 @@ service.interceptors.response.use(
       }
     }
     
-    // 关闭加载状态
     if (error.config?.showLoading !== false) {
       hideLoading();
     }
@@ -242,7 +227,6 @@ service.interceptors.response.use(
       errorMessage = '网络异常，请检查网络连接'
     }
     
-    // 如果配置了隐藏通知则不显示错误消息
     if (!error.config?.hideNotification) {
       ElMessage.error(errorMessage)
     }

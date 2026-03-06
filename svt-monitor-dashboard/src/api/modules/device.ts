@@ -100,7 +100,7 @@ export const getVibrationMetricData = (deviceId: string, pointId: string): Promi
 // 振动时域图数据接口
 export interface VibrationTimeDomainData {
   time: number
-  timedomaindata: string  // 逗号分隔的数值字符串，如 "91,48,46,48,53,..."
+  timedomaindata: string
 }
 
 export const getVibrationTimeDomainData = (deviceId: string, pointId: string): Promise<NewApiResponse<VibrationTimeDomainData>> => {

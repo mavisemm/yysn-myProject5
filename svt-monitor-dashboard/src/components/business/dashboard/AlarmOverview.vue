@@ -5,7 +5,6 @@
         <div class="header-section">
             <div class="title-with-legend">
                 <h3 class="app-section-title">预警总览</h3>
-                <!-- 颜色示例：红=报警，黄=预警，绿=健康 -->
                 <div class="status-legend">
                     <span class="legend-item">
                         <span class="legend-dot legend-dot-alarm"></span> 报警
@@ -54,7 +53,7 @@
                     <span :class="['status-dot', getDeviceDisplayStatus(alarm)]"></span>
                 </div>
 
-                <!-- 第二部分：厂区名 + 报警时间（仅时分） -->
+                <!-- 第二部分：厂区名 + 报警时间 -->
                 <div class="alarm-time">{{ alarm.shopName ? alarm.shopName + ' ' : '' }}&nbsp;&nbsp;{{
                     formatAlarmTime(alarm.time) }}</div>
 
@@ -237,7 +236,7 @@ const filteredAlarms = computed(() => {
         }
 
         result = result.filter(alarm => {
-            if (!alarm.time) return false; // 筛选时间范围内不显示无预警时间的设备
+            if (!alarm.time) return false; 
             const alarmDateTime = new Date(alarm.time);
             return alarmDateTime >= startDate && alarmDateTime <= endDate;
         });
@@ -757,7 +756,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         .el-pagination__jump .el-input__inner {
             height: 18px;
             background-color: transparent;
-            /* “前往 X 页” 数字输入框字体颜色改为黑色（提升优先级防止被全局样式覆盖） */
             color: #111 !important;
             font-size: 0.8rem;
         }

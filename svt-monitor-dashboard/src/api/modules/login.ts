@@ -8,13 +8,11 @@ import request from '../request'
 //   "err": null
 // }
 export const login = (data: { userName: string; password: string }) => {
-  // 后端只支持 POST，GET 会报 "Request method 'GET' not supported"
   return request.post('http://122.224.196.178:8003/taicang/hardware/user/name/login', data, {
     showLoading: true
   })
 }
 
-// 下面的接口暂时保留占位，如后续有鉴权可继续对接
 export const logout = () => {
   return request.post('/auth/logout')
 }

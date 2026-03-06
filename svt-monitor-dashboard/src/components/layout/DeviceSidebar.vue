@@ -219,8 +219,6 @@ const updateExpansion = async (newKeys: string[]) => {
   }
 }
 
-// 在组件挂载后设置监听器
-// 存储定时器ID以便后续清理
 let timeoutId: number | null = null;
 
 onMounted(async () => {
@@ -237,7 +235,6 @@ onMounted(async () => {
     }, 100)
   }
 
-  // 如果挂载时已经有数据，直接执行；否则监听到首次加载后执行一次并停止监听
   if (deviceTreeStore.deviceTreeData && deviceTreeStore.deviceTreeData.length > 0) {
     expandDefaultNodes()
   } else {
@@ -269,8 +266,6 @@ const debouncedWorkshopSearch = useDebounce(workshopSearchText, 400)
 const debouncedDeviceSearch = useDebounce(deviceSearchText, 400)
 
 const deviceTreeRef = ref<any>(null)
-
-// 创建一个computed属性来访问store中的expandedKeys
 const expandedKeys = computed(() => deviceTreeStore.expandedKeys)
 
 const treeProps = {
