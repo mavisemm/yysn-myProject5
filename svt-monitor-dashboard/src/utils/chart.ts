@@ -1,5 +1,12 @@
 import * as echarts from 'echarts';
 
+/** 图表主题颜色（与 CommonEcharts 一致） */
+export type ChartThemeColors = {
+    axisColor: string;
+    splitLineColor: string;
+    isGrayTheme: boolean;
+};
+
 /**
  * 联动多个 ECharts 图表，实现缩放、移动、提示框等同步
  * @param charts 图表实例数组

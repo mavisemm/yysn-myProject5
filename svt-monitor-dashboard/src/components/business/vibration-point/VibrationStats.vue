@@ -93,13 +93,6 @@ onMounted(() => {
             color: #fff;
         }
     }
-
-    .chart-container {
-        flex: 1;
-        width: 100%;
-        min-height: 0;
-        padding: 20px;
-    }
 }
 
 .stats-card {
@@ -113,7 +106,7 @@ onMounted(() => {
         grid-template-rows: 1fr 1fr;
         gap: 10px;
         flex: 1;
-        padding: 20px;
+        padding: 10px 20px 20px;
 
         .stat-box {
             font-size: 0.9rem;

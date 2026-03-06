@@ -49,6 +49,7 @@ const updateCharts = () => {
     const freqs = selectedItems[0]?.freqs || [];
 
     const c = chartAxisColor.value;
+    const s = chartSplitLineColor.value;
     const commonOption = {
         textStyle: { color: c },
         tooltip: {
@@ -59,7 +60,13 @@ const updateCharts = () => {
             textStyle: {
                 color: '#fff'
             },
-            axisPointer: { type: 'cross' },
+            axisPointer: {
+                type: 'cross',
+                // 去掉 x/y 轴上的小方块标签
+                label: {
+                    show: false
+                }
+            },
             position: function (pos: any, params: any, el: any, elRect: any, size: any) {
                 const [mouseX, mouseY] = pos;
                 const [contentWidth, contentHeight] = size.contentSize;
@@ -108,7 +115,10 @@ const updateCharts = () => {
             type: 'value',
             axisLine: { lineStyle: { color: c } },
             axisLabel: { color: c },
-            nameTextStyle: { color: c }
+            nameTextStyle: { color: c },
+            splitLine: {
+                lineStyle: { color: s }
+            }
         },
         series: selectedItems.map(item => ({
             name: item.time,
@@ -127,7 +137,10 @@ const updateCharts = () => {
             name: '密度',
             axisLine: { lineStyle: { color: c } },
             axisLabel: { color: c },
-            nameTextStyle: { color: c }
+            nameTextStyle: { color: c },
+            splitLine: {
+                lineStyle: { color: s }
+            }
         },
         series: selectedItems.map(item => ({
             name: item.time,

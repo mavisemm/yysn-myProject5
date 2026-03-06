@@ -348,7 +348,7 @@ onUnmounted(() => {
         flex: 1;
         width: 100%;
         min-height: 0;
-        padding: 20px;
+        padding: 10px 20px 20px;
         position: relative;
 
         .chart-inner {
