@@ -12,7 +12,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, shallowRef } from 'vue';
+import { ref, onMounted, onUnmounted, shallowRef, inject, computed, watch } from 'vue';
+import type { Ref } from 'vue';
 import * as echarts from 'echarts';
 import { useChartResize } from '@/composables/useChart';
 import { connectCharts, enableMouseWheelZoomForCharts } from '@/utils/chart';
@@ -28,6 +29,12 @@ const densityChartRef = ref<HTMLDivElement>();
 const energyChartInstance = shallowRef<echarts.ECharts | null>(null);
 const densityChartInstance = shallowRef<echarts.ECharts | null>(null);
 
+// 灰色主题下图表坐标轴/分割线用黑色，否则白色（与设备详情页一致）
+const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
+const isGrayTheme = computed(() => backgroundMode?.value === 'gray');
+const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'));
+const chartSplitLineColor = computed(() => (isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(150,150,150, 0.2)'));
+
 const updateCharts = () => {
     const selectedItems = props.deviationList.filter(item => item.visible);
 
@@ -41,10 +48,12 @@ const updateCharts = () => {
 
     const freqs = selectedItems[0]?.freqs || [];
 
+    const c = chartAxisColor.value;
     const commonOption = {
-        textStyle: { color: '#fff' },
+        textStyle: { color: c },
         tooltip: {
             trigger: 'axis',
+            className: 'echarts-tooltip',
             backgroundColor: 'rgba(50,50,50,0.8)',
             borderColor: 'rgba(50,50,50,0.8)',
             textStyle: {
@@ -67,7 +76,7 @@ const updateCharts = () => {
             link: [{ xAxisIndex: 'all' }],
             label: {
                 backgroundColor: 'rgba(50,50,50,0.8)',
-                color: '#fff',
+                color: c,
             }
         },
         grid: { left: 30, right: 20, top: 40, bottom: 50 },
@@ -79,8 +88,8 @@ const updateCharts = () => {
                 xAxisIndex: [0],
                 bottom: 10,
                 height: 20,
-                textStyle: { color: '#fff' },
-                handleStyle: { color: '#fff' },
+                textStyle: { color: c },
+                handleStyle: { color: c },
                 filterMode: 'none'
             }
         ],
@@ -88,8 +97,8 @@ const updateCharts = () => {
             type: 'category',
             data: freqs,
             boundaryGap: false,
-            axisLine: { lineStyle: { color: '#fff' } },
-            axisLabel: { color: '#fff' }
+            axisLine: { lineStyle: { color: c } },
+            axisLabel: { color: c }
         },
     };
 
@@ -97,9 +106,9 @@ const updateCharts = () => {
         ...commonOption,
         yAxis: {
             type: 'value',
-            axisLine: { lineStyle: { color: '#fff' } },
-            axisLabel: { color: '#fff' },
-            nameTextStyle: { color: '#fff' }
+            axisLine: { lineStyle: { color: c } },
+            axisLabel: { color: c },
+            nameTextStyle: { color: c }
         },
         series: selectedItems.map(item => ({
             name: item.time,
@@ -116,9 +125,9 @@ const updateCharts = () => {
         yAxis: {
             type: 'value',
             name: '密度',
-            axisLine: { lineStyle: { color: '#fff' } },
-            axisLabel: { color: '#fff' },
-            nameTextStyle: { color: '#fff' }
+            axisLine: { lineStyle: { color: c } },
+            axisLabel: { color: c },
+            nameTextStyle: { color: c }
         },
         series: selectedItems.map(item => ({
             name: item.time,
@@ -146,6 +155,8 @@ const initCharts = () => {
     emit('chart-init', { energyChartInstance, densityChartInstance });
     updateCharts();
 };
+
+watch(() => backgroundMode?.value, () => updateCharts(), { flush: 'post' });
 
 const handleResize = () => {
     // 使用 setTimeout 避免在主渲染过程中调用 resize

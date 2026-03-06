@@ -25,7 +25,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, shallowRef, computed } from 'vue';
+import { ref, onMounted, onUnmounted, shallowRef, computed, inject, watch } from 'vue';
+import type { Ref } from 'vue';
 import { useRoute } from 'vue-router';
 import * as echarts from 'echarts';
 import { useChartResize } from '@/composables/useChart';
@@ -42,6 +43,12 @@ const timeChartRef = ref<HTMLElement>();
 
 const freqChartInstance = shallowRef<echarts.ECharts | null>(null);
 const timeChartInstance = shallowRef<echarts.ECharts | null>(null);
+
+// 灰色主题下图表坐标轴/分割线用黑色，否则白色（与设备详情页一致）
+const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
+const isGrayTheme = computed(() => backgroundMode?.value === 'gray');
+const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'));
+const chartSplitLineColor = computed(() => (isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.1)'));
 
 // 存储接口返回的数据
 const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({
@@ -88,9 +95,12 @@ const updateFreqChart = () => {
     const yMinWithMargin = Math.max(0, yMin - yMargin);
     const yMaxWithMargin = yMax + yMargin;
 
+    const c = chartAxisColor.value;
+    const s = chartSplitLineColor.value;
     freqChartInstance.value.setOption({
         tooltip: {
             trigger: 'axis',
+            className: 'echarts-tooltip',
             backgroundColor: 'rgba(50, 50, 50, 0.9)',
             borderColor: 'rgba(50, 50, 50, 0.9)',
             textStyle: { color: '#fff' },
@@ -135,9 +145,9 @@ const updateFreqChart = () => {
             name: 'Hz',
             min: 0,
             max: xMax,
-            nameTextStyle: { color: '#fff' },
-            axisLabel: { color: '#fff' },
-            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
+            nameTextStyle: { color: c },
+            axisLabel: { color: c },
+            axisLine: { lineStyle: { color: c } },
             splitLine: { show: false }
         },
         yAxis: {
@@ -145,15 +155,15 @@ const updateFreqChart = () => {
             name: 'mm/s',
             min: yMinWithMargin,
             max: yMaxWithMargin,
-            nameTextStyle: { color: '#fff' },
+            nameTextStyle: { color: c },
             axisLabel: {
-                color: '#fff',
+                color: c,
                 formatter: function (value: number) {
                     return value.toFixed(2);
                 }
             },
-            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+            axisLine: { lineStyle: { color: c } },
+            splitLine: { lineStyle: { color: s } }
         },
         dataZoom: [
             { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
@@ -200,9 +210,12 @@ const updateTimeChart = () => {
         value
     ]);
 
+    const c = chartAxisColor.value;
+    const s = chartSplitLineColor.value;
     timeChartInstance.value.setOption({
         tooltip: {
             trigger: 'axis',
+            className: 'echarts-tooltip',
             backgroundColor: 'rgba(50, 50, 50, 0.9)',
             borderColor: 'rgba(50, 50, 50, 0.9)',
             textStyle: { color: '#fff' }
@@ -213,18 +226,18 @@ const updateTimeChart = () => {
             name: 's',
             min: 0,
             max: totalTime.value,
-            nameTextStyle: { color: '#fff' },
-            axisLabel: { color: '#fff' },
-            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
+            nameTextStyle: { color: c },
+            axisLabel: { color: c },
+            axisLine: { lineStyle: { color: c } },
             splitLine: { show: false }
         },
         yAxis: {
             type: 'value',
             name: 'mm/s',
-            nameTextStyle: { color: '#fff' },
-            axisLabel: { color: '#fff' },
-            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } },
-            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+            nameTextStyle: { color: c },
+            axisLabel: { color: c },
+            axisLine: { lineStyle: { color: c } },
+            splitLine: { lineStyle: { color: s } }
         },
         dataZoom: [
             { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
@@ -258,6 +271,11 @@ const updateTimeChart = () => {
 
 const { bindResize: bindFreq } = useChartResize(freqChartInstance, freqChartRef);
 const { bindResize: bindTime } = useChartResize(timeChartInstance, timeChartRef);
+
+watch(() => backgroundMode?.value, () => {
+    updateFreqChart();
+    updateTimeChart();
+}, { flush: 'post' });
 
 onMounted(async () => {
     // 初始化图表

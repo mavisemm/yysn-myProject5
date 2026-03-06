@@ -378,7 +378,7 @@ const viewDetails = async (row: any) => {
         modalEnergyChartInstance.value = echarts.init(modalEnergyChartRef.value);
         const energyLegend = avgdbArr.length > 0 ? ['能量', '标准能量线'] : ['能量'];
         modalEnergyChartInstance.value.setOption({
-          tooltip: { trigger: 'axis' },
+          tooltip: { trigger: 'axis', className: 'echarts-tooltip' },
           grid: baseGrid,
           legend: { show: true, top: 10, data: energyLegend },
           xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],
@@ -417,7 +417,7 @@ const viewDetails = async (row: any) => {
         modalDensityChartInstance.value = echarts.init(modalDensityChartRef.value);
         const densityLegend = avgdensityArr.length > 0 ? ['密度', '标准密度线'] : ['密度'];
         modalDensityChartInstance.value.setOption({
-          tooltip: { trigger: 'axis' },
+          tooltip: { trigger: 'axis', className: 'echarts-tooltip' },
           grid: baseGrid,
           legend: { show: true, top: 10, data: densityLegend },
           xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],

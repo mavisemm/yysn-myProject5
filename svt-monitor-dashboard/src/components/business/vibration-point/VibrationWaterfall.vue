@@ -17,7 +17,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue';
+import { ref, onMounted, onUnmounted, shallowRef, watch, inject, computed } from 'vue';
+import type { Ref } from 'vue';
 import * as echarts from 'echarts';
 import 'echarts-gl';
 import { useChartResize } from '@/composables/useChart';
@@ -26,6 +27,13 @@ import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vu
 
 const waterfallChartRef = ref<HTMLElement>();
 const waterfallChartInstance = shallowRef<echarts.ECharts | null>(null);
+
+// 灰色主题下图表坐标轴/字体用黑色，否则白色（与设备详情页一致）
+const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
+const isGrayTheme = computed(() => backgroundMode?.value === 'gray');
+const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#ffffff'));
+// 3D 平面网格线：非灰色主题保持灰色，灰色主题为黑色
+const chartGridLineColor = computed(() => (isGrayTheme.value ? '#000' : '#999999'));
 
 // 间隔时间（小时），默认 1
 const intervalHours = ref(1);
@@ -119,10 +127,13 @@ const initChart = () => {
         };
     });
 
+    const c = chartAxisColor.value;
+    const gridColor = chartGridLineColor.value;
     waterfallChartInstance.value.setOption({
         tooltip: {
             show: true,
             trigger: 'item',
+            className: 'echarts-tooltip',
             backgroundColor: 'rgba(50, 50, 50, 0.9)',
             borderColor: 'rgba(50, 50, 50, 0.9)',
             textStyle: { color: '#fff' },
@@ -162,7 +173,7 @@ const initChart = () => {
                 lineStyle: { color: '#063c83' }
             },
             splitLine: {
-                lineStyle: { color: '#999999' }
+                lineStyle: { color: gridColor }
             },
             splitArea: {
                 show: true,
@@ -176,16 +187,16 @@ const initChart = () => {
             type: 'value',
             name: '频率(Hz)',
             nameTextStyle: {
-                color: '#ffffff',
+                color: c,
                 fontSize: 12,
             },
             nameGap: 40,
-            axisLine: { lineStyle: { color: '#999999' } },
-            axisTick: { lineStyle: { color: '#999999' } },
+            axisLine: { lineStyle: { color: c } },
+            axisTick: { lineStyle: { color: c } },
             axisLabel: {
-                color: '#ffffff', // 白色标签
-                fontSize: 12, // 标签字体大小
-                margin: 10 // 标签与轴线的距离
+                color: c,
+                fontSize: 12,
+                margin: 10
             },
             min: 0,
             max: 100000
@@ -194,24 +205,24 @@ const initChart = () => {
             type: 'category',
             name: '时间',
             nameTextStyle: {
-                color: '#ffffff',
+                color: c,
                 fontSize: 12,
             },
             nameGap: 5,
-            axisLine: { lineStyle: { color: '#999999' } },
-            axisTick: { lineStyle: { color: '#999999' } },
+            axisLine: { lineStyle: { color: c } },
+            axisTick: { lineStyle: { color: c } },
             axisLabel: {
-                color: '#ffffff', // 白色标签
-                fontSize: 12, // 标签字体大小
-                margin: 20 // 标签与轴线的距离
+                color: c,
+                fontSize: 12,
+                margin: 20
             },
             data: times
         },
         legend: {
             show: true,
             data: times,
-            textStyle: { color: '#ffffff' },
-            pageTextStyle: { color: '#ffffff' },
+            textStyle: { color: c },
+            pageTextStyle: { color: c },
             pageIconColor: '#ffffff',
             pageIconInactiveColor: 'rgba(255,255,255,0.5)',
             right: 10,
@@ -222,17 +233,17 @@ const initChart = () => {
         zAxis3D: {
             name: '速度有效值(mm/s)',
             nameTextStyle: {
-                color: '#ffffff',
+                color: c,
                 fontSize: 12,
             },
             nameGap: 5,
             namemoveoverlap: true,
-            axisLine: { lineStyle: { color: '#999999' } },
-            axisTick: { lineStyle: { color: '#999999' } },
+            axisLine: { lineStyle: { color: c } },
+            axisTick: { lineStyle: { color: c } },
             axisLabel: {
-                color: '#ffffff', // 白色标签
-                fontSize: 12, // 标签字体大小
-                margin: 5 // 标签与轴线的距离
+                color: c,
+                fontSize: 12,
+                margin: 5
             }
         },
         series: seriesList
@@ -254,6 +265,10 @@ onMounted(() => {
 watch([dateRange, intervalHours], () => {
     if (waterfallChartInstance.value) initChart();
 }, { deep: true });
+
+watch(() => backgroundMode?.value, () => {
+    if (waterfallChartInstance.value) initChart();
+}, { flush: 'post' });
 
 onUnmounted(() => {
     waterfallChartInstance.value?.dispose();

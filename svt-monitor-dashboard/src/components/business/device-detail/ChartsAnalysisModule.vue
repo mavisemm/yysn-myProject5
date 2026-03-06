@@ -100,7 +100,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, onUnmounted, watch, computed } from 'vue'
+import { ref, onMounted, nextTick, onUnmounted, watch, computed, inject } from 'vue'
+import type { Ref } from 'vue'
 import { ElForm, ElFormItem, ElSelect, ElOption, ElInputNumber, ElDatePicker, ElButton, ElMessage, ElDialog } from 'element-plus'
 import * as echarts from 'echarts'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
@@ -141,6 +142,12 @@ const vibChartRef = ref<HTMLDivElement>()
 let tempChart: echarts.ECharts | null = null
 let soundChart: echarts.ECharts | null = null
 let vibChart: echarts.ECharts | null = null
+
+// 灰色主题下图表坐标轴/分割线用黑色，否则白色
+const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode')
+const isGrayTheme = computed(() => backgroundMode?.value === 'gray')
+const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'))
+const chartSplitLineColor = computed(() => (isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(150,150,150, 0.2)'))
 
 // 趋势分析相关
 
@@ -802,6 +809,7 @@ const loadTemperatureData = async (pointId: string) => {
             tempChart.setOption({
                 tooltip: {
                     trigger: 'axis',
+                    className: 'echarts-tooltip',
                     backgroundColor: 'rgba(50,50,50,0.8)',
                     borderColor: 'rgba(50,50,50,0.8)',
                     textStyle: {
@@ -845,16 +853,16 @@ const loadTemperatureData = async (pointId: string) => {
                     data: timeData,
                     axisLabel: {
                         fontSize: 10,
-                        color: '#fff'
+                        color: chartAxisColor.value
                     },
                     axisLine: {
                         lineStyle: {
-                            color: '#fff'
+                            color: chartAxisColor.value
                         }
                     },
                     axisTick: {
                         lineStyle: {
-                            color: '#fff'
+                            color: chartAxisColor.value
                         }
                     }
                 },
@@ -866,14 +874,14 @@ const loadTemperatureData = async (pointId: string) => {
                     max: yMax,
                     axisLabel: {
                         fontSize: 10,
-                        color: '#fff',
+                        color: chartAxisColor.value,
                         formatter: (value: number) => String(Math.round(Number(value)))
                     },
-                    axisLine: { lineStyle: { color: '#fff' } },
-                    axisTick: { lineStyle: { color: '#fff' } },
-                    splitLine: { lineStyle: { color: 'rgba(150,150,150, 0.2)' } },
+                    axisLine: { lineStyle: { color: chartAxisColor.value } },
+                    axisTick: { lineStyle: { color: chartAxisColor.value } },
+                    splitLine: { lineStyle: { color: chartSplitLineColor.value } },
                     splitNumber: 4,
-                    nameTextStyle: { color: '#fff' }
+                    nameTextStyle: { color: chartAxisColor.value }
                 },
                 series: [{
                     data: tempData,
@@ -903,16 +911,16 @@ const setTempChartFallback = () => {
             data: TEMP_FALLBACK_TIMES,
             axisLabel: {
                 fontSize: 10,
-                color: '#fff'
+                color: chartAxisColor.value
             },
             axisLine: {
                 lineStyle: {
-                    color: '#fff'
+                    color: chartAxisColor.value
                 }
             },
             axisTick: {
                 lineStyle: {
-                    color: '#fff'
+                    color: chartAxisColor.value
                 }
             }
         },
@@ -972,7 +980,7 @@ const loadVibrationData = async (pointId: string) => {
                     data: timeData,
                     axisLabel: {
                         fontSize: 10,
-                        color: '#fff'
+                        color: chartAxisColor.value
                     }
                 },
                 yAxis: {
@@ -982,12 +990,12 @@ const loadVibrationData = async (pointId: string) => {
                     max: yMax,
                     axisLabel: {
                         fontSize: 10,
-                        color: '#fff',
+                        color: chartAxisColor.value,
                         formatter: (value: number) => String(Math.round(Number(value)))
                     },
-                    axisLine: { lineStyle: { color: '#fff' } },
-                    axisTick: { lineStyle: { color: '#fff' } },
-                    splitLine: { lineStyle: { color: 'rgba(150,150,150, 0.2)' } },
+                    axisLine: { lineStyle: { color: chartAxisColor.value } },
+                    axisTick: { lineStyle: { color: chartAxisColor.value } },
+                    splitLine: { lineStyle: { color: chartSplitLineColor.value } },
                     splitNumber: 4
                 },
                 series: [{
@@ -1045,7 +1053,7 @@ const loadSoundData = async (_pointId: string) => {
                     data: timeData,
                     axisLabel: {
                         fontSize: 10,
-                        color: '#fff'
+                        color: chartAxisColor.value
                     }
                 },
                 yAxis: {
@@ -1053,12 +1061,12 @@ const loadSoundData = async (_pointId: string) => {
                     scale: true,
                     axisLabel: {
                         fontSize: 10,
-                        color: '#fff',
+                        color: chartAxisColor.value,
                         formatter: (value: number) => String(Math.round(Number(value)))
                     },
-                    axisLine: { lineStyle: { color: '#fff' } },
-                    axisTick: { lineStyle: { color: '#fff' } },
-                    splitLine: { lineStyle: { color: 'rgba(150,150,150, 0.2)' } },
+                    axisLine: { lineStyle: { color: chartAxisColor.value } },
+                    axisTick: { lineStyle: { color: chartAxisColor.value } },
+                    splitLine: { lineStyle: { color: chartSplitLineColor.value } },
                     splitNumber: 4
                 },
                 series: [{
@@ -1100,6 +1108,7 @@ const initTempChart = () => {
     const option = {
         tooltip: {
             trigger: 'axis',
+            className: 'echarts-tooltip',
             backgroundColor: 'rgba(50,50,50,0.8)',
             borderColor: 'rgba(50,50,50,0.8)',
             textStyle: {
@@ -1143,18 +1152,18 @@ const initTempChart = () => {
             data: FALLBACK_TIME_LABELS,
             axisLabel: {
                 fontSize: 10,
-                color: '#fff'
+                color: chartAxisColor.value
             },
             axisLine: {
                 lineStyle: {
-                    color: '#fff'
+                    color: chartAxisColor.value
                     // 不論 y 軸是否有負值，x 軸始終貼底顯示
                 }
                 , onZero: false
             },
             axisTick: {
                 lineStyle: {
-                    color: '#fff'
+                    color: chartAxisColor.value
                 }
             }
         },
@@ -1166,13 +1175,13 @@ const initTempChart = () => {
             max: 'dataMax',
             axisLabel: {
                 fontSize: 10,
-                color: '#fff',
+                color: chartAxisColor.value,
                 formatter: (value: number) => String(Math.round(Number(value)))
             },
-            axisLine: { lineStyle: { color: '#fff' } },
-            axisTick: { lineStyle: { color: '#fff' } },
-            splitLine: { lineStyle: { color: 'rgba(150,150,150, 0.2)' } },
-            nameTextStyle: { color: '#fff' },
+            axisLine: { lineStyle: { color: chartAxisColor.value } },
+            axisTick: { lineStyle: { color: chartAxisColor.value } },
+            splitLine: { lineStyle: { color: chartSplitLineColor.value } },
+            nameTextStyle: { color: chartAxisColor.value },
             splitNumber: 4
         },
         series: [{
@@ -1233,6 +1242,7 @@ const initSoundChart = () => {
     const option = {
         tooltip: {
             trigger: 'axis',
+            className: 'echarts-tooltip',
             backgroundColor: 'rgba(50,50,50,0.8)',
             borderColor: 'rgba(50,50,50,0.8)',
             textStyle: {
@@ -1275,18 +1285,18 @@ const initSoundChart = () => {
             data: hours,
             axisLabel: {
                 fontSize: 10,
-                color: '#fff'
+                color: chartAxisColor.value
             },
             axisLine: {
                 lineStyle: {
-                    color: '#fff'
+                    color: chartAxisColor.value
                     // 不論 y 軸是否有負值，x 軸始終貼底顯示
                 }
                 , onZero: false
             },
             axisTick: {
                 lineStyle: {
-                    color: '#fff'
+                    color: chartAxisColor.value
                 }
             }
         },
@@ -1296,21 +1306,21 @@ const initSoundChart = () => {
             scale: true,
             axisLabel: {
                 fontSize: 10,
-                color: '#fff'
+                color: chartAxisColor.value
             },
             axisLine: {
                 lineStyle: {
-                    color: '#fff'
+                    color: chartAxisColor.value
                 }
             },
             axisTick: {
                 lineStyle: {
-                    color: '#fff'
+                    color: chartAxisColor.value
                 }
             },
             splitLine: {
                 lineStyle: {
-                    color: 'rgba(150,150,150, 0.2)'
+                    color: chartSplitLineColor.value
                 }
             },
             splitNumber: 4
@@ -1372,6 +1382,7 @@ const initVibChart = () => {
     const option = {
         tooltip: {
             trigger: 'axis',
+            className: 'echarts-tooltip',
             backgroundColor: 'rgba(50,50,50,0.8)',
             borderColor: 'rgba(50,50,50,0.8)',
             textStyle: {
@@ -1414,16 +1425,16 @@ const initVibChart = () => {
             data: hours,
             axisLabel: {
                 fontSize: 10,
-                color: '#fff'
+                color: chartAxisColor.value
             },
             axisLine: {
                 lineStyle: {
-                    color: '#fff'
+                    color: chartAxisColor.value
                 }
             },
             axisTick: {
                 lineStyle: {
-                    color: '#fff'
+                    color: chartAxisColor.value
                 }
             }
         },
@@ -1432,21 +1443,21 @@ const initVibChart = () => {
             name: 'mm/s',
             axisLabel: {
                 fontSize: 10,
-                color: '#fff'
+                color: chartAxisColor.value
             },
             axisLine: {
                 lineStyle: {
-                    color: '#fff'
+                    color: chartAxisColor.value
                 }
             },
             axisTick: {
                 lineStyle: {
-                    color: '#fff'
+                    color: chartAxisColor.value
                 }
             },
             splitLine: {
                 lineStyle: {
-                    color: 'rgba(150,150,150, 0.2)'
+                    color: chartSplitLineColor.value
                 }
             },
             splitNumber: 4
@@ -1481,6 +1492,30 @@ const initVibChart = () => {
 
     vibChart.setOption(option)
 }
+
+// 灰色/非灰色主题切换时，更新三个图表的坐标轴与分割线颜色
+const updateChartsTheme = () => {
+    const c = chartAxisColor.value
+    const s = chartSplitLineColor.value
+    const themePart = {
+        xAxis: {
+            axisLabel: { color: c },
+            axisLine: { lineStyle: { color: c } },
+            axisTick: { lineStyle: { color: c } }
+        },
+        yAxis: {
+            axisLabel: { color: c },
+            axisLine: { lineStyle: { color: c } },
+            axisTick: { lineStyle: { color: c } },
+            splitLine: { lineStyle: { color: s } },
+            nameTextStyle: { color: c }
+        }
+    }
+    if (tempChart) tempChart.setOption(themePart)
+    if (soundChart) soundChart.setOption(themePart)
+    if (vibChart) vibChart.setOption(themePart)
+}
+watch(() => backgroundMode?.value, () => updateChartsTheme(), { flush: 'post' })
 
 // 分析趋势
 const analyzeTrend = async () => {
