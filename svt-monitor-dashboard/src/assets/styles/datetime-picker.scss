@@ -54,8 +54,6 @@
       padding: 4px 0 !important;
       line-height: 1.2 !important;
       white-space: nowrap !important;
-      overflow: hidden !important;
-      text-overflow: ellipsis !important;
     }
 
     .el-picker-panel__icon-btn {
@@ -68,7 +66,8 @@
     .el-date-range-picker__content {
       width: 180px !important;
       padding: 6px !important;
-
+      box-sizing: border-box !important;
+      
       .el-date-table {
         font-size: 10.5px !important;
 
