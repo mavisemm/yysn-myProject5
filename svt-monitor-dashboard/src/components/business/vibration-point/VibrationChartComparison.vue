@@ -5,8 +5,13 @@
                 <div class="card-title app-section-title">振动频域图</div>
             </div>
             <div class="chart-container">
-                <div ref="freqChartRef" class="chart-inner"></div>
-                <div v-if="!freqData.frequency.length" class="chart-empty">暂无数据</div>
+                <CommonEcharts
+                    :option="freqOption"
+                    :empty="!freqData.frequency.length"
+                    empty-text="暂无数据"
+                    :enable-data-zoom="false"
+                    :not-merge="true"
+                />
             </div>
         </div>
         <div class="card-item time-card">
@@ -14,29 +19,30 @@
                 <div class="card-title app-section-title">振动时域图</div>
             </div>
             <div class="chart-container">
-                <div ref="timeChartRef" class="chart-inner"></div>
-                <div v-if="!timeDomainData.length" class="chart-empty">暂无数据</div>
+                <CommonEcharts
+                    :option="timeOption"
+                    :empty="!timeDomainData.length"
+                    empty-text="暂无数据"
+                    :enable-data-zoom="false"
+                    :not-merge="true"
+                />
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, shallowRef, computed, inject, watch } from 'vue';
+import { ref, onMounted, computed, inject } from 'vue';
 import type { Ref } from 'vue';
 import { useRoute } from 'vue-router';
 import * as echarts from 'echarts';
-import { useChartResize } from '@/composables/useChart';
-import { getVibrationFrequencyData, getVibrationTimeDomainData, type VibrationFrequencyData, type VibrationTimeDomainData, type NewApiResponse } from '@/api/modules/device';
+import type { EChartsOption } from 'echarts';
+import { CommonEcharts } from '@/components/common/chart';
+import { getVibrationFrequencyData, getVibrationTimeDomainData } from '@/api/modules/device';
 
 const route = useRoute();
 const deviceId = computed(() => (route.query.deviceId as string) || '');
 const pointId = computed(() => (route.query.pointId as string) || '');
-
-const freqChartRef = ref<HTMLElement>();
-const timeChartRef = ref<HTMLElement>();
-const freqChartInstance = shallowRef<echarts.ECharts | null>(null);
-const timeChartInstance = shallowRef<echarts.ECharts | null>(null);
 
 /** 主题：灰色时坐标轴/分割线为黑，否则白 */
 const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
@@ -48,21 +54,9 @@ const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({ frequen
 const timeDomainData = ref<number[]>([]);
 const totalTime = ref<number>(0);
 
-const initCharts = () => {
-    if (freqChartRef.value) {
-        freqChartInstance.value = echarts.init(freqChartRef.value);
-        updateFreqChart();
-    }
-
-    if (timeChartRef.value) {
-        timeChartInstance.value = echarts.init(timeChartRef.value);
-        updateTimeChart();
-    }
-};
-
 /** 频域图：数据 [freq, value] 按频率升序，y 轴留边距 */
-const updateFreqChart = () => {
-    if (!freqChartInstance.value || !freqData.value.frequency.length) return;
+const freqOption = computed<EChartsOption>(() => {
+    if (!freqData.value.frequency.length) return {};
 
     const chartData = freqData.value.frequency
         .map((freq, index) => [freq, freqData.value.freqSpeedData[index] ?? 0] as [number, number])
@@ -78,7 +72,8 @@ const updateFreqChart = () => {
 
     const c = chartAxisColor.value;
     const s = chartSplitLineColor.value;
-    freqChartInstance.value.setOption({
+
+    return {
         tooltip: {
             trigger: 'axis',
             className: 'echarts-tooltip',
@@ -89,17 +84,10 @@ const updateFreqChart = () => {
                 const data = params[0];
                 const currentX = data.value[0];
                 const currentY = data.value[1];
-
-                // 获取图表数据用于查找倍频点
-                const chartData = freqData.value.frequency
-                    .map((freq, index) => [freq, freqData.value.freqSpeedData[index] ?? 0] as [number, number])
-                    .sort((a, b) => a[0] - b[0]);
-
                 const maxX = Math.max(...freqData.value.frequency, 2000);
 
                 let tooltipContent = `${currentX.toFixed(0)}hZ：${currentY.toFixed(10)}`;
 
-                // 查找2倍频点
                 const doubleFreq = currentX * 2;
                 if (doubleFreq <= maxX) {
                     const doublePoint = chartData.find(item => Math.abs(item[0] - doubleFreq) < 1);
@@ -108,7 +96,6 @@ const updateFreqChart = () => {
                     }
                 }
 
-                // 查找3倍频点
                 const tripleFreq = currentX * 3;
                 if (tripleFreq <= maxX) {
                     const triplePoint = chartData.find(item => Math.abs(item[0] - tripleFreq) < 1);
@@ -139,9 +126,7 @@ const updateFreqChart = () => {
             nameTextStyle: { color: c },
             axisLabel: {
                 color: c,
-                formatter: function (value: number) {
-                    return value.toFixed(2);
-                }
+                formatter: (value: number) => value.toFixed(2)
             },
             axisLine: { lineStyle: { color: c } },
             splitLine: { lineStyle: { color: s } }
@@ -173,14 +158,13 @@ const updateFreqChart = () => {
                 ])
             }
         }]
-    });
-};
+    } as EChartsOption;
+});
 
 /** 时域图：按 totalTime 均分 x，y 为采样值 */
-const updateTimeChart = () => {
-    if (!timeChartInstance.value || timeDomainData.value.length === 0) return;
+const timeOption = computed<EChartsOption>(() => {
+    if (timeDomainData.value.length === 0) return {};
 
-    // X轴：0 到 time，按 timedomaindata 长度均分；timedomaindata[0] 在 x=0，最后一个在 x=time
     const dataPoints = timeDomainData.value.length;
     const step = dataPoints > 1 ? totalTime.value / (dataPoints - 1) : 0;
 
@@ -191,7 +175,8 @@ const updateTimeChart = () => {
 
     const c = chartAxisColor.value;
     const s = chartSplitLineColor.value;
-    timeChartInstance.value.setOption({
+
+    return {
         tooltip: {
             trigger: 'axis',
             className: 'echarts-tooltip',
@@ -245,22 +230,10 @@ const updateTimeChart = () => {
                 ])
             }
         }]
-    });
-};
-
-const { bindResize: bindFreq } = useChartResize(freqChartInstance, freqChartRef);
-const { bindResize: bindTime } = useChartResize(timeChartInstance, timeChartRef);
-
-watch(() => backgroundMode?.value, () => {
-    updateFreqChart();
-    updateTimeChart();
-}, { flush: 'post' });
+    } as EChartsOption;
+});
 
 onMounted(async () => {
-    initCharts();
-    bindFreq();
-    bindTime();
-
     try {
         if (!deviceId.value || !pointId.value) return;
         const freqResponse = await getVibrationFrequencyData(deviceId.value, pointId.value);
@@ -271,7 +244,6 @@ onMounted(async () => {
                 if (Array.isArray(frequencyArray) && Array.isArray(freqSpeedArray) &&
                     frequencyArray.length > 0 && freqSpeedArray.length > 0) {
                     freqData.value = { frequency: frequencyArray, freqSpeedData: freqSpeedArray };
-                    updateFreqChart();
                 } else {
                     console.warn('频域图数据为空或格式不正确');
                 }
@@ -298,7 +270,6 @@ onMounted(async () => {
                     typeof timeResponse.ret.time === 'number' && timeResponse.ret.time > 0) {
                     timeDomainData.value = timeDomainArray;
                     totalTime.value = timeResponse.ret.time;
-                    updateTimeChart();
                 } else {
                     console.warn('时域图数据为空或格式不正确');
                 }
@@ -311,11 +282,6 @@ onMounted(async () => {
     } catch (error) {
         console.error('获取振动时域数据失败:', error);
     }
-});
-
-onUnmounted(() => {
-    freqChartInstance.value?.dispose();
-    timeChartInstance.value?.dispose();
 });
 </script>
 
@@ -350,22 +316,6 @@ onUnmounted(() => {
         min-height: 0;
         padding: 10px 20px 20px;
         position: relative;
-
-        .chart-inner {
-            width: 100%;
-            height: 100%;
-            min-height: 100px;
-        }
-
-        .chart-empty {
-            position: absolute;
-            inset: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-weight: 500;
-        }
     }
 }
 

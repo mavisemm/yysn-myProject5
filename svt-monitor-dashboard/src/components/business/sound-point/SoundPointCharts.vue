@@ -2,32 +2,52 @@
     <div class="charts-section">
         <div class="chart-item">
             <div class="chart-title app-section-title">能量曲线</div>
-            <div ref="energyChartRef" class="chart-container"></div>
+            <div class="chart-container">
+                <CommonEcharts
+                    ref="energyChartRef"
+                    :option="energyOption"
+                    linkage-group="sound-point-charts"
+                    :enable-linkage-zoom="true"
+                    :enable-wheel-zoom="true"
+                    :tooltip-follow-mouse="true"
+                    :not-merge="true"
+                    :enable-data-zoom="false"
+                    @chart-ready="onEnergyChartReady"
+                />
+            </div>
         </div>
         <div class="chart-item">
             <div class="chart-title app-section-title">密度曲线</div>
-            <div ref="densityChartRef" class="chart-container"></div>
+            <div class="chart-container">
+                <CommonEcharts
+                    ref="densityChartRef"
+                    :option="densityOption"
+                    linkage-group="sound-point-charts"
+                    :enable-linkage-zoom="true"
+                    :enable-wheel-zoom="true"
+                    :tooltip-follow-mouse="true"
+                    :not-merge="true"
+                    :enable-data-zoom="false"
+                    @chart-ready="onDensityChartReady"
+                />
+            </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, shallowRef, inject, computed, watch } from 'vue';
+import { ref, inject, computed } from 'vue';
 import type { Ref } from 'vue';
-import * as echarts from 'echarts';
-import { useChartResize } from '@/composables/useChart';
-import { connectCharts, enableMouseWheelZoomForCharts } from '@/utils/chart';
+import type { EChartsOption } from 'echarts';
+import { CommonEcharts } from '@/components/common/chart';
 
 const emit = defineEmits(['chart-init']);
 const props = defineProps<{
     deviationList: any[];
 }>();
 
-const energyChartRef = ref<HTMLDivElement>();
-const densityChartRef = ref<HTMLDivElement>();
-
-const energyChartInstance = shallowRef<echarts.ECharts | null>(null);
-const densityChartInstance = shallowRef<echarts.ECharts | null>(null);
+const energyChartRef = ref<InstanceType<typeof CommonEcharts>>();
+const densityChartRef = ref<InstanceType<typeof CommonEcharts>>();
 
 /** 主题：灰色时坐标轴/分割线为黑，否则白 */
 const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
@@ -35,55 +55,49 @@ const isGrayTheme = computed(() => backgroundMode?.value === 'gray');
 const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'));
 const chartSplitLineColor = computed(() => (isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(150,150,150, 0.2)'));
 
-const updateCharts = () => {
-    const selectedItems = props.deviationList.filter(item => item.visible);
+/** 选中的条目（带颜色） */
+const selectedItemsWithColor = computed(() => {
+    const selected = props.deviationList.filter(item => item.visible);
+    return selected.map((item, index) => ({
+        ...item,
+        color: `hsl(${(index * 137.5) % 360}, 70%, 50%)`
+    }));
+});
 
-    selectedItems.forEach((item, index) => {
-        item.color = `hsl(${(index * 137.5) % 360}, 70%, 50%)`;
-    });
-
-    props.deviationList.forEach(item => {
-        if (!item.visible) item.color = undefined;
-    });
-
-    const freqs = selectedItems[0]?.freqs || [];
-
+/** 公共配置 */
+const commonOptionBase = computed(() => {
     const c = chartAxisColor.value;
     const s = chartSplitLineColor.value;
-    const commonOption = {
+    const freqs = selectedItemsWithColor.value[0]?.freqs || [];
+    return {
         textStyle: { color: c },
         tooltip: {
-            trigger: 'axis',
+            trigger: 'axis' as const,
             className: 'echarts-tooltip',
             backgroundColor: 'rgba(50,50,50,0.8)',
             borderColor: 'rgba(50,50,50,0.8)',
-            textStyle: {
-                color: '#fff'
-            },
+            textStyle: { color: '#fff' },
             axisPointer: {
-                type: 'cross',
-                // 去掉 x/y 轴上的小方块标签
-                label: {
-                    show: false
-                }
+                type: 'cross' as const,
+                label: { show: false }
             },
-            position: function (pos: any, params: any, el: any, elRect: any, size: any) {
+            position: function (pos: any, _params: any, _el: any, _elRect: any, size: any) {
                 const [mouseX, mouseY] = pos;
                 const [contentWidth, contentHeight] = size.contentSize;
-                const [viewWidth, viewHeight] = size.viewSize;
+                const [viewWidth] = size.viewSize;
                 let x = mouseX + 20;
                 if (x + contentWidth > viewWidth) {
                     x = mouseX - contentWidth - 20;
                 }
-                let y = Math.max(0, mouseY - contentHeight / 2);
+                const y = Math.max(0, mouseY - contentHeight / 2);
                 return [x, y];
             }
         },
         axisPointer: {
-            link: [{ xAxisIndex: 'all' }],
+            link: [{ xAxisIndex: 'all' as const }],
             label: {
                 backgroundColor: 'rgba(50,50,50,0.8)',
-                color: c,
+                color: c
             }
         },
         grid: { left: 30, right: 20, top: 40, bottom: 50 },
@@ -101,26 +115,29 @@ const updateCharts = () => {
             }
         ],
         xAxis: {
-            type: 'category',
+            type: 'category' as const,
             data: freqs,
             boundaryGap: false,
             axisLine: { lineStyle: { color: c } },
             axisLabel: { color: c }
-        },
+        }
     };
+});
 
-    energyChartInstance.value?.setOption({
-        ...commonOption,
+/** 能量曲线配置 */
+const energyOption = computed<EChartsOption>(() => {
+    const c = chartAxisColor.value;
+    const s = chartSplitLineColor.value;
+    return {
+        ...commonOptionBase.value,
         yAxis: {
             type: 'value',
             axisLine: { lineStyle: { color: c } },
             axisLabel: { color: c },
             nameTextStyle: { color: c },
-            splitLine: {
-                lineStyle: { color: s }
-            }
+            splitLine: { lineStyle: { color: s } }
         },
-        series: selectedItems.map(item => ({
+        series: selectedItemsWithColor.value.map(item => ({
             name: item.time,
             type: 'line',
             data: item.dbArr,
@@ -128,21 +145,23 @@ const updateCharts = () => {
             smooth: true,
             symbolSize: 1
         }))
-    }, true);
+    } as EChartsOption;
+});
 
-    densityChartInstance.value?.setOption({
-        ...commonOption,
+/** 密度曲线配置 */
+const densityOption = computed<EChartsOption>(() => {
+    const c = chartAxisColor.value;
+    const s = chartSplitLineColor.value;
+    return {
+        ...commonOptionBase.value,
         yAxis: {
             type: 'value',
-            name: '密度',
             axisLine: { lineStyle: { color: c } },
             axisLabel: { color: c },
             nameTextStyle: { color: c },
-            splitLine: {
-                lineStyle: { color: s }
-            }
+            splitLine: { lineStyle: { color: s } }
         },
-        series: selectedItems.map(item => ({
+        series: selectedItemsWithColor.value.map(item => ({
             name: item.time,
             type: 'line',
             data: item.densityArr,
@@ -150,79 +169,30 @@ const updateCharts = () => {
             smooth: true,
             symbolSize: 1
         }))
-    }, true);
-};
-
-const initCharts = () => {
-    if (energyChartRef.value) energyChartInstance.value = echarts.init(energyChartRef.value);
-    if (densityChartRef.value) densityChartInstance.value = echarts.init(densityChartRef.value);
-
-    const { bindResize: bindEnergy } = useChartResize(energyChartInstance, energyChartRef);
-    const { bindResize: bindDensity } = useChartResize(densityChartInstance, densityChartRef);
-    bindEnergy();
-    bindDensity();
-
-    connectCharts([energyChartInstance.value, densityChartInstance.value]);
-    enableMouseWheelZoomForCharts([energyChartInstance.value, densityChartInstance.value]);
-
-    emit('chart-init', { energyChartInstance, densityChartInstance });
-    updateCharts();
-};
-
-watch(() => backgroundMode?.value, () => updateCharts(), { flush: 'post' });
-
-const handleResize = () => {
-    // 使用 setTimeout 避免在主渲染过程中调用 resize
-    setTimeout(() => {
-        try {
-            if (energyChartInstance.value) {
-                if (!(energyChartInstance.value.isDisposed && energyChartInstance.value.isDisposed())) {
-                    energyChartInstance.value.resize();
-                    console.debug('Energy chart resize completed');
-                }
-            }
-
-            if (densityChartInstance.value) {
-                if (!(densityChartInstance.value.isDisposed && densityChartInstance.value.isDisposed())) {
-                    densityChartInstance.value.resize();
-                    console.debug('Density chart resize completed');
-                }
-            }
-        } catch (error) {
-            console.warn('Charts resize failed:', error);
-            // 如果是主进程错误，尝试重试
-            if (error instanceof Error && error.message.includes('main process')) {
-                console.info('SoundPoint charts main process resize error, will retry');
-                setTimeout(() => {
-                    try {
-                        if (energyChartInstance.value && !(energyChartInstance.value.isDisposed && energyChartInstance.value.isDisposed())) {
-                            energyChartInstance.value.resize();
-                            console.debug('Energy chart resize retry successful');
-                        }
-
-                        if (densityChartInstance.value && !(densityChartInstance.value.isDisposed && densityChartInstance.value.isDisposed())) {
-                            densityChartInstance.value.resize();
-                            console.debug('Density chart resize retry successful');
-                        }
-                    } catch (retryError) {
-                        console.error('Charts resize retry also failed:', retryError);
-                    }
-                }, 50);
-            }
-        }
-    }, 0);
-};
-
-onMounted(() => {
-    initCharts();
-    window.addEventListener('resize', handleResize);
+    } as EChartsOption;
 });
 
-onUnmounted(() => {
-    window.removeEventListener('resize', handleResize);
-    energyChartInstance.value?.dispose();
-    densityChartInstance.value?.dispose();
-});
+let chartInitEmitted = false;
+const onEnergyChartReady = () => {
+    tryEmitChartInit();
+};
+const onDensityChartReady = () => {
+    tryEmitChartInit();
+};
+const tryEmitChartInit = () => {
+    if (chartInitEmitted) return;
+    const energy = energyChartRef.value?.chartInstance;
+    const density = densityChartRef.value?.chartInstance;
+    if (energy && density) {
+        chartInitEmitted = true;
+        emit('chart-init', { energyChartInstance: energy, densityChartInstance: density });
+    }
+};
+
+/** 供父组件调用，使用 CommonEcharts 后由响应式 option 自动更新，保留空实现以兼容 */
+const updateCharts = () => {
+    // option 为 computed，随 deviationList 变化自动更新
+};
 
 defineExpose({
     updateCharts

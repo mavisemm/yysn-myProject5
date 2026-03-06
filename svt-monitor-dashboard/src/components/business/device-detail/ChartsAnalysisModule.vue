@@ -7,7 +7,17 @@
                     <span class="chart-title">烈度随时间变化</span>
                     <span class="chart-unit special-font-color">（单位：mm/s）</span>
                 </div>
-                <div ref="vibChartRef" class="chart"></div>
+                <div class="chart">
+                    <CommonEcharts
+                        :option="vibOption"
+                        :enable-data-zoom="false"
+                        :not-merge="true"
+                        :tooltip-follow-mouse="true"
+                        linkage-group="device-detail-charts"
+                        :enable-linkage-zoom="true"
+                        :enable-wheel-zoom="true"
+                    />
+                </div>
             </div>
 
             <!-- 温度图表 -->
@@ -16,7 +26,17 @@
                     <span class="chart-title">温度随时间变化</span>
                     <span class="chart-unit special-font-color">（单位：℃）</span>
                 </div>
-                <div ref="tempChartRef" class="chart"></div>
+                <div class="chart">
+                    <CommonEcharts
+                        :option="tempOption"
+                        :enable-data-zoom="false"
+                        :not-merge="true"
+                        :tooltip-follow-mouse="true"
+                        linkage-group="device-detail-charts"
+                        :enable-linkage-zoom="true"
+                        :enable-wheel-zoom="true"
+                    />
+                </div>
             </div>
 
             <!-- 响度图表 -->
@@ -25,7 +45,17 @@
                     <span class="chart-title">响度随时间变化</span>
                     <span class="chart-unit special-font-color">（单位：dB）</span>
                 </div>
-                <div ref="soundChartRef" class="chart"></div>
+                <div class="chart">
+                    <CommonEcharts
+                        :option="soundOption"
+                        :enable-data-zoom="false"
+                        :not-merge="true"
+                        :tooltip-follow-mouse="true"
+                        linkage-group="device-detail-charts"
+                        :enable-linkage-zoom="true"
+                        :enable-wheel-zoom="true"
+                    />
+                </div>
             </div>
 
 
@@ -109,6 +139,8 @@ import { enableMouseWheelZoomForCharts, connectCharts } from '@/utils/chart'
 import { getTemperatureTrend, getVibrationTrend, getSoundTrend, getTrendAnalysis } from '@/api/modules/hardware'
 import { handleDatePickerChange, disabledFutureDate } from '@/utils/datetime'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
+import { CommonEcharts } from '@/components/common/chart'
+import type { EChartsOption } from 'echarts'
 
 interface PointInfo {
     id: string,
@@ -131,19 +163,199 @@ const props = defineProps<{
     selectedPointId?: string
 }>()
 
-const tempChartRef = ref<HTMLDivElement>()
-const soundChartRef = ref<HTMLDivElement>()
-const vibChartRef = ref<HTMLDivElement>()
-
-let tempChart: echarts.ECharts | null = null
-let soundChart: echarts.ECharts | null = null
-let vibChart: echarts.ECharts | null = null
+// 三个主图表的数据（null 时使用 fallback）
+interface ChartDataPoint {
+    timeLabels: string[]
+    values: number[]
+    yMin?: number
+    yMax?: number
+}
+const tempChartData = ref<ChartDataPoint | null>(null)
+const vibChartData = ref<ChartDataPoint | null>(null)
+const soundChartData = ref<ChartDataPoint | null>(null)
 
 // 灰色主题下图表坐标轴/分割线用黑色，否则白色
 const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode')
 const isGrayTheme = computed(() => backgroundMode?.value === 'gray')
 const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'))
 const chartSplitLineColor = computed(() => (isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(150,150,150, 0.2)'))
+
+// 温度/烈度/响度图 fallback 数据
+const TEMP_FALLBACK_TIMES = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00']
+const TEMP_FALLBACK_DATA = [32, 35, 38, 42, 45, 43, 40, 36, 33]
+const HOURS_24 = Array.from({ length: 24 }, (_, i) => `${i}`)
+const VIB_FALLBACK_VALUES = Array.from({ length: 24 }, (_, i) => 2 + Math.sin((i / 24) * Math.PI * 2) * 5)
+const SOUND_FALLBACK_VALUES = Array.from({ length: 24 }, (_, i) => 55 + (i % 5) * 3)
+
+/** 温度图表 option */
+const tempOption = computed<EChartsOption>(() => {
+    const c = chartAxisColor.value
+    const s = chartSplitLineColor.value
+    const d = tempChartData.value
+    const timeLabels = d?.timeLabels?.length ? d.timeLabels : TEMP_FALLBACK_TIMES
+    const values = d?.values?.length ? d.values : TEMP_FALLBACK_DATA
+    const yMin = d?.yMin
+    const yMax = d?.yMax
+    return {
+        tooltip: {
+            trigger: 'axis',
+            className: 'echarts-tooltip',
+            backgroundColor: 'rgba(50,50,50,0.8)',
+            borderColor: 'rgba(50,50,50,0.8)',
+            textStyle: { color: '#fff' }
+        },
+        grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+        dataZoom: [
+            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+            { type: 'slider', xAxisIndex: [0], bottom: '5%', height: '10%', fillerColor: 'rgba(255, 206, 86, 0.3)', borderColor: 'rgba(255, 206, 86, 0.5)', handleStyle: { color: '#FFCE56' }, filterMode: 'none' }
+        ],
+        xAxis: {
+            type: 'category',
+            data: timeLabels,
+            axisLabel: { fontSize: 10, color: c },
+            axisLine: { lineStyle: { color: c }, onZero: false },
+            axisTick: { lineStyle: { color: c } }
+        },
+        yAxis: {
+            type: 'value',
+            name: '℃',
+            scale: true,
+            ...(yMin != null && yMax != null ? { min: yMin, max: yMax } : { min: 'dataMin', max: 'dataMax' }),
+            axisLabel: { fontSize: 10, color: c, formatter: (v: number) => String(Math.round(Number(v))) },
+            axisLine: { lineStyle: { color: c } },
+            axisTick: { lineStyle: { color: c } },
+            splitLine: { lineStyle: { color: s } },
+            nameTextStyle: { color: c },
+            splitNumber: 4
+        },
+        series: [{
+            data: values,
+            type: 'line',
+            smooth: true,
+            symbolSize: 4,
+            itemStyle: { color: '#FFCE56' },
+            lineStyle: { color: '#FFCE56', width: 2 },
+            areaStyle: {
+                color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(255, 206, 86, 0.5)' }, { offset: 1, color: 'rgba(255, 206, 86, 0.1)' }] },
+                opacity: 0.3
+            }
+        }],
+        backgroundColor: 'transparent'
+    } as EChartsOption
+})
+
+/** 烈度图表 option */
+const vibOption = computed<EChartsOption>(() => {
+    const c = chartAxisColor.value
+    const s = chartSplitLineColor.value
+    const d = vibChartData.value
+    const timeLabels = d?.timeLabels?.length ? d.timeLabels : HOURS_24
+    const values = d?.values?.length ? d.values : VIB_FALLBACK_VALUES
+    const yMin = d?.yMin
+    const yMax = d?.yMax
+    return {
+        tooltip: {
+            trigger: 'axis',
+            className: 'echarts-tooltip',
+            backgroundColor: 'rgba(50,50,50,0.8)',
+            borderColor: 'rgba(50,50,50,0.8)',
+            textStyle: { color: '#fff' }
+        },
+        grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+        dataZoom: [
+            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+            { type: 'slider', xAxisIndex: [0], bottom: '5%', height: '10%', fillerColor: 'rgba(255, 206, 86, 0.3)', borderColor: 'rgba(255, 206, 86, 0.5)', handleStyle: { color: '#FFCE56' }, filterMode: 'none' }
+        ],
+        xAxis: {
+            type: 'category',
+            data: timeLabels,
+            axisLabel: { fontSize: 10, color: c },
+            axisLine: { lineStyle: { color: c } },
+            axisTick: { lineStyle: { color: c } }
+        },
+        yAxis: {
+            type: 'value',
+            name: 'mm/s',
+            ...(yMin != null && yMax != null ? { min: yMin, max: yMax } : {}),
+            axisLabel: { fontSize: 10, color: c },
+            axisLine: { lineStyle: { color: c } },
+            axisTick: { lineStyle: { color: c } },
+            splitLine: { lineStyle: { color: s } },
+            nameTextStyle: { color: c },
+            splitNumber: 4
+        },
+        series: [{
+            data: values,
+            type: 'line',
+            smooth: true,
+            symbolSize: 1,
+            itemStyle: { color: '#FFCE56' },
+            lineStyle: { color: '#FFCE56', width: 2 },
+            areaStyle: {
+                color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(255, 206, 86, 0.5)' }, { offset: 1, color: 'rgba(255, 206, 86, 0.1)' }] },
+                opacity: 0.3
+            }
+        }],
+        backgroundColor: 'transparent'
+    } as EChartsOption
+})
+
+/** 响度图表 option */
+const soundOption = computed<EChartsOption>(() => {
+    const c = chartAxisColor.value
+    const s = chartSplitLineColor.value
+    const d = soundChartData.value
+    const timeLabels = d?.timeLabels?.length ? d.timeLabels : HOURS_24
+    const values = d?.values?.length ? d.values : SOUND_FALLBACK_VALUES
+    const yMin = d?.yMin
+    const yMax = d?.yMax
+    return {
+        tooltip: {
+            trigger: 'axis',
+            className: 'echarts-tooltip',
+            backgroundColor: 'rgba(50,50,50,0.8)',
+            borderColor: 'rgba(50,50,50,0.8)',
+            textStyle: { color: '#fff' }
+        },
+        grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+        dataZoom: [
+            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+            { type: 'slider', xAxisIndex: [0], bottom: '5%', height: '10%', fillerColor: 'rgba(234, 124, 204, 0.3)', borderColor: 'rgba(234, 124, 204, 0.5)', handleStyle: { color: '#ea7ccc' }, filterMode: 'none' }
+        ],
+        xAxis: {
+            type: 'category',
+            data: timeLabels,
+            axisLabel: { fontSize: 10, color: c },
+            axisLine: { lineStyle: { color: c }, onZero: false },
+            axisTick: { lineStyle: { color: c } }
+        },
+        yAxis: {
+            type: 'value',
+            name: 'dB',
+            scale: true,
+            ...(yMin != null && yMax != null ? { min: yMin, max: yMax } : {}),
+            axisLabel: { fontSize: 10, color: c },
+            axisLine: { lineStyle: { color: c } },
+            axisTick: { lineStyle: { color: c } },
+            splitLine: { lineStyle: { color: s } },
+            nameTextStyle: { color: c },
+            splitNumber: 4
+        },
+        series: [{
+            data: values,
+            type: 'line',
+            smooth: true,
+            symbolSize: 1,
+            itemStyle: { color: '#ea7ccc' },
+            lineStyle: { color: '#ea7ccc', width: 2 },
+            areaStyle: {
+                color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(234, 124, 204, 0.5)' }, { offset: 1, color: 'rgba(234, 124, 204, 0.1)' }] },
+                opacity: 0.3
+            }
+        }],
+        backgroundColor: 'transparent'
+    } as EChartsOption
+})
 
 const handleCalendarChange = (val: [Date, Date] | null) => {
     const result = handleDatePickerChange(val);
@@ -744,22 +956,6 @@ const initTrendChart = () => {
     }
 }
 
-// 初始化图表
-onMounted(() => {
-    // 使用 nextTick 确保 DOM 已渲染
-    nextTick(() => {
-        // 使用 setTimeout 确保 DOM 完全渲染后再初始化图表
-        setTimeout(() => {
-            initTempChart();
-            initSoundChart();
-            initVibChart();
-        }, 100);
-    });
-
-    // 添加窗口大小变化监听
-    window.addEventListener('resize', handleWindowResize);
-})
-
 // 根据数据范围计算 y 轴 min/max（支持负数，取整到合适刻度）
 function computeTempYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
     const span = dataMax - dataMin
@@ -775,7 +971,7 @@ function computeTempYAxisRange(dataMin: number, dataMax: number): { min: number;
 
 // 加载温度趋势数据
 const loadTemperatureData = async (pointId: string) => {
-    if (!pointId || !tempChart) return
+    if (!pointId) return
 
     try {
         const startTime = '2026-02-04 00:00:00'
@@ -788,7 +984,6 @@ const loadTemperatureData = async (pointId: string) => {
         })
 
         if (response.rc === 0 && response.ret && Array.isArray(response.ret) && response.ret.length > 0) {
-            // 接口可能返回 dateTime 或 time（与烈度接口一致），时间格式与烈度 chart 保持一致
             const timeData = response.ret.map((item: { dateTime?: string; time?: string }) => {
                 const dt = item.dateTime || item.time || ''
                 if (dt.includes(' ')) return (dt.split(' ')[1] || dt).trim().substring(0, 8)
@@ -799,132 +994,15 @@ const loadTemperatureData = async (pointId: string) => {
             const dataMin = tempData.length ? Math.min(...tempData) : 0
             const dataMax = tempData.length ? Math.max(...tempData) : 100
             const { min: yMin, max: yMax } = computeTempYAxisRange(dataMin, dataMax)
-
-            tempChart.setOption({
-                tooltip: {
-                    trigger: 'axis',
-                    className: 'echarts-tooltip',
-                    backgroundColor: 'rgba(50,50,50,0.8)',
-                    borderColor: 'rgba(50,50,50,0.8)',
-                    textStyle: {
-                        color: '#fff'
-                    },
-                    position: function (pos: any, params: any, el: any, elRect: any, size: any) {
-                        const [mouseX, mouseY] = pos;
-                        const [contentWidth, contentHeight] = size.contentSize;
-                        const [viewWidth, viewHeight] = size.viewSize;
-                        let x = mouseX + 20;
-                        if (x + contentWidth > viewWidth) {
-                            x = mouseX - contentWidth - 20;
-                        }
-                        let y = Math.max(0, mouseY - contentHeight / 2);
-                        return [x, y];
-                    }
-                },
-                grid: {
-                    left: '3%',
-                    right: '4%',
-                    bottom: '15%', // 与烈度随时间变化保持一致
-                    top: '10%',
-                    containLabel: true
-                },
-                dataZoom: [
-                    { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-                    {
-                        type: 'slider',
-                        xAxisIndex: [0],
-                        bottom: '5%',
-                        height: '10%',
-                        fillerColor: 'rgba(255, 206, 86, 0.3)',
-                        borderColor: 'rgba(255, 206, 86, 0.5)',
-                        handleStyle: { color: '#FFCE56' },
-                        filterMode: 'none'
-                    }
-                ],
-                xAxis: {
-                    type: 'category',
-                    data: timeData,
-                    axisLabel: {
-                        fontSize: 10,
-                        color: chartAxisColor.value
-                    },
-                    axisLine: {
-                        lineStyle: {
-                            color: chartAxisColor.value
-                        }
-                    },
-                    axisTick: {
-                        lineStyle: {
-                            color: chartAxisColor.value
-                        }
-                    }
-                },
-                yAxis: {
-                    type: 'value',
-                    name: '℃',
-                    scale: true,
-                    min: yMin,
-                    max: yMax,
-                    axisLabel: {
-                        fontSize: 10,
-                        color: chartAxisColor.value,
-                        formatter: (value: number) => String(Math.round(Number(value)))
-                    },
-                    axisLine: { lineStyle: { color: chartAxisColor.value } },
-                    axisTick: { lineStyle: { color: chartAxisColor.value } },
-                    splitLine: { lineStyle: { color: chartSplitLineColor.value } },
-                    splitNumber: 4,
-                    nameTextStyle: { color: chartAxisColor.value }
-                },
-                series: [{
-                    data: tempData,
-                    type: 'line',
-                    smooth: true,
-                    symbolSize: 4,
-                    lineStyle: { width: 2 }
-                }]
-            })
+            tempChartData.value = { timeLabels: timeData, values: tempData, yMin, yMax }
         } else {
             console.warn('温度趋势数据格式错误:', response)
-            setTempChartFallback()
+            tempChartData.value = null
         }
     } catch (error) {
         console.error('加载温度趋势数据失败:', error)
-        setTempChartFallback()
+        tempChartData.value = null
     }
-}
-
-const TEMP_FALLBACK_TIMES = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00']
-const TEMP_FALLBACK_DATA = [32, 35, 38, 42, 45, 43, 40, 36, 33]
-const setTempChartFallback = () => {
-    if (!tempChart) return
-    tempChart.setOption({
-        xAxis: {
-            type: 'category',
-            data: TEMP_FALLBACK_TIMES,
-            axisLabel: {
-                fontSize: 10,
-                color: chartAxisColor.value
-            },
-            axisLine: {
-                lineStyle: {
-                    color: chartAxisColor.value
-                }
-            },
-            axisTick: {
-                lineStyle: {
-                    color: chartAxisColor.value
-                }
-            }
-        },
-        series: [{
-            data: TEMP_FALLBACK_DATA,
-            type: 'line',
-            smooth: true,
-            symbolSize: 4,
-            lineStyle: { width: 2 }
-        }]
-    })
 }
 
 // 根据数据范围计算 y 轴 min/max（烈度，支持小数与取整刻度）
@@ -943,7 +1021,7 @@ function computeVibYAxisRange(dataMin: number, dataMax: number): { min: number; 
 
 // 加载振动趋势数据
 const loadVibrationData = async (pointId: string) => {
-    if (!pointId || !vibChart) return
+    if (!pointId) return
 
     try {
         const startTime = '2026-02-04 00:00:00'
@@ -967,39 +1045,14 @@ const loadVibrationData = async (pointId: string) => {
             const dataMin = vibData.length ? Math.min(...vibData) : 0
             const dataMax = vibData.length ? Math.max(...vibData) : 20
             const { min: yMin, max: yMax } = computeVibYAxisRange(dataMin, dataMax)
-
-            vibChart.setOption({
-                xAxis: {
-                    data: timeData,
-                    axisLabel: {
-                        fontSize: 10,
-                        color: chartAxisColor.value
-                    }
-                },
-                yAxis: {
-                    type: 'value',
-                    scale: true,
-                    min: yMin,
-                    max: yMax,
-                    axisLabel: {
-                        fontSize: 10,
-                        color: chartAxisColor.value,
-                        formatter: (value: number) => String(Math.round(Number(value)))
-                    },
-                    axisLine: { lineStyle: { color: chartAxisColor.value } },
-                    axisTick: { lineStyle: { color: chartAxisColor.value } },
-                    splitLine: { lineStyle: { color: chartSplitLineColor.value } },
-                    splitNumber: 4
-                },
-                series: [{
-                    data: vibData
-                }]
-            })
+            vibChartData.value = { timeLabels: timeData, values: vibData, yMin, yMax }
         } else {
             console.warn('振动趋势数据格式错误:', response)
+            vibChartData.value = null
         }
     } catch (error) {
         console.error('加载振动趋势数据失败:', error)
+        vibChartData.value = null
     }
 }
 
@@ -1019,8 +1072,6 @@ function computeSoundYAxisRange(dataMin: number, dataMax: number): { min: number
 
 // 加载响度趋势数据（point_id 暂用死数据 PT-001-A）
 const loadSoundData = async (_pointId: string) => {
-    if (!soundChart) return
-
     try {
         const startTime = '2026-02-04 00:00:00'
         const endTime = '2026-02-04 23:59:59'
@@ -1040,456 +1091,19 @@ const loadSoundData = async (_pointId: string) => {
                 return dt
             })
             const soundData = list.map(item => item.value ?? item.soundLevel ?? 0)
-
-            soundChart.setOption({
-                xAxis: {
-                    data: timeData,
-                    axisLabel: {
-                        fontSize: 10,
-                        color: chartAxisColor.value
-                    }
-                },
-                yAxis: {
-                    type: 'value',
-                    scale: true,
-                    axisLabel: {
-                        fontSize: 10,
-                        color: chartAxisColor.value,
-                        formatter: (value: number) => String(Math.round(Number(value)))
-                    },
-                    axisLine: { lineStyle: { color: chartAxisColor.value } },
-                    axisTick: { lineStyle: { color: chartAxisColor.value } },
-                    splitLine: { lineStyle: { color: chartSplitLineColor.value } },
-                    splitNumber: 4
-                },
-                series: [{
-                    data: soundData
-                }]
-            }, { replaceMerge: ['yAxis'] })
+            const dataMin = soundData.length ? Math.min(...soundData) : 0
+            const dataMax = soundData.length ? Math.max(...soundData) : 100
+            const { min: yMin, max: yMax } = computeSoundYAxisRange(dataMin, dataMax)
+            soundChartData.value = { timeLabels: timeData, values: soundData, yMin, yMax }
         } else {
             console.warn('响度趋势数据格式错误或为空:', response)
+            soundChartData.value = null
         }
     } catch (error) {
         console.error('加载响度趋势数据失败:', error)
+        soundChartData.value = null
     }
 }
-
-// 初始化温度图表
-const initTempChart = () => {
-    if (!tempChartRef.value) return
-
-    const rect = tempChartRef.value.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) {
-        setTimeout(() => {
-            initTempChart();
-        }, 100);
-        return;
-    }
-
-    if (tempChart) {
-        tempChart.dispose()
-    }
-
-    tempChart = echarts.init(tempChartRef.value)
-
-    const FALLBACK_TIME_LABELS = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00']
-    const tempData = [32, 35, 38, 42, 45, 43, 40, 36, 33] // 写死对应的温度数据
-
-    const option = {
-        tooltip: {
-            trigger: 'axis',
-            className: 'echarts-tooltip',
-            backgroundColor: 'rgba(50,50,50,0.8)',
-            borderColor: 'rgba(50,50,50,0.8)',
-            textStyle: {
-                color: '#fff'
-            },
-            position: function (pos: any, params: any, el: any, elRect: any, size: any) {
-                const [mouseX, mouseY] = pos;
-                const [contentWidth, contentHeight] = size.contentSize;
-                const [viewWidth, viewHeight] = size.viewSize;
-                let x = mouseX + 20;
-                if (x + contentWidth > viewWidth) {
-                    x = mouseX - contentWidth - 20;
-                }
-                let y = Math.max(0, mouseY - contentHeight / 2);
-                return [x, y];
-            }
-        },
-        grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '15%', // 与烈度随时间变化保持一致
-            top: '10%',
-            containLabel: true
-        },
-        dataZoom: [
-            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-            {
-                type: 'slider',
-                xAxisIndex: [0],
-                bottom: '5%',
-                height: '10%',
-                fillerColor: 'rgba(255, 206, 86, 0.3)',
-                borderColor: 'rgba(255, 206, 86, 0.5)',
-                handleStyle: { color: '#FFCE56' },
-                filterMode: 'none'
-            }
-        ],
-        xAxis: {
-            type: 'category',
-            data: FALLBACK_TIME_LABELS,
-            axisLabel: {
-                fontSize: 10,
-                color: chartAxisColor.value
-            },
-            axisLine: {
-                lineStyle: { color: chartAxisColor.value },
-                onZero: false
-            },
-            axisTick: {
-                lineStyle: {
-                    color: chartAxisColor.value
-                }
-            }
-        },
-        yAxis: {
-            type: 'value',
-            name: '℃',
-            scale: true,
-            min: 'dataMin',
-            max: 'dataMax',
-            axisLabel: {
-                fontSize: 10,
-                color: chartAxisColor.value,
-                formatter: (value: number) => String(Math.round(Number(value)))
-            },
-            axisLine: { lineStyle: { color: chartAxisColor.value } },
-            axisTick: { lineStyle: { color: chartAxisColor.value } },
-            splitLine: { lineStyle: { color: chartSplitLineColor.value } },
-            nameTextStyle: { color: chartAxisColor.value },
-            splitNumber: 4
-        },
-        series: [{
-            data: tempData as number[],
-            type: 'line',
-            smooth: true,
-            symbolSize: 1,
-            itemStyle: {
-                color: '#FFCE56'
-            },
-            lineStyle: {
-                color: '#FFCE56',
-                width: 2
-            },
-            areaStyle: {
-                color: {
-                    type: 'linear',
-                    x: 0, y: 0, x2: 0, y2: 1,
-                    colorStops: [{
-                        offset: 0, color: 'rgba(255, 206, 86, 0.5)'
-                    }, {
-                        offset: 1, color: 'rgba(255, 206, 86, 0.1)'
-                    }]
-                },
-                opacity: 0.3
-            }
-        }],
-        backgroundColor: 'transparent'
-    }
-
-    tempChart.setOption(option)
-}
-
-// 初始化响度图表
-const initSoundChart = () => {
-    if (!soundChartRef.value) return
-
-    const rect = soundChartRef.value.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) {
-        setTimeout(() => {
-            initSoundChart();
-        }, 100);
-        return;
-    }
-
-    if (soundChart) {
-        soundChart.dispose()
-    }
-
-    soundChart = echarts.init(soundChartRef.value)
-
-    const hours = Array.from({ length: 24 }, (_, i) => `${i}`)
-    const soundData = Array.from({ length: 24 }, () => Math.floor(Math.random() * 30) + 50) // 50-80 dB
-
-    const option = {
-        tooltip: {
-            trigger: 'axis',
-            className: 'echarts-tooltip',
-            backgroundColor: 'rgba(50,50,50,0.8)',
-            borderColor: 'rgba(50,50,50,0.8)',
-            textStyle: {
-                color: '#fff'
-            },
-            position: function (pos: any, params: any, el: any, elRect: any, size: any) {
-                const [mouseX, mouseY] = pos;
-                const [contentWidth, contentHeight] = size.contentSize;
-                const [viewWidth, viewHeight] = size.viewSize;
-                let x = mouseX + 20;
-                if (x + contentWidth > viewWidth) {
-                    x = mouseX - contentWidth - 20;
-                }
-                let y = Math.max(0, mouseY - contentHeight / 2);
-                return [x, y];
-            }
-        },
-        grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '15%',
-            top: '10%',
-            containLabel: true
-        },
-        dataZoom: [
-            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-            {
-                type: 'slider',
-                xAxisIndex: [0],
-                bottom: '5%',
-                height: '10%',
-                fillerColor: 'rgba(234, 124, 204, 0.3)',
-                borderColor: 'rgba(234, 124, 204, 0.5)',
-                handleStyle: { color: '#ea7ccc' },
-                filterMode: 'none'
-            }
-        ],
-        xAxis: {
-            type: 'category',
-            data: hours,
-            axisLabel: {
-                fontSize: 10,
-                color: chartAxisColor.value
-            },
-            axisLine: {
-                lineStyle: { color: chartAxisColor.value },
-                onZero: false
-            },
-            axisTick: { lineStyle: { color: chartAxisColor.value } }
-        },
-        yAxis: {
-            type: 'value',
-            name: 'dB',
-            scale: true,
-            axisLabel: {
-                fontSize: 10,
-                color: chartAxisColor.value
-            },
-            axisLine: {
-                lineStyle: {
-                    color: chartAxisColor.value
-                }
-            },
-            axisTick: {
-                lineStyle: {
-                    color: chartAxisColor.value
-                }
-            },
-            splitLine: {
-                lineStyle: {
-                    color: chartSplitLineColor.value
-                }
-            },
-            splitNumber: 4
-        },
-        series: [{
-            data: soundData,
-            type: 'line',
-            smooth: true,
-            symbolSize: 1,
-            itemStyle: {
-                color: '#ea7ccc'
-            },
-            lineStyle: {
-                color: '#ea7ccc',
-                width: 2
-            },
-            areaStyle: {
-                color: {
-                    type: 'linear',
-                    x: 0, y: 0, x2: 0, y2: 1,
-                    colorStops: [{
-                        offset: 0, color: 'rgba(234, 124, 204, 0.5)' // purple with opacity
-                    }, {
-                        offset: 1, color: 'rgba(234, 124, 204, 0.1)' // purple with opacity
-                    }]
-                },
-                opacity: 0.3
-            }
-        }],
-        backgroundColor: 'transparent'
-    }
-
-    soundChart.setOption(option)
-}
-
-// 初始化振动图表
-const initVibChart = () => {
-    if (!vibChartRef.value) return
-
-    const rect = vibChartRef.value.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) {
-        setTimeout(() => {
-            initVibChart();
-        }, 100);
-        return;
-    }
-
-    if (vibChart) {
-        vibChart.dispose()
-    }
-
-    vibChart = echarts.init(vibChartRef.value)
-
-    const hours = Array.from({ length: 24 }, (_, i) => `${i}`)
-    const vibData = Array.from({ length: 24 }, () => (Math.random() * 20).toFixed(1)) // 0-20 mm/s
-
-    const option = {
-        tooltip: {
-            trigger: 'axis',
-            className: 'echarts-tooltip',
-            backgroundColor: 'rgba(50,50,50,0.8)',
-            borderColor: 'rgba(50,50,50,0.8)',
-            textStyle: {
-                color: '#fff'
-            },
-            position: function (pos: any, params: any, el: any, elRect: any, size: any) {
-                const [mouseX, mouseY] = pos;
-                const [contentWidth, contentHeight] = size.contentSize;
-                const [viewWidth, viewHeight] = size.viewSize;
-                let x = mouseX + 20;
-                if (x + contentWidth > viewWidth) {
-                    x = mouseX - contentWidth - 20;
-                }
-                let y = Math.max(0, mouseY - contentHeight / 2);
-                return [x, y];
-            }
-        },
-        grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '15%',
-            top: '10%',
-            containLabel: true
-        },
-        dataZoom: [
-            { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-            {
-                type: 'slider',
-                xAxisIndex: [0],
-                bottom: '5%',
-                height: '10%',
-                fillerColor: 'rgba(255, 206, 86, 0.3)',
-                borderColor: 'rgba(255, 206, 86, 0.5)',
-                handleStyle: { color: '#FFCE56' },
-                filterMode: 'none'
-            }
-        ],
-        xAxis: {
-            type: 'category',
-            data: hours,
-            axisLabel: {
-                fontSize: 10,
-                color: chartAxisColor.value
-            },
-            axisLine: {
-                lineStyle: {
-                    color: chartAxisColor.value
-                }
-            },
-            axisTick: {
-                lineStyle: {
-                    color: chartAxisColor.value
-                }
-            }
-        },
-        yAxis: {
-            type: 'value',
-            name: 'mm/s',
-            axisLabel: {
-                fontSize: 10,
-                color: chartAxisColor.value
-            },
-            axisLine: {
-                lineStyle: {
-                    color: chartAxisColor.value
-                }
-            },
-            axisTick: {
-                lineStyle: {
-                    color: chartAxisColor.value
-                }
-            },
-            splitLine: {
-                lineStyle: {
-                    color: chartSplitLineColor.value
-                }
-            },
-            splitNumber: 4
-        },
-        series: [{
-            data: vibData,
-            type: 'line',
-            smooth: true,
-            symbolSize: 1,
-            itemStyle: {
-                color: '#FFCE56'
-            },
-            lineStyle: {
-                color: '#FFCE56',
-                width: 2
-            },
-            areaStyle: {
-                color: {
-                    type: 'linear',
-                    x: 0, y: 0, x2: 0, y2: 1,
-                    colorStops: [{
-                        offset: 0, color: 'rgba(255, 206, 86, 0.5)' // color with opacity
-                    }, {
-                        offset: 1, color: 'rgba(255, 206, 86, 0.1)' // color with opacity
-                    }]
-                },
-                opacity: 0.3
-            }
-        }],
-        backgroundColor: 'transparent'
-    }
-
-    vibChart.setOption(option)
-}
-
-/** 主题切换时更新三个图表的坐标轴与分割线颜色 */
-const updateChartsTheme = () => {
-    const c = chartAxisColor.value
-    const s = chartSplitLineColor.value
-    const themePart = {
-        xAxis: {
-            axisLabel: { color: c },
-            axisLine: { lineStyle: { color: c } },
-            axisTick: { lineStyle: { color: c } }
-        },
-        yAxis: {
-            axisLabel: { color: c },
-            axisLine: { lineStyle: { color: c } },
-            axisTick: { lineStyle: { color: c } },
-            splitLine: { lineStyle: { color: s } },
-            nameTextStyle: { color: c }
-        }
-    }
-    if (tempChart) tempChart.setOption(themePart)
-    if (soundChart) soundChart.setOption(themePart)
-    if (vibChart) vibChart.setOption(themePart)
-}
-watch(() => backgroundMode?.value, () => updateChartsTheme(), { flush: 'post' })
 
 const analyzeTrend = async () => {
     if (!analysisForm.value.pointId) {
@@ -1539,113 +1153,43 @@ const analyzeTrend = async () => {
     }
 }
 
-let resizeObserver: ResizeObserver | null = null
-
-// 窗口大小改变时，重新调整图表大小
-const resizeCharts = () => {
-    // 使用setTimeout确保在下一个事件循环中执行resize，避免在DOM未完全更新时调用
-    setTimeout(() => {
-        if (tempChart) {
-            try {
-                tempChart.resize()
-                // 在某些情况下，resize后立即重绘图表可确保显示正常
-                tempChart.setOption(tempChart.getOption());
-            } catch (e) {
-                console.warn('Error resizing temp chart:', e)
-                // 如果resize失败，尝试重新初始化图表
-                nextTick(() => {
-                    initTempChart();
-                });
-            }
-        }
-        if (soundChart) {
-            try {
-                soundChart.resize()
-                // 在某些情况下，resize后立即重绘图表可确保显示正常
-                soundChart.setOption(soundChart.getOption());
-            } catch (e) {
-                console.warn('Error resizing sound chart:', e)
-                // 如果resize失败，尝试重新初始化图表
-                nextTick(() => {
-                    initSoundChart();
-                });
-            }
-        }
-        if (vibChart) {
-            try {
-                vibChart.resize()
-                // 在某些情况下，resize后立即重绘图表可确保显示正常
-                vibChart.setOption(vibChart.getOption());
-            } catch (e) {
-                console.warn('Error resizing vib chart:', e)
-                // 如果resize失败，尝试重新初始化图表
-                nextTick(() => {
-                    initVibChart();
-                });
-            }
-        }
-    }, 100)
-}
-
-// 存储用于重试的定时器ID
-let chartsRetryTimerId: number | null = null;
-
-// 使用ResizeObserver监听容器变化
-const setupResizeObserver = () => {
-    if (chartGridRef?.value) {
-        resizeObserver = new ResizeObserver(resizeCharts);
-        resizeObserver.observe(chartGridRef.value);
-    } else {
-        // 如果ref还未绑定，稍后重试
-        if (chartsRetryTimerId) {
-            clearTimeout(chartsRetryTimerId);
-        }
-        chartsRetryTimerId = window.setTimeout(setupResizeObserver, 100);
-    }
-}
-
 // 创建一个ref来引用charts-grid容器
 const chartGridRef = ref<HTMLDivElement>()
 
 // 图表初始化完成标志
 const chartsInitialized = ref(false)
 
-// 监听点位列表变化，自动加载第一个点位的温度数据
+// 监听点位列表变化，自动加载第一个点位的温度/烈度/响度数据
 watch(
     () => props.pointList,
     (newList, oldList) => {
-        // 只有当图表已初始化且点位列表有变化时才加载数据
-        if (chartsInitialized.value && newList && newList.length > 0 && tempChart) {
-            // 如果点位列表从空变为有数据，或者没有选中点位，加载第一个点位的数据
-            const oldListLength = oldList ? oldList.length : 0
-            const newListLength = newList.length
-
-            if (oldListLength === 0 && newListLength > 0) {
-                const pointId = newList[0]?.id
-                if (pointId) {
-                    loadTemperatureData(pointId)
-                    loadVibrationData(pointId)
-                    loadSoundData(pointId)
-                }
-            } else if (!props.selectedPointId && newListLength > 0) {
-                const pointId = newList[0]?.id
-                if (pointId) {
-                    loadTemperatureData(pointId)
-                    loadVibrationData(pointId)
-                    loadSoundData(pointId)
-                }
+        if (!chartsInitialized.value || !newList?.length) return
+        const oldListLength = oldList ? oldList.length : 0
+        const newListLength = newList.length
+        if (oldListLength === 0 && newListLength > 0) {
+            const pointId = newList[0]?.id
+            if (pointId) {
+                loadTemperatureData(pointId)
+                loadVibrationData(pointId)
+                loadSoundData(pointId)
+            }
+        } else if (!props.selectedPointId && newListLength > 0) {
+            const pointId = newList[0]?.id
+            if (pointId) {
+                loadTemperatureData(pointId)
+                loadVibrationData(pointId)
+                loadSoundData(pointId)
             }
         }
     },
     { immediate: false, deep: true }
 )
 
-// 监听选中点位变化，加载对应点位的温度数据
+// 监听选中点位变化，加载对应点位数据
 watch(
     () => props.selectedPointId,
     (newPointId, oldPointId) => {
-        // 只有当图表已初始化且点位ID有变化时才重新加载数据
-        if (chartsInitialized.value && newPointId && newPointId !== oldPointId && tempChart) {
+        if (chartsInitialized.value && newPointId && newPointId !== oldPointId) {
             loadTemperatureData(newPointId)
             loadVibrationData(newPointId)
             loadSoundData(newPointId)
@@ -1654,33 +1198,13 @@ watch(
     { immediate: false }
 )
 
-// 组件挂载时设置resize监听
+// 组件挂载时标记就绪并加载首个点位数据，并设置窗口 resize 监听
 onMounted(() => {
-    // 使用 nextTick 确保 DOM 已渲染
     nextTick(() => {
-        // 使用 setTimeout 确保 DOM 完全渲染后再初始化图表
         setTimeout(() => {
-            initTempChart();
-            initSoundChart();
-            initVibChart();
-
-            // 图表联动
-            if (tempChart && soundChart && vibChart) {
-                connectCharts([tempChart, soundChart, vibChart]);
-
-                // 启用滚轮缩放功能
-                enableMouseWheelZoomForCharts([tempChart, soundChart, vibChart]);
-            }
-
-            // 设置resize观察器
-            setupResizeObserver();
-
-            // 标记图表已初始化完成
-            chartsInitialized.value = true;
-
-            // 图表初始化完成后，如果有点位列表，自动加载第一个点位的数据
+            chartsInitialized.value = true
             const firstPoint = props.pointList?.[0]
-            if (firstPoint && tempChart) {
+            if (firstPoint) {
                 const pointId = props.selectedPointId || firstPoint.id
                 if (pointId) {
                     loadTemperatureData(pointId)
@@ -1688,60 +1212,33 @@ onMounted(() => {
                     loadSoundData(pointId)
                 }
             }
-        }, 150); // 增加延时时间以确保图表容器完全渲染
-    });
+        }, 150)
+    })
+    window.addEventListener('resize', handleWindowResize)
 })
 
-// 窗口大小变化处理
+// 窗口大小变化处理（主图表由 CommonEcharts 自行 resize，此处仅处理弹窗内图表）
 const handleWindowResize = () => {
-    // 使用防抖避免频繁触发
     if (resizeTimer) {
         window.clearTimeout(resizeTimer)
     }
-
     resizeTimer = window.setTimeout(() => {
-        // 重新调整主图表大小
-        if (tempChart && typeof tempChart.resize === 'function') {
-            tempChart.resize()
-        }
-        if (soundChart && typeof soundChart.resize === 'function') {
-            soundChart.resize()
-        }
-        if (vibChart && typeof vibChart.resize === 'function') {
-            vibChart.resize()
-        }
-
-        // 重新调整趋势分析图表大小
         if (dbChart && typeof dbChart.resize === 'function' && chartDialogVisible.value) {
             dbChart.resize()
         }
         if (densityChart && typeof densityChart.resize === 'function' && chartDialogVisible.value) {
             densityChart.resize()
         }
-    }, 300) // 300ms防抖
+    }, 300)
 }
 
-// 组件卸载时清理资源
+// 组件卸载时清理资源（主图表由 CommonEcharts 自行 dispose）
 onUnmounted(() => {
-    if (tempChart) tempChart.dispose()
-    if (soundChart) soundChart.dispose()
-    if (vibChart) vibChart.dispose()
     if (dbChart) dbChart.dispose()
     if (densityChart) densityChart.dispose()
-
-    if (resizeObserver) {
-        resizeObserver.disconnect();
-        resizeObserver = null;
-    }
-
+    window.removeEventListener('resize', handleWindowResize)
     if (resizeTimer) {
         window.clearTimeout(resizeTimer)
-    }
-
-    // 清理重试图表初始化的定时器
-    if (chartsRetryTimerId) {
-        clearTimeout(chartsRetryTimerId);
-        chartsRetryTimerId = null;
     }
 })
 </script>
