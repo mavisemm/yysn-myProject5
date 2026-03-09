@@ -14,6 +14,16 @@
             <!-- 健康度：同时显示（上：声音，下：振动） -->
             <div class="health-gauge-container">
                 <div class="gauge-block">
+                    <div class="gauge-block-topbar">
+                        <el-button
+                            class="stage-report-btn"
+                            type="primary"
+                            size="small"
+                            @click="openSoundStageReportDialog"
+                        >
+                            阶段性报告
+                        </el-button>
+                    </div>
                     <div class="gauge-title">声音健康度</div>
                     <div class="gauge-wrapper">
                         <div ref="soundGaugeRef" class="gauge"></div>
@@ -26,6 +36,27 @@
                     </div>
                 </div>
             </div>
+
+            <el-dialog
+                v-model="soundStageReportDialogVisible"
+                title="阶段性报告"
+                width="530px"
+                :close-on-click-modal="true"
+                destroy-on-close
+            >
+                <div class="sound-stage-report-row">
+                    <CommonDateTimePicker v-model="soundStageReportDateRange" width="100%" />
+                    <el-button
+                        class="sound-stage-report-download"
+                        size="small"
+                        type="primary"
+                        :loading="soundStageReportDownloading"
+                        @click="downloadSoundStageReport"
+                    >
+                        下载
+                    </el-button>
+                </div>
+            </el-dialog>
 
             <!-- 操作按钮：放在健康度下方、设备信息上方 -->
             <div class="header-actions">
@@ -86,11 +117,11 @@
                 <div class="info-row" v-if="!isEditing">
                     <div class="info-item">
                         <span class="info-label  ">额定转速：</span>
-                        <span class="info-value  ">{{ deviceInfo.rotationSpeed }} rpm</span>
+                        <span class="info-value  ">{{ formatValueWithUnit(deviceInfo.rotationSpeed, 'rpm') }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label  ">设计流量：</span>
-                        <span class="info-value  ">{{ deviceInfo.designFlow }} m³/h</span>
+                        <span class="info-value  ">{{ formatValueWithUnit(deviceInfo.designFlow, 'm³/h') }}</span>
                     </div>
                 </div>
                 <div class="info-row" v-else>
@@ -108,7 +139,7 @@
                     <!-- 左侧固定显示压力 -->
                     <div class="info-item">
                         <span class="info-label  ">压力：</span>
-                        <span class="info-value  ">{{ deviceInfo.pressure }} MPa</span>
+                        <span class="info-value  ">{{ formatValueWithUnit(deviceInfo.pressure, 'MPa') }}</span>
                     </div>
                     <!-- 右侧：如果有自定义字段，则第一条跟在压力后面，同排展示 -->
                     <div v-if="extraFields.length > 0" class="info-item">
@@ -183,9 +214,20 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
-import { ElButton, ElInput, ElMessage } from 'element-plus'
+import { ElButton, ElInput, ElMessage, ElDialog, ElForm, ElFormItem } from 'element-plus'
 import * as echarts from 'echarts'
 import { getDeviceInfoByDeviceId, editDeviceInfo, getDeviceHealth, type DeviceInfoDto, type DeviceHealthResponse } from '@/api/modules/hardware'
+import { service } from '@/api/request'
+import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
+
+const formatValueWithUnit = (value: unknown, unit: string) => {
+    if (value === null || value === undefined) return ''
+    const raw = typeof value === 'string' ? value.trim() : value
+    if (raw === '') return ''
+    const num = typeof raw === 'number' ? raw : Number(raw)
+    if (!Number.isFinite(num) || num === 0) return ''
+    return `${raw} ${unit}`
+}
 
 // 定义设备信息类型 - 对应API返回的数据结构
 interface DeviceInfo {
@@ -239,6 +281,11 @@ const newField = ref<ExtraField>({ label: '', value: '', type: 'input' });
 const newFieldType = ref<'input' | 'select'>('input');
 const newOptionInput = ref('');
 const newFieldOptions = ref<string[]>([]);
+
+type DateRange = [string, string] | null
+const soundStageReportDialogVisible = ref(false)
+const soundStageReportDateRange = ref<DateRange>(null)
+const soundStageReportDownloading = ref(false)
 
 // 设备信息响应式数据
 const deviceInfo = ref<DeviceInfo>({
@@ -341,6 +388,64 @@ const removeOption = (index: number) => {
     newFieldOptions.value.splice(index, 1);
 }
 
+const openSoundStageReportDialog = () => {
+    soundStageReportDialogVisible.value = true
+}
+
+const sanitizeFilename = (name: string) => name.replace(/[\\/:*?"<>|]/g, '-')
+
+const downloadSoundStageReport = async () => {
+    if (!props.deviceId) {
+        ElMessage.warning('缺少设备ID')
+        return
+    }
+    const range = soundStageReportDateRange.value
+    if (!range || range.length !== 2 || !range[0] || !range[1]) {
+        ElMessage.warning('请选择时间范围')
+        return
+    }
+
+    const [startTime, endTime] = range
+    soundStageReportDownloading.value = true
+    try {
+        const res = await service.get(`/hardware/device/health-report/${props.deviceId}`, {
+            params: { startTime, endTime, type: 'sound' },
+            responseType: 'blob',
+            showLoading: true
+        })
+
+        const blob = res as unknown as Blob
+        if (blob && typeof (blob as any).text === 'function' && blob.type?.includes('application/json')) {
+            const text = await blob.text()
+            try {
+                const json = JSON.parse(text)
+                const msg = json?.message || json?.err || json?.msg || '下载失败'
+                ElMessage.error(String(msg))
+            } catch {
+                ElMessage.error('下载失败')
+            }
+            return
+        }
+
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        const fileName = sanitizeFilename(`声音健康度阶段性报告_${startTime}_${endTime}`)
+        a.href = url
+        a.download = `${fileName}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+
+        soundStageReportDialogVisible.value = false
+    } catch (e) {
+        console.error('下载阶段性报告失败:', e)
+        ElMessage.error('下载失败')
+    } finally {
+        soundStageReportDownloading.value = false
+    }
+}
+
 // 加载设备信息
 const loadDeviceInfo = async () => {
     if (!props.deviceId) return;
@@ -389,17 +494,28 @@ const loadDeviceDataParallel = async () => {
         // 处理声音健康度
         if (soundHealthResponse.rc === 0 && soundHealthResponse.ret) {
             const ret: any = soundHealthResponse.ret
-            const score = typeof ret.healthScore === 'number' ? ret.healthScore : 0
-            soundHealthScore.value = score
-            soundHealthGrade.value = extractHealthGrade(ret)
+            const score = typeof ret.healthScore === 'number' ? ret.healthScore : null
+            const grade = extractHealthGrade(ret)
+            hasSoundHealthData.value = score !== null || !!grade
+            soundHealthScore.value = score ?? 0
+            soundHealthGrade.value = grade
+        } else {
+            hasSoundHealthData.value = false
+            soundHealthScore.value = 0
+            soundHealthGrade.value = ''
         }
 
         // 处理振动健康度
         if (vibrationHealthResponse.rc === 0 && vibrationHealthResponse.ret) {
             const ret: any = vibrationHealthResponse.ret
             const grade = extractHealthGrade(ret)
+            hasVibrationHealthData.value = !!grade
             vibrationHealthGrade.value = grade
             vibrationHealthScore.value = mapGradeToScore(grade)
+        } else {
+            hasVibrationHealthData.value = false
+            vibrationHealthGrade.value = ''
+            vibrationHealthScore.value = 0
         }
 
         nextTick(() => {
@@ -474,6 +590,10 @@ const confirmAddField = () => {
 // 健康度相关：同时展示声音/振动
 const soundHealthScore = ref(0)
 const vibrationHealthScore = ref(0)
+// 声音健康度：是否有数据（无数据时显示 '-' 而不是 0）
+const hasSoundHealthData = ref(false)
+// 振动健康度：是否有数据（无数据时显示 '-'）
+const hasVibrationHealthData = ref(false)
 // 按接口返回的 healthGrade 划分 A/B/C/D 四个等级（兼容大小写）
 const soundHealthGrade = ref<'A' | 'B' | 'C' | 'D' | ''>('')
 const vibrationHealthGrade = ref<'A' | 'B' | 'C' | 'D' | ''>('')
@@ -544,7 +664,8 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
     const score = isVibration ? vibrationHealthScore.value : soundHealthScore.value
     const grade = isVibration ? vibrationHealthGrade.value : soundHealthGrade.value
 
-    const healthColor = resolveHealthColor(score, grade)
+    const hasData = isVibration ? hasVibrationHealthData.value : hasSoundHealthData.value
+    const healthColor = hasData ? resolveHealthColor(score, grade) : 'rgba(255,255,255,0.65)'
 
     const axisLabelFontSize = Math.round(calculateResponsiveFontSize(15, containerWidth, containerHeight))
     const titleFontSize = Math.round(calculateResponsiveFontSize(20, containerWidth, containerHeight))
@@ -653,6 +774,7 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
                 // 声音顯示分數，振动顯示等級字母
                 formatter: function (value: number) {
                     if (isVibration) return grade || '-'
+                    if (!hasSoundHealthData.value) return '-'
                     return String(Math.round(value))
                 },
                 color: healthColor
@@ -953,11 +1075,22 @@ onUnmounted(() => {
                 gap: 6px;
             }
 
+            .gauge-block-topbar {
+                display: flex;
+                justify-content: flex-end;
+                align-items: center;
+                margin-bottom: 2px;
+            }
+
             .gauge-title {
                 color: rgba(255, 255, 255);
                 font-size: 1rem;
                 font-weight: 500;
                 text-align: left;
+            }
+
+            .stage-report-btn {
+                flex: 0 0 auto;
             }
 
             .gauge-wrapper {
@@ -982,6 +1115,16 @@ onUnmounted(() => {
                         color: white;
                     }
                 }
+            }
+        }
+
+        .sound-stage-report-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+
+            .sound-stage-report-download {
+                flex: 0 0 auto;
             }
         }
 

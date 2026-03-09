@@ -1,45 +1,83 @@
 <template>
     <div class="charts-section">
-        <div class="chart-item">
-            <div class="chart-title app-section-title">能量曲线</div>
-            <div class="chart-container">
-                <CommonEcharts
-                    ref="energyChartRef"
-                    :option="energyOption"
-                    linkage-group="sound-point-charts"
-                    :enable-linkage-zoom="true"
-                    :enable-wheel-zoom="true"
-                    :tooltip-follow-mouse="true"
-                    :not-merge="true"
-                    :enable-data-zoom="false"
-                    @chart-ready="onEnergyChartReady"
-                />
+        <div class="charts-row">
+            <div class="chart-item">
+                <div class="chart-title app-section-title">能量曲线</div>
+                <div class="chart-container">
+                    <CommonEcharts
+                        ref="energyChartRef"
+                        :option="energyOption"
+                        linkage-group="sound-point-charts"
+                        :enable-linkage-zoom="true"
+                        :enable-wheel-zoom="true"
+                        :tooltip-follow-mouse="true"
+                        :not-merge="true"
+                        :enable-data-zoom="false"
+                        @chart-ready="onEnergyChartReady"
+                    />
+                </div>
+            </div>
+            <div class="chart-item">
+                <div class="chart-title app-section-title">密度曲线</div>
+                <div class="chart-container">
+                    <CommonEcharts
+                        ref="densityChartRef"
+                        :option="densityOption"
+                        linkage-group="sound-point-charts"
+                        :enable-linkage-zoom="true"
+                        :enable-wheel-zoom="true"
+                        :tooltip-follow-mouse="true"
+                        :not-merge="true"
+                        :enable-data-zoom="false"
+                        @chart-ready="onDensityChartReady"
+                    />
+                </div>
             </div>
         </div>
-        <div class="chart-item">
-            <div class="chart-title app-section-title">密度曲线</div>
-            <div class="chart-container">
-                <CommonEcharts
-                    ref="densityChartRef"
-                    :option="densityOption"
-                    linkage-group="sound-point-charts"
-                    :enable-linkage-zoom="true"
-                    :enable-wheel-zoom="true"
-                    :tooltip-follow-mouse="true"
-                    :not-merge="true"
-                    :enable-data-zoom="false"
-                    @chart-ready="onDensityChartReady"
-                />
-            </div>
+
+        <!-- 声音点位页：两个图共用的频率范围输入条（放在两个 ECharts 下面） -->
+        <div
+            v-if="showResolvedRangeControls"
+            class="range-controls-bar"
+            @mousedown.stop
+            @wheel.stop
+        >
+            <span class="controls-label">频率范围：</span>
+            <el-input-number
+                v-model="rangeMin"
+                class="range-input"
+                size="small"
+                :min="rangeDataMin"
+                :max="rangeDataMax"
+                :step="0.1"
+                :precision="1"
+                controls-position="right"
+                @change="applyRange"
+            />
+            <span class="controls-sep">Hz&nbsp;~</span>
+            <el-input-number
+                v-model="rangeMax"
+                class="range-input"
+                size="small"
+                :min="rangeDataMin"
+                :max="rangeDataMax"
+                :step="0.1"
+                :precision="1"
+                controls-position="right"
+                @change="applyRange"
+            />
+            <span class="controls-unit">Hz</span>
+            <el-button size="small" @click="resetRange">重置</el-button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, inject, computed } from 'vue';
+import { ref, inject, computed, onUnmounted } from 'vue';
 import type { Ref } from 'vue';
 import type { EChartsOption } from 'echarts';
 import { CommonEcharts } from '@/components/common/chart';
+import { useRangeControls } from '@/composables/useRangeControls';
 
 const emit = defineEmits(['chart-init']);
 const props = defineProps<{
@@ -64,11 +102,12 @@ const selectedItemsWithColor = computed(() => {
     }));
 });
 
+const freqsRaw = computed<any[]>(() => selectedItemsWithColor.value[0]?.freqs || []);
 /** 公共配置 */
 const commonOptionBase = computed(() => {
     const c = chartAxisColor.value;
     const s = chartSplitLineColor.value;
-    const freqs = selectedItemsWithColor.value[0]?.freqs || [];
+    const freqs = freqsRaw.value || [];
     return {
         textStyle: { color: c },
         tooltip: {
@@ -173,6 +212,7 @@ const densityOption = computed<EChartsOption>(() => {
 });
 
 let chartInitEmitted = false;
+let energyDataZoomCleanup: (() => void) | null = null;
 const onEnergyChartReady = () => {
     tryEmitChartInit();
 };
@@ -186,6 +226,17 @@ const tryEmitChartInit = () => {
     if (energy && density) {
         chartInitEmitted = true;
         emit('chart-init', { energyChartInstance: energy, densityChartInstance: density });
+
+        // 监听 dataZoom，同步到底部范围输入框（只监听一张图即可，因已做联动分组）
+        if (!energyDataZoomCleanup) {
+            const handler = (params: any) => {
+                handleDataZoom(params);
+            };
+            (energy as any).on('datazoom', handler);
+            energyDataZoomCleanup = () => {
+                (energy as any).off('datazoom', handler);
+            };
+        }
     }
 };
 
@@ -194,22 +245,97 @@ const updateCharts = () => {
     // option 为 computed，随 deviationList 变化自动更新
 };
 
-defineExpose({
-    updateCharts
+defineExpose({ updateCharts });
+
+// 频率范围控制（复用 CommonEcharts 的公共逻辑）
+const {
+    showResolvedRangeControls,
+    rangeMin,
+    rangeMax,
+    rangeDataMin,
+    rangeDataMax,
+    applyRange,
+    resetRange,
+    handleDataZoom,
+    dispose: disposeRangeControls
+} = useRangeControls({
+    option: energyOption,
+    showRangeControls: computed(() => true),
+    rangeControlsData: computed(() => freqsRaw.value || []),
+    rangeControlsXAxisIndex: computed(() => 0),
+    rangeControlsMin: computed(() => undefined),
+    rangeControlsMax: computed(() => undefined),
+    rangeControlsStep: computed(() => 0.1),
+    rangeControlsPrecision: computed(() => 1),
+    rangeControlsDebounceMs: computed(() => 600),
+    preserveDataZoom: computed(() => true),
+    doDataZoom: ({ startValue, endValue }) => {
+        const energyInstance = energyChartRef.value?.chartInstance;
+        const densityInstance = densityChartRef.value?.chartInstance;
+        const payload: any = { type: 'dataZoom', startValue, endValue };
+        energyInstance?.dispatchAction(payload);
+        densityInstance?.dispatchAction(payload);
+    }
+});
+
+onUnmounted(() => {
+    if (energyDataZoomCleanup) {
+        energyDataZoomCleanup();
+        energyDataZoomCleanup = null;
+    }
+    disposeRangeControls();
 });
 </script>
 
 <style lang="scss" scoped>
 .charts-section {
     display: flex;
-    flex-direction: row;
-    gap: 10px;
+    flex-direction: column;
     height: 50%;
-    padding-bottom: 10px;
+    background: url('@/assets/images/background/首页-Top5背景.png') no-repeat center center;
+    background-size: 100% 100%;
+
+    .charts-row {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .range-controls-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: nowrap;
+        gap: 8px;
+        padding: 10px 20px 20px;
+        font-size: 12px;
+        overflow-x: auto;
+        overflow-y: hidden;
+
+        .controls-label,
+        .controls-sep,
+        .controls-unit {
+            white-space: nowrap;
+            opacity: 0.9;
+            flex: 0 0 auto;
+        }
+
+        :deep(.el-input-number.range-input) {
+            width: 100px;
+            flex: 0 0 auto;
+        }
+
+        :deep(.el-input-number.range-input .el-input__wrapper) {
+            width: 100%;
+        }
+    }
+
+    display: flex;
+    flex-direction: column;
 
     .chart-item {
-        background: url('@/assets/images/background/首页-预警总览背景.png') no-repeat center center;
-        background-size: 100% 100%;
         flex: 1;
         display: flex;
         flex-direction: column;
@@ -217,13 +343,13 @@ defineExpose({
 
         .chart-title {
             text-align: center;
-            padding: 10px 20px 0 20px;
+            padding: 10px 20px 0;
         }
 
         .chart-container {
             flex: 1;
             min-height: 200px;
-            padding: 10px 20px 20px 20px;
+            padding: 10px 20px 0;
         }
     }
 }

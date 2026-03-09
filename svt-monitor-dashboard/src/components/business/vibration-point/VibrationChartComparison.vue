@@ -7,8 +7,6 @@
             <div class="chart-container">
                 <CommonEcharts
                     :option="freqOption"
-                    :empty="!freqData.frequency.length"
-                    empty-text="暂无数据"
                     :enable-data-zoom="false"
                     :not-merge="true"
                 />
@@ -21,8 +19,6 @@
             <div class="chart-container">
                 <CommonEcharts
                     :option="timeOption"
-                    :empty="!timeDomainData.length"
-                    empty-text="暂无数据"
                     :enable-data-zoom="false"
                     :not-merge="true"
                 />

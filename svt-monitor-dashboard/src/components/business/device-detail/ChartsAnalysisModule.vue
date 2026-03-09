@@ -180,20 +180,15 @@ const isGrayTheme = computed(() => backgroundMode?.value === 'gray')
 const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'))
 const chartSplitLineColor = computed(() => (isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(150,150,150, 0.2)'))
 
-// 温度/烈度/响度图 fallback 数据
-const TEMP_FALLBACK_TIMES = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00']
-const TEMP_FALLBACK_DATA = [32, 35, 38, 42, 45, 43, 40, 36, 33]
 const HOURS_24 = Array.from({ length: 24 }, (_, i) => `${i}`)
-const VIB_FALLBACK_VALUES = Array.from({ length: 24 }, (_, i) => 2 + Math.sin((i / 24) * Math.PI * 2) * 5)
-const SOUND_FALLBACK_VALUES = Array.from({ length: 24 }, (_, i) => 55 + (i % 5) * 3)
 
 /** 温度图表 option */
 const tempOption = computed<EChartsOption>(() => {
     const c = chartAxisColor.value
     const s = chartSplitLineColor.value
     const d = tempChartData.value
-    const timeLabels = d?.timeLabels?.length ? d.timeLabels : TEMP_FALLBACK_TIMES
-    const values = d?.values?.length ? d.values : TEMP_FALLBACK_DATA
+    const timeLabels = d?.timeLabels ?? []
+    const values = d?.values ?? []
     const yMin = d?.yMin
     const yMax = d?.yMax
     return {
@@ -228,7 +223,7 @@ const tempOption = computed<EChartsOption>(() => {
             nameTextStyle: { color: c },
             splitNumber: 4
         },
-        series: [{
+        series: values.length ? [{
             data: values,
             type: 'line',
             smooth: true,
@@ -239,7 +234,7 @@ const tempOption = computed<EChartsOption>(() => {
                 color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(255, 206, 86, 0.5)' }, { offset: 1, color: 'rgba(255, 206, 86, 0.1)' }] },
                 opacity: 0.3
             }
-        }],
+        }] : [],
         backgroundColor: 'transparent'
     } as EChartsOption
 })
@@ -249,8 +244,8 @@ const vibOption = computed<EChartsOption>(() => {
     const c = chartAxisColor.value
     const s = chartSplitLineColor.value
     const d = vibChartData.value
-    const timeLabels = d?.timeLabels?.length ? d.timeLabels : HOURS_24
-    const values = d?.values?.length ? d.values : VIB_FALLBACK_VALUES
+    const timeLabels = d?.timeLabels ?? []
+    const values = d?.values ?? []
     const yMin = d?.yMin
     const yMax = d?.yMax
     return {
@@ -284,7 +279,7 @@ const vibOption = computed<EChartsOption>(() => {
             nameTextStyle: { color: c },
             splitNumber: 4
         },
-        series: [{
+        series: values.length ? [{
             data: values,
             type: 'line',
             smooth: true,
@@ -295,7 +290,7 @@ const vibOption = computed<EChartsOption>(() => {
                 color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(255, 206, 86, 0.5)' }, { offset: 1, color: 'rgba(255, 206, 86, 0.1)' }] },
                 opacity: 0.3
             }
-        }],
+        }] : [],
         backgroundColor: 'transparent'
     } as EChartsOption
 })
@@ -305,8 +300,8 @@ const soundOption = computed<EChartsOption>(() => {
     const c = chartAxisColor.value
     const s = chartSplitLineColor.value
     const d = soundChartData.value
-    const timeLabels = d?.timeLabels?.length ? d.timeLabels : HOURS_24
-    const values = d?.values?.length ? d.values : SOUND_FALLBACK_VALUES
+    const timeLabels = d?.timeLabels ?? []
+    const values = d?.values ?? []
     const yMin = d?.yMin
     const yMax = d?.yMax
     return {
@@ -341,7 +336,7 @@ const soundOption = computed<EChartsOption>(() => {
             nameTextStyle: { color: c },
             splitNumber: 4
         },
-        series: [{
+        series: values.length ? [{
             data: values,
             type: 'line',
             smooth: true,
@@ -352,7 +347,7 @@ const soundOption = computed<EChartsOption>(() => {
                 color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(234, 124, 204, 0.5)' }, { offset: 1, color: 'rgba(234, 124, 204, 0.1)' }] },
                 opacity: 0.3
             }
-        }],
+        }] : [],
         backgroundColor: 'transparent'
     } as EChartsOption
 })

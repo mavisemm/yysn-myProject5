@@ -814,6 +814,14 @@ onUnmounted(() => {
 
     .tree-scrollbar {
       flex: 1;
+      height: 100%;
+      min-height: 0;
+
+      :deep(.el-scrollbar__view) {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
 
       :deep(.el-tree) {
         background: transparent;
