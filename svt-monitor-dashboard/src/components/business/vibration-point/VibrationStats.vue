@@ -62,12 +62,10 @@ const loadVibrationData = async () => {
                 accelerationMax: response.ret.accelerationMax ?? 0
             }
         } else {
-            console.warn('振动数据接口返回空数据或错误:', response)
             ElMessage.warning('暂无振动数据')
         }
     } catch (error) {
-        console.error('获取振动数据失败:', error)
-        ElMessage.warning('获取振动数据失败，显示默认值')
+        ElMessage.error('获取振动数据失败')
     }
 }
 

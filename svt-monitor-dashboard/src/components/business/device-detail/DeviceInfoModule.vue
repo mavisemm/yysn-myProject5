@@ -522,8 +522,7 @@ const loadDeviceDataParallel = async () => {
             initGaugeCharts()
         })
     } catch (error) {
-        console.error('并行加载设备数据失败:', error);
-        ElMessage.error('加载设备数据失败');
+        ElMessage.error('获取设备数据失败');
     }
 }
 

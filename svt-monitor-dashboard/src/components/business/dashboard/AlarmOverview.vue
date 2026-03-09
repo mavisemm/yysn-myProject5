@@ -404,19 +404,20 @@ function formatAlarmTime(time: string | undefined): string {
 }
 
 const goToDeviceDetail = (alarm: AlarmItem) => {
-
-    if (isValidDevice(alarm.id)) {
-        deviceTreeStore.setSelectedDeviceId(alarm.id);
-        router.push({
-            name: 'DeviceDetail',
-            params: { id: alarm.id },
-            query: { deviceName: alarm.deviceName, workshopName: alarm.shopName }
-        }).catch(err => {
-            console.error('路由跳转失败:', err);
-        });
-    } else {
-        console.warn('设备不存在，无法跳转:', alarm.id);
+    const deviceId = alarm.id;
+    if (!deviceId) {
+        console.warn('缺少设备ID，无法跳转:', alarm);
+        return;
     }
+
+    // 直接按设备ID跳转设备详情页，并同步选中设备
+    deviceTreeStore.setSelectedDeviceId(deviceId);
+    router.push({
+        name: 'DeviceDetail',
+        params: { id: deviceId }
+    }).catch(err => {
+        console.error('路由跳转失败:', err);
+    });
 };
 </script>
 
