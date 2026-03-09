@@ -60,9 +60,11 @@
     </div>
 
     <!-- 设备树 -->
-    <div class="device-tree-container">
+        <div class="device-tree-container">
       <el-scrollbar class="tree-scrollbar">
-        <div v-if="!deviceTreeStore.loading && displayTreeData.length === 0" class="no-data">暂无数据</div>
+        <div v-if="!deviceTreeStore.loading && displayTreeData.length === 0" class="no-data">
+          <CommonEmptyState size="small" />
+        </div>
         <el-tree v-else ref="deviceTreeRef" :data="displayTreeData" :props="treeProps" :expand-on-click-node="false"
           :highlight-current="false" :default-expanded-keys="expandedKeys" node-key="id" @node-click="handleNodeClick">
           <template #default="{ node, data }">
@@ -132,6 +134,7 @@ import {
 
 import { useDebounce } from '@/composables/useDebounce'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
+import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 
 const router = useRouter()
 

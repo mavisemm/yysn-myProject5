@@ -4,13 +4,21 @@
             <h3 class="module-title app-section-title">点位列表</h3>
         </div>
         <div class="point-table-container">
-            <el-table ref="pointTableRef" :data="pointList" height="100%" :fit="true"
+            <!-- 无数据时直接用统一空态，不走 el-table 自带 empty 逻辑，避免高度难以控制 -->
+            <div v-if="!pointList.length" class="point-empty-wrapper">
+                <CommonEmptyState text="暂无数据" size="small" />
+            </div>
+            <el-table
+                v-else
+                ref="pointTableRef"
+                :data="pointList"
+                height="100%"
+                :fit="true"
                 :header-cell-style="{ background: 'transparent', color: 'var(--special-font-color)', 'text-align': 'center' }"
                 :cell-style="{ background: 'transparent', color: 'var(--special-font-color)', 'text-align': 'center' }"
-                @row-click="onRowClick" highlight-current-row>
-                <template #empty>
-                    <div class="empty-text">暂无数据</div>
-                </template>
+                @row-click="onRowClick"
+                highlight-current-row
+            >
                 <el-table-column prop="id" label="点位编号" width="15%" />
                 <el-table-column prop="name" label="点位名称" width="20%" />
                 <el-table-column prop="lastAlarmTime" label="预警时间" width="20%" />
@@ -28,9 +36,12 @@
                 </el-table-column>
                 <el-table-column label="操作" width="18%" align="center">
                     <template #default="{ row }">
-                        <el-button :type="row.hasAlarm ? 'danger' : 'primary'" size="small"
+                        <el-button
+                            :type="row.hasAlarm ? 'danger' : 'primary'"
+                            size="small"
                             style="min-width: auto; width: fit-content; padding-left: 10px; padding-right: 10px; white-space: nowrap; overflow: visible;"
-                            @click.stop="handleUnprocessedClick(row)">
+                            @click.stop="handleUnprocessedClick(row)"
+                        >
                             {{ row.hasAlarm ? '未处理' : '已处理' }}
                         </el-button>
                     </template>
@@ -44,6 +55,7 @@
 import { ElTable, ElTableColumn, ElButton } from 'element-plus'
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 
 interface PointInfo {
     id: string
@@ -189,9 +201,19 @@ defineExpose({
         align-items: stretch;
     }
 
-    .empty-text {
-        color: rgba(255, 255, 255, 0.6);
-        padding: 20px;
+    .point-empty-wrapper {
+        flex: 1;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 66px;
+    }
+
+    /* 统一空状态高度，让 CommonEmptyState 在表格里和设备树接近 */
+    :deep(.el-table__empty-block) {
+        height: auto !important;
+        min-height: 66px !important;
     }
 
     :deep(.el-table) {

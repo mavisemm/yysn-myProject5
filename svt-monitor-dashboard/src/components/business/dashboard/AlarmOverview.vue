@@ -40,7 +40,9 @@
         </div>
 
         <!-- 主内容区域 -->
-        <div v-if="filteredAlarms.length === 0" class="alarm-empty">暂无数据</div>
+        <div v-if="filteredAlarms.length === 0" class="alarm-empty">
+            <CommonEmptyState />
+        </div>
         <div v-else class="alarm-grid" :style="{
             'grid-template-columns': `repeat(${responsivePageSize.columns}, 1fr)`,
             'grid-template-rows': `repeat(${responsivePageSize.rows}, 1fr)`
@@ -86,6 +88,7 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import type { DeviceNode } from '@/types/device';
 import { formatDateTime, disabledFutureDate, getDefaultDateRange } from '@/utils/datetime';
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue';
+import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue';
 
 const { t } = useLocale();
 

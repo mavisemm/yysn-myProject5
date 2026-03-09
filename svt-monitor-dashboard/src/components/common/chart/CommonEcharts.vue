@@ -36,7 +36,7 @@
             <span class="loading-text">加载中...</span>
         </div>
         <div v-if="resolvedEmpty && !loading" class="common-echarts-empty">
-            <span class="empty-text">{{ emptyText }}</span>
+            <CommonEmptyState :text="emptyText" size="small" />
         </div>
     </div>
 </template>
@@ -49,6 +49,7 @@ import type { EChartsOption } from 'echarts';
 import { useChartResize } from '@/composables/useChart';
 import { enableMouseWheelZoom } from '@/utils/chart';
 import { useRangeControls } from '@/composables/useRangeControls';
+import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue';
 
 /** 是否使用 echarts-gl（3D 图表，如瀑布图） */
 const props = withDefaults(

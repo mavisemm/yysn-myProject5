@@ -5,6 +5,9 @@
             <el-table :data="deviationList" height="100%" @row-click="handleRowClick"
                 :header-cell-style="{ background: 'rgba(255, 255, 255, 0.3)', color: 'white', textAlign: 'center' }"
                 :cell-style="{ background: 'transparent', color: 'white', textAlign: 'center' }">
+                <template #empty>
+                    <CommonEmptyState text="暂无声音数据" size="small" />
+                </template>
                 <!-- 自定义勾选列 -->
                 <el-table-column width="10%" align="center">
                     <template #header>
@@ -50,6 +53,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { ElTable, ElTableColumn, ElButton, ElMessage, ElCheckbox } from 'element-plus';
+import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue';
 
 const emit = defineEmits(['select-change', 'view-details', 'download-file', 'play-audio', 'row-click']);
 const props = defineProps<{

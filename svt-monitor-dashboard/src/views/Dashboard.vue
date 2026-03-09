@@ -56,12 +56,14 @@ const showTrendWarningModal = ref(false);
 const showFaultWarningModal = ref(false);
 
 // 统计数据
-const statsData = ref([
+const DEFAULT_STATS = [
   { title: '监控总设备', number: 0 },
   { title: '健康设备', number: 0 },
   { title: '趋势预警设备', number: 0 },
   { title: '故障报警设备', number: 0 }
-]);
+];
+
+const statsData = ref([...DEFAULT_STATS]);
 
 const faultAlertCount = computed(() => {
   const item = statsData.value.find(s => s.title === '故障报警设备');
@@ -117,20 +119,20 @@ const fetchStatsData = async () => {
   try {
     const stats = await getAllStats();
 
+    if (!stats) {
+      statsData.value = [...DEFAULT_STATS];
+      return;
+    }
+
     statsData.value = [
-      { title: '监控总设备', number: stats.totalDeviceCount },
-      { title: '健康设备', number: stats.healthyDeviceCount },
-      { title: '趋势预警设备', number: stats.totalPointCount },
-      { title: '故障报警设备', number: stats.alertDeviceCount }
+      { title: '监控总设备', number: Number(stats.totalDeviceCount ?? 0) },
+      { title: '健康设备', number: Number(stats.healthyDeviceCount ?? 0) },
+      { title: '趋势预警设备', number: Number(stats.totalPointCount ?? 0) },
+      { title: '故障报警设备', number: Number(stats.alertDeviceCount ?? 0) }
     ];
   } catch (error) {
     console.error('获取统计数据失败:', error);
-    statsData.value = [
-      { title: '监控总设备', number: 0 },
-      { title: '健康设备', number: 0 },
-      { title: '趋势预警设备', number: 0 },
-      { title: '故障报警设备', number: 0 }
-    ];
+    statsData.value = [...DEFAULT_STATS];
   }
 };
 

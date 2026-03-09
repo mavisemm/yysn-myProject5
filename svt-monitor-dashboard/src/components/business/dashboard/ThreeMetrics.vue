@@ -6,7 +6,9 @@
             <div v-if="metric.unit" class="metric-unit special-font-color">{{ metric.unit }}</div>
             <!-- 排名列表：根据可用高度动态显示前 N 条 -->
             <div class="rankings" :ref="(el) => setRankingsEl(el, index)">
-                <div v-if="getRankings(index).length === 0" class="no-data">暂无数据</div>
+                <div v-if="getRankings(index).length === 0" class="no-data">
+                    <CommonEmptyState size="small" />
+                </div>
                 <template v-else>
                     <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex" class="ranking-item"
                         @click="goToDeviceDetail(rank)" style="cursor: pointer;">
@@ -56,6 +58,7 @@ import { useRouter } from 'vue-router'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import type { MetricItem } from '@/types/device'
 import type { DeviceNode } from '@/types/device'
+import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 
 interface RankingItem {
     deviceName: string;
