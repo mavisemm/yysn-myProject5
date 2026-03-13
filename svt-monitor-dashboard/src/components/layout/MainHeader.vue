@@ -48,8 +48,8 @@
     <div class="header-right-actions">
       <div
         class="theme-wrapper"
-        @mouseenter="showThemeDropdown = true"
-        @mouseleave="showThemeDropdown = false"
+        @mouseenter="onThemeEnter"
+        @mouseleave="onThemeLeave"
       >
         <div
           class="theme-trigger"
@@ -59,6 +59,8 @@
         <div
           v-show="showThemeDropdown"
           class="theme-dropdown"
+          @mouseenter="onThemeEnter"
+          @mouseleave="onThemeLeave"
         >
           <!-- 下拉中只展示“非当前”的其他主题 -->
           <div
@@ -98,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
@@ -127,6 +129,26 @@ const emit = defineEmits<{
 }>()
 
 const showThemeDropdown = ref(false)
+const themeCloseTimer = ref<number | null>(null)
+
+const onThemeEnter = () => {
+  if (themeCloseTimer.value !== null) {
+    window.clearTimeout(themeCloseTimer.value)
+    themeCloseTimer.value = null
+  }
+  showThemeDropdown.value = true
+}
+
+const onThemeLeave = () => {
+  if (themeCloseTimer.value !== null) {
+    window.clearTimeout(themeCloseTimer.value)
+  }
+  // 给鼠标跨过 trigger 与 dropdown 的间隙留缓冲
+  themeCloseTimer.value = window.setTimeout(() => {
+    showThemeDropdown.value = false
+    themeCloseTimer.value = null
+  }, 150)
+}
 
 const showHomeButton = computed(() => {
   return route.name === 'DeviceDetail' ||
@@ -151,6 +173,13 @@ const selectBackground = (mode: 'image' | 'gray' | 'green' | 'navy') => {
   emit('change-background', mode)
   showThemeDropdown.value = false
 }
+
+onBeforeUnmount(() => {
+  if (themeCloseTimer.value !== null) {
+    window.clearTimeout(themeCloseTimer.value)
+    themeCloseTimer.value = null
+  }
+})
 
 const goHome = () => {
   // 重置设备树状态到初始状态
@@ -350,6 +379,8 @@ const handleLogout = () => {
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    z-index: 1000;
+    pointer-events: auto;
   }
 
   .theme-square {

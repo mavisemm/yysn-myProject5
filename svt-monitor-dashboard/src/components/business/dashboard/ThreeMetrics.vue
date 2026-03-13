@@ -193,7 +193,7 @@ const updateWindowSize = () => {
 
 const maxVisibleRows = computed(() => {
     const h = windowHeight.value;
-    if (h >= 900) return 5;
+    if (h >= 920) return 5;
     if (h >= 770) return 4;
     if (h >= 650) return 3;
     return 2;
