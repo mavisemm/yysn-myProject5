@@ -83,6 +83,11 @@ const props = withDefaults(
          */
         linkageGroup?: string;
         /**
+         * 仅联动缩放（dataZoom），不联动 tooltip/axisPointer。
+         * 适用于“同屏多图”只希望缩放同步的场景。
+         */
+        linkageZoomOnly?: boolean;
+        /**
          * 是否开启缩放联动。
          * 默认关闭，需要业务组件手动开启。
          */
@@ -148,6 +153,7 @@ const props = withDefaults(
         notMerge: false,
         replaceMerge: () => [],
         linkageGroup: '',
+        linkageZoomOnly: false,
         enableLinkageZoom: false,
         enableWheelZoom: false,
         tooltipFollowMouse: false,
@@ -177,6 +183,14 @@ const chartRef = ref<HTMLElement>();
 const chartInstance = shallowRef<echarts.ECharts | null>(null);
 let wheelZoomCleanup: (() => void) | null = null;
 let rangeControlsCleanup: (() => void) | null = null;
+
+// 缩放“仅联动”时使用的分组注册表（避免 echarts.connect 导致 tooltip 联动）
+type GroupRegistry = Map<string, Set<echarts.ECharts>>;
+const linkageRegistry: GroupRegistry = (globalThis as any).__COMMON_ECHARTS_LINKAGE_REGISTRY__ ?? new Map();
+(globalThis as any).__COMMON_ECHARTS_LINKAGE_REGISTRY__ = linkageRegistry;
+
+let linkageZoomCleanup: (() => void) | null = null;
+let isSyncingZoom = false;
 const {
     showResolvedRangeControls,
     rangeMin,
@@ -285,14 +299,92 @@ const applyLinkageZoom = () => {
     if (!chartInstance.value) return;
 
     const hasGroup = !!props.linkageGroup;
-    if (props.enableLinkageZoom && hasGroup) {
-        // 使用 ECharts 的 group 机制实现多个图表之间的缩放联动
+    // 清理旧的缩放联动
+    if (linkageZoomCleanup) {
+        linkageZoomCleanup();
+        linkageZoomCleanup = null;
+    }
+
+    if (!(props.enableLinkageZoom && hasGroup)) {
+        // 关闭联动时，仅移除当前实例的 group，避免影响其他图表
+        if ((chartInstance.value as any).group) (chartInstance.value as any).group = '';
+        return;
+    }
+
+    if (!props.linkageZoomOnly) {
+        // 默认行为：使用 ECharts 的 group 机制实现联动（会联动 tooltip/axisPointer）
         (chartInstance.value as any).group = props.linkageGroup;
         echarts.connect(props.linkageGroup as string);
-    } else if ((chartInstance.value as any).group) {
-        // 关闭联动时，仅移除当前实例的 group，避免影响其他图表
-        (chartInstance.value as any).group = '';
+        return;
     }
+
+    // 仅联动 dataZoom：不使用 echarts.connect，避免 tooltip 同步
+    (chartInstance.value as any).group = '';
+    const groupId = props.linkageGroup as string;
+    const inst = chartInstance.value;
+    if (!linkageRegistry.has(groupId)) linkageRegistry.set(groupId, new Set());
+    linkageRegistry.get(groupId)!.add(inst);
+
+    const handler = (params: any) => {
+        if (isSyncingZoom) return;
+        isSyncingZoom = true;
+        try {
+            const others = linkageRegistry.get(groupId);
+            if (!others) return;
+            // ECharts 的 datazoom 事件常见结构：{ type:'datazoom', batch:[{start,end,startValue,endValue,dataZoomId,...}] }
+            // dispatchAction({type:'dataZoom', ...}) 需要的是 dataZoom action 参数，而不是原始事件对象
+            const batch0 = Array.isArray(params?.batch) ? params.batch[0] : null;
+            const payload = batch0 && typeof batch0 === 'object' ? batch0 : params;
+            if (!payload || typeof payload !== 'object') return;
+
+            // 仅转发关键字段，避免携带 dataZoomId 等导致另一图表不生效
+            const action: Record<string, any> = { type: 'dataZoom' };
+            if (typeof (payload as any).startValue !== 'undefined' || typeof (payload as any).endValue !== 'undefined') {
+                if (typeof (payload as any).startValue !== 'undefined') action.startValue = (payload as any).startValue;
+                if (typeof (payload as any).endValue !== 'undefined') action.endValue = (payload as any).endValue;
+            } else {
+                if (typeof (payload as any).start !== 'undefined') action.start = (payload as any).start;
+                if (typeof (payload as any).end !== 'undefined') action.end = (payload as any).end;
+            }
+
+            // 如果事件里带了 dataZoomIndex，则一起转发；否则不指定让 echarts 自行应用到对应组件
+            if (typeof (payload as any).dataZoomIndex !== 'undefined') action.dataZoomIndex = (payload as any).dataZoomIndex;
+
+            // 没有有效范围则不联动
+            if (
+                typeof action.start === 'undefined' &&
+                typeof action.end === 'undefined' &&
+                typeof action.startValue === 'undefined' &&
+                typeof action.endValue === 'undefined'
+            ) {
+                return;
+            }
+            for (const other of others) {
+                if (other === inst) continue;
+                try {
+                    other.dispatchAction(action as any);
+                } catch {
+                    // ignore
+                }
+            }
+        } finally {
+            isSyncingZoom = false;
+        }
+    };
+
+    inst.on('datazoom', handler);
+    linkageZoomCleanup = () => {
+        try {
+            inst.off('datazoom', handler);
+        } catch {
+            // ignore
+        }
+        const set = linkageRegistry.get(groupId);
+        if (set) {
+            set.delete(inst);
+            if (set.size === 0) linkageRegistry.delete(groupId);
+        }
+    };
 };
 
 /** 根据 props 设置/更新鼠标滚轮缩放 */
@@ -506,6 +598,11 @@ onUnmounted(() => {
         chartInstance.value.dispose();
         chartInstance.value = null;
         emit('chart-disposed');
+    }
+
+    if (linkageZoomCleanup) {
+        linkageZoomCleanup();
+        linkageZoomCleanup = null;
     }
 
     if (wheelZoomCleanup) {

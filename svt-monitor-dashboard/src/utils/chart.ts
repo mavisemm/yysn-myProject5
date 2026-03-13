@@ -81,6 +81,12 @@ export const enableMouseWheelZoom = (chart: any) => {
   // 添加滚轮事件监听
   const chartDom = chart.getDom();
   const handleWheel = (e: WheelEvent) => {
+    // 如果滚轮发生在 tooltip 内，优先让 tooltip 自己滚动，不触发图表缩放
+    const target = e.target as HTMLElement | null;
+    if (target && typeof target.closest === 'function' && target.closest('.echarts-tooltip')) {
+      return;
+    }
+
     e.preventDefault();
     
     // 获取当前dataZoom的配置

@@ -84,6 +84,7 @@
                 :tooltip-follow-mouse="false"
                 linkage-group="trend-analysis-charts"
                 :enable-linkage-zoom="true"
+                :linkage-zoom-only="true"
                 :enable-wheel-zoom="true"
                 :show-range-controls="true"
                 range-controls-label="频率范围："
@@ -103,6 +104,7 @@
                 :tooltip-follow-mouse="false"
                 linkage-group="trend-analysis-charts"
                 :enable-linkage-zoom="true"
+                :linkage-zoom-only="true"
                 :enable-wheel-zoom="true"
               />
             </div>
@@ -393,84 +395,39 @@ const onTrendDialogClosed = () => {
   trendXAxisData.value = []
 }
 
-// 生成按时间渐变的颜色：由黄 -> 红（用 HSL 插值避免中段发灰）
-const generateTimeGradientColors = (totalCount: number): string[] => {
-  const colors: string[] = []
-  const count = Math.max(totalCount, 1)
-  const denom = Math.max(1, count - 1)
+// 生成按时间渐变的颜色：由黄 -> 蓝
+// timeWeight: 0(最远，纯黄) ~ 1(最近，纯蓝)
+const getGradientColorByTimeWeight = (timeWeight: number, withAlpha = false): string => {
+  const t = Math.max(0, Math.min(1, timeWeight))
 
-  // 起始：黄色（更亮），终止：红色
-  const start = { r: 255, g: 206, b: 86 } // #FFCE56
-  const end = { r: 245, g: 108, b: 108 }  // #F56C6C
+  // 黄色基准值 (R:255, G:255, B:0)
+  const yellowR = 255
+  const yellowG = 255
+  const yellowB = 0
 
-  const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
-  const rgbToHsl = (r: number, g: number, b: number) => {
-    r /= 255
-    g /= 255
-    b /= 255
-    const max = Math.max(r, g, b)
-    const min = Math.min(r, g, b)
-    const d = max - min
-    let h = 0
-    let s = 0
-    const l = (max + min) / 2
-    if (d !== 0) {
-      s = d / (1 - Math.abs(2 * l - 1))
-      switch (max) {
-        case r:
-          h = ((g - b) / d) % 6
-          break
-        case g:
-          h = (b - r) / d + 2
-          break
-        default:
-          h = (r - g) / d + 4
-          break
-      }
-      h *= 60
-      if (h < 0) h += 360
-    }
-    return { h, s, l }
+  // 蓝色基准值 (R:0, G:191, B:255)
+  const blueR = 0
+  const blueG = 191
+  const blueB = 255
+
+  // 计算渐变过渡值
+  const r = Math.floor(yellowR - (yellowR - blueR) * t)
+  const g = Math.floor(yellowG - (yellowG - blueG) * t)
+  const b = Math.floor(yellowB - (yellowB - blueB) * t)
+
+  // 添加轻微的随机变化，避免颜色完全一致
+  const randomOffset = 15
+  const rand = () => Math.floor(Math.random() * randomOffset) - randomOffset / 2
+  const clamp255 = (v: number) => Math.max(0, Math.min(255, v))
+  const rFinal = clamp255(r + rand())
+  const gFinal = clamp255(g + rand())
+  const bFinal = clamp255(b + rand())
+
+  if (withAlpha) {
+    const alpha = Math.random() * 0.8 + 0.2
+    return `rgba(${rFinal}, ${gFinal}, ${bFinal}, ${alpha.toFixed(2)})`
   }
-  const hslToRgb = (h: number, s: number, l: number) => {
-    const c = (1 - Math.abs(2 * l - 1)) * s
-    const hp = (h % 360) / 60
-    const x = c * (1 - Math.abs((hp % 2) - 1))
-    let r1 = 0, g1 = 0, b1 = 0
-    if (hp >= 0 && hp < 1) [r1, g1, b1] = [c, x, 0]
-    else if (hp < 2) [r1, g1, b1] = [x, c, 0]
-    else if (hp < 3) [r1, g1, b1] = [0, c, x]
-    else if (hp < 4) [r1, g1, b1] = [0, x, c]
-    else if (hp < 5) [r1, g1, b1] = [x, 0, c]
-    else [r1, g1, b1] = [c, 0, x]
-    const m = l - c / 2
-    return {
-      r: Math.round((r1 + m) * 255),
-      g: Math.round((g1 + m) * 255),
-      b: Math.round((b1 + m) * 255)
-    }
-  }
-
-  const startHsl = rgbToHsl(start.r, start.g, start.b)
-  const endHsl = rgbToHsl(end.r, end.g, end.b)
-
-  const lerp = (a: number, b: number, t: number) => a + (b - a) * t
-  // Hue 走最短路径插值，避免绕一圈
-  const lerpHue = (h1: number, h2: number, t: number) => {
-    let delta = ((h2 - h1 + 540) % 360) - 180
-    return (h1 + delta * t + 360) % 360
-  }
-
-  for (let i = 0; i < count; i++) {
-    const t = i / denom
-    const h = lerpHue(startHsl.h, endHsl.h, t)
-    // 保持较高饱和度，避免中段灰；同时让亮度从黄到略暗蓝略微下降
-    const s = clamp01(lerp(Math.max(startHsl.s, 0.85), Math.max(endHsl.s, 0.85), t))
-    const l = clamp01(lerp(startHsl.l, endHsl.l, t))
-    const { r, g, b } = hslToRgb(h, s, l)
-    colors.push(`rgb(${r}, ${g}, ${b})`)
-  }
-  return colors
+  return `rgb(${rFinal}, ${gFinal}, ${bFinal})`
 }
 
 type DbMaxDiffInfo = {
@@ -525,7 +482,35 @@ const calcDbMaxDiff = (groups: TrendChartGroup[], xArr: string[]): DbMaxDiffInfo
 const updateDbEchartsTooltip = (option: any, xArr: string[], groups: TrendChartGroup[]) => {
   option.tooltip = {
     ...option.tooltip,
-    hideDelay: 10000,
+    hideDelay: 3000,
+    // 允许鼠标进入 tooltip（滚动/选择文字/点击）
+    enterable: true,
+    // 让 tooltip 容器接收鼠标事件，否则无法滚动
+    extraCssText: `${(option.tooltip && (option.tooltip as any).extraCssText) ? (option.tooltip as any).extraCssText + ';' : ''}pointer-events:auto;`,
+    // 防止 tooltip 超出可视区域（右/下被截断）
+    confine: true,
+    position: (pos: any, _params: any, _el: any, _elRect: any, size: any) => {
+      const [mouseX, mouseY] = (Array.isArray(pos) ? pos : [0, 0]) as [number, number]
+      const [contentWidth, contentHeight] = (size?.contentSize ?? [0, 0]) as [number, number]
+      const [viewWidth, viewHeight] = (size?.viewSize ?? [0, 0]) as [number, number]
+
+      const padding = 12
+      let x = mouseX + padding
+      let y = mouseY + padding
+
+      if (x + contentWidth + padding > viewWidth) {
+        x = mouseX - contentWidth - padding
+      }
+      if (y + contentHeight + padding > viewHeight) {
+        y = mouseY - contentHeight - padding
+      }
+
+      // 再兜底一次，避免负数
+      x = Math.max(padding, Math.min(viewWidth - contentWidth - padding, x))
+      y = Math.max(padding, Math.min(viewHeight - contentHeight - padding, y))
+
+      return [x, y]
+    },
     formatter: (params: any[]) => {
       if (!params || !params.length) return ''
 
@@ -573,7 +558,8 @@ const updateDbEchartsTooltip = (option: any, xArr: string[], groups: TrendChartG
         }
       }
 
-      return tooltipContent
+      // tooltip 限制高度，超出滚动
+      return `<div style="max-height:500px;overflow-y:auto;overflow-x:hidden;padding-right:6px;">${tooltipContent}</div>`
     }
   }
 }
@@ -582,7 +568,32 @@ const updateDbEchartsTooltip = (option: any, xArr: string[], groups: TrendChartG
 const updateTrendTooltip = (option: any, xArr: any[]) => {
   option.tooltip = {
     ...option.tooltip,
-    hideDelay: 10000,
+    hideDelay: 3000,
+    enterable: true,
+    extraCssText: `${(option.tooltip && (option.tooltip as any).extraCssText) ? (option.tooltip as any).extraCssText + ';' : ''}pointer-events:auto;`,
+    // 防止 tooltip 超出可视区域（右/下被截断）
+    confine: true,
+    position: (pos: any, _params: any, _el: any, _elRect: any, size: any) => {
+      const [mouseX, mouseY] = (Array.isArray(pos) ? pos : [0, 0]) as [number, number]
+      const [contentWidth, contentHeight] = (size?.contentSize ?? [0, 0]) as [number, number]
+      const [viewWidth, viewHeight] = (size?.viewSize ?? [0, 0]) as [number, number]
+
+      const padding = 12
+      const upwardOffset = 300
+      let x = mouseX + padding
+      let y = mouseY + padding - upwardOffset
+
+      if (x + contentWidth + padding > viewWidth) {
+        x = mouseX - contentWidth - padding
+      }
+      // 关键：限制 tooltip 的“底部”不超过图表容器底部
+      // 即 y <= viewHeight - contentHeight - padding
+      const maxY = Math.max(padding, viewHeight - contentHeight - padding)
+
+      x = Math.max(padding, Math.min(viewWidth - contentWidth - padding, x))
+      y = Math.max(padding, Math.min(maxY, y))
+      return [x, y]
+    },
     formatter: (params: any) => {
       if (!params || !params.length) return ''
       const xIndex = params[0].dataIndex
@@ -591,7 +602,8 @@ const updateTrendTooltip = (option: any, xArr: any[]) => {
       for (const p of params) {
         html += `<div style="margin:2px 0;">${p.marker}${p.seriesName}：${Number(p.data).toFixed(2)}</div>`
       }
-      return html
+      // tooltip 限制高度，超出滚动
+      return `<div style="max-height:500px;overflow-y:auto;overflow-x:hidden;padding-right:6px;">${html}</div>`
     }
   }
 }
@@ -611,27 +623,32 @@ const buildTrendChartOptions = () => {
     const tb = dayjs(b.name ?? '').valueOf()
     return tb - ta
   })
-  const timeGradientColors = generateTimeGradientColors(sortedByTime.length)
-  const colorMap: Record<string, string> = {}
+  const timeWeightMap: Record<string, number> = {}
+  const timeCount = Math.max(sortedByTime.length, 1)
+  const timeDenom = Math.max(timeCount - 1, 1)
   sortedByTime.forEach((g, idx) => {
     const key = typeof g.name === 'string' && g.name ? g.name : `组${idx + 1}`
-    colorMap[key] = timeGradientColors[idx]!
+    timeWeightMap[key] = idx / timeDenom
   })
 
   const dbMaxDiffInfo = calcDbMaxDiff(totalArr, xArr)
 
   const finallyDbArr = totalArr.map((item: TrendChartGroup, index: number) => {
     const seriesKey = typeof item.name === 'string' && item.name ? item.name : `组${index + 1}`
-    const color = colorMap[seriesKey] || timeGradientColors[index] || '#3ba272'
+    const fallbackWeight = timeCount > 1 ? index / (timeCount - 1) : 0
+    const rawWeight = seriesKey in timeWeightMap ? timeWeightMap[seriesKey] : fallbackWeight
+    const timeWeight = typeof rawWeight === 'number' && !Number.isNaN(rawWeight) ? rawWeight : fallbackWeight
+    const color = getGradientColorByTimeWeight(timeWeight)
     return {
       name: seriesKey,
       type: 'line',
       data: item.dbArr ?? [],
       smooth: true,
-      symbol: 'circle',
-      symbolSize: 1,
-      lineStyle: { width: 2.5, shadowBlur: 3, shadowColor: 'rgba(0,0,0,0.2)', color },
-      itemStyle: { borderWidth: 2, borderColor: '#ffffff', shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.3)', color }
+      // 趋势图线条保持“细、清爽”，避免弹窗里显得过粗
+      symbol: 'none',
+      symbolSize: 0,
+      lineStyle: { width: 1.2, opacity: 0.95, color },
+      itemStyle: { color }
     }
   })
   const nextDbOption: any = {
@@ -686,16 +703,19 @@ const buildTrendChartOptions = () => {
   // 密度图表
   const finallyDensityArr = totalArr.map((item: TrendChartGroup, index: number) => {
     const seriesKey = typeof item.name === 'string' && item.name ? item.name : `组${index + 1}`
-    const color = colorMap[seriesKey] || timeGradientColors[index] || '#5470c6'
+    const fallbackWeight = timeCount > 1 ? index / (timeCount - 1) : 0
+    const rawWeight = seriesKey in timeWeightMap ? timeWeightMap[seriesKey] : fallbackWeight
+    const timeWeight = typeof rawWeight === 'number' && !Number.isNaN(rawWeight) ? rawWeight : fallbackWeight
+    const color = getGradientColorByTimeWeight(timeWeight)
     return {
       name: seriesKey,
       type: 'line',
       data: item.densityArr ?? [],
       smooth: true,
-      symbol: 'circle',
-      symbolSize: 1,
-      lineStyle: { width: 2.5, shadowBlur: 3, shadowColor: 'rgba(0,0,0,0.2)', color },
-      itemStyle: { borderWidth: 2, borderColor: '#ffffff', shadowBlur: 4, shadowColor: 'rgba(0,0,0,0.3)', color }
+      symbol: 'none',
+      symbolSize: 0,
+      lineStyle: { width: 1.2, opacity: 0.95, color },
+      itemStyle: { color }
     }
   })
   const nextDensityOption: any = {
