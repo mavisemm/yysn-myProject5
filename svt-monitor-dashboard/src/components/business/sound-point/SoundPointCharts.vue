@@ -59,7 +59,7 @@
                 :disabled="rangeControlsDisabled"
                 @change="applyRangeIfEnabled"
             />
-            <span class="controls-sep">Hz&nbsp;~</span>
+            <span class="controls-sep">~</span>
             <el-input-number
                 v-model="rangeMax"
                 class="range-input"

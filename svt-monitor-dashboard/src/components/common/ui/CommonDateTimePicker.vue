@@ -29,11 +29,17 @@ const emit = defineEmits<{
 
 // 本地响应式数据
 const localDateRange = ref<[string, string] | null>(props.modelValue)
+// 标记最近一次 update:modelValue 是否来自用户手动选择，避免 watch(props.modelValue) 反向覆盖用户选择
+const lastUpdateFromUser = ref(false)
+
+const isTimeAllZero = (d: Date) =>
+    d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0
 
 // 处理值变化
 const handleChange = (val: [Date, Date] | null) => {
     if (!val || val.length !== 2 || !val[0] || !val[1]) {
         localDateRange.value = null
+        lastUpdateFromUser.value = true
         emit('update:modelValue', null)
         return
     }
@@ -41,13 +47,18 @@ const handleChange = (val: [Date, Date] | null) => {
     const [startDate, endDate] = val
 
     // 应用默认时间逻辑
-    const processedDates = applyDefaultTimeLogic(startDate, endDate)
+    // 仅当用户未手动选择具体时间（仍为 00:00:00）时才补默认时间，避免把用户手选的结束时间强制改为当前时间
+    const shouldApplyDefaultTime = props.enableDefaultTime && isTimeAllZero(startDate) && isTimeAllZero(endDate)
+    const processedDates: [Date, Date] = shouldApplyDefaultTime
+        ? applyDefaultTimeLogic(startDate, endDate)
+        : [startDate, endDate]
     const result: [string, string] = [
         formatDateTime(processedDates[0]),
         formatDateTime(processedDates[1])
     ]
 
     localDateRange.value = result
+    lastUpdateFromUser.value = true
     emit('update:modelValue', result)
 }
 
@@ -63,6 +74,12 @@ const applyDefaultTimeLogic = (startDate: Date, endDate: Date): [Date, Date] => 
 watch(
     () => props.modelValue,
     (newVal) => {
+        // 用户手动选择触发的 v-model 回写，不要在这里再次套“默认时间逻辑”覆盖用户的结束时间
+        if (lastUpdateFromUser.value) {
+            lastUpdateFromUser.value = false
+            localDateRange.value = newVal
+            return
+        }
         // 如果启用了默认时间逻辑，且是程序赋值（非用户交互）
         if (props.enableDefaultTime && newVal && newVal.length === 2) {
             const [startStr, endStr] = newVal

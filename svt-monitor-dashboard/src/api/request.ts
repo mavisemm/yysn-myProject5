@@ -20,7 +20,7 @@ declare module 'axios' {
 // 创建 axios 实例
 const service: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api', 
-  timeout: 15000, // 请求超时时间增加到15秒
+  timeout: 180000, // 请求超时时间：3分钟
   headers: {
     'Content-Type': 'application/json;charset=UTF-8'
   }

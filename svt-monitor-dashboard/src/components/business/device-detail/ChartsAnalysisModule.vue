@@ -186,18 +186,30 @@ const tempOption = computed<EChartsOption>(() => {
             nameTextStyle: { color: c },
             splitNumber: 4
         },
-        series: values.length ? [{
-            data: values,
-            type: 'line',
-            smooth: true,
-            symbolSize: 4,
-            itemStyle: { color: '#FFCE56' },
-            lineStyle: { color: '#FFCE56', width: 2 },
-            areaStyle: {
-                color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(255, 206, 86, 0.5)' }, { offset: 1, color: 'rgba(255, 206, 86, 0.1)' }] },
-                opacity: 0.3
-            }
-        }] : [],
+        series: values.length
+            ? [{
+                data: values,
+                type: 'line',
+                smooth: true,
+                symbolSize: 1,
+                itemStyle: { color: '#FFCE56' },
+                lineStyle: { color: '#FFCE56', width: 2 },
+                areaStyle: {
+                    color: {
+                        type: 'linear',
+                        x: 0,
+                        y: 0,
+                        x2: 0,
+                        y2: 1,
+                        colorStops: [
+                            { offset: 0, color: 'rgba(255, 206, 86, 0.5)' },
+                            { offset: 1, color: 'rgba(255, 206, 86, 0.1)' }
+                        ]
+                    },
+                    opacity: 0.3
+                }
+            }]
+            : [],
         backgroundColor: 'transparent'
     } as EChartsOption
 })

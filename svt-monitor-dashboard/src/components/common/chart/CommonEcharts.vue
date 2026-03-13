@@ -16,6 +16,7 @@
                 :max="rangeDataMax"
                 :step="rangeControlsStep"
                 :precision="rangeControlsPrecision"
+                :controls="false"
                 controls-position="right"
             />
             <span class="controls-sep">{{ rangeControlsSepText }}</span>
@@ -27,6 +28,7 @@
                 :max="rangeDataMax"
                 :step="rangeControlsStep"
                 :precision="rangeControlsPrecision"
+                :controls="false"
                 controls-position="right"
             />
             <span v-if="rangeControlsUnit" class="controls-unit">{{ rangeControlsUnit }}</span>
@@ -419,6 +421,16 @@ const getThemeColors = () => ({
 
 const { bindResize } = useChartResize(chartInstance, chartRef);
 
+// 窗口尺寸变化时主动触发一次 resize，避免仅容器 ResizeObserver 不生效的场景（如弹窗、布局切换）
+const handleWindowResize = () => {
+    if (!chartInstance.value) return;
+    try {
+        chartInstance.value.resize();
+    } catch {
+        // ignore
+    }
+};
+
 watch(
     () => props.option,
     () => {
@@ -484,6 +496,9 @@ onMounted(() => {
         initChart();
         bindResize();
     }
+    if (typeof window !== 'undefined') {
+        window.addEventListener('resize', handleWindowResize);
+    }
 });
 
 onUnmounted(() => {
@@ -504,6 +519,10 @@ onUnmounted(() => {
     }
 
     disposeRangeControls();
+
+    if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', handleWindowResize);
+    }
 });
 
 watch(
@@ -548,9 +567,11 @@ defineExpose({
     .common-echarts-range-controls {
         display: flex;
         align-items: center;
+        justify-content: center;
         flex-wrap: nowrap;
         gap: 8px;
         padding: 8px 10px 6px;
+        width: 100%;
         overflow-x: auto;
         overflow-y: hidden;
 
