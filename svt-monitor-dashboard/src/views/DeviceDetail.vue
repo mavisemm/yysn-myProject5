@@ -10,8 +10,8 @@
       <PointListModule ref="pointListModuleRef" :point-list="pointList" :selected-point-id="selectedPointId"
         @point-selected="selectedPointId = $event" />
 
-      <!-- 图表和趋势分析：展示点位数据的图表 -->
-      <ChartsAnalysisModule :point-list="pointList" :selected-point-id="selectedPointId" />
+      <!-- 图表与右下角面板：右下角改为“实时温度” -->
+      <ChartsAnalysisModule :point-list="pointList" :selected-point-id="selectedPointId" panel-mode="realtimeTemperature" />
     </div>
   </div>
 </template>

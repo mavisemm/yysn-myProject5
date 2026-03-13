@@ -14,13 +14,14 @@
     <div class="dashboard-box dashboard-box-metrics">
       <ThreeMetrics :metrics="[
         { title: '振动烈度排名', unit: '（单位：mm/s）' },
-        { title: '声音响度排名', unit: '（单位：dB）' },
-        { title: '温度排名', unit: '（单位：℃）' }
+        { title: '声音响度排名', unit: '（单位：%）' },
+        { title: '温度排名', unit: '（单位：%）' }
       ]" :rankings="rankings">
       </ThreeMetrics>
     </div>
 
-    <TrendWarningDeviceModal v-model="showTrendWarningModal" title="趋势预警设备详情" mode="trend" />
+    <TrendWarningDeviceModal v-model="showTrendWarningModal" title="趋势预警设备详情" mode="trend"
+      :count="trendWarningCount" />
     <TrendWarningDeviceModal v-model="showFaultWarningModal" title="故障报警设备详情" mode="fault"
       :count="faultAlertCount" />
   </div>
@@ -70,6 +71,11 @@ const faultAlertCount = computed(() => {
   return Number(item?.number ?? 0);
 });
 
+const trendWarningCount = computed(() => {
+  const item = statsData.value.find(s => s.title === '趋势预警设备');
+  return Number(item?.number ?? 0);
+});
+
 /**
  * 获取Top5设备数据
  */
@@ -81,7 +87,7 @@ const fetchTop5Data = async () => {
       getTop5Devices('TEMPERATURE')
     ]);
 
-    if (vibrationData.rc === 0 && vibrationData.ret) {
+    if (vibrationData.rc === 0 && vibrationData.ret?.length) {
       rankings.value[0] = vibrationData.ret.map(item => ({
         deviceId: item.deviceId,
         deviceName: item.deviceName,
@@ -90,7 +96,7 @@ const fetchTop5Data = async () => {
       }));
     }
 
-    if (soundData.rc === 0 && soundData.ret) {
+    if (soundData.rc === 0 && soundData.ret?.length) {
       rankings.value[1] = soundData.ret.map(item => ({
         deviceId: item.deviceId,
         deviceName: item.deviceName,
@@ -99,7 +105,7 @@ const fetchTop5Data = async () => {
       }));
     }
 
-    if (temperatureData.rc === 0 && temperatureData.ret) {
+    if (temperatureData.rc === 0 && temperatureData.ret?.length) {
       rankings.value[2] = temperatureData.ret.map(item => ({
         deviceId: item.deviceId,
         deviceName: item.deviceName,

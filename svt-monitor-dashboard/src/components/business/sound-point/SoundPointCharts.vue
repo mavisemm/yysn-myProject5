@@ -2,7 +2,9 @@
     <div class="charts-section">
         <div class="charts-row">
             <div class="chart-item">
-                <div class="chart-title app-section-title">能量曲线</div>
+                <div class="chart-title-row">
+                    <div class="chart-title app-section-title">能量曲线</div>
+                </div>
                 <div class="chart-container">
                     <CommonEcharts
                         ref="energyChartRef"
@@ -18,7 +20,9 @@
                 </div>
             </div>
             <div class="chart-item">
-                <div class="chart-title app-section-title">密度曲线</div>
+                <div class="chart-title-row">
+                    <div class="chart-title app-section-title">密度曲线</div>
+                </div>
                 <div class="chart-container">
                     <CommonEcharts
                         ref="densityChartRef"
@@ -37,7 +41,7 @@
 
         <!-- 声音点位页：两个图共用的频率范围输入条（放在两个 ECharts 下面） -->
         <div
-            v-if="showResolvedRangeControls"
+            v-if="true"
             class="range-controls-bar"
             @mousedown.stop
             @wheel.stop
@@ -47,28 +51,45 @@
                 v-model="rangeMin"
                 class="range-input"
                 size="small"
-                :min="rangeDataMin"
-                :max="rangeDataMax"
+                :min="safeRangeDataMin"
+                :max="safeRangeDataMax"
                 :step="0.1"
                 :precision="1"
                 controls-position="right"
-                @change="applyRange"
+                :disabled="rangeControlsDisabled"
+                @change="applyRangeIfEnabled"
             />
             <span class="controls-sep">Hz&nbsp;~</span>
             <el-input-number
                 v-model="rangeMax"
                 class="range-input"
                 size="small"
-                :min="rangeDataMin"
-                :max="rangeDataMax"
+                :min="safeRangeDataMin"
+                :max="safeRangeDataMax"
                 :step="0.1"
                 :precision="1"
                 controls-position="right"
-                @change="applyRange"
+                :disabled="rangeControlsDisabled"
+                @change="applyRangeIfEnabled"
             />
             <span class="controls-unit">Hz</span>
-            <el-button size="small" @click="resetRange">重置</el-button>
+            <el-button size="small" :disabled="rangeControlsDisabled" @click="resetRangeIfEnabled">重置</el-button>
+            <el-button
+                type="primary"
+                size="small"
+                @mousedown.stop
+                @wheel.stop
+                @click="trendDialogVisible = true"
+            >
+                趋势分析
+            </el-button>
         </div>
+
+        <SoundTrendAnalysisDialog
+            v-model="trendDialogVisible"
+            :point-list="pointList"
+            :selected-point-id="selectedPointId"
+        />
     </div>
 </template>
 
@@ -78,11 +99,19 @@ import type { Ref } from 'vue';
 import type { EChartsOption } from 'echarts';
 import { CommonEcharts } from '@/components/common/chart';
 import { useRangeControls } from '@/composables/useRangeControls';
+import SoundTrendAnalysisDialog from '@/components/business/sound-point/SoundTrendAnalysisDialog.vue';
 
 const emit = defineEmits(['chart-init']);
 const props = defineProps<{
     deviationList: any[];
+    pointList: any[];
+    selectedPointId?: string;
 }>();
+
+const trendDialogVisible = ref(false);
+
+const selectedPointId = computed(() => props.selectedPointId || (props.pointList?.[0]?.id ?? ''));
+const pointList = computed(() => props.pointList || []);
 
 const energyChartRef = ref<InstanceType<typeof CommonEcharts>>();
 const densityChartRef = ref<InstanceType<typeof CommonEcharts>>();
@@ -101,6 +130,16 @@ const selectedItemsWithColor = computed(() => {
         color: `hsl(${(index * 137.5) % 360}, 70%, 50%)`
     }));
 });
+
+const hasEnergyData = computed(() => {
+    return selectedItemsWithColor.value.some((item: any) => Array.isArray(item?.dbArr) && item.dbArr.length > 0);
+});
+const hasDensityData = computed(() => {
+    return selectedItemsWithColor.value.some((item: any) => Array.isArray(item?.densityArr) && item.densityArr.length > 0);
+});
+/** 两张曲线都没有返回值时：图表显示暂无数据，范围筛选不可输入但模块保留 */
+const hasAnyChartData = computed(() => hasEnergyData.value || hasDensityData.value);
+const rangeControlsDisabled = computed(() => !hasAnyChartData.value);
 
 const freqsRaw = computed<any[]>(() => selectedItemsWithColor.value[0]?.freqs || []);
 /** 公共配置 */
@@ -163,10 +202,36 @@ const commonOptionBase = computed(() => {
     };
 });
 
+const emptyGraphic = computed(() => {
+    const c = chartAxisColor.value;
+    return [{
+        type: 'text',
+        left: 'center',
+        top: 'middle',
+        style: {
+            text: '暂无数据',
+            fill: c,
+            fontSize: 14,
+            fontWeight: 500,
+            opacity: 0.75
+        }
+    }];
+});
+
 /** 能量曲线配置 */
 const energyOption = computed<EChartsOption>(() => {
     const c = chartAxisColor.value;
     const s = chartSplitLineColor.value;
+    const series = selectedItemsWithColor.value
+        .filter((item: any) => Array.isArray(item?.dbArr) && item.dbArr.length > 0)
+        .map((item: any) => ({
+            name: item.time,
+            type: 'line',
+            data: item.dbArr,
+            itemStyle: { color: item.color },
+            smooth: true,
+            symbolSize: 1
+        }));
     return {
         ...commonOptionBase.value,
         yAxis: {
@@ -176,14 +241,8 @@ const energyOption = computed<EChartsOption>(() => {
             nameTextStyle: { color: c },
             splitLine: { lineStyle: { color: s } }
         },
-        series: selectedItemsWithColor.value.map(item => ({
-            name: item.time,
-            type: 'line',
-            data: item.dbArr,
-            itemStyle: { color: item.color },
-            smooth: true,
-            symbolSize: 1
-        }))
+        series,
+        ...(series.length === 0 ? { graphic: emptyGraphic.value } : { graphic: [] })
     } as EChartsOption;
 });
 
@@ -191,6 +250,16 @@ const energyOption = computed<EChartsOption>(() => {
 const densityOption = computed<EChartsOption>(() => {
     const c = chartAxisColor.value;
     const s = chartSplitLineColor.value;
+    const series = selectedItemsWithColor.value
+        .filter((item: any) => Array.isArray(item?.densityArr) && item.densityArr.length > 0)
+        .map((item: any) => ({
+            name: item.time,
+            type: 'line',
+            data: item.densityArr,
+            itemStyle: { color: item.color },
+            smooth: true,
+            symbolSize: 1
+        }));
     return {
         ...commonOptionBase.value,
         yAxis: {
@@ -200,14 +269,8 @@ const densityOption = computed<EChartsOption>(() => {
             nameTextStyle: { color: c },
             splitLine: { lineStyle: { color: s } }
         },
-        series: selectedItemsWithColor.value.map(item => ({
-            name: item.time,
-            type: 'line',
-            data: item.densityArr,
-            itemStyle: { color: item.color },
-            smooth: true,
-            symbolSize: 1
-        }))
+        series,
+        ...(series.length === 0 ? { graphic: emptyGraphic.value } : { graphic: [] })
     } as EChartsOption;
 });
 
@@ -278,6 +341,25 @@ const {
     }
 });
 
+const safeRangeDataMin = computed(() => {
+    const v = Number(rangeDataMin.value);
+    return Number.isFinite(v) ? v : 0;
+});
+const safeRangeDataMax = computed(() => {
+    const v = Number(rangeDataMax.value);
+    if (Number.isFinite(v) && v >= safeRangeDataMin.value) return v;
+    return safeRangeDataMin.value;
+});
+
+const applyRangeIfEnabled = () => {
+    if (rangeControlsDisabled.value) return;
+    applyRange();
+};
+const resetRangeIfEnabled = () => {
+    if (rangeControlsDisabled.value) return;
+    resetRange();
+};
+
 onUnmounted(() => {
     if (energyDataZoomCleanup) {
         energyDataZoomCleanup();
@@ -341,16 +423,39 @@ onUnmounted(() => {
         flex-direction: column;
         border-radius: 8px;
 
-        .chart-title {
-            text-align: center;
+        .chart-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             padding: 10px 20px 0;
+
+            .chart-title {
+                text-align: center;
+            }
         }
 
         .chart-container {
             flex: 1;
             min-height: 200px;
-            padding: 10px 20px 0;
+            padding: 0 20px;
         }
     }
+}
+
+:deep(.el-button.trend-analysis-btn) {
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.92);
+    font-weight: 500;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+:deep(.el-button.trend-analysis-btn:hover) {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.55);
 }
 </style>

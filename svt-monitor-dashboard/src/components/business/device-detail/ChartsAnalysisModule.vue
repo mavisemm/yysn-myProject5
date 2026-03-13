@@ -60,85 +60,25 @@
 
 
 
-            <!-- 趋势分析模块 -->
-            <div class="analysis-item">
+            <!-- 右下角面板：实时温度 -->
+            <div class="analysis-item realtime-temp-item">
                 <div class="module-header">
-                    <h3 class="module-title">趋势分析</h3>
+                    <h3 class="module-title">实时温度</h3>
                 </div>
-                <div class="module-content">
-                    <div class="analysis-form">
-                        <el-form label-position="top">
-                            <div class="form-row">
-                                <el-form-item label="点位选择" style="flex: 1; margin-right: 10px;">
-                                    <el-select v-model="analysisForm.pointId" placeholder="请选择点位" size="small"
-                                        style="width: 100%;">
-                                        <el-option v-for="point in pointList" :key="point.id" :label="point.name"
-                                            :value="point.id" />
-                                    </el-select>
-                                </el-form-item>
-
-                                <el-form-item label="间隔天数" style="flex: 1;">
-                                    <el-input-number v-model="analysisForm.days" :min="0" :max="365" placeholder="输入天数"
-                                        size="small" style="width: 100%;" />
-                                </el-form-item>
-                            </div>
-
-                            <el-form-item label="时间选择">
-                                <CommonDateTimePicker v-model="analysisForm.dateRange" width="100%" />
-                            </el-form-item>
-
-                            <el-button type="primary" @click="analyzeTrend" style="width: 100%; margin-top: 10px;">
-                                开始分析
-                            </el-button>
-                        </el-form>
+                <div class="module-content realtime-temp-content">
+                    <div class="realtime-temp-value special-font-color">
+                        {{ realtimeTempValueText }}
                     </div>
-
-                    <div class="analysis-result">
-                        <div class="result-row">
-                            <span class="result-label">偏差值：</span>
-                            <span class="result-value">{{ analysisResult.deviation }}</span>
-                        </div>
-                        <div class="result-row">
-                            <span class="result-label">点位名称：</span>
-                            <span class="result-value clickable" @click="showTrendChart">{{ analysisResult.pointName
-                            }}</span>
-                        </div>
-                    </div>
-
-                    <!-- 趋势分析图表弹窗 -->
-                    <el-dialog v-model="chartDialogVisible" title="趋势分析图表" :close-on-click-modal="true" destroy-on-close
-                        class="trend-chart-dialog" @opened="onTrendDialogOpened" @closed="onTrendDialogClosed">
-                        <template #header>
-                            <div class="trend-chart-dialog-header">
-                                <span class="el-dialog__title trend-chart-title">趋势分析图表</span>
-                            </div>
-                        </template>
-                        <div class="trend-charts-container">
-                            <div class="chart-wrapper">
-                                <div ref="dbChartRef" class="chart-box"></div>
-                            </div>
-                            <div class="chart-wrapper">
-                                <div ref="densityChartRef" class="chart-box"></div>
-                            </div>
-                        </div>
-                    </el-dialog>
                 </div>
-
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, onUnmounted, watch, computed, inject } from 'vue'
+import { ref, onMounted, nextTick, watch, computed, inject } from 'vue'
 import type { Ref } from 'vue'
-import { ElForm, ElFormItem, ElSelect, ElOption, ElInputNumber, ElDatePicker, ElButton, ElMessage, ElDialog } from 'element-plus'
-import * as echarts from 'echarts'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import { enableMouseWheelZoomForCharts, connectCharts } from '@/utils/chart'
-import { getTemperatureTrend, getVibrationTrend, getSoundTrend, getTrendAnalysis } from '@/api/modules/hardware'
-import { handleDatePickerChange, disabledFutureDate } from '@/utils/datetime'
-import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
+import { getTemperatureTrend, getVibrationTrend, getSoundTrend } from '@/api/modules/hardware'
 import { CommonEcharts } from '@/components/common/chart'
 import type { EChartsOption } from 'echarts'
 
@@ -173,6 +113,29 @@ interface ChartDataPoint {
 const tempChartData = ref<ChartDataPoint | null>(null)
 const vibChartData = ref<ChartDataPoint | null>(null)
 const soundChartData = ref<ChartDataPoint | null>(null)
+
+// “实时温度”面板：目前无接口，先用假数据展示
+const realtimeTempMockValue = ref<number>(33)
+
+function mockTemperatureByPointId(pointId: string): number {
+    // 简单稳定 hash：同一 pointId 始终同一温度，不同点位有差异
+    let hash = 0
+    for (let i = 0; i < pointId.length; i++) {
+        hash = (hash * 31 + pointId.charCodeAt(i)) >>> 0
+    }
+    // 生成 25.0 ~ 45.0 ℃ 的假温度
+    const base = 25
+    const span = 20
+    const tenth = hash % (span * 10 + 1) // 0..200
+    return base + tenth / 10
+}
+
+const realtimeTempValueText = computed(() => {
+    const num = Number(realtimeTempMockValue.value)
+    if (Number.isNaN(num)) return '—'
+    const shown = Number.isInteger(num) ? String(num) : num.toFixed(1)
+    return `${shown}℃`
+})
 
 // 灰色主题下图表坐标轴/分割线用黑色，否则白色
 const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode')
@@ -352,605 +315,13 @@ const soundOption = computed<EChartsOption>(() => {
     } as EChartsOption
 })
 
-const handleCalendarChange = (val: [Date, Date] | null) => {
-    const result = handleDatePickerChange(val);
-    if (result) {
-        analysisForm.value.dateRange = result;
-    }
-};
+// 趋势分析已迁移到独立组件 TrendAnalysisPanel.vue
 
-const analysisForm = ref({
-    pointId: '',
-    days: 1,
-    dateRange: null as DateRange
-})
+//（旧趋势分析函数已删除，统一由 TrendAnalysisPanel.vue 维护）
 
-// 日期范围由 CommonDateTimePicker 负责默认时间逻辑，此处不再覆盖，以便用户可手动修改结束时间
+//（趋势分析弹窗/图表逻辑已迁移到 TrendAnalysisPanel.vue）
 
-const analysisResult = ref<AnalysisResult>({
-    deviation: '',
-    pointName: ''
-})
-
-// 图表弹窗相关
-const chartDialogVisible = ref(false)
-const dbChartRef = ref<HTMLDivElement>()
-const densityChartRef = ref<HTMLDivElement>()
-let dbChart: echarts.ECharts | null = null
-let densityChart: echarts.ECharts | null = null
-let resizeTimer: number | null = null
-
-// 存储趋势分析数据用于图表展示
-const trendAnalysisData = ref<any[]>([])
-
-// 显示趋势图表
-const showTrendChart = () => {
-    if (trendAnalysisData.value.length === 0) {
-        ElMessage.warning('暂无趋势分析数据')
-        return
-    }
-    chartDialogVisible.value = true
-}
-
-// 弹窗完全打开后初始化图表并联动
-const onTrendDialogOpened = () => {
-    nextTick(() => {
-        setTimeout(() => {
-            initTrendChart()
-            // 联动两个图表：缩放、拖拽同步
-            if (dbChart && densityChart) {
-                connectCharts([dbChart, densityChart])
-                enableMouseWheelZoomForCharts([dbChart, densityChart])
-                nextTick(() => {
-                    dbChart?.resize()
-                    densityChart?.resize()
-                })
-            }
-        }, 50)
-    })
-}
-
-// 弹窗关闭时销毁图表
-const onTrendDialogClosed = () => {
-    if (dbChart) {
-        dbChart.dispose()
-        dbChart = null
-    }
-    if (densityChart) {
-        densityChart.dispose()
-        densityChart = null
-    }
-}
-
-// 计算dB最大差值信息
-const calcDbMaxDiff = (totalArr: any[], xArr: any[]) => {
-    const diffInfo = {
-        diff: 0,
-        freq: '',
-        index: -1,
-        maxValue: 0,
-        minValue: 0
-    }
-
-    if (!totalArr.length || !xArr.length) return diffInfo
-
-    for (let xIndex = 0; xIndex < xArr.length; xIndex++) {
-        const currentFreq = xArr[xIndex]
-        const dbValues: number[] = []
-
-        for (let groupIndex = 0; groupIndex < totalArr.length; groupIndex++) {
-            const dbValue = totalArr[groupIndex].dbArr?.[xIndex]
-            if (dbValue != null && !isNaN(Number(dbValue))) {
-                dbValues.push(Number(dbValue))
-            }
-        }
-
-        if (dbValues.length < 2) continue
-
-        const currentMax = Math.max(...dbValues)
-        const currentMin = Math.min(...dbValues)
-        const currentDiff = currentMax - currentMin
-
-        if (currentDiff > diffInfo.diff) {
-            diffInfo.diff = currentDiff
-            diffInfo.freq = currentFreq
-            diffInfo.index = xIndex
-            diffInfo.maxValue = currentMax
-            diffInfo.minValue = currentMin
-        }
-    }
-
-    return diffInfo
-}
-
-// 更新tooltip格式化器
-const updateDbEchartsTooltip = (option: any, totalArr: any[], xArr: any[]) => {
-    option.tooltip = {
-        ...option.tooltip,
-        hideDelay: 10000,
-        formatter: (params: any) => {
-            if (!params || !params.length) return ''
-
-            const xIndex = params[0].dataIndex
-            const currentFreq = xArr[xIndex] || '未知频率'
-
-            const dbValues: number[] = []
-            for (let groupIndex = 0; groupIndex < totalArr.length; groupIndex++) {
-                const dbValue = totalArr[groupIndex].dbArr?.[xIndex]
-                if (dbValue != null && !isNaN(Number(dbValue))) {
-                    dbValues.push(Number(dbValue))
-                }
-            }
-
-            let currentDiffStr = '当前差值：无有效数据'
-            let currentMax = null
-            if (dbValues.length >= 2) {
-                currentMax = Math.max(...dbValues)
-                const currentMin = Math.min(...dbValues)
-                const currentDiff = currentMax - currentMin
-                currentDiffStr = `当前差值：${currentDiff.toFixed(4)}<br/>最大值：${currentMax.toFixed(4)}<br/>最小值：${currentMin.toFixed(4)}`
-            }
-
-            let tooltipContent = ''
-            tooltipContent += currentDiffStr
-            tooltipContent += `<br/><hr style="border: none; border-top: 1px solid #ccc; margin: 6px 0;"/>`
-            tooltipContent += `${currentFreq}Hz<br/>`
-            params.forEach((item: any) => {
-                const colorCircle = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${item.color};margin-right:4px;"></span>`
-                const isMaxValue = currentMax !== null && Math.abs(Number(item.data) - currentMax) < 0.0001
-                if (isMaxValue) {
-                    tooltipContent += `${colorCircle}<span style="color: #ff6a6aff; font-size: 16px; font-weight: 500;">${item.seriesName}：${item.data || '无数据'}</span><br/>`
-                } else {
-                    tooltipContent += `${colorCircle}${item.seriesName}：${item.data || '无数据'}<br/>`
-                }
-            })
-
-            return tooltipContent
-        }
-    }
-    return option
-}
-
-// 生成时间渐变色
-const generateTimeGradientColors = (totalCount: number) => {
-    const colors: string[] = []
-    const count = Math.max(totalCount, 1)
-    const step = count > 1 ? 255 / (count - 1) : 0
-
-    for (let i = 0; i < count; i++) {
-        const r = 255
-        const g = Math.floor(i * step)
-        const b = 0
-        colors.push(`rgb(${r}, ${g}, ${b})`)
-    }
-    return colors
-}
-
-// 初始化趋势图表
-const initTrendChart = () => {
-    if ((!dbChartRef.value && !densityChartRef.value) || trendAnalysisData.value.length === 0) return
-
-    // 清理现有的图表实例
-    if (dbChart) {
-        dbChart.dispose()
-        dbChart = null
-    }
-    if (densityChart) {
-        densityChart.dispose()
-        densityChart = null
-    }
-
-    // 处理数据 - 仿照zPoint.js的方式
-    let totalArr: any[] = []
-    let xArr: any[] = []
-
-    // 构造数据结构
-    for (let i = 0; i < trendAnalysisData.value.length; i++) {
-        const item = trendAnalysisData.value[i]
-        let dbArr: any[] = []
-        let densityArr: any[] = []
-
-        if (item.avgFrequencyDtoList && item.avgFrequencyDtoList.length > 0) {
-            for (let j = 0; j < item.avgFrequencyDtoList.length; j++) {
-                const temp = item.avgFrequencyDtoList[j]
-                dbArr.push(temp.db ? temp.db.toFixed(4) : undefined)
-                densityArr.push(temp.density ? temp.density.toFixed(4) : undefined)
-
-                // 只在第一次循环时设置x轴数据
-                if (i === 0) {
-                    const freq = Math.sqrt(Number(temp.freq1) * Number(temp.freq2)).toFixed(4)
-                    xArr.push(freq)
-                }
-            }
-        }
-
-        const rawTime = item.time != null ? new Date(item.time).getTime() : 0
-        totalArr.push({
-            ...item,
-            dbArr,
-            densityArr,
-            rawTime,
-            time: new Date(item.time).toLocaleString('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            })
-        })
-    }
-
-    // 按时间正序（早→晚）
-    totalArr.sort((a, b) => (a.rawTime || 0) - (b.rawTime || 0))
-
-    // 生成时间渐变色
-    const timeGradientColors = generateTimeGradientColors(totalArr.length)
-
-    // 构造系列数据
-    let finallyDbArr: any[] = []
-    let finallyDensityArr: any[] = []
-
-    for (let j = 0; j < totalArr.length; j++) {
-        const currentColor = timeGradientColors[j]
-
-        finallyDbArr.push({
-            name: totalArr[j].time,
-            type: "line",
-            data: totalArr[j].dbArr,
-            itemStyle: {
-                color: currentColor
-            },
-            lineStyle: {
-                color: currentColor,
-            }
-        })
-
-        finallyDensityArr.push({
-            name: totalArr[j].time,
-            type: "line",
-            data: totalArr[j].densityArr,
-            itemStyle: {
-                color: currentColor
-            },
-            lineStyle: {
-                color: currentColor,
-            }
-        })
-    }
-
-    // 计算最大差值
-    const dbMaxDiffInfo = calcDbMaxDiff(totalArr, xArr)
-
-    // 初始化dB图表
-    if (dbChartRef.value) {
-        dbChart = echarts.init(dbChartRef.value)
-
-        const dbOption = {
-            backgroundColor: 'transparent',
-            title: {
-                text: '能量趋势分析',
-                textStyle: {
-                    color: '#333333',
-                    fontSize: 16,
-                    fontWeight: 'bold'
-                },
-                left: 'center',
-                top: 10
-            },
-            tooltip: {
-                trigger: 'axis',
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                borderColor: '#4a90e2',
-                borderWidth: 1,
-                textStyle: {
-                    color: '#333333',
-                    fontSize: 12
-                },
-                padding: 12,
-                extraCssText: 'box-shadow: 0 2px 8px rgba(0,0,0,0.1);'
-            },
-            // legend: {
-            //     data: finallyDbArr.map(item => item.name),
-            //     textStyle: {
-            //         color: '#666666',
-            //         fontSize: 11
-            //     },
-            //     top: 40,
-            //     type: 'scroll',
-            //     pageTextStyle: {
-            //         color: '#666666'
-            //     }
-            // },
-            grid: {
-                left: '8%',
-                right: '8%',
-                bottom: '12%',
-                top: '22%',
-                containLabel: true
-            },
-            xAxis: [{
-                type: 'category',
-                data: xArr,
-                axisLabel: {
-                    fontSize: 11,
-                    color: '#666666',
-                    rotate: 45,
-                    margin: 15
-                },
-                axisLine: {
-                    lineStyle: {
-                        color: '#cccccc',
-                        width: 1
-                    }
-                },
-                axisTick: {
-                    alignWithLabel: true,
-                    lineStyle: { color: '#cccccc' }
-                },
-                splitLine: {
-                    show: false
-                }
-            }],
-            yAxis: {
-                type: 'value',
-                axisLabel: {
-                    fontSize: 11,
-                    color: '#666666'
-                },
-                axisLine: {
-                    lineStyle: {
-                        color: '#cccccc',
-                        width: 1
-                    }
-                },
-                axisTick: {
-                    lineStyle: { color: '#cccccc' }
-                },
-                splitLine: {
-                    lineStyle: {
-                        color: 'rgba(204, 204, 204, 0.3)',
-                        type: 'solid'
-                    }
-                }
-            },
-            dataZoom: [
-                {
-                    type: 'inside',
-                    start: 0,
-                    end: 100,
-                    xAxisIndex: [0]
-                },
-                {
-                    type: 'slider',
-                    start: 0,
-                    end: 100,
-                    xAxisIndex: [0],
-                    bottom: 10,
-                    height: 20,
-                    borderColor: '#cccccc',
-                    textStyle: {
-                        color: '#666666'
-                    },
-                    handleStyle: {
-                        color: '#4a90e2',
-                        borderColor: '#4a90e2'
-                    },
-                    fillerColor: 'rgba(74, 144, 226, 0.2)',
-                    brushSelect: false
-                }
-            ],
-            series: finallyDbArr.map((series, index) => ({
-                ...series,
-                smooth: true,
-                symbol: 'circle',
-                symbolSize: 1,
-                lineStyle: {
-                    width: 2.5,
-                    shadowBlur: 3,
-                    shadowColor: 'rgba(0,0,0,0.2)'
-                },
-                itemStyle: {
-                    borderWidth: 2,
-                    borderColor: '#ffffff',
-                    shadowBlur: 4,
-                    shadowColor: 'rgba(0,0,0,0.3)'
-                },
-                emphasis: {
-                    focus: 'series',
-                    itemStyle: {
-                        borderWidth: 3,
-                        borderColor: '#ffffff'
-                    }
-                }
-            }))
-        }
-
-        // 为第一个系列添加最大差值标记
-        if (finallyDbArr.length > 0 && dbMaxDiffInfo.index !== -1) {
-            dbOption.series[0].markPoint = {
-                enabled: true,
-                symbol: 'pin',
-                symbolSize: 20,
-                z: 10,
-                label: {
-                    show: true,
-                    formatter: `${dbMaxDiffInfo.freq}Hz\n最大差值\n${dbMaxDiffInfo.diff.toFixed(4)}`,
-                    color: '#333333',
-                    fontSize: 10,
-                    fontWeight: 'bold',
-                    position: 'top'
-                },
-                itemStyle: {
-                    color: '#f56954',
-                    borderColor: '#fff',
-                    borderWidth: 2
-                },
-                data: [{
-                    name: `@${dbMaxDiffInfo.freq}Hz`,
-                    xAxis: dbMaxDiffInfo.index,
-                    yAxis: dbMaxDiffInfo.maxValue,
-                    value: dbMaxDiffInfo.diff.toFixed(4)
-                }]
-            }
-        }
-
-        dbChart.setOption(dbOption)
-    }
-
-    // 初始化密度图表
-    if (densityChartRef.value) {
-        densityChart = echarts.init(densityChartRef.value)
-
-        const densityOption = {
-            backgroundColor: 'transparent',
-            title: {
-                text: '密度趋势分析',
-                textStyle: {
-                    color: '#333333',
-                    fontSize: 16,
-                    fontWeight: 'bold'
-                },
-                left: 'center',
-                top: 10
-            },
-            tooltip: {
-                trigger: 'axis',
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                borderColor: '#4a90e2',
-                borderWidth: 1,
-                textStyle: {
-                    color: '#333333',
-                    fontSize: 12
-                },
-                padding: 12,
-                extraCssText: 'box-shadow: 0 2px 8px rgba(0,0,0,0.3);'
-            },
-            // legend: {
-            //     data: finallyDensityArr.map(item => item.name),
-            //     textStyle: {
-            //         color: '#666666',
-            //         fontSize: 11
-            //     },
-            //     top: 40,
-            //     type: 'scroll',
-            //     pageTextStyle: {
-            //         color: '#666666'
-            //     }
-            // },
-            grid: {
-                left: '8%',
-                right: '8%',
-                bottom: '12%',
-                top: '22%',
-                containLabel: true
-            },
-            xAxis: [{
-                type: 'category',
-                data: xArr,
-                axisLabel: {
-                    fontSize: 11,
-                    color: '#666666',
-                    rotate: 45,
-                    margin: 15
-                },
-                axisLine: {
-                    lineStyle: {
-                        color: '#cccccc',
-                        width: 1
-                    }
-                },
-                axisTick: {
-                    alignWithLabel: true,
-                    lineStyle: { color: '#cccccc' }
-                },
-                splitLine: {
-                    show: false
-                }
-            }],
-            yAxis: {
-                type: 'value',
-                name: '密度',
-                nameTextStyle: {
-                    color: '#666666',
-                    fontSize: 12
-                },
-                axisLabel: {
-                    fontSize: 11,
-                    color: '#666666'
-                },
-                axisLine: {
-                    lineStyle: {
-                        color: '#cccccc',
-                        width: 1
-                    }
-                },
-                axisTick: {
-                    lineStyle: { color: '#cccccc' }
-                },
-                splitLine: {
-                    lineStyle: {
-                        color: 'rgba(204, 204, 204, 0.3)',
-                        type: 'solid'
-                    }
-                }
-            },
-            dataZoom: [
-                {
-                    type: 'inside',
-                    start: 0,
-                    end: 100,
-                    xAxisIndex: [0]
-                },
-                {
-                    type: 'slider',
-                    start: 0,
-                    end: 100,
-                    xAxisIndex: [0],
-                    bottom: 10,
-                    height: 20,
-                    borderColor: '#cccccc',
-                    textStyle: {
-                        color: '#666666'
-                    },
-                    handleStyle: {
-                        color: '#4a90e2',
-                        borderColor: '#4a90e2'
-                    },
-                    fillerColor: 'rgba(74, 144, 226, 0.2)',
-                    brushSelect: false
-                }
-            ],
-            series: finallyDensityArr.map((series, index) => ({
-                ...series,
-                smooth: true,
-                symbol: 'circle',
-                symbolSize: 1,
-                lineStyle: {
-                    width: 2.5,
-                    shadowBlur: 3,
-                    shadowColor: 'rgba(0,0,0,0.2)'
-                },
-                itemStyle: {
-                    borderWidth: 2,
-                    borderColor: '#ffffff',
-                    shadowBlur: 4,
-                    shadowColor: 'rgba(0,0,0,0.3)'
-                },
-                emphasis: {
-                    focus: 'series',
-                    itemStyle: {
-                        borderWidth: 3,
-                        borderColor: '#ffffff'
-                    }
-                }
-            }))
-        }
-
-        densityChart.setOption(densityOption)
-    }
-}
-
+ 
 // 根据数据范围计算 y 轴 min/max（支持负数，取整到合适刻度）
 function computeTempYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
     const span = dataMax - dataMin
@@ -1100,53 +471,7 @@ const loadSoundData = async (_pointId: string) => {
     }
 }
 
-const analyzeTrend = async () => {
-    if (!analysisForm.value.pointId) {
-        ElMessage.warning('请选择点位')
-        return
-    }
-
-    if (!analysisForm.value.dateRange || analysisForm.value.dateRange.length !== 2) {
-        ElMessage.warning('请选择时间范围')
-        return
-    }
-
-    try {
-        // 构造请求参数
-        const startTime = new Date(analysisForm.value.dateRange[0]).getTime()
-        const endTime = new Date(analysisForm.value.dateRange[1]).getTime()
-        const currentTime = Date.now()
-
-        const params = {
-            tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
-            time: currentTime,
-            startTime: startTime,
-            pointIdList: [293], // 写死测试pointId
-            type: 1,
-            days: analysisForm.value.days
-        }
-
-        const response = await getTrendAnalysis(params)
-
-        if (response.rc === 0 && response.ret && response.ret.length > 0) {
-            const result = response.ret[0]
-            if (result) {
-                analysisResult.value.deviation = result.value.toString()
-                analysisResult.value.pointName = result.pointName
-                // 存储趋势分析数据用于图表展示
-                trendAnalysisData.value = result.list || []
-                ElMessage.success('趋势分析完成')
-            } else {
-                ElMessage.error('趋势分析返回数据格式错误')
-            }
-        } else {
-            ElMessage.error('趋势分析失败: ' + (response.err || '未知错误'))
-        }
-    } catch (error) {
-        console.error('趋势分析请求失败:', error)
-        ElMessage.error('趋势分析请求失败')
-    }
-}
+// 趋势分析已迁移到独立组件 TrendAnalysisPanel.vue
 
 // 创建一个ref来引用charts-grid容器
 const chartGridRef = ref<HTMLDivElement>()
@@ -1193,7 +518,18 @@ watch(
     { immediate: false }
 )
 
-// 组件挂载时标记就绪并加载首个点位数据，并设置窗口 resize 监听
+// 实时温度（假数据）：随选中点位变化而变化；如果未选中则取列表第一个点位
+watch(
+    [() => props.selectedPointId, () => props.pointList],
+    ([selId, list]) => {
+        const pointId = selId || list?.[0]?.id || ''
+        if (!pointId) return
+        realtimeTempMockValue.value = mockTemperatureByPointId(pointId)
+    },
+    { immediate: true, deep: true }
+)
+
+// 组件挂载时标记就绪并加载首个点位数据
 onMounted(() => {
     nextTick(() => {
         setTimeout(() => {
@@ -1209,32 +545,6 @@ onMounted(() => {
             }
         }, 150)
     })
-    window.addEventListener('resize', handleWindowResize)
-})
-
-// 窗口大小变化处理（主图表由 CommonEcharts 自行 resize，此处仅处理弹窗内图表）
-const handleWindowResize = () => {
-    if (resizeTimer) {
-        window.clearTimeout(resizeTimer)
-    }
-    resizeTimer = window.setTimeout(() => {
-        if (dbChart && typeof dbChart.resize === 'function' && chartDialogVisible.value) {
-            dbChart.resize()
-        }
-        if (densityChart && typeof densityChart.resize === 'function' && chartDialogVisible.value) {
-            densityChart.resize()
-        }
-    }, 300)
-}
-
-// 组件卸载时清理资源（主图表由 CommonEcharts 自行 dispose）
-onUnmounted(() => {
-    if (dbChart) dbChart.dispose()
-    if (densityChart) densityChart.dispose()
-    window.removeEventListener('resize', handleWindowResize)
-    if (resizeTimer) {
-        window.clearTimeout(resizeTimer)
-    }
 })
 </script>
 
@@ -1323,6 +633,8 @@ onUnmounted(() => {
             }
 
             .module-content {
+                flex: 1;
+                min-height: 0;
 
                 overflow-y: auto;
 
@@ -1418,6 +730,38 @@ onUnmounted(() => {
 
 
 
+        }
+
+        /* 实时温度：内容区水平/垂直居中（放在 analysis-item 同级，避免被表单样式嵌套吞掉） */
+        .analysis-item.realtime-temp-item {
+            .module-content.realtime-temp-content {
+                flex: 1;
+                min-height: 0;
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                overflow: hidden;
+                border-radius: 8px;
+                background: rgba(10, 22, 40, 0.35);
+                box-shadow:
+                    inset 0 0 0 1px rgba(120, 220, 255, 0.14),
+                    0 8px 24px rgba(0, 0, 0, 0.18);
+            }
+
+            .realtime-temp-value {
+                width: 100%;
+                font-size: clamp(2.2rem, 4.2vw, 3.6rem);
+                font-weight: 800;
+                line-height: 1.05;
+                text-align: center;
+                letter-spacing: 0.5px;
+                color: rgba(110, 225, 255, 0.98);
+                text-shadow:
+                    0 2px 10px rgba(0, 0, 0, 0.45),
+                    0 0 18px rgba(80, 200, 255, 0.38);
+            }
         }
     }
 }

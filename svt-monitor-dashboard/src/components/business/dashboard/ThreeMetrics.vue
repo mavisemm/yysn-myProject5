@@ -2,8 +2,13 @@
 <template>
     <div class="metrics-area">
         <div v-for="(metric, index) in metrics" :key="index" class="chart-container">
-            <h3 class="metric-title">{{ metric.title }}</h3>
-            <div v-if="metric.unit" class="metric-unit special-font-color">{{ metric.unit }}</div>
+            <div class="metric-header">
+                <div class="metric-header-text">
+                    <h3 class="metric-title">{{ metric.title }}</h3>
+                    <div v-if="metric.unit" class="metric-unit special-font-color">{{ metric.unit }}</div>
+                </div>
+                <span v-if="getRankings(index).length > 0" class="more-btn" @click="openRankDialog(index)">更多</span>
+            </div>
             <!-- 排名列表：根据可用高度动态显示前 N 条 -->
             <div class="rankings" :ref="(el) => setRankingsEl(el, index)">
                 <div v-if="getRankings(index).length === 0" class="no-data">
@@ -21,9 +26,6 @@
                             }}</span>
                     </div>
                 </template>
-            </div>
-            <div v-if="getRankings(index).length > 0" class="more-wrap">
-                <span class="more-btn" @click="openRankDialog(index)">更多</span>
             </div>
             <slot :name="'metric-' + index"></slot>
         </div>
@@ -191,10 +193,10 @@ const updateWindowSize = () => {
 
 const maxVisibleRows = computed(() => {
     const h = windowHeight.value;
-    if (h >= 920) return 4;
-    if (h >= 780) return 3;
-    if (h >= 650) return 2;
-    return 1;
+    if (h >= 900) return 5;
+    if (h >= 770) return 4;
+    if (h >= 650) return 3;
+    return 2;
 });
 
 // 兼容模板上的 ref 绑定（不再使用具体元素）
@@ -269,18 +271,19 @@ watch(
             background-color: lightblue;
         }
 
-        .chart-container .metric-unit {
-            text-align: center !important;
-            font-size: 1rem !important;
-            margin-bottom: 5px !important;
-            display: block !important;
-        }
-
-        .more-wrap {
+        .metric-header {
+            position: relative;
             flex-shrink: 0;
-            text-align: center;
+
+            .metric-header-text {
+                display: flex;
+                flex-direction: column;
+            }
 
             .more-btn {
+                position: absolute;
+                top: 4px;
+                right: 20px;
                 font-size: 0.9rem;
                 cursor: pointer;
                 user-select: none;
@@ -289,6 +292,13 @@ watch(
                     text-decoration: underline;
                 }
             }
+        }
+
+        .chart-container .metric-unit {
+            text-align: center !important;
+            font-size: 1rem !important;
+            margin-bottom: 5px !important;
+            display: block !important;
         }
 
         .rankings {

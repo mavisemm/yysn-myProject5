@@ -3,8 +3,8 @@
         <div class="login-container">
             <!-- 左侧标题区域 -->
             <div class="left-title">
-                <h1 class="main-title">云音声脑</h1>
-                <h2 class="sub-title">在线监测平台</h2>
+                <h1 class="main-title">鲁西化工声振温</h1>
+                <h2 class="sub-title">综合在线监测平台</h2>
             </div>
 
             <!-- 右侧登录区域 -->
@@ -120,7 +120,7 @@ const handleLogin = async () => {
 .login-page {
     width: 100vw;
     height: 100vh;
-    background: url('@/assets/images/background/登录页背景.png') no-repeat center center;
+    background: url('@/assets/images/background/登录页背景.jpg') no-repeat center center;
     background-size: cover;
     display: flex;
     justify-content: center;
@@ -128,10 +128,10 @@ const handleLogin = async () => {
 
     .login-container {
         width: 100%;
-        max-width: 1200px; // 增加最大宽度以适应左右布局
         height: 600px; // 固定高度
         display: flex;
-        padding: 0 20px;
+        justify-content: space-between;
+        padding: 0 10vw;
 
         .left-title {
             flex: 1;
@@ -142,17 +142,25 @@ const handleLogin = async () => {
             gap: 30px;
 
             .main-title {
+                font-size: 4rem;
                 color: #00ffff;
                 font-weight: 500;
                 margin: 0 0 20px 0;
                 text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
 
             .sub-title {
+                font-size: 3rem;
                 color: #00ffff;
                 font-weight: 500;
                 margin: 0;
                 text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
         }
 
@@ -161,6 +169,7 @@ const handleLogin = async () => {
             display: flex;
             justify-content: center;
             align-items: center;
+            flex-shrink: 0;
 
             .login-card {
                 background: rgba(255, 255, 255, 0.15);
@@ -188,12 +197,14 @@ const handleLogin = async () => {
                             background: rgba(150, 150, 150, 0.2);
                             border: 1px solid rgba(255, 255, 255, 0.3);
                             backdrop-filter: blur(5px);
+                            /* Element Plus placeholder 变量兜底 */
+                            --el-text-color-placeholder: #fff;
 
                             input {
                                 color: white !important;
 
                                 &::placeholder {
-                                    color: rgba(255, 255, 255, 0.6);
+                                    color: #fff !important;
                                 }
                             }
 
@@ -201,6 +212,12 @@ const handleLogin = async () => {
                                 color: rgba(255, 255, 255, 0.8);
                             }
                         }
+                    }
+
+                    /* 直接命中 el-input 内部输入框 placeholder，防止被全局样式覆盖 */
+                    :deep(.el-input__inner::placeholder) {
+                        color: #fff !important;
+                        opacity: 1;
                     }
 
                     :deep(.el-button) {

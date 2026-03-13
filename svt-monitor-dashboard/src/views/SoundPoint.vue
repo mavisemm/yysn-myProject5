@@ -2,7 +2,13 @@
 <template>
   <div class="sound-point-container">
     <!-- 曲线图表区域：展示能量曲线和密度曲线 -->
-    <SoundPointCharts :deviation-list="deviationList" @chart-init="handleChartInit" ref="chartsComponentRef" />
+    <SoundPointCharts
+      :deviation-list="deviationList"
+      :point-list="devicePointList"
+      :selected-point-id="pointIdFromQuery"
+      @chart-init="handleChartInit"
+      ref="chartsComponentRef"
+    />
 
     <!-- 下方内容区域 -->
     <div class="bottom-section">
@@ -120,6 +126,40 @@ interface DeviationListItem {
 }
 
 const deviationList = ref<DeviationListItem[]>([]);
+
+/** 当前设备的点位列表（用于趋势分析弹窗的点位下拉） */
+const devicePointList = computed(() => {
+  const deviceId = deviceIdFromQuery.value;
+  if (!deviceId) return [];
+  const nodes = deviceTreeStore.deviceTreeData;
+  const points: { id: string; name: string; lastAlarmTime: string; alarmType: string; alarmValue: string; hasAlarm: boolean }[] = [];
+
+  const walk = (list: any[]) => {
+    for (const n of list) {
+      if (!n) continue;
+      if (n.type === 'device' && n.id === deviceId) {
+        const children = Array.isArray(n.children) ? n.children : [];
+        for (const c of children) {
+          if (c?.type === 'point') {
+            points.push({
+              id: String(c.id ?? c.pointId ?? ''),
+              name: String(c.name ?? c.pointName ?? '未知点位'),
+              lastAlarmTime: String(c.warningTime ?? ''),
+              alarmType: String(c.warningType ?? ''),
+              alarmValue: c.warningValue != null ? String(c.warningValue) : '',
+              hasAlarm: Boolean(c.hasAlarm)
+            });
+          }
+        }
+        return;
+      }
+      if (Array.isArray(n.children) && n.children.length) walk(n.children);
+    }
+  };
+
+  walk(nodes as any[]);
+  return points.filter(p => p.id);
+});
 
 /** 从点位详情 store 填充右侧详情（生产设备=productName，子部件=subProductName，检测设备=detectorName，听筒=receiverName，点位名称=pointName） */
 function applyStorePointInfo() {
@@ -250,7 +290,20 @@ const loadDeviationList = async () => {
 const applyFrequencyResponse = (freqs: number[], responseList: any[], mode: 'energy' | 'density') => {
   if (!Array.isArray(responseList) || responseList.length === 0) return;
   responseList.forEach((res) => {
-    const target = deviationList.value.find(item => Number(item.id) === Number(res.recordId));
+    const recordId = (res as any)?.recordId;
+    const recordIdStr = recordId != null ? String(recordId) : '';
+    const recordIdNum = typeof recordId === 'number' ? recordId : Number(recordId);
+    const recordIdNumValid = Number.isFinite(recordIdNum);
+
+    const target = deviationList.value.find(item => {
+      const itemIdStr = item?.id != null ? String(item.id) : '';
+      if (recordIdStr && itemIdStr && recordIdStr === itemIdStr) return true;
+      if (recordIdNumValid) {
+        const itemIdNum = Number(item?.id);
+        return Number.isFinite(itemIdNum) && itemIdNum === recordIdNum;
+      }
+      return false;
+    });
     if (!target) return;
     const dbArr = Array.isArray(res.dbArray) ? res.dbArray : [];
     const densityArr = Array.isArray(res.densityArray) ? res.densityArray : [];
@@ -281,7 +334,10 @@ const applyFrequencyResponse = (freqs: number[], responseList: any[], mode: 'ene
 };
 
 const loadFrequencyData = async () => {
-  const selectedIds = deviationList.value.filter(item => item.visible).map(item => Number(item.id));
+  const selectedIds = deviationList.value
+    .filter(item => item.visible)
+    .map(item => (item?.id != null ? String(item.id) : ''))
+    .filter(Boolean);
   if (selectedIds.length === 0) {
     if (chartsComponentRef.value && typeof chartsComponentRef.value.updateCharts === 'function') {
       chartsComponentRef.value.updateCharts();
