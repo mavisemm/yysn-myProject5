@@ -87,6 +87,12 @@
             title="深蓝色背景"
             @click="selectBackground('navy')"
           />
+          <div
+            v-if="currentBackground !== 'solid'"
+            class="theme-square theme-square--solid"
+            title="纯色背景"
+            @click="selectBackground('solid')"
+          />
         </div>
       </div>
       <div class="nav-btn" @click="handleLogout">
@@ -120,12 +126,12 @@ const route = useRoute()
 const deviceTreeStore = useDeviceTreeStore()
 
 interface Props {
-  currentBackground?: 'image' | 'gray' | 'green' | 'navy'
+  currentBackground?: 'image' | 'gray' | 'green' | 'navy' | 'solid'
 }
 withDefaults(defineProps<Props>(), { currentBackground: 'image' })
 
 const emit = defineEmits<{
-  (e: 'change-background', mode: 'image' | 'gray' | 'green' | 'navy'): void
+  (e: 'change-background', mode: 'image' | 'gray' | 'green' | 'navy' | 'solid'): void
 }>()
 
 const showThemeDropdown = ref(false)
@@ -169,7 +175,7 @@ const showSoundButton = computed(() => {
   return route.name === 'VibrationPoint'
 })
 
-const selectBackground = (mode: 'image' | 'gray' | 'green' | 'navy') => {
+const selectBackground = (mode: 'image' | 'gray' | 'green' | 'navy' | 'solid') => {
   emit('change-background', mode)
   showThemeDropdown.value = false
 }
@@ -363,6 +369,10 @@ const handleLogout = () => {
     &--navy {
       background: #061028;
     }
+
+    &--solid {
+      background: #151155;
+    }
   }
 
   .theme-dropdown {
@@ -410,6 +420,10 @@ const handleLogout = () => {
 
     &--navy {
       background: #061028;
+    }
+
+    &--solid {
+      background: #151155;
     }
   }
 

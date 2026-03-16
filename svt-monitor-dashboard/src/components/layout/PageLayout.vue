@@ -4,7 +4,8 @@
     :class="{
       'page-layout--gray': backgroundMode === 'gray',
       'page-layout--green': backgroundMode === 'green',
-      'page-layout--navy': backgroundMode === 'navy'
+      'page-layout--navy': backgroundMode === 'navy',
+      'page-layout--solid': backgroundMode === 'solid'
     }"
   >
     <MainHeader
@@ -27,10 +28,10 @@ import DeviceSidebar from './DeviceSidebar.vue'
 import { RouterView } from 'vue-router'
 import { usePointMessageStore } from '@/stores/pointMessage'
 
-const backgroundMode = ref<'image' | 'gray' | 'green' | 'navy'>('image')
+const backgroundMode = ref<'image' | 'gray' | 'green' | 'navy' | 'solid'>('image')
 provide('backgroundMode', backgroundMode)
 
-const handleChangeBackground = (mode: 'image' | 'gray' | 'green' | 'navy') => {
+const handleChangeBackground = (mode: 'image' | 'gray' | 'green' | 'navy' | 'solid') => {
   backgroundMode.value = mode
 }
 
@@ -49,6 +50,28 @@ onMounted(() => {
   background: url('@/assets/images/background/首页-背景.png') no-repeat center center;
   background-size: 100vw 100vh;
   padding: 0 0.7vw 2.4vh 0.7vw;
+
+  /* 默认蓝色背景下的小模块：透明底 + 蓝色边框（替代背景图里的边框） */
+  :deep(.stats-area),
+  :deep(.alarm-overview),
+  :deep(.metrics-area),
+  :deep(.device-sidebar),
+  :deep(.info-section-right),
+  :deep(.stats-card),
+  :deep(.device-info-module),
+  :deep(.point-list-module),
+  :deep(.chart-item),
+  :deep(.analysis-item),
+  :deep(.table-section-left),
+  :deep(.waterfall-card),
+  :deep(.freq-card),
+  :deep(.time-card) {
+    background: transparent !important;
+    background-image: none !important;
+    border-radius: 12px;
+    border: 1px solid #60a5fa; /* 亮蓝色，适配默认蓝色背景 */
+    backdrop-filter: blur(4px);
+  }
 
   /* 灰色主题 */
   &.page-layout--gray {
@@ -69,6 +92,7 @@ onMounted(() => {
     }
 
     /* 卡片/模块：透明底 + 边框替代背景图 */
+    :deep(.charts-section),
     :deep(.stats-area),
     :deep(.alarm-overview),
     :deep(.metrics-area),
@@ -100,6 +124,7 @@ onMounted(() => {
     background-size: 100vw 100vh;
 
     /* 卡片/模块：透明底 + 边框 */
+    :deep(.charts-section),
     :deep(.stats-area),
     :deep(.alarm-overview),
     :deep(.metrics-area),
@@ -130,6 +155,7 @@ onMounted(() => {
       linear-gradient(135deg, #020617 0%, #02091b 35%, #0b1120 70%, #020617 100%);
     background-size: 100vw 100vh;
 
+    :deep(.charts-section),
     :deep(.stats-area),
     :deep(.alarm-overview),
     :deep(.metrics-area),
@@ -148,6 +174,34 @@ onMounted(() => {
       background-image: none !important;
       border-radius: 12px;
       border: 1px solid #38bdf8; /* 亮蓝青 */
+      backdrop-filter: blur(4px);
+    }
+  }
+
+  /* 纯色深紫蓝主题（上下渐变） */
+  &.page-layout--solid {
+    background: linear-gradient(to bottom, #104076 0%, #160e53 100%);
+    background-size: 100vw 100vh;
+
+    :deep(.charts-section),
+    :deep(.stats-area),
+    :deep(.alarm-overview),
+    :deep(.metrics-area),
+    :deep(.device-sidebar),
+    :deep(.info-section-right),
+    :deep(.stats-card),
+    :deep(.device-info-module),
+    :deep(.point-list-module),
+    :deep(.chart-item),
+    :deep(.analysis-item),
+    :deep(.table-section-left),
+    :deep(.waterfall-card),
+    :deep(.freq-card),
+    :deep(.time-card) {
+      background: transparent !important;
+      background-image: none !important;
+      border-radius: 12px;
+      border: 1px solid #6366f1;
       backdrop-filter: blur(4px);
     }
   }

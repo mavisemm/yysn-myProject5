@@ -374,8 +374,12 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     height: 50%;
-    background: url('@/assets/images/background/首页-Top5背景.png') no-repeat center center;
-    background-size: 100% 100%;
+    /* 放弃原来的小背景图，改为大模块边框样式 */
+    background: transparent;
+    background-image: none;
+    border-radius: 12px;
+    border: 1px solid #60a5fa; /* 与默认蓝色主题小模块边框保持一致 */
+    backdrop-filter: blur(6px);
 
     .charts-row {
         display: flex;
@@ -422,6 +426,9 @@ onUnmounted(() => {
         display: flex;
         flex-direction: column;
         border-radius: 8px;
+        /* 这里不要额外边框，边框交给外层 charts-section */
+        border: none !important;
+        background: transparent !important;
 
         .chart-title-row {
             display: flex;
