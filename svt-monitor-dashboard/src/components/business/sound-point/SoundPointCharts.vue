@@ -73,7 +73,7 @@
                 @change="applyRangeIfEnabled"
             />
             <span class="controls-unit">Hz</span>
-            <el-button size="small" :disabled="rangeControlsDisabled" @click="resetRangeIfEnabled">重置</el-button>
+            <el-button size="small" class="reset-btn" :disabled="rangeControlsDisabled" @click="resetRangeIfEnabled">重置</el-button>
             <el-button
                 type="primary"
                 size="small"
@@ -411,6 +411,7 @@ onUnmounted(() => {
             white-space: nowrap;
             opacity: 0.9;
             flex: 0 0 auto;
+            font-size: 0.8rem;
         }
 
         :deep(.el-input-number.range-input) {
@@ -459,11 +460,17 @@ onUnmounted(() => {
     height: 28px;
     padding: 0 12px;
     border-radius: 6px;
-    // border: 1px solid rgba(255, 255, 255, 0.35);
-    // background: rgba(255, 255, 255, 0.06);
     color: rgba(255, 255, 255, 0.92);
     font-weight: 500;
     font-size: 14px;
     transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+:deep(.el-button.reset-btn) {
+    height: 28px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 14px;
 }
 </style>
