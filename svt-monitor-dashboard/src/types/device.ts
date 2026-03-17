@@ -9,6 +9,7 @@ export interface DeviceNode {
   pointCount?: number
   parentId?: string
   workshopName?: string
+  customerDeviceId?: string
   lastAlarmTime?: string
   alarmType?: string
   alarmValue?: string
@@ -36,6 +37,7 @@ export interface Device {
   name: string
   workshopId: string
   workshopName: string
+  customerDeviceId?: string
   deviceNode: DeviceNode
 }
 

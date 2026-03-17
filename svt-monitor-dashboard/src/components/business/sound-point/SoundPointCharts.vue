@@ -127,7 +127,8 @@ const selectedItemsWithColor = computed(() => {
     const selected = props.deviationList.filter(item => item.visible);
     return selected.map((item, index) => ({
         ...item,
-        color: `hsl(${(index * 137.5) % 360}, 70%, 50%)`
+        // 优先使用父组件同步好的颜色，避免表格/图表颜色不一致
+        color: item?.color || `hsl(${(index * 137.5) % 360}, 70%, 50%)`
     }));
 });
 

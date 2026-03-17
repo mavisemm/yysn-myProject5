@@ -1,6 +1,6 @@
 <template>
   <div class="header-clock">
-    <div class="clock-left">
+    <div v-if="showFull" class="clock-left">
       <span class="clock-date">{{ dateText }}</span>
       <span class="clock-week">{{ weekText }}</span>
     </div>
@@ -12,9 +12,16 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 
 const now = ref<Date | null>(null)
 let timerId: number | null = null
+const route = useRoute()
+
+// 首页（/ 或 name === 'Home'）展示完整日期+星期，其它页面仅展示时分秒
+const showFull = computed(() => {
+  return route.path === '/' || route.name === 'Home'
+})
 
 const pad = (n: number) => String(n).padStart(2, '0')
 

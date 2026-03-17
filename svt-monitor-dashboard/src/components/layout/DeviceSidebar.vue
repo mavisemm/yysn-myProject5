@@ -47,7 +47,10 @@
           <div v-if="showDeviceDropdown" class="dropdown-menu device-dropdown">
             <div v-for="device in filteredDevices" :key="device.id" class="dropdown-item device-dropdown-item"
               @click="selectDevice(device)">
-              <span class="device-name">{{ device.name }}</span>
+              <span class="device-name">
+                {{ device.name }}
+                <span v-if="device.customerDeviceId">({{ device.customerDeviceId }})</span>
+              </span>
               <span class="workshop-name">({{ device.workshopName }})</span>
             </div>
 
@@ -92,8 +95,13 @@
                 </el-icon>
               </div>
 
-              <!-- 名称 -->
-              <span class="node-label" :title="node.label">{{ node.label }}</span>
+              <!-- 名称（设备节点后追加客户设备编号） -->
+              <span
+                class="node-label"
+                :title="data.type === 'device' && data.customerDeviceId ? `${data.name} (${data.customerDeviceId})` : node.label"
+              >
+                {{ data.type === 'device' && data.customerDeviceId ? `${data.name} (${data.customerDeviceId})` : node.label }}
+              </span>
 
               <!-- <span v-if="(data.type === 'factory' || data.type === 'workshop') && data.deviceCount" class="node-count">
                 <el-tag size="small" type="info">
@@ -310,6 +318,7 @@ const allDevices = computed<Device[]>(() => {
           name: device.name,
           workshopId: workshop.id,
           workshopName: workshop.name,
+          customerDeviceId: device.customerDeviceId,
           deviceNode: device
         })
       })
@@ -327,8 +336,10 @@ const filteredDevices = computed<Device[]>(() => {
 
   const searchText = debouncedDeviceSearch.value
   if (searchText) {
+    const lower = searchText.toLowerCase()
     devices = devices.filter(device =>
-      device.name.toLowerCase().includes(searchText.toLowerCase())
+      device.name.toLowerCase().includes(lower) ||
+      (device.customerDeviceId && device.customerDeviceId.toLowerCase().includes(lower))
     )
   }
 
@@ -428,7 +439,8 @@ const displayTreeData = computed<DeviceNode[]>(() => {
           }
 
           if (deviceSearch &&
-            !device.name.toLowerCase().includes(deviceSearch.toLowerCase())) {
+            !device.name.toLowerCase().includes(deviceSearch.toLowerCase()) &&
+            !(device.customerDeviceId && device.customerDeviceId.toLowerCase().includes(deviceSearch.toLowerCase()))) {
             return false
           }
 

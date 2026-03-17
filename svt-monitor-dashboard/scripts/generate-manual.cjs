@@ -218,12 +218,12 @@ async function main() {
   fs.writeFileSync(filePath, buffer);
 
   // 控制台提示
-  // eslint-disable-next-line no-console
+   
   console.log(`使用说明书已生成：${filePath}`);
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
+   
   console.error('生成使用说明书失败：', err);
   process.exit(1);
 });

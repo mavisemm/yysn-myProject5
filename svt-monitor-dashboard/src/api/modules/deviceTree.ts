@@ -35,6 +35,7 @@ export interface WorkshopData {
 export interface EquipmentData {
   equipmentId: string;
   equipmentName: string;
+  customerDeviceId?: string;
   children: PointData[];
 }
 
@@ -84,6 +85,7 @@ export const transformDeviceTreeData = (responseData: DeviceTreeResponse): Devic
         type: 'device',
         status: 'normal', 
         workshopName: workshop.workshopName,
+        customerDeviceId: equipment.customerDeviceId,
         children: equipment.children.map(point => ({
           id: point.pointId || point.receiverId || '',
           name: point.pointName,

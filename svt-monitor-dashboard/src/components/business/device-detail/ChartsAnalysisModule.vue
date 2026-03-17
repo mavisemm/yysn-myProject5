@@ -24,7 +24,7 @@
             <div class="chart-item">
                 <div class="chart-header">
                     <span class="chart-title">温度随时间变化</span>
-                    <span class="chart-unit special-font-color">（单位：℃）</span>
+                    <span class="chart-unit special-font-color">（单位：%）</span>
                 </div>
                 <div class="chart">
                     <CommonEcharts
@@ -43,7 +43,7 @@
             <div class="chart-item">
                 <div class="chart-header">
                     <span class="chart-title">响度随时间变化</span>
-                    <span class="chart-unit special-font-color">（单位：dB）</span>
+                    <span class="chart-unit special-font-color">（单位：%）</span>
                 </div>
                 <div class="chart">
                     <CommonEcharts

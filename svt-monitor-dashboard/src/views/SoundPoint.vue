@@ -127,6 +127,18 @@ interface DeviationListItem {
 
 const deviationList = ref<DeviationListItem[]>([]);
 
+/** 让表格色块与图表颜色跟随勾选同步 */
+const syncSelectedColors = () => {
+  const selected = deviationList.value.filter(item => item.visible);
+  selected.forEach((item, index) => {
+    // 与 SoundPointCharts.vue 的配色逻辑保持一致（黄金角）
+    item.color = `hsl(${(index * 137.5) % 360}, 70%, 50%)`;
+  });
+  deviationList.value.forEach(item => {
+    if (!item.visible) item.color = undefined;
+  });
+};
+
 /** 当前设备的点位列表（用于趋势分析弹窗的点位下拉） */
 const devicePointList = computed(() => {
   const deviceId = deviceIdFromQuery.value;
@@ -190,6 +202,7 @@ const handleChartInit = (charts: any) => {
 
 // 处理选择变更事件
 const handleSelectChange = () => {
+  syncSelectedColors();
   loadFrequencyData();
 };
 
@@ -247,6 +260,7 @@ const loadDeviationList = async () => {
           : [];
     const mapped = normalizeDeviationList(rawList);
     deviationList.value = mapped;
+    syncSelectedColors();
 
     const firstRaw = rawList[0] as any;
     const firstItem = mapped[0];

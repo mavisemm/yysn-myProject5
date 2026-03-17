@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDeviceTreeStore } from '@/stores/deviceTree';
 import { Search, Sort } from '@element-plus/icons-vue';
@@ -89,6 +89,8 @@ import type { DeviceNode } from '@/types/device';
 import { formatDateTime, disabledFutureDate, getDefaultDateRange } from '@/utils/datetime';
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue';
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue';
+import { VibrationWsClient, type VibrationEventPayload } from '@/services/vibrationWs'
+import { fetchVibrationEventsForOverview } from '@/api/modules/vibrationEvent'
 
 const { t } = useLocale();
 
@@ -172,16 +174,98 @@ const pageSize = ref(responsivePageSize.value.pageSize);
 
 const sortOrder = ref<'asc' | 'desc'>("desc");
 
-const alarms = ref<AlarmItem[]>([
-    { id: 'ff8081819a623bff019a71ee6a950000', deviceName: '五线一路风机12', shopName: '车间B', deviceNameWithShop: '五线一路风机（车间B）', status: 'warning', statusText: '预警', time: '2026-01-14 16:20:00', measurementPoints: [{ name: 'JXA29F6106', status: 'healthy' }, { name: 'JXA29F6105', status: 'warning' }, { name: 'JXA29F6104', status: 'healthy' }, { name: 'JXA29F6103', status: 'healthy' }, { name: 'JXA29F6102', status: 'healthy' }, { name: 'JXA29F6101', status: 'healthy' }, { name: 'JXA29F6107', status: 'healthy' }, { name: 'JXA29F6108', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
-    { id: 'ff8081819a909f21019a918dcbf00000', deviceName: '旋压机', shopName: '车间D', deviceNameWithShop: '旋压机（车间D）', status: 'warning', statusText: '预警', time: '2026-01-13 08:15:00', measurementPoints: [{ name: '尾顶电磁阀1号点位', status: 'warning' }, { name: 'SHJY-XYJ1号点位', status: 'healthy' }, { name: '测点3', status: 'healthy' }, { name: '测点4', status: 'healthy' }, { name: '测点5', status: 'healthy' }, { name: '测点6', status: 'healthy' }, { name: '测点7', status: 'healthy' }, { name: '测点8', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
-    { id: 'ff8081819a4cd984019a4d524e0d0000', deviceName: '五线三路风机', shopName: '车间A', deviceNameWithShop: '五线三路风机（车间A）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: '3', status: 'healthy' }, { name: '2', status: 'healthy' }, { name: '1', status: 'healthy' }, { name: '8', status: 'healthy' }, { name: '7', status: 'healthy' }, { name: '6', status: 'healthy' }, { name: '5', status: 'healthy' }, { name: '4', status: 'healthy' }, { name: 'JXA24F5308', status: 'healthy' }, { name: 'JXA24F5307', status: 'healthy' }] },
-    { id: 'ff8081819a623bff019a71fbec550018', deviceName: '往复式压缩机', shopName: '车间A', deviceNameWithShop: '往复式压缩机（车间A）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: 'JS32F21', status: 'healthy' }, { name: 'JS32F20', status: 'healthy' }, { name: 'JS32F19', status: 'healthy' }, { name: 'JS32F18', status: 'healthy' }, { name: 'JS32F17', status: 'healthy' }, { name: 'JS32F16', status: 'healthy' }, { name: 'JS32F15', status: 'healthy' }, { name: 'JS32F14', status: 'healthy' }, { name: 'JS32F13', status: 'healthy' }, { name: 'JS32F12', status: 'healthy' }] },
-    { id: 'ff8081819a623bff019a71f434130009', deviceName: '七线一路风机', shopName: '车间C', deviceNameWithShop: '七线一路风机（车间C）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: 'JXA29F8108', status: 'healthy' }, { name: 'JXA29F8107', status: 'healthy' }, { name: 'JXA29F8106', status: 'healthy' }, { name: 'JXA29F8105', status: 'healthy' }, { name: 'JXA29F8102', status: 'healthy' }, { name: 'JXA29F8101', status: 'healthy' }, { name: 'JXA29F8104', status: 'healthy' }, { name: 'JXA29F8103', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] },
-    { id: 'ff8081819a4cd984019a4d524e0d0001', deviceName: '五线三路风机01', shopName: '车间A', deviceNameWithShop: '五线三路风机01（车间A）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: '3', status: 'healthy' }, { name: '2', status: 'healthy' }, { name: '1', status: 'healthy' }, { name: '8', status: 'healthy' }, { name: '7', status: 'healthy' }, { name: '6', status: 'healthy' }, { name: '5', status: 'healthy' }, { name: '4', status: 'healthy' }, { name: 'JXA24F5308', status: 'healthy' }, { name: 'JXA24F5307', status: 'healthy' }] },
-    { id: 'ff8081819a623bff019a71fbec550019', deviceName: '往复式压缩机02', shopName: '车间A', deviceNameWithShop: '往复式压缩机02（车间A）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: 'JS32F21', status: 'healthy' }, { name: 'JS32F20', status: 'healthy' }, { name: 'JS32F19', status: 'healthy' }, { name: 'JS32F18', status: 'healthy' }, { name: 'JS32F17', status: 'healthy' }, { name: 'JS32F16', status: 'healthy' }, { name: 'JS32F15', status: 'healthy' }, { name: 'JS32F14', status: 'healthy' }, { name: 'JS32F13', status: 'healthy' }, { name: 'JS32F12', status: 'healthy' }] },
-    { id: 'ff8081819a623bff019a71f43413000a', deviceName: '七线一路风机02', shopName: '车间C', deviceNameWithShop: '七线一路风机02（车间C）', status: 'healthy', statusText: '健康', time: '', measurementPoints: [{ name: 'JXA29F8108', status: 'healthy' }, { name: 'JXA29F8107', status: 'healthy' }, { name: 'JXA29F8106', status: 'healthy' }, { name: 'JXA29F8105', status: 'healthy' }, { name: 'JXA29F8102', status: 'healthy' }, { name: 'JXA29F8101', status: 'healthy' }, { name: 'JXA29F8104', status: 'healthy' }, { name: 'JXA29F8103', status: 'healthy' }, { name: '测点9', status: 'healthy' }, { name: '测点10', status: 'healthy' }] }
-]);
+const alarms = ref<AlarmItem[]>([])
+
+function findDeviceInfo(deviceId: string): { deviceName: string; shopName: string } {
+    const walk = (nodes: DeviceNode[], currentWorkshopName = ''): { deviceName: string; shopName: string } | null => {
+        for (const node of nodes) {
+            if (node.type === 'workshop') {
+                const res = walk(node.children ?? [], node.name)
+                if (res) return res
+            } else if (node.type === 'device') {
+                if (node.id === deviceId || node.customerDeviceId === deviceId) {
+                    return { deviceName: node.name, shopName: node.workshopName ?? currentWorkshopName }
+                }
+                const res = walk(node.children ?? [], currentWorkshopName)
+                if (res) return res
+            } else if (node.children?.length) {
+                const res = walk(node.children, currentWorkshopName)
+                if (res) return res
+            }
+        }
+        return null
+    }
+    return walk(deviceTreeStore.deviceTreeData) ?? { deviceName: deviceId, shopName: '' }
+}
+
+function mapLevelToStatus(level: string | undefined): MeasurementPoint['status'] {
+    const v = String(level ?? '').toUpperCase()
+    if (v === 'ALARM') return 'alarm'
+    if (v === 'WARNING' || v === 'WARN') return 'warning'
+    return 'healthy'
+}
+
+function buildMeasurementPointsFromDataJson(dataJson: string | undefined): MeasurementPoint[] {
+    let parsed: any = null
+    try {
+        parsed = dataJson ? JSON.parse(dataJson) : null
+    } catch {
+        parsed = null
+    }
+    const channelNo = parsed?.channelNo != null ? Number(parsed.channelNo) : NaN
+    const pointStatus = mapLevelToStatus(parsed?.level)
+    const pointName = parsed?.pointName ? String(parsed.pointName) : ''
+
+    // 预警总览 UI 目前固定展示「点号」(1..8)，这里用 channelNo 映射到对应点位高亮
+    const total = 10
+    const list: MeasurementPoint[] = Array.from({ length: total }).map((_, i) => ({
+        name: i === 0 && pointName ? pointName : `测点${i + 1}`,
+        status: 'healthy'
+    }))
+
+    if (!isNaN(channelNo) && channelNo >= 1 && channelNo <= total) {
+        const existing = list[channelNo - 1]
+        list[channelNo - 1] = {
+            name: pointName || existing?.name || `测点${channelNo}`,
+            status: pointStatus
+        }
+    }
+    return list
+}
+
+function upsertAlarmFromEvent(evt: VibrationEventPayload) {
+    const deviceId = evt.deviceId
+    const { deviceName, shopName } = findDeviceInfo(deviceId)
+    const d = new Date(evt.time)
+    const timeStr = isNaN(d.getTime()) ? '' : d.toISOString()
+    const measurementPoints = buildMeasurementPointsFromDataJson(evt.dataJson)
+    const deviceStatus = (() => {
+        const hasAlarm = measurementPoints.some(p => p.status === 'alarm')
+        const hasWarning = measurementPoints.some(p => p.status === 'warning')
+        if (hasAlarm) return 'alarm'
+        if (hasWarning) return 'warning'
+        return 'healthy'
+    })()
+
+    const statusText = deviceStatus === 'alarm' ? '报警' : deviceStatus === 'warning' ? '预警' : '健康'
+
+    const item: AlarmItem = {
+        id: deviceId,
+        deviceName,
+        shopName,
+        deviceNameWithShop: `${deviceName}（${shopName || ''}）`,
+        status: deviceStatus,
+        statusText,
+        time: timeStr,
+        measurementPoints
+    }
+
+    const idx = alarms.value.findIndex(a => a.id === deviceId)
+    if (idx >= 0) alarms.value.splice(idx, 1, item)
+    else alarms.value.unshift(item)
+}
+
+let wsClient: VibrationWsClient | null = null
 
 const allDevices = computed(() => {
     return extractDevicesFromTree(deviceTreeStore.deviceTreeData);
@@ -221,7 +305,7 @@ const filteredAlarms = computed(() => {
     }
 
     if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
-        let startDate = new Date(dateRange.value[0]);
+        const startDate = new Date(dateRange.value[0]);
         let endDate = new Date(dateRange.value[1]);
 
         startDate.setHours(0, 0, 0, 0);
@@ -334,10 +418,39 @@ const updateContainerSize = () => {
 
 onMounted(() => {
     window.addEventListener('resize', updateContainerSize);
+
+    // 初始化：先用 HTTP 拿一批（如果接口返回），再订阅 websocket 实时更新
+    const tenantId = localStorage.getItem('tenantId') ?? ''
+    void (async () => {
+        try {
+            const initEvents = await fetchVibrationEventsForOverview({ tenantId })
+            for (const evt of initEvents) upsertAlarmFromEvent(evt)
+        } catch (e) {
+            // 接口可能并非列表型，失败也不影响 websocket 实时
+            console.warn('预警总览初始化接口获取失败:', e)
+        }
+    })()
+
+    if (tenantId) {
+        wsClient = new VibrationWsClient({ token: localStorage.getItem('token') ?? undefined })
+        void (async () => {
+            try {
+                await wsClient?.connect()
+                wsClient?.subscribeVibrationTopic(tenantId, (payload) => {
+                    upsertAlarmFromEvent(payload)
+                })
+            } catch (e) {
+                console.error('订阅振动 websocket 失败:', e)
+            }
+        })()
+    }
 });
 
 onUnmounted(() => {
     window.removeEventListener('resize', updateContainerSize);
+
+    wsClient?.disconnect()
+    wsClient = null
 
     if (hideDropdownTimerId) {
         clearTimeout(hideDropdownTimerId);
