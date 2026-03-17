@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDeviceTreeStore } from '@/stores/deviceTree';
 import { Search, Sort } from '@element-plus/icons-vue';
@@ -175,6 +175,59 @@ const pageSize = ref(responsivePageSize.value.pageSize);
 const sortOrder = ref<'asc' | 'desc'>("desc");
 
 const alarms = ref<AlarmItem[]>([])
+const mockInjected = ref(false)
+
+function pickDevicesForMock(nodes: DeviceNode[], limit = 2): Array<{ deviceId: string; shopName: string; pointName?: string }> {
+    const result: Array<{ deviceId: string; shopName: string; pointName?: string }> = []
+    const walk = (list: DeviceNode[], currentWorkshopName = '') => {
+        for (const n of list) {
+            if (result.length >= limit) return
+            if (n.type === 'workshop') {
+                walk(n.children ?? [], n.name)
+                continue
+            }
+            if (n.type === 'device') {
+                const deviceId = n.id
+                const shopName = n.workshopName ?? currentWorkshopName
+                const firstPoint = (n.children ?? []).find(c => c.type === 'point')
+                result.push({ deviceId, shopName, pointName: firstPoint?.name })
+                continue
+            }
+            if (n.children?.length) walk(n.children, currentWorkshopName)
+        }
+    }
+    walk(nodes)
+    return result
+}
+
+function buildMockOverviewEvents(tenantId: string): VibrationEventPayload[] {
+    const picked = pickDevicesForMock(deviceTreeStore.deviceTreeData, 2)
+    const now = Date.now()
+
+    const build = (idx: number, level: 'ALARM' | 'WARNING'): VibrationEventPayload => {
+        const p = picked[idx]
+        const deviceId = p?.deviceId || `mock-device-${idx + 1}`
+        const pointName = p?.pointName || `测点${idx + 1}`
+        const channelNo = idx === 0 ? 2 : 5
+        const time = now - (idx + 1) * 7 * 60 * 1000
+        return {
+            deviceId,
+            time,
+            tenantId: tenantId || 'mock-tenant',
+            eventTypeCode: 'MACHINE_VIBRATION',
+            statusCode: 'VALID',
+            probability: idx === 0 ? 0.92 : 0.68,
+            dataJson: JSON.stringify({
+                level,
+                channelNo,
+                pointName,
+                shopName: p?.shopName
+            })
+        }
+    }
+
+    return [build(0, 'ALARM'), build(1, 'WARNING')]
+}
 
 function findDeviceInfo(deviceId: string): { deviceName: string; shopName: string } {
     const walk = (nodes: DeviceNode[], currentWorkshopName = ''): { deviceName: string; shopName: string } | null => {
@@ -428,6 +481,10 @@ onMounted(() => {
         } catch (e) {
             // 接口可能并非列表型，失败也不影响 websocket 实时
             console.warn('预警总览初始化接口获取失败:', e)
+            // 接口不通时：基于设备树拼两条假数据，保证“预警总览”有可展示内容
+            const mockEvents = buildMockOverviewEvents(tenantId)
+            for (const evt of mockEvents) upsertAlarmFromEvent(evt)
+            mockInjected.value = true
         }
     })()
 
@@ -445,6 +502,21 @@ onMounted(() => {
         })()
     }
 });
+
+// 兜底：若接口失败时设备树还没加载出来，等设备树到达后再补两条假数据
+watch(
+    () => deviceTreeStore.deviceTreeData,
+    (tree) => {
+        if (mockInjected.value) return
+        if (!tree || tree.length === 0) return
+        if (alarms.value.length > 0) return
+        const tenantId = localStorage.getItem('tenantId') ?? ''
+        const mockEvents = buildMockOverviewEvents(tenantId)
+        for (const evt of mockEvents) upsertAlarmFromEvent(evt)
+        mockInjected.value = true
+    },
+    { deep: true }
+)
 
 onUnmounted(() => {
     window.removeEventListener('resize', updateContainerSize);

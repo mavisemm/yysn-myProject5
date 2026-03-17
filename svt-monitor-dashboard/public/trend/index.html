@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>趋势曲线分析结果展示系统</title>
+    <script>
+      // 让 /trend/ 目录访问等价于 /trend/trend.html，并保留 query/hash
+      (function () {
+        var target = './trend.html' + (location.search || '') + (location.hash || '');
+        location.replace(target);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>

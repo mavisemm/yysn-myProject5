@@ -43,6 +43,9 @@
                 width="530px"
                 :close-on-click-modal="true"
                 destroy-on-close
+                :teleported="true"
+                :append-to-body="true"
+                :modal-append-to-body="true"
             >
                 <div class="sound-stage-report-row">
                     <CommonDateTimePicker v-model="soundStageReportDateRange" width="100%" />
@@ -183,6 +186,9 @@
             title="添加设备信息"
             width="360px"
             :close-on-click-modal="false"
+            :teleported="true"
+            :append-to-body="true"
+            :modal-append-to-body="true"
         >
             <div class="add-field-form">
                 <div class="form-row">
@@ -214,7 +220,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
-import { ElButton, ElInput, ElMessage, ElDialog, ElForm, ElFormItem } from 'element-plus'
+import { ElButton, ElInput, ElMessage, ElForm, ElFormItem } from 'element-plus'
 import * as echarts from 'echarts'
 import { getDeviceInfoByDeviceId, editDeviceInfo, getDeviceHealth, type DeviceInfoDto, type DeviceHealthResponse } from '@/api/modules/hardware'
 import { service } from '@/api/request'

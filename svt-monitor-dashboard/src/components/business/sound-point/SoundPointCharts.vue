@@ -77,19 +77,14 @@
             <el-button
                 type="primary"
                 size="small"
+                class="trend-analysis-btn"
                 @mousedown.stop
                 @wheel.stop
-                @click="trendDialogVisible = true"
+                @click="handleTrendAnalysisClick"
             >
-                趋势分析
+                点位数据趋势分析
             </el-button>
         </div>
-
-        <SoundTrendAnalysisDialog
-            v-model="trendDialogVisible"
-            :point-list="pointList"
-            :selected-point-id="selectedPointId"
-        />
     </div>
 </template>
 
@@ -99,7 +94,6 @@ import type { Ref } from 'vue';
 import type { EChartsOption } from 'echarts';
 import { CommonEcharts } from '@/components/common/chart';
 import { useRangeControls } from '@/composables/useRangeControls';
-import SoundTrendAnalysisDialog from '@/components/business/sound-point/SoundTrendAnalysisDialog.vue';
 
 const emit = defineEmits(['chart-init']);
 const props = defineProps<{
@@ -108,7 +102,17 @@ const props = defineProps<{
     selectedPointId?: string;
 }>();
 
-const trendDialogVisible = ref(false);
+const handleTrendAnalysisClick = () => {
+    const base = import.meta.env.BASE_URL || '/';
+    const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+    const tenantId = localStorage.getItem('tenantId') ?? '';
+    // trend.html 默认请求 122.224.196.178:8003；这里把 tenantId/ip 透传过去，避免“全部点位”为空
+    const params = new URLSearchParams();
+    if (tenantId) params.set('tenantId', tenantId);
+    params.set('ip', '122.224.196.178');
+    const url = `${normalizedBase}trend/trend.html?${params.toString()}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+};
 
 const selectedPointId = computed(() => props.selectedPointId || (props.pointList?.[0]?.id ?? ''));
 const pointList = computed(() => props.pointList || []);
@@ -452,18 +456,14 @@ onUnmounted(() => {
 }
 
 :deep(.el-button.trend-analysis-btn) {
-    height: 26px;
-    padding: 0 10px;
+    height: 28px;
+    padding: 0 12px;
     border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    background: rgba(255, 255, 255, 0.06);
+    // border: 1px solid rgba(255, 255, 255, 0.35);
+    // background: rgba(255, 255, 255, 0.06);
     color: rgba(255, 255, 255, 0.92);
     font-weight: 500;
+    font-size: 14px;
     transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-:deep(.el-button.trend-analysis-btn:hover) {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.55);
 }
 </style>

@@ -21,6 +21,29 @@ export function setupRouterGuard(router: Router) {
       next('/login')
       return
     }
+
+    // 业务要求：在首页、设备详情、声音点位、振动点位的地址栏拼接 tenantId
+    // tenantId 来自登录接口返回并存储在 localStorage
+    const requireTenantIdRouteNames = new Set(['Dashboard', 'DeviceDetail', 'SoundPoint', 'VibrationPoint'])
+    const tenantIdInQuery = (to.query?.tenantId as string | undefined) ?? ''
+    const tenantId = localStorage.getItem('tenantId') ?? ''
+    if (isLoggedIn && requireTenantIdRouteNames.has(String(to.name ?? ''))) {
+      const effectiveTenantId = tenantIdInQuery || tenantId
+      if (effectiveTenantId) {
+        // 确保 tenantId 永远排在 query 的第一个
+        const queryKeys = Object.keys(to.query ?? {})
+        const isTenantIdFirst = queryKeys.length > 0 ? queryKeys[0] === 'tenantId' : false
+        if (!tenantIdInQuery || !isTenantIdFirst) {
+          const { tenantId: _omit, ...rest } = (to.query ?? {}) as Record<string, any>
+          next({
+            ...to,
+            query: { tenantId: effectiveTenantId, ...rest },
+            replace: true
+          })
+          return
+        }
+      }
+    }
     
     // 其他情况正常导航
     next()

@@ -223,7 +223,8 @@ const playAudio = (row: any) => {
   }
 
   .hint-text {
-    color: #f56c6c;
+    color: #fff;
+    font-size: 0.9rem;
     text-align: center;
     padding: 10px 20px 20px 20px;
   }

@@ -1,0 +1,3090 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>趋势曲线分析结果展示系统</title>
+    <!-- 引入所有必要的CSS和JS库 -->
+    <!-- Font Awesome 图标库（CDN） -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="./js1/bootstrap.min.css" rel="stylesheet">
+    <script src="./js1/jquery.min.js"></script>
+    <script src="./js1/bundle.min.js"></script>
+    <script src="./js1/chart.js"></script>
+    <script src="./js1/date-fns"></script>
+    <script src="./js1/chartjs-plugin-zoom"></script>
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --success-color: #4cc9f0;
+            --warning-color: #f72585;
+            --info-color: #7209b7;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            padding-top: 20px;
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            border-left: 4px solid var(--primary-color);
+            position: relative;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card.rising {
+            border-left-color: #4ade80;
+        }
+        
+        .stat-card.falling {
+            border-left-color: #f87171;
+        }
+        
+        .stat-card.stable {
+            border-left-color: #94a3b8;
+        }
+        
+        .stat-card.anomaly {
+            border-left-color: #f59e0b;
+        }
+        
+        .stat-card .stat-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        .stat-card .stat-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-card .stat-icon {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            opacity: 0.2;
+            position: absolute;
+            right: 20px;
+            top: 20px;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid #e9ecef;
+            font-weight: 600;
+            padding: 15px 20px;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+        
+        .trend-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .trend-up {
+            background-color: rgba(74, 222, 128, 0.1);
+            color: #16a34a;
+        }
+        
+        .trend-down {
+            background-color: rgba(248, 113, 113, 0.1);
+            color: #dc2626;
+        }
+        
+        .trend-stable {
+            background-color: rgba(148, 163, 184, 0.1);
+            color: #475569;
+        }
+        
+        .anomaly-badge {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: #d97706;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        
+        .nav-tabs .nav-link {
+            color: #6c757d;
+            border: none;
+            border-bottom: 3px solid transparent;
+            padding: 10px 20px;
+            font-weight: 500;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+            background-color: transparent;
+        }
+        
+        .tab-content {
+            padding: 20px 0;
+        }
+        
+        .data-table {
+            width: 100%;
+        }
+        
+        .data-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+            border-top: none;
+        }
+        
+        .data-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .progress-bar-custom {
+            background: linear-gradient(90deg, #4361ee 0%, #3f37c9 100%);
+            border-radius: 10px;
+        }
+        
+        .trend-strength-bar {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e9ecef;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .trend-strength-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+        
+        .frequency-badge {
+            background-color: #e0e7ff;
+            color: #4f46e5;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            display: inline-block;
+        }
+        
+        .load-data-section {
+            background: white;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .trend-pattern {
+            padding: 10px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 8px;
+            margin: 10px 0;
+            font-style: italic;
+        }
+        
+        .custom-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            z-index: 1000;
+            pointer-events: none;
+            max-width: 300px;
+        }
+        
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 15px;
+            margin-bottom: 5px;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .stat-card .stat-value {
+                font-size: 1.8rem;
+            }
+            
+            .chart-container {
+                height: 250px;
+            }
+            
+            .dashboard-header h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- 头部区域 -->
+        <div class="dashboard-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-chart-line me-2"></i>趋势曲线分析结果展示系统</h1>
+                </div>
+                <!-- <div class="col-md-4 text-end">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-light" id="exportBtn">
+                            <i class="fas fa-download me-1"></i>导出报告
+                        </button>
+                        <button type="button" class="btn btn-light" id="printBtn">
+                            <i class="fas fa-print me-1"></i>打印
+                        </button>
+                    </div>
+                </div> -->
+            </div>
+        </div>
+        
+        <!-- 数据加载区域 -->
+        <div class="load-data-section">
+            <!-- <h3><i class="fas fa-file-import me-2"></i>加载分析数据</h3> -->
+            
+            <!-- Tab切换 -->
+            <ul class="nav nav-tabs mt-3" id="dataLoadTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="backend-tab" data-bs-toggle="tab" data-bs-target="#backend" type="button" role="tab" aria-controls="backend" aria-selected="true">
+                        <i class="fas fa-database me-1"></i>从后台获取数据
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="json-tab" data-bs-toggle="tab" data-bs-target="#json" type="button" role="tab" aria-controls="json" aria-selected="false">
+                        <i class="fas fa-file-json me-1"></i>JSON数据传入
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content mt-3" id="dataLoadTabsContent">
+                <!-- 从后台获取数据 -->
+                <div class="tab-pane fade show active" id="backend" role="tabpanel" aria-labelledby="backend-tab">
+                    <div class="row mt-2 g-2">
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label for="startTime" class="form-label">开始时间</label>
+                                <input type="datetime-local" class="form-control" id="startTime">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label for="endTime" class="form-label">结束时间</label>
+                                <input type="datetime-local" class="form-control" id="endTime">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label for="pointSelector" class="form-label">选择点位</label>
+                                <select class="form-select" id="pointSelector">
+                                    <option value="all">全部点位</option>
+                                    <!-- 后续可通过JavaScript动态添加点位选项 -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-1">
+                            <div class="mb-3">
+                                <label for="intervalCount" class="form-label">间隔数量</label>
+                                <input type="number" class="form-control" id="intervalCount" value="3" min="1" max="30">
+                            </div>
+                        </div>
+                        <div class="col-md-1">
+                            <div class="mb-3">
+                                <label for="intervalUnit" class="form-label">间隔单位</label>
+                                <select class="form-select" id="intervalUnit">
+                                    <option value="DAY">天</option>
+                                    <option value="HOUR">小时</option>
+                                    <option value="MINUTE">分钟</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-1">
+                            <div class="mb-3">
+                                <label for="maxIntervalCount" class="form-label">展示最多曲线数</label>
+                                <input type="number" class="form-control" id="maxIntervalCount" value="500" min="1" max="1000">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3 h-100 d-flex align-items-center">
+                                <button class="btn btn-success w-100" type="button" id="queryBtn">
+                                    <i class="fas fa-search me-1"></i>查询数据
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- JSON数据传入 -->
+                <div class="tab-pane fade" id="json" role="tabpanel" aria-labelledby="json-tab">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="input-group mb-3">
+                                <input type="file" class="form-control" id="jsonFileInput" accept=".json">
+                                <button class="btn btn-primary" type="button" id="loadFileBtn">
+                                    <i class="fas fa-upload me-1"></i>加载JSON文件
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h5><i class="fas fa-info-circle me-2"></i>数据格式说明</h5>
+                                <p class="mb-0">请确保JSON文件符合<code>FlexibleTrendCurveResult</code>数据结构。数据加载后，系统将自动生成可视化图表和分析报告。</p>
+                                <p class="mb-0 mt-2">下载示例JSON文件：<a href="#" id="downloadExampleJson">example_analysis_result.json</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <div id="loadingIndicator" class="text-center" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2">正在加载和分析数据...</p>
+                    </div>
+                </div>
+            </div>
+            <!-- 趋势频率分析结果 -->
+            <div class="row mt-3" id="trendFrequencyResult" style="display: none;">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-chart-line me-2"></i>趋势频率分析结果
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5 class="text-success mb-3">
+                                        <i class="fas fa-arrow-up me-2"></i>连续升高的频率点
+                                    </h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>频率 (Hz)</th>
+                                                    <th>初始能量 (dB)</th>
+                                                    <th>最终能量 (dB)</th>
+                                                    <th>变化幅度 (dB)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="increasingFrequenciesTable">
+                                                <!-- 动态填充 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h5 class="text-danger mb-3">
+                                        <i class="fas fa-arrow-down me-2"></i>连续降低的频率点
+                                    </h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>频率 (Hz)</th>
+                                                    <th>初始能量 (dB)</th>
+                                                    <th>最终能量 (dB)</th>
+                                                    <th>变化幅度 (dB)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="decreasingFrequenciesTable">
+                                                <!-- 动态填充 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 数据概览区域 -->
+        <div id="dataOverview" style="display: none;">
+            <div class="row">
+                <!-- 总体统计卡片 -->
+                <div class="col-md-3 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-microchip"></i>
+                        </div>
+                        <div class="stat-value" id="deviceCount">0</div>
+                        <div class="stat-label">设备数量</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-headphones"></i>
+                        </div>
+                        <div class="stat-value" id="receiverCount">0</div>
+                        <div class="stat-label">听筒数量</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <div class="stat-value" id="avgGroupCount">0</div>
+                        <div class="stat-label">聚类组数量</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="stat-value" id="totalDataPoints">0</div>
+                        <div class="stat-label">总数据点</div>
+                    </div>
+                </div>
+                
+                <!-- 趋势分布卡片 -->
+                <div class="col-md-3 col-sm-6">
+                    <div class="stat-card rising">
+                        <div class="stat-icon">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="stat-value" id="risingIntervals">0</div>
+                        <div class="stat-label">上升趋势间隔</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="stat-card falling">
+                        <div class="stat-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div class="stat-value" id="fallingIntervals">0</div>
+                        <div class="stat-label">下降趋势间隔</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="stat-card stable">
+                        <div class="stat-icon">
+                            <i class="fas fa-minus"></i>
+                        </div>
+                        <div class="stat-value" id="stableIntervals">0</div>
+                        <div class="stat-label">稳定趋势间隔</div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="stat-card anomaly">
+                        <div class="stat-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-value" id="anomalyIntervals">0</div>
+                        <div class="stat-label">异常间隔</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 导航标签页 -->
+            <ul class="nav nav-tabs" id="mainTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="trend-tab" data-bs-toggle="tab" data-bs-target="#trend-tab-pane" type="button" role="tab">
+                        <i class="fas fa-chart-line me-1"></i>趋势概览
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="interval-tab" data-bs-toggle="tab" data-bs-target="#interval-tab-pane" type="button" role="tab">
+                        <i class="fas fa-calendar-alt me-1"></i>间隔分析
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="receiver-tab" data-bs-toggle="tab" data-bs-target="#receiver-tab-pane" type="button" role="tab">
+                        <i class="fas fa-headphones me-1"></i>听筒曲线
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="group-tab" data-bs-toggle="tab" data-bs-target="#group-tab-pane" type="button" role="tab">
+                        <i class="fas fa-layer-group me-1"></i>聚类组分析
+                    </button>
+                </li>
+                <!-- <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="details-tab" data-bs-toggle="tab" data-bs-target="#details-tab-pane" type="button" role="tab">
+                        <i class="fas fa-table me-1"></i>详细数据
+                    </button>
+                </li> -->
+            </ul>
+            
+            <div class="tab-content" id="mainTabContent">
+                <!-- 趋势概览标签页 -->
+                <div class="tab-pane fade show active" id="trend-tab-pane" role="tabpanel">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-area me-2"></i>整体趋势强度变化
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="overallTrendChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-pie me-2"></i>趋势分布
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="trendDistributionChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-info-circle me-2"></i>分析概览
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <table class="table table-borderless">
+                                                <tbody>
+                                                    <tr>
+                                                        <td><strong>分析ID:</strong></td>
+                                                        <td id="analysisId">-</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>分析时间范围:</strong></td>
+                                                        <td id="analysisTimeRange">-</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>消耗时间:</strong></td>
+                                                        <td id="analysisTimeMs">-</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>间隔数量:</strong></td>
+                                                        <td id="intervalCount">-</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <table class="table table-borderless">
+                                                <tbody>
+                                                    <tr>
+                                                        <td><strong>总体趋势方向:</strong></td>
+                                                        <td>
+                                                            <span class="trend-indicator" id="overallTrendDirection">-</span>
+                                                            <span id="overallTrendStrengthText">-</span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>趋势变化率:</strong></td>
+                                                        <td id="trendChangeRate">-</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>数据覆盖度:</strong></td>
+                                                        <td id="dataCoverage">-</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><strong>趋势模式:</strong></td>
+                                                        <td id="trendChangePattern">-</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 间隔分析标签页 -->
+                <div class="tab-pane fade" id="interval-tab-pane" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-filter me-2"></i>间隔筛选
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="intervalSelect" class="form-label">选择间隔</label>
+                                        <select class="form-select" id="intervalSelect">
+                                            <option value="">所有间隔</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="trendDirectionFilter" class="form-label">趋势方向</label>
+                                        <select class="form-select" id="trendDirectionFilter">
+                                            <option value="">所有方向</option>
+                                            <option value="上升">上升</option>
+                                            <option value="下降">下降</option>
+                                            <option value="稳定">稳定</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="anomalyFilter" class="form-label">异常状态</label>
+                                        <select class="form-select" id="anomalyFilter">
+                                            <option value="">全部</option>
+                                            <option value="true">仅异常</option>
+                                            <option value="false">仅正常</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-primary w-100" id="applyFiltersBtn">
+                                        <i class="fas fa-search me-1"></i>应用筛选
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-bar me-2"></i>间隔趋势强度
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="intervalTrendChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-table me-2"></i>间隔详情表
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover data-table" id="intervalTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>间隔</th>
+                                                    <th>标签</th>
+                                                    <th>数据点</th>
+                                                    <th>趋势强度</th>
+                                                    <th>趋势方向</th>
+                                                    <th>置信度</th>
+                                                    <th>平均能量</th>
+                                                    <th>状态</th>
+                                                    <th>操作</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="intervalTableBody">
+                                                <!-- 动态填充 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 听筒曲线标签页 -->
+                <div class="tab-pane fade" id="receiver-tab-pane" role="tabpanel">
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-headphones me-2"></i>听筒选择
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                <label for="receiverSelect" class="form-label">选择听筒</label>
+                                                <select class="form-select" id="receiverSelect">
+                                                    <option value="">选择听筒...</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="mb-3">
+                                                <label for="curveTypeSelect" class="form-label">曲线类型</label>
+                                                <select class="form-select" id="curveTypeSelect">
+                                                    <option value="energy">能量曲线</option>
+                                                    <option value="normalized">归一化曲线</option>
+                                                    <option value="trend">趋势曲线</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="mb-3">
+                                                <label for="frequencyRange" class="form-label">频率范围 (Hz)</label>
+                                                <input type="text" class="form-control" id="frequencyRange" placeholder="例如: 0-1000">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <div class="mb-3 d-flex align-items-end">
+                                                <button class="btn btn-primary w-100" id="plotReceiverCurveBtn">
+                                                    <i class="fas fa-chart-line me-1"></i>绘制曲线
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <div class="mb-3 d-flex align-items-end">
+                                                <button class="btn btn-info w-100" id="analyzeTrendBtn">
+                                                    <i class="fas fa-chart-line me-1"></i>分析趋势
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-wave-square me-2"></i>听筒曲线图
+                                    <div class="float-end">
+                                        <button class="btn btn-sm btn-outline-secondary" id="resetZoomBtn">
+                                            <i class="fas fa-search-minus"></i> 重置缩放
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container" style="height: 500px;">
+                                        <canvas id="receiverCurveChart"></canvas>
+                                    </div>
+                                    <div class="mt-3" id="curveLegend">
+                                        <!-- 图例动态生成 -->
+                                    </div>
+                                    <!-- 能量变化趋势图容器 -->
+                <div class="mt-4">
+                    <h4>能量变化趋势图 (点击上方图表选择频率)</h4>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="strengthTrendChart"></canvas>
+                    </div>
+                    <div id="strengthTrendInfo" class="mt-2 text-center"></div>
+                </div>
+                
+                <!-- 趋势强度变化图容器 -->
+                <div class="mt-4">
+                    <h4>趋势强度变化图</h4>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="trendStrengthChart"></canvas>
+                    </div>
+                    <div id="trendStrengthInfo" class="mt-2 text-center"></div>
+                </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-info-circle me-2"></i>听筒信息
+                                </div>
+                                <div class="card-body">
+                                    <div id="receiverInfo">
+                                        <p class="text-muted text-center">请选择听筒查看详情</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-table me-2"></i>听筒趋势汇总
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover data-table" id="receiverTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>听筒ID</th>
+                                                    <th>听筒名称</th>
+                                                    <th>总体趋势强度</th>
+                                                    <th>总体趋势方向</th>
+                                                    <th>趋势稳定性</th>
+                                                    <th>最大趋势强度</th>
+                                                    <th>趋势模式</th>
+                                                    <th>操作</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="receiverTableBody">
+                                                <!-- 动态填充 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 聚类组分析标签页 -->
+                <div class="tab-pane fade" id="group-tab-pane" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-layer-group me-2"></i>聚类组选择
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="avgGroupSelect" class="form-label">选择聚类组</label>
+                                        <select class="form-select" id="avgGroupSelect">
+                                            <option value="">选择聚类组...</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="groupSortSelect" class="form-label">排序方式</label>
+                                        <select class="form-select" id="groupSortSelect">
+                                            <option value="strength">按趋势强度</option>
+                                            <option value="coverage">按听筒覆盖度</option>
+                                            <option value="occurrence">按出现间隔数</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-primary w-100" id="plotGroupTrendBtn">
+                                        <i class="fas fa-chart-line me-1"></i>绘制趋势图
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <i class="fas fa-info-circle me-2"></i>聚类组信息
+                                </div>
+                                <div class="card-body">
+                                    <div id="groupInfo">
+                                        <p class="text-muted text-center">请选择聚类组查看详情</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-line me-2"></i>聚类组趋势图
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="groupTrendChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-table me-2"></i>聚类组详情
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover data-table" id="avgGroupTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>聚类组ID</th>
+                                                    <th>创建时间</th>
+                                                    <th>曲线数量</th>
+                                                    <th>平均能量</th>
+                                                    <th>总体趋势强度</th>
+                                                    <th>总体趋势方向</th>
+                                                    <th>听筒覆盖度</th>
+                                                    <th>出现间隔数</th>
+                                                    <th>操作</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="avgGroupTableBody">
+                                                <!-- 动态填充 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 详细数据标签页 -->
+                <div class="tab-pane fade" id="details-tab-pane" role="tabpanel">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-cogs me-2"></i>分析配置信息
+                                </div>
+                                <div class="card-body">
+                                    <div id="configInfo">
+                                        <p class="text-muted text-center">加载数据后显示配置信息</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-code me-2"></i>原始JSON数据
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox" id="prettyJsonToggle" checked>
+                                        <label class="form-check-label" for="prettyJsonToggle">格式化JSON</label>
+                                    </div>
+                                    <pre id="jsonData" style="max-height: 500px; overflow-y: auto; background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+加载数据后显示JSON内容
+                                    </pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 模态框 - 间隔详情 -->
+    <div class="modal fade" id="intervalDetailModal" tabindex="-1" aria-labelledby="intervalDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="intervalDetailModalLabel">间隔详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="intervalDetailContent">
+                        <!-- 动态填充 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 工具提示容器 -->
+    <div id="tooltip" class="custom-tooltip" style="display: none;"></div>
+    
+    <script>
+        // 全局变量
+        let analysisData = null;
+        let charts = {};
+        let currentReceiverChart = null;
+        let currentIntervalChart = null;
+        let currentGroupChart = null;
+        let currentOverallTrendChart = null;
+        let currentTrendDistributionChart = null;
+        let pointList = []; // 存储点位列表
+        let tenantId = null; // 存储租户ID
+        let apiIp = '122.224.196.178'; // 存储API IP地址，默认值
+        
+        // 页面加载完成后初始化
+        $(document).ready(function() {
+            // 从URL参数获取租户ID和IP地址
+            const urlParams = new URLSearchParams(window.location.search);
+            tenantId = urlParams.get('tenantId') || localStorage.getItem('tenantId');
+            apiIp = urlParams.get('ip') || '122.224.196.178'; // 默认IP
+            console.log('获取到的租户ID:', tenantId);
+            console.log('获取到的API IP:', apiIp);
+            
+            // 初始化事件监听器
+            initEventListeners();
+            
+            // 初始化获取点位列表
+            loadPointList(apiIp);
+            
+            // 尝试从URL参数加载数据
+            const dataPath = urlParams.get('data');
+            if (dataPath) {
+                $('#jsonFilePath').val(dataPath);
+                loadDataFromPath(dataPath);
+            }
+        });
+        
+        // 从后台获取点位列表
+        function loadPointList(apiIp) {
+            // 发送请求到后台API获取点位列表
+            const apiUrl = `http://${apiIp}:8003/taicang/hardware/device/check-point/find/point/detail`;
+            
+            // 请求参数
+            let params = {
+                "filterPropertyMap": [],
+                "pageIndex": 0,
+                "pageSize": 1000
+            };
+            if (tenantId) {
+                params.filterPropertyMap.push({ "code": "tenantId", "operate": "EQ", "value": tenantId });
+            }
+            
+            $.ajax({
+                url: apiUrl,
+                method: 'POST',
+                data: JSON.stringify(params),
+                contentType: 'application/json',
+                dataType: 'json',
+                success: function(res) {
+                    // 假设返回的数据结构包含data字段，其中包含点位列表
+                    // 根据实际API返回结构调整
+                    if(res.rc == 0 && res.ret && Array.isArray(res.ret.items)){
+                        pointList = res.ret.items;
+                        console.log('点位列表长度:', pointList.length);
+                        populatePointSelector(pointList);
+                    }else{
+                        console.log('获取点位数据失败或格式不正确:', res);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('获取点位列表失败:', error);
+                    console.error('响应:', xhr.responseText);
+                    // 错误处理：可以添加默认点位或提示用户
+                }
+            });
+        }
+        
+        // 填充点位选择下拉框
+        function populatePointSelector(points) {
+            const pointSelector = $('#pointSelector');
+            
+            // 清空现有选项（保留"全部点位"选项）
+            pointSelector.empty().append('<option value="all">全部点位</option>');
+            
+            // 填充新的点位选项
+            if (Array.isArray(points)) {
+                console.log('渲染点位数量:', points.length);
+                points.forEach(point => {
+                    // 从点位对象中提取ID和名称
+                    // 根据实际API返回的数据结构调整
+                    const pointId = point.id || point.pointId || point.code || point.pointCode;
+                    const pointName = point.name || point.pointName || point.description || pointId;
+                    
+                    if (pointId) {
+                        const option = $('<option>', {
+                            value: pointId,
+                            text: pointName
+                        });
+                        pointSelector.append(option);
+                    }
+                });
+            } else {
+                console.warn('点位数据不是数组:', points);
+            }
+        }
+        
+        // 初始化事件监听器
+        function initEventListeners() {
+            // 文件加载按钮
+            $('#loadFileBtn').on('click', loadDataFromFile);
+            $('#loadPathBtn').on('click', function() {
+                const path = $('#jsonFilePath').val();
+                if (path) {
+                    loadDataFromPath(path);
+                } else {
+                    alert('请输入JSON文件路径');
+                }
+            });
+            
+            // 示例JSON下载
+            $('#downloadExampleJson').on('click', function(e) {
+                e.preventDefault();
+                downloadExampleJson();
+            });
+            
+            // 导出和打印按钮
+            $('#exportBtn').on('click', exportReport);
+            $('#printBtn').on('click', function() {
+                window.print();
+            });
+            
+            // 间隔筛选
+            $('#applyFiltersBtn').on('click', applyIntervalFilters);
+            
+            // 听筒曲线绘制
+            $('#plotReceiverCurveBtn').on('click', plotReceiverCurve);
+            $('#receiverSelect').on('change', updateReceiverInfo);
+            
+            // 聚类组趋势绘制
+            $('#plotGroupTrendBtn').on('click', plotGroupTrend);
+            $('#avgGroupSelect').on('change', updateGroupInfo);
+            
+            // 重置缩放
+            $('#resetZoomBtn').on('click', function() {
+                if (currentReceiverChart) {
+                    currentReceiverChart.resetZoom();
+                }
+            });
+            
+            // JSON格式化切换
+            $('#prettyJsonToggle').on('change', function() {
+                updateJsonDisplay();
+            });
+            
+            // 文件输入改变事件
+            $('#jsonFileInput').on('change', function(e) {
+                if (e.target.files.length > 0) {
+                    loadDataFromFile();
+                }
+            });
+            
+            // 时间输入框change事件，确保开始时间默认00:00:00，结束时间默认23:59:59
+            $('#startTime').on('change', function() {
+                let value = $(this).val();
+                if (value) {
+                    // 确保时间部分是00:00
+                    // value = value.substring(0, 10) + 'T00:00';
+                    $(this).val(value);
+                }
+            });
+            
+            $('#endTime').on('change', function() {
+                let value = $(this).val();
+                if (value) {
+                    // 确保时间部分是23:59
+                    // value = value.substring(0, 10) + 'T23:59';
+                    $(this).val(value);
+                }
+            });
+            
+            // 查询按钮点击事件
+            $('#queryBtn').on('click', function() {
+                const startTime = $('#startTime').val();
+                const endTime = $('#endTime').val();
+                const pointId = $('#pointSelector').val();
+                const intervalCount = $('#intervalCount').val();
+                const intervalUnit = $('#intervalUnit').val();
+                const maxIntervalCount = $('#maxIntervalCount').val();
+                
+                if (!startTime || !endTime) {
+                    alert('请选择开始时间和结束时间');
+                    return;
+                }
+                
+                loadDataFromBackend(startTime, endTime, pointId, intervalCount, intervalUnit, maxIntervalCount);
+            });
+            
+            // 分析趋势频率按钮点击事件
+            $('#analyzeTrendBtn').on('click', analyzeTrendFrequencies);
+        }
+        
+        // 从后台获取数据
+        function loadDataFromBackend(startTime, endTime, pointId, intervalCount, intervalUnit, maxIntervalCount) {
+            showLoading(true);
+            
+            // 格式化时间，将"T"替换为空格，并确保时间格式正确
+            const formattedStartTime = startTime.replace('T', ' ') + ':00';
+            const formattedEndTime = endTime.replace('T', ' ') + ':00';
+
+            let deviceIds = [];
+            let receiverIds = [];
+            for(let i = 0; i < pointList.length; i++) {
+                if(pointList[i].id == pointId) {
+                    deviceIds.push(pointList[i].detectorId);
+                    receiverIds.push(pointList[i].receiverId);
+                }
+
+            }
+            
+            // 构建请求参数
+            const params = {
+                startTime: formattedStartTime,
+                endTime: formattedEndTime,
+                pointId: pointId,
+                // {
+                "curveType": "both",
+                "deviceIds": deviceIds,
+                // "endTime": "2026-01-19 03:00:00",
+                "includeCurveDetails": true,
+                "includeTrendValues": true,
+                "intervalCount": parseInt(intervalCount) || 3,
+                "intervalUnit": intervalUnit || "DAY",     
+                "maxIntervalCount": parseInt(maxIntervalCount) || 500,
+                "minDataPoints": 0,
+                "normalizeCurves": false,
+                "receiverIds": receiverIds,
+                "showAnomalyIntervals": false,
+                "showTrendChangeRate": false,
+                "smoothCurves": false,
+                // "startTime": "2026-01-17 12:20:00",  
+                "trendThreshold": 0.05
+                // }
+            };
+            
+            // 发送请求到后台API（使用从URL参数获取的IP地址）
+            const apiUrl = `http://${apiIp}:36000/api/sound/long-term-trend/analyze`;
+            $.ajax({
+                url: apiUrl,
+                method: 'POST',
+                data: JSON.stringify(params),
+                contentType: 'application/json',
+                dataType: 'json',
+                success: function(res) {
+                    console.log(res);
+                    analysisData = res;
+                    processData();
+                    showLoading(false);
+                },
+                error: function(xhr, status, error) {
+                    showLoading(false);
+                    alert('从后台获取数据失败: ' + error);
+                    console.error('API请求错误:', xhr);
+                }
+            });
+        }
+        
+        // 从文件加载数据
+        function loadDataFromFile() {
+            const fileInput = document.getElementById('jsonFileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('请选择JSON文件');
+                return;
+            }
+            
+            showLoading(true);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    analysisData = JSON.parse(e.target.result);
+                    processData();
+                    showLoading(false);
+                } catch (error) {
+                    showLoading(false);
+                    alert('解析JSON文件失败: ' + error.message);
+                }
+            };
+            
+            reader.onerror = function() {
+                showLoading(false);
+                alert('读取文件失败');
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        // 从路径加载数据
+        function loadDataFromPath(path) {
+            showLoading(true);
+            
+            fetch(path)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP错误: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    analysisData = data;
+                    processData();
+                    showLoading(false);
+                })
+                .catch(error => {
+                    showLoading(false);
+                    alert('加载数据失败: ' + error.message);
+                });
+        }
+        
+        // 显示/隐藏加载指示器
+        function showLoading(show) {
+            const loadingIndicator = $('#loadingIndicator');
+            const dataOverview = $('#dataOverview');
+            
+            if (show) {
+                loadingIndicator.show();
+                dataOverview.hide();
+            } else {
+                loadingIndicator.hide();
+                if (analysisData) {
+                    dataOverview.show();
+                }
+            }
+        }
+        
+        // 处理加载的数据
+        function processData() {
+            if (!analysisData) return;
+            
+            // 更新概览信息
+            updateOverview();
+            
+            // 更新间隔数据
+            updateIntervalData();
+            
+            // 更新听筒数据
+            updateReceiverData();
+            
+            // 更新聚类组数据
+            updateAvgGroupData();
+            
+            // 更新配置信息
+            updateConfigInfo();
+            
+            // 更新JSON显示
+            updateJsonDisplay();
+            
+            // 初始化图表
+            initCharts();
+        }
+        
+        // 更新概览信息
+        function updateOverview() {
+            // 基本信息
+            $('#deviceCount').text(analysisData.deviceCount || 0);
+            $('#receiverCount').text(analysisData.receiverCount || 0);
+            $('#avgGroupCount').text(analysisData.avgGroupCount || 0);
+            $('#totalDataPoints').text(analysisData.totalDataPoints || 0);
+            
+            // 分析信息
+            $('#analysisId').text(analysisData.analysisId || '-');
+            $('#analysisTimeRange').text(
+                formatDate(analysisData.analysisStartTime) + ' 至 ' + formatDate(analysisData.analysisEndTime));
+            $('#analysisTimeMs').text(
+                analysisData.analysisTimeMs ? (analysisData.analysisTimeMs + ' ms') : '-');
+            $('#intervalCount').text(analysisData.intervalCount || 0);
+            
+            // 汇总统计
+            if (analysisData.summaryStats) {
+                const stats = analysisData.summaryStats;
+                
+                $('#risingIntervals').text(stats.risingIntervals || 0);
+                $('#fallingIntervals').text(stats.fallingIntervals || 0);
+                $('#stableIntervals').text(stats.stableIntervals || 0);
+                $('#anomalyIntervals').text(stats.anomalyIntervals || 0);
+                
+                $('#overallTrendStrengthText').text(
+                    stats.overallTrendStrength ? `(${stats.overallTrendStrength.toFixed(4)})` : '');
+                
+                const trendDirection = stats.overallTrendDirection || '稳定';
+                const trendIndicator = $('#overallTrendDirection');
+                trendIndicator.text(trendDirection);
+                trendIndicator.removeClass('trend-up trend-down trend-stable').addClass(getTrendClass(trendDirection));
+                
+                $('#trendChangeRate').text(
+                    stats.trendChangeRate ? stats.trendChangeRate.toFixed(4) : '-');
+                $('#dataCoverage').text(
+                    stats.dataCoverage ? (stats.dataCoverage * 100).toFixed(1) + '%' : '-');
+                $('#trendChangePattern').text(
+                    stats.trendChangePattern || '-');
+            }
+        }
+        
+        // 更新间隔数据
+        function updateIntervalData() {
+            const intervalSelect = $('#intervalSelect');
+            const intervalTableBody = $('#intervalTableBody');
+            
+            // 清空现有选项和表格
+            intervalSelect.empty().append('<option value="">所有间隔</option>');
+            intervalTableBody.empty();
+            
+            if (!analysisData.intervalTrends || analysisData.intervalTrends.length === 0) {
+                return;
+            }
+            
+            // 填充下拉选项和表格
+            analysisData.intervalTrends.forEach((interval, index) => {
+                // 添加到下拉选项
+                intervalSelect.append(
+                    $('<option>', {
+                        value: index,
+                        text: `间隔 ${interval.intervalIndex}: ${interval.intervalLabel}`
+                    })
+                );
+                
+                // 添加到表格
+                const row = $('<tr>');
+                
+                // 根据异常状态添加类
+                if (interval.anomaly) {
+                    row.addClass('table-warning');
+                }
+                
+                const strengthPercent = Math.min(Math.abs(interval.trendStrength || 0) * 100, 100);
+                
+                row.html(`
+                    <td>${interval.intervalIndex}</td>
+                    <td>${interval.intervalLabel}</td>
+                    <td>${interval.dataPointCount || 0}</td>
+                    <td>
+                        ${formatTrendStrength(interval.trendStrength)}
+                        <div class="trend-strength-bar">
+                            <div class="trend-strength-fill" style="width: ${strengthPercent}%; background-color: ${getTrendColor(interval.trendDirection)}"></div>
+                        </div>
+                    </td>
+                    <td><span class="trend-indicator ${getTrendClass(interval.trendDirection)}">${interval.trendDirection || '稳定'}</span></td>
+                    <td>${interval.trendConfidence ? interval.trendConfidence.toFixed(3) : '-'}</td>
+                    <td>${interval.avgEnergy ? interval.avgEnergy.toFixed(2) : '-'}</td>
+                    <td>
+                        ${interval.anomaly ? '<span class="anomaly-badge"><i class="fas fa-exclamation-triangle me-1"></i>异常</span>' : '<span class="text-success">正常</span>'}
+                        ${interval.exceedThreshold ? '<span class="badge bg-danger ms-1">超阈值</span>' : ''}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary view-interval-detail" data-index="${index}">
+                            <i class="fas fa-eye"></i> 查看
+                        </button>
+                    </td>
+                `);
+                
+                intervalTableBody.append(row);
+            });
+            
+            // 为查看详情按钮添加事件监听器
+            $('.view-interval-detail').on('click', function() {
+                const index = parseInt($(this).data('index'));
+                showIntervalDetail(index);
+            });
+        }
+        
+        // 更新听筒数据
+        function updateReceiverData() {
+            const receiverSelect = $('#receiverSelect');
+            const receiverTableBody = $('#receiverTableBody');
+            
+            // 清空现有选项和表格
+            receiverSelect.empty().append('<option value="">选择听筒...</option>');
+            receiverTableBody.empty();
+            
+            if (!analysisData.receiverCurves || analysisData.receiverCurves.length === 0) {
+                return;
+            }
+            
+            // 填充下拉选项和表格
+            analysisData.receiverCurves.forEach((receiver, index) => {
+                // 添加到下拉选项
+                receiverSelect.append(
+                    $('<option>', {
+                        value: index,
+                        text: `${receiver.receiverName || receiver.receiverId} (${receiver.deviceId})`
+                    })
+                );
+                
+                // 添加到表格
+                const row = $('<tr>');
+                
+                row.html(`
+                    <td>${receiver.receiverId}</td>
+                    <td>${receiver.receiverName || '-'}</td>
+                    <td>${formatTrendStrength(receiver.overallTrendStrength)}</td>
+                    <td><span class="trend-indicator ${getTrendClass(receiver.overallTrendDirection)}">${receiver.overallTrendDirection || '稳定'}</span></td>
+                    <td>${receiver.trendStability ? receiver.trendStability.toFixed(3) : '-'}</td>
+                    <td>${formatTrendStrength(receiver.maxTrendStrength)}</td>
+                    <td>${receiver.trendPattern || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary select-receiver" data-index="${index}">
+                            <i class="fas fa-chart-line"></i> 分析
+                        </button>
+                    </td>
+                `);
+                
+                receiverTableBody.append(row);
+            });
+            
+            // 为分析按钮添加事件监听器
+            $('.select-receiver').on('click', function() {
+                const index = parseInt($(this).data('index'));
+                $('#receiverSelect').val(index);
+                updateReceiverInfo();
+                plotReceiverCurve();
+            });
+        }
+        
+        // 更新聚类组数据
+        function updateAvgGroupData() {
+            const avgGroupSelect = $('#avgGroupSelect');
+            const avgGroupTableBody = $('#avgGroupTableBody');
+            
+            // 清空现有选项和表格
+            avgGroupSelect.empty().append('<option value="">选择聚类组...</option>');
+            avgGroupTableBody.empty();
+            
+            if (!analysisData.avgGroupCurves || analysisData.avgGroupCurves.length === 0) {
+                return;
+            }
+            
+            // 填充下拉选项和表格
+            analysisData.avgGroupCurves.forEach((group, index) => {
+                // 添加到下拉选项
+                avgGroupSelect.append(
+                    $('<option>', {
+                        value: index,
+                        text: `聚类组 ${group.avgGroupId}`
+                    })
+                );
+                
+                // 添加到表格
+                const row = $('<tr>');
+                
+                row.html(`
+                    <td>${group.avgGroupId}</td>
+                    <td>${group.groupCreateTime ? formatDate(group.groupCreateTime) : '-'}</td>
+                    <td>${group.curveCount || 0}</td>
+                    <td>${group.avgEnergy ? group.avgEnergy.toFixed(2) : '-'}</td>
+                    <td>${formatTrendStrength(group.overallTrendStrength)}</td>
+                    <td><span class="trend-indicator ${getTrendClass(group.overallTrendDirection)}">${group.overallTrendDirection || '稳定'}</span></td>
+                    <td>${group.receiverCoverage || 0}</td>
+                    <td>${group.occurrenceIntervals || 0}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary select-group" data-index="${index}">
+                            <i class="fas fa-chart-line"></i> 分析
+                        </button>
+                    </td>
+                `);
+                
+                avgGroupTableBody.append(row);
+            });
+            
+            // 为分析按钮添加事件监听器
+            $('.select-group').on('click', function() {
+                const index = parseInt($(this).data('index'));
+                $('#avgGroupSelect').val(index);
+                updateGroupInfo();
+                plotGroupTrend();
+            });
+        }
+        
+        // 更新配置信息
+        function updateConfigInfo() {
+            const configInfoDiv = $('#configInfo');
+            
+            if (!analysisData.configInfo) {
+                configInfoDiv.html('<p class="text-muted">无配置信息</p>');
+                return;
+            }
+            
+            const config = analysisData.configInfo;
+            configInfoDiv.html(`
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tbody>
+                                <tr>
+                                    <td><strong>开始时间:</strong></td>
+                                    <td>${formatDate(config.startTime)}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>结束时间:</strong></td>
+                                    <td>${formatDate(config.endTime)}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>总天数:</strong></td>
+                                    <td>${config.totalDays || '-'}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>间隔单位:</strong></td>
+                                    <td>${config.intervalUnit || '-'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tbody>
+                                <tr>
+                                    <td><strong>间隔数量:</strong></td>
+                                    <td>${config.intervalCount || '-'}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>每个间隔的天数:</strong></td>
+                                    <td>${config.daysPerInterval || '-'}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>最小数据点要求:</strong></td>
+                                    <td>${config.minDataPoints || '-'}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>趋势阈值:</strong></td>
+                                    <td>${config.trendThreshold || '-'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `);
+        }
+        
+        // 更新JSON显示
+        function updateJsonDisplay() {
+            const jsonDataPre = $('#jsonData');
+            const prettyToggle = $('#prettyJsonToggle').is(':checked');
+            
+            if (!analysisData) {
+                jsonDataPre.text('加载数据后显示JSON内容');
+                return;
+            }
+            
+            if (prettyToggle) {
+                jsonDataPre.text(JSON.stringify(analysisData, null, 2));
+            } else {
+                jsonDataPre.text(JSON.stringify(analysisData));
+            }
+        }
+        
+        // 更新听筒信息
+        function updateReceiverInfo() {
+            const receiverInfoDiv = $('#receiverInfo');
+            const receiverIndex = $('#receiverSelect').val();
+            
+            if (receiverIndex === '') {
+                receiverInfoDiv.html('<p class="text-muted text-center">请选择听筒查看详情</p>');
+                return;
+            }
+            
+            const receiver = analysisData.receiverCurves[receiverIndex];
+            if (!receiver) {
+                receiverInfoDiv.html('<p class="text-danger text-center">听筒数据不存在</p>');
+                return;
+            }
+            
+            receiverInfoDiv.html(`
+                <h6>${receiver.receiverName || receiver.receiverId}</h6>
+                <p><strong>设备ID:</strong> ${receiver.deviceId}</p>
+                <p><strong>总体趋势强度:</strong> ${formatTrendStrength(receiver.overallTrendStrength)}</p>
+                <p><strong>总体趋势方向:</strong> <span class="trend-indicator ${getTrendClass(receiver.overallTrendDirection)}">${receiver.overallTrendDirection || '稳定'}</span></p>
+                <p><strong>趋势稳定性:</strong> ${receiver.trendStability ? receiver.trendStability.toFixed(3) : '-'}</p>
+                <p><strong>最大趋势强度:</strong> ${formatTrendStrength(receiver.maxTrendStrength)} (${receiver.maxTrendInterval || '-'})</p>
+                <p><strong>最小趋势强度:</strong> ${formatTrendStrength(receiver.minTrendStrength)} (${receiver.minTrendInterval || '-'})</p>
+                <p><strong>趋势变化率:</strong> ${receiver.trendChangeRate ? receiver.trendChangeRate.toFixed(4) : '-'}</p>
+                ${receiver.trendPattern ? `<div class="trend-pattern"><strong>趋势模式:</strong> ${receiver.trendPattern}</div>` : ''}
+            `);
+        }
+        
+        // 更新聚类组信息
+        function updateGroupInfo() {
+            const groupInfoDiv = $('#groupInfo');
+            const groupIndex = $('#avgGroupSelect').val();
+            
+            if (groupIndex === '') {
+                groupInfoDiv.html('<p class="text-muted text-center">请选择聚类组查看详情</p>');
+                return;
+            }
+            
+            const group = analysisData.avgGroupCurves[groupIndex];
+            if (!group) {
+                groupInfoDiv.html('<p class="text-danger text-center">聚类组数据不存在</p>');
+                return;
+            }
+            
+            groupInfoDiv.html(`
+                <h6>聚类组 ${group.avgGroupId}</h6>
+                <p><strong>创建时间:</strong> ${formatDate(group.groupCreateTime)}</p>
+                <p><strong>曲线数量:</strong> ${group.curveCount || 0}</p>
+                <p><strong>平均能量:</strong> ${group.avgEnergy ? group.avgEnergy.toFixed(2) : '-'}</p>
+                <p><strong>总体趋势强度:</strong> ${formatTrendStrength(group.overallTrendStrength)}</p>
+                <p><strong>总体趋势方向:</strong> <span class="trend-indicator ${getTrendClass(group.overallTrendDirection)}">${group.overallTrendDirection || '稳定'}</span></p>
+                <p><strong>趋势变化率:</strong> ${group.trendChangeRate ? group.trendChangeRate.toFixed(4) : '-'}</p>
+                <p><strong>趋势稳定性:</strong> ${group.trendStability ? group.trendStability.toFixed(3) : '-'}</p>
+                <p><strong>出现间隔数量:</strong> ${group.occurrenceIntervals || 0}</p>
+                <p><strong>听筒覆盖度:</strong> ${group.receiverCoverage || 0}</p>
+            `);
+        }
+        
+        // 初始化图表
+        function initCharts() {
+            // 整体趋势图表
+            createOverallTrendChart();
+            
+            // 趋势分布图表
+            createTrendDistributionChart();
+            
+            // 间隔趋势图表
+            createIntervalTrendChart();
+        }
+        
+        // 创建整体趋势图表
+        function createOverallTrendChart() {
+            const ctx = document.getElementById('overallTrendChart').getContext('2d');
+            
+            if (currentOverallTrendChart) {
+                currentOverallTrendChart.destroy();
+            }
+            
+            if (!analysisData.intervalTrends || analysisData.intervalTrends.length === 0) {
+                return;
+            }
+            
+            const labels = analysisData.intervalTrends.map(interval => interval.intervalLabel);
+            const strengths = analysisData.intervalTrends.map(interval => interval.trendStrength || 0);
+            const anomalyFlags = analysisData.intervalTrends.map(interval => interval.anomaly || false);
+            
+            // 创建颜色数组，异常点用不同颜色
+            const backgroundColors = strengths.map((strength, index) => {
+                if (anomalyFlags[index]) {
+                    return 'rgba(245, 158, 11, 0.5)'; // 橙色表示异常
+                }
+                return strength >= 0 ? 'rgba(74, 222, 128, 0.5)' : 'rgba(248, 113, 113, 0.5)';
+            });
+            
+            const borderColors = strengths.map((strength, index) => {
+                if (anomalyFlags[index]) {
+                    return 'rgb(245, 158, 11)'; // 橙色边框
+                }
+                return strength >= 0 ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)';
+            });
+            
+            currentOverallTrendChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '趋势强度',
+                        data: strengths,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 1,
+                        borderRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '趋势强度'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '间隔'
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    const interval = analysisData.intervalTrends[index];
+                                    let label = `趋势强度: ${formatTrendStrength(interval.trendStrength)}`;
+                                    
+                                    if (interval.anomaly) {
+                                        label += ` | 异常: ${interval.anomalyReason || '未知原因'}`;
+                                    }
+                                    
+                                    if (interval.exceedThreshold) {
+                                        label += ' | 超阈值';
+                                    }
+                                    
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 创建趋势分布图表
+        function createTrendDistributionChart() {
+            const ctx = document.getElementById('trendDistributionChart').getContext('2d');
+            
+            if (currentTrendDistributionChart) {
+                currentTrendDistributionChart.destroy();
+            }
+            
+            if (!analysisData.summaryStats) {
+                return;
+            }
+            
+            const stats = analysisData.summaryStats;
+            const data = [
+                stats.risingIntervals || 0,
+                stats.fallingIntervals || 0,
+                stats.stableIntervals || 0,
+                stats.anomalyIntervals || 0
+            ];
+            
+            currentTrendDistributionChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['上升趋势', '下降趋势', '稳定趋势', '异常间隔'],
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            'rgba(74, 222, 128, 0.8)',
+                            'rgba(248, 113, 113, 0.8)',
+                            'rgba(148, 163, 184, 0.8)',
+                            'rgba(245, 158, 11, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgb(74, 222, 128)',
+                            'rgb(248, 113, 113)',
+                            'rgb(148, 163, 184)',
+                            'rgb(245, 158, 11)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 创建间隔趋势图表
+        function createIntervalTrendChart() {
+            const ctx = document.getElementById('intervalTrendChart').getContext('2d');
+            
+            if (currentIntervalChart) {
+                currentIntervalChart.destroy();
+            }
+            
+            if (!analysisData.intervalTrends || analysisData.intervalTrends.length === 0) {
+                return;
+            }
+            
+            const labels = analysisData.intervalTrends.map(interval => interval.intervalLabel);
+            const strengths = analysisData.intervalTrends.map(interval => interval.trendStrength || 0);
+            
+            currentIntervalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '趋势强度',
+                        data: strengths,
+                        backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                        borderColor: 'rgba(67, 97, 238, 1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: strengths.map(strength => 
+                            strength >= 0 ? 'rgba(74, 222, 128, 1)' : 'rgba(248, 113, 113, 1)'
+                        ),
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '趋势强度'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '间隔'
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    const interval = analysisData.intervalTrends[index];
+                                    let label = `趋势强度: ${formatTrendStrength(interval.trendStrength)}`;
+                                    
+                                    if (interval.trendDirection) {
+                                        label += ` | 方向: ${interval.trendDirection}`;
+                                    }
+                                    
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 绘制听筒曲线
+        function plotReceiverCurve() {
+            const receiverIndex = $('#receiverSelect').val();
+            const curveType = $('#curveTypeSelect').val();
+            const frequencyRange = $('#frequencyRange').val();
+            
+            if (receiverIndex === '') {
+                alert('请选择听筒');
+                return;
+            }
+            
+            const receiver = analysisData.receiverCurves[receiverIndex];
+            if (!receiver || !receiver.intervalCurves || receiver.intervalCurves.length === 0) {
+                alert('该听筒无曲线数据');
+                return;
+            }
+            
+            // 解析频率范围
+            let minFreq = 0;
+            let maxFreq = Infinity;
+            if (frequencyRange) {
+                const rangeParts = frequencyRange.split('-');
+                if (rangeParts.length === 2) {
+                    minFreq = parseFloat(rangeParts[0]) || 0;
+                    maxFreq = parseFloat(rangeParts[1]) || Infinity;
+                }
+            }
+            
+            const ctx = document.getElementById('receiverCurveChart').getContext('2d');
+            
+            if (currentReceiverChart) {
+                currentReceiverChart.destroy();
+            }
+            
+            // 获取所有间隔的曲线数据
+            const datasets = [];
+            const legendHtml = [];
+            let frequencies = []; // 提升到循环外部
+            
+            // 限制显示的间隔数量，避免图表过于拥挤
+            const maxIntervalsToShow = 10;
+            const intervalStep = Math.max(1, Math.floor(receiver.intervalCurves.length / maxIntervalsToShow));
+            
+            for (let i = 0; i < receiver.intervalCurves.length; i += intervalStep) {
+                const intervalCurve = receiver.intervalCurves[i];
+                
+                // 获取曲线数据点
+                let curvePoints = [];
+                switch (curveType) {
+                    case 'energy':
+                        curvePoints = intervalCurve.curvePoints || [];
+                        break;
+                    case 'normalized':
+                        curvePoints = intervalCurve.normalizedCurvePoints || [];
+                        break;
+                    case 'trend':
+                        curvePoints = intervalCurve.trendCurvePoints || [];
+                        break;
+                }
+                
+                if (curvePoints.length === 0) {
+                    continue;
+                }
+                
+                // 过滤频率范围
+                const filteredPoints = curvePoints.filter(point => {
+                    const freq = point.freqValue || point.freq1 || 0;
+                    return freq >= minFreq && freq <= maxFreq;
+                });
+                
+                if (filteredPoints.length === 0) {
+                    continue;
+                }
+                
+                // 准备数据
+                const intervalFrequencies = filteredPoints.map(point => {
+                    const freq = point.freqValue || point.freq1 || 0;
+                    // 确保频率值不为负数，保留两位小数
+                    const validFreq = Math.max(0, freq);
+                    return parseFloat(validFreq.toFixed(2));
+                });
+                
+                // 只在第一次循环时设置frequencies，确保所有数据集使用相同的频率值
+                if (frequencies.length === 0) {
+                    frequencies = intervalFrequencies;
+                    console.log('频率数组:', frequencies);
+                }
+                
+                let values;
+                
+                switch (curveType) {
+                    case 'energy':
+                        values = filteredPoints.map(point => point.energy || 0);
+                        break;
+                    case 'normalized':
+                        values = filteredPoints.map(point => point.normalizedEnergy || 0);
+                        break;
+                    case 'trend':
+                        values = filteredPoints.map(point => point.trendValue || 0);
+                        break;
+                }
+                
+                // 生成颜色
+                const hue = (i * 30) % 360;
+                const color = `hsl(${hue}, 70%, 50%)`;
+                
+                // 添加数据集
+                datasets.push({
+                    label: `${intervalCurve.intervalLabel} (强度: ${formatTrendStrength(intervalCurve.trendStrength)})`,
+                    data: values,
+                    borderColor: color,
+                    backgroundColor: color.replace(')', ', 0.1)').replace('hsl', 'hsla'),
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 3
+                });
+                
+                // 添加图例项
+                legendHtml.push(`
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: ${color};"></div>
+                        <span>${intervalCurve.intervalLabel}</span>
+                    </div>
+                `);
+            }
+            
+            if (datasets.length === 0) {
+                alert('在指定频率范围内无数据');
+                return;
+            }
+            
+            // 创建图表
+            currentReceiverChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: frequencies,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: curveType === 'energy' ? '能量曲线图' : 
+                                  curveType === 'normalized' ? '归一化能量曲线图' : '趋势曲线图',
+                            align: 'center'
+                        },
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '频率 (Hz)'
+                            },
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    return this.getLabelForValue(value) + 'Hz';
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: curveType === 'energy' ? '能量 (dB)' : 
+                                      curveType === 'normalized' ? '归一化能量' : '趋势值'
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    onClick: function(evt, elements) {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const index = element.index;
+                            const frequency = frequencies[index];
+                            plotStrengthTrendForFrequency(receiver, frequency);
+                        }
+                    }
+                }
+            });
+            
+            // 存储当前接收器数据，供点击事件使用
+            currentReceiver = receiver;
+            
+            // 更新图例
+            $('#curveLegend').html(legendHtml.join(''));
+            
+            // 自动绘制趋势强度图（使用第一个频率点）
+            if (frequencies.length > 0) {
+                const defaultFrequency = frequencies[0];
+                plotStrengthTrendForFrequency(receiver, defaultFrequency);
+            }
+        }
+        
+        // 存储当前接收器数据
+        let currentReceiver = null;
+        let currentStrengthChart = null;
+        let currentTrendStrengthChart = null;
+        
+        // 绘制选定频率的强度变化趋势图
+        function plotStrengthTrendForFrequency(receiver, frequency) {
+            if (!receiver || !receiver.intervalCurves || receiver.intervalCurves.length === 0) {
+                return;
+            }
+            
+            // 准备数据
+            const labels = [];
+            const strengthValues = [];
+            const trendStrengthValues = [];
+            
+            for (const intervalCurve of receiver.intervalCurves) {
+                labels.push(intervalCurve.intervalLabel);
+                
+                // 查找对应频率的点
+                let targetPoint = null;
+                
+                // 检查所有类型的曲线点
+                const allCurvePoints = [
+                    ...(intervalCurve.curvePoints || []),
+                    ...(intervalCurve.normalizedCurvePoints || []),
+                    ...(intervalCurve.trendCurvePoints || [])
+                ];
+                
+                // 找到最接近目标频率的点
+                let minFreqDiff = Infinity;
+                for (const point of allCurvePoints) {
+                    const pointFreq = parseFloat(Math.max(0, point.freqValue || point.freq1 || 0).toFixed(2));
+                    const freqDiff = Math.abs(pointFreq - frequency);
+                    if (freqDiff < minFreqDiff) {
+                        minFreqDiff = freqDiff;
+                        targetPoint = point;
+                    }
+                }
+                
+                // 计算能量值
+                let energyValue = 0;
+                if (targetPoint && targetPoint.energy !== undefined) {
+                    energyValue = targetPoint.energy;
+                } else if (intervalCurve.energy !== undefined) {
+                    // 如果找不到对应点的能量值，使用间隔的能量值
+                    energyValue = intervalCurve.energy;
+                }
+                
+                strengthValues.push(energyValue);
+                
+                // 计算趋势强度值
+                let trendStrengthValue = 0;
+                if (targetPoint && targetPoint.trendStrength !== undefined) {
+                    trendStrengthValue = targetPoint.trendStrength;
+                } else if (intervalCurve.trendStrength !== undefined) {
+                    // 如果找不到对应点的趋势强度值，使用间隔的趋势强度值
+                    trendStrengthValue = intervalCurve.trendStrength;
+                }
+                
+                trendStrengthValues.push(trendStrengthValue);
+            }
+            
+            // 创建能量变化趋势图
+            const ctx = document.getElementById('strengthTrendChart').getContext('2d');
+            
+            if (currentStrengthChart) {
+                currentStrengthChart.destroy();
+            }
+            
+            currentStrengthChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `频率 ${frequency}Hz 的能量变化趋势`,
+                        data: strengthValues,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `频率 ${frequency}Hz 的能量变化趋势`,
+                            align: 'center'
+                        },
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '时间间隔'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '能量值 (dB)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 创建趋势强度变化图
+            const trendCtx = document.getElementById('trendStrengthChart').getContext('2d');
+            
+            if (currentTrendStrengthChart) {
+                currentTrendStrengthChart.destroy();
+            }
+            
+            currentTrendStrengthChart = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        // label: `频率 ${frequency}Hz 的趋势强度变化`,
+                        label: `趋势强度变化图`,
+                        data: trendStrengthValues,
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            // text: `频率 ${frequency}Hz 的趋势强度变化`,
+                              text: `趋势强度变化`,
+                            align: 'center'
+                        },
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    const intervalCurve = receiver.intervalCurves[index];
+                                    let label = `趋势强度: ${context.parsed.y.toFixed(3)}`;
+                                    
+                                    if (intervalCurve && intervalCurve.trendDirection) {
+                                        label += ` | 方向: ${intervalCurve.trendDirection}`;
+                                    }
+                                    
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '时间间隔'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '趋势强度 (保留三位小数)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(3);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 更新信息面板
+            document.getElementById('strengthTrendInfo').innerHTML = 
+                `<p>当前选择频率: <strong>${frequency}Hz</strong></p>`;
+            
+            // 计算趋势强度统计信息
+            const maxTrendStrength = Math.max(...trendStrengthValues);
+            const minTrendStrength = Math.min(...trendStrengthValues);
+            const avgTrendStrength = trendStrengthValues.reduce((sum, val) => sum + val, 0) / trendStrengthValues.length;
+            
+            document.getElementById('trendStrengthInfo').innerHTML = 
+                `<p>趋势强度统计: 最大值: ${maxTrendStrength.toFixed(3)}, 最小值: ${minTrendStrength.toFixed(3)}</p>`;
+        }
+        
+        // 绘制聚类组趋势
+        function plotGroupTrend() {
+            const groupIndex = $('#avgGroupSelect').val();
+            
+            if (groupIndex === '') {
+                alert('请选择聚类组');
+                return;
+            }
+            
+            const group = analysisData.avgGroupCurves[groupIndex];
+            if (!group || !group.intervalTrends || group.intervalTrends.length === 0) {
+                alert('该聚类组无趋势数据');
+                return;
+            }
+            
+            const ctx = document.getElementById('groupTrendChart').getContext('2d');
+            
+            if (currentGroupChart) {
+                currentGroupChart.destroy();
+            }
+            
+            // 准备数据
+            const labels = group.intervalTrends.map(trend => trend.intervalLabel);
+            const strengths = group.intervalTrends.map(trend => trend.trendStrength || 0);
+            const avgEnergies = group.intervalTrends.map(trend => trend.avgEnergy || 0);
+            
+            currentGroupChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '趋势强度',
+                            data: strengths,
+                            borderColor: 'rgba(67, 97, 238, 1)',
+                            backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '平均能量',
+                            data: avgEnergies,
+                            borderColor: 'rgba(245, 158, 11, 1)',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '趋势强度'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: '平均能量'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '间隔'
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    const datasetLabel = context.dataset.label;
+                                    const value = context.parsed.y;
+                                    
+                                    if (datasetLabel === '趋势强度') {
+                                        return `趋势强度: ${formatTrendStrength(value)}`;
+                                    } else {
+                                        return `平均能量: ${value.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 应用间隔筛选
+        function applyIntervalFilters() {
+            const intervalIndex = $('#intervalSelect').val();
+            const trendDirection = $('#trendDirectionFilter').val();
+            const anomalyFilter = $('#anomalyFilter').val();
+            
+            // 筛选表格行
+            const rows = $('#intervalTableBody tr');
+            
+            rows.each(function() {
+                let showRow = true;
+                const row = $(this);
+                
+                // 按间隔筛选
+                if (intervalIndex !== '') {
+                    const rowIntervalIndex = row.find('td:eq(0)').text();
+                    if (rowIntervalIndex !== intervalIndex) {
+                        showRow = false;
+                    }
+                }
+                
+                // 按趋势方向筛选
+                if (trendDirection !== '' && showRow) {
+                    const rowDirection = row.find('.trend-indicator').text();
+                    if (rowDirection !== trendDirection) {
+                        showRow = false;
+                    }
+                }
+                
+                // 按异常状态筛选
+                if (anomalyFilter !== '' && showRow) {
+                    const hasAnomalyBadge = row.find('.anomaly-badge').length > 0;
+                    const isAnomaly = hasAnomalyBadge;
+                    
+                    if ((anomalyFilter === 'true' && !isAnomaly) || 
+                        (anomalyFilter === 'false' && isAnomaly)) {
+                        showRow = false;
+                    }
+                }
+                
+                // 显示/隐藏行
+                row.toggle(showRow);
+            });
+        }
+        
+        // 显示间隔详情
+        function showIntervalDetail(index) {
+            const interval = analysisData.intervalTrends[index];
+            if (!interval) return;
+            
+            const modalContent = $('#intervalDetailContent');
+            
+            // 构建详情HTML
+            let html = `
+                <h5>${interval.intervalLabel}</h5>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>间隔索引</th>
+                                <td>${interval.intervalIndex}</td>
+                            </tr>
+                            <tr>
+                                <th>开始时间</th>
+                                <td>${formatDate(interval.startDate)}</td>
+                            </tr>
+                            <tr>
+                                <th>结束时间</th>
+                                <td>${formatDate(interval.endDate)}</td>
+                            </tr>
+                            <tr>
+                                <th>数据点数量</th>
+                                <td>${interval.dataPointCount || 0}</td>
+                            </tr>
+                            <tr>
+                                <th>平均能量值</th>
+                                <td>${interval.avgEnergy ? interval.avgEnergy.toFixed(2) : '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>能量标准差</th>
+                                <td>${interval.energyStd ? interval.energyStd.toFixed(2) : '-'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>趋势强度</th>
+                                <td>${formatTrendStrength(interval.trendStrength)}</td>
+                            </tr>
+                            <tr>
+                                <th>趋势方向</th>
+                                <td><span class="trend-indicator ${getTrendClass(interval.trendDirection)}">${interval.trendDirection || '稳定'}</span></td>
+                            </tr>
+                            <tr>
+                                <th>趋势置信度</th>
+                                <td>${interval.trendConfidence ? interval.trendConfidence.toFixed(3) : '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>主要聚类组ID</th>
+                                <td>${interval.mainAvgGroupId || '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>主要聚类组强度</th>
+                                <td>${interval.mainAvgGroupStrength ? formatTrendStrength(interval.mainAvgGroupStrength) : '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>状态</th>
+                                <td>
+                                    ${interval.anomaly ? '<span class="anomaly-badge"><i class="fas fa-exclamation-triangle me-1"></i>异常</span>' : '<span class="text-success">正常</span>'}
+                                    ${interval.exceedThreshold ? '<span class="badge bg-danger ms-1">超阈值</span>' : ''}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            // 添加异常原因（如果有）
+            if (interval.anomaly && interval.anomalyReason) {
+                html += `
+                    <div class="alert alert-warning mt-3">
+                        <strong>异常原因:</strong> ${interval.anomalyReason}
+                    </div>
+                `;
+            }
+            
+            // 添加聚类组分布（如果有）
+            if (interval.avgGroupDistributions && interval.avgGroupDistributions.length > 0) {
+                html += `
+                    <h6 class="mt-4">聚类组分布</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>聚类组ID</th>
+                                    <th>数据点数量</th>
+                                    <th>占比</th>
+                                    <th>平均趋势强度</th>
+                                    <th>最大趋势强度</th>
+                                    <th>是否主要</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                interval.avgGroupDistributions.forEach(dist => {
+                    html += `
+                        <tr>
+                            <td>${dist.avgGroupId}</td>
+                            <td>${dist.dataPointCount || 0}</td>
+                            <td>${dist.proportion ? (dist.proportion * 100).toFixed(1) + '%' : '-'}</td>
+                            <td>${formatTrendStrength(dist.avgTrendStrength)}</td>
+                            <td>${formatTrendStrength(dist.maxTrendStrength)}</td>
+                            <td>${dist.isMainGroup ? '<span class="badge bg-primary">是</span>' : '否'}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+            
+            modalContent.html(html);
+            
+            // 显示模态框
+            const modal = new bootstrap.Modal(document.getElementById('intervalDetailModal'));
+            modal.show();
+        }
+        
+        // 导出报告
+        function exportReport() {
+            if (!analysisData) {
+                alert('没有数据可导出');
+                return;
+            }
+            
+            // 创建报告内容
+            const report = {
+                exportTime: new Date().toISOString(),
+                data: analysisData,
+                summary: {
+                    deviceCount: analysisData.deviceCount,
+                    receiverCount: analysisData.receiverCount,
+                    totalDataPoints: analysisData.totalDataPoints,
+                    intervalCount: analysisData.intervalCount
+                }
+            };
+            
+            // 创建JSON文件
+            const dataStr = JSON.stringify(report, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            // 创建下载链接
+            const downloadLink = document.createElement('a');
+            downloadLink.download = `趋势分析报告_${analysisData.analysisId || Date.now()}.json`;
+            downloadLink.href = window.URL.createObjectURL(dataBlob);
+            downloadLink.style.display = 'none';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+        
+        // 下载示例JSON
+        function downloadExampleJson() {
+            const exampleData = {
+                "analysisId": "TREND_ANALYSIS_20231015_001",
+                "analysisStartTime": "2023-10-01T00:00:00Z",
+                "analysisEndTime": "2023-10-15T23:59:59Z",
+                "analysisTimeMs": 1250,
+                "deviceCount": 5,
+                "receiverCount": 12,
+                "avgGroupCount": 3,
+                "totalDataPoints": 8560,
+                "intervalUnit": "天",
+                "intervalCount": 15,
+                "actualIntervalCount": 14,
+                "daysPerInterval": 1.0,
+                "intervalTrends": [
+                    {
+                        "intervalIndex": 1,
+                        "intervalLabel": "2023-10-01",
+                        "startDate": "2023-10-01T00:00:00Z",
+                        "endDate": "2023-10-01T23:59:59Z",
+                        "dataPointCount": 520,
+                        "trendStrength": 0.1256,
+                        "trendDirection": "上升",
+                        "trendConfidence": 0.85,
+                        "mainAvgGroupId": "GROUP_001",
+                        "mainAvgGroupStrength": 0.1423,
+                        "avgEnergy": 65.8,
+                        "energyStd": 12.3,
+                        "exceedThreshold": false,
+                        "anomaly": false
+                    },
+                    {
+                        "intervalIndex": 2,
+                        "intervalLabel": "2023-10-02",
+                        "startDate": "2023-10-02T00:00:00Z",
+                        "endDate": "2023-10-02T23:59:59Z",
+                        "dataPointCount": 580,
+                        "trendStrength": 0.2345,
+                        "trendDirection": "上升",
+                        "trendConfidence": 0.92,
+                        "mainAvgGroupId": "GROUP_001",
+                        "mainAvgGroupStrength": 0.2567,
+                        "avgEnergy": 68.2,
+                        "energyStd": 11.8,
+                        "exceedThreshold": true,
+                        "anomaly": false
+                    },
+                    {
+                        "intervalIndex": 3,
+                        "intervalLabel": "2023-10-03",
+                        "startDate": "2023-10-03T00:00:00Z",
+                        "endDate": "2023-10-03T23:59:59Z",
+                        "dataPointCount": 450,
+                        "trendStrength": -0.0876,
+                        "trendDirection": "下降",
+                        "trendConfidence": 0.72,
+                        "mainAvgGroupId": "GROUP_002",
+                        "mainAvgGroupStrength": -0.0954,
+                        "avgEnergy": 62.5,
+                        "energyStd": 15.2,
+                        "exceedThreshold": false,
+                        "anomaly": true,
+                        "anomalyReason": "数据点数量较少"
+                    }
+                ],
+                "receiverCurves": [
+                    {
+                        "deviceId": "DEVICE_001",
+                        "receiverId": "RECEIVER_001",
+                        "receiverName": "听筒1",
+                        "intervalCurves": [
+                            {
+                                "intervalIndex": 1,
+                                "intervalLabel": "2023-10-01",
+                                "trendStrength": 0.1234,
+                                "trendDirection": "上升",
+                                "curvePoints": [
+                                    {
+                                        "freqIndex": 1,
+                                        "freqValue": 50.0,
+                                        "energy": 65.2,
+                                        "normalizedEnergy": 0.65
+                                    },
+                                    {
+                                        "freqIndex": 2,
+                                        "freqValue": 100.0,
+                                        "energy": 68.5,
+                                        "normalizedEnergy": 0.72
+                                    }
+                                ],
+                                "normalizedCurvePoints": [
+                                    {
+                                        "freqIndex": 1,
+                                        "freqValue": 50.0,
+                                        "normalizedEnergy": 0.65
+                                    }
+                                ],
+                                "dataPointCount": 45,
+                                "mainAvgGroupId": "GROUP_001",
+                                "anomaly": false
+                            }
+                        ],
+                        "overallTrendStrength": 0.2345,
+                        "overallTrendDirection": "上升",
+                        "trendStability": 0.85,
+                        "maxTrendStrength": 0.3456,
+                        "maxTrendInterval": "2023-10-02",
+                        "minTrendStrength": 0.0567,
+                        "minTrendInterval": "2023-10-05",
+                        "trendChangeRate": 0.045,
+                        "trendPattern": "先上升后稳定"
+                    }
+                ],
+                "avgGroupCurves": [
+                    {
+                        "avgGroupId": "GROUP_001",
+                        "groupCreateTime": "2023-09-15T10:30:00Z",
+                        "curveCount": 120,
+                        "avgEnergy": 67.8,
+                        "intervalTrends": [
+                            {
+                                "intervalIndex": 1,
+                                "intervalLabel": "2023-10-01",
+                                "trendStrength": 0.1423,
+                                "trendDirection": "上升",
+                                "avgEnergy": 66.5,
+                                "dataPointCount": 85,
+                                "isMainGroup": true
+                            }
+                        ],
+                        "overallTrendStrength": 0.2567,
+                        "overallTrendDirection": "上升",
+                        "trendChangeRate": 0.032,
+                        "trendStability": 0.88,
+                        "occurrenceIntervals": 12,
+                        "receiverCoverage": 8
+                    }
+                ],
+                "summaryStats": {
+                    "avgTrendStrength": 0.1234,
+                    "trendStrengthStd": 0.0456,
+                    "risingIntervals": 8,
+                    "fallingIntervals": 3,
+                    "stableIntervals": 2,
+                    "anomalyIntervals": 1,
+                    "mostSignificantInterval": "2023-10-02",
+                    "mostSignificantAvgGroup": "GROUP_001",
+                    "mostSignificantReceiver": "RECEIVER_001",
+                    "overallTrendDirection": "上升",
+                    "overallTrendStrength": 0.1567,
+                    "trendChangePattern": "整体呈上升趋势，中间有波动",
+                    "trendChangeRate": 0.0234,
+                    "avgDataPointDensity": 45.6,
+                    "dataCoverage": 0.93
+                },
+                "configInfo": {
+                    "startTime": "2023-10-01T00:00:00Z",
+                    "endTime": "2023-10-15T23:59:59Z",
+                    "totalDays": 15,
+                    "intervalUnit": "天",
+                    "intervalCount": 15,
+                    "daysPerInterval": 1.0,
+                    "minDataPoints": 50,
+                    "trendThreshold": 0.2,
+                    "selectedDeviceCount": 5,
+                    "selectedReceiverCount": 12,
+                    "hasAvgGroupFilter": false
+                }
+            };
+            
+            const dataStr = JSON.stringify(exampleData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const downloadLink = document.createElement('a');
+            downloadLink.download = 'example_analysis_result.json';
+            downloadLink.href = window.URL.createObjectURL(dataBlob);
+            downloadLink.style.display = 'none';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+        
+        // 分析趋势频率
+        function analyzeTrendFrequencies() {
+            if (!currentReceiver || !currentReceiver.intervalCurves || currentReceiver.intervalCurves.length === 0) {
+                alert('请先绘制曲线');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                // 准备数据结构
+                const frequencyTrends = {};
+                
+                // 遍历所有时间间隔的曲线数据
+                currentReceiver.intervalCurves.forEach((intervalCurve, intervalIndex) => {
+                    if (intervalCurve.curvePoints && intervalCurve.curvePoints.length > 0) {
+                        intervalCurve.curvePoints.forEach(point => {
+                            const freq = parseFloat(point.freqValue || point.freq1 || 0).toFixed(2);
+                            const energy = point.energy || 0;
+                            
+                            if (!frequencyTrends[freq]) {
+                                frequencyTrends[freq] = [];
+                            }
+                            
+                            // 存储每个间隔的能量值
+                            frequencyTrends[freq][intervalIndex] = energy;
+                        });
+                    }
+                });
+                
+                // 分析趋势
+                const increasingFrequencies = [];
+                const decreasingFrequencies = [];
+                
+                Object.keys(frequencyTrends).forEach(freq => {
+                    const energies = frequencyTrends[freq].filter(e => e !== undefined);
+                    
+                    if (energies.length < 2) return; // 至少需要两个数据点
+                    
+                    let isIncreasing = true;
+                    let isDecreasing = true;
+                    
+                    for (let i = 1; i < energies.length; i++) {
+                        if (energies[i] <= energies[i-1]) {
+                            isIncreasing = false;
+                        }
+                        if (energies[i] >= energies[i-1]) {
+                            isDecreasing = false;
+                        }
+                    }
+                    
+                    if (isIncreasing) {
+                        increasingFrequencies.push({
+                            frequency: freq,
+                            initialEnergy: energies[0],
+                            finalEnergy: energies[energies.length - 1],
+                            change: energies[energies.length - 1] - energies[0]
+                        });
+                    } else if (isDecreasing) {
+                        decreasingFrequencies.push({
+                            frequency: freq,
+                            initialEnergy: energies[0],
+                            finalEnergy: energies[energies.length - 1],
+                            change: energies[energies.length - 1] - energies[0]
+                        });
+                    }
+                });
+                
+                // 按变化幅度排序
+                increasingFrequencies.sort((a, b) => b.change - a.change);
+                decreasingFrequencies.sort((a, b) => a.change - b.change);
+                
+                // 检查是否有趋势数据
+                if (increasingFrequencies.length === 0 && decreasingFrequencies.length === 0) {
+                    alert('无对应数据');
+                    return;
+                }
+                
+                // 填充表格
+                const increasingTable = $('#increasingFrequenciesTable');
+                const decreasingTable = $('#decreasingFrequenciesTable');
+                
+                increasingTable.empty();
+                decreasingTable.empty();
+                
+                if (increasingFrequencies.length > 0) {
+                    increasingFrequencies.forEach(item => {
+                        increasingTable.append(`
+                            <tr>
+                                <td>${item.frequency}</td>
+                                <td>${item.initialEnergy.toFixed(2)}</td>
+                                <td>${item.finalEnergy.toFixed(2)}</td>
+                                <td class="text-success">+${item.change.toFixed(2)}</td>
+                            </tr>
+                        `);
+                    });
+                } else {
+                    increasingTable.append('<tr><td colspan="4" class="text-center text-muted">无连续升高的频率点</td></tr>');
+                }
+                
+                if (decreasingFrequencies.length > 0) {
+                    decreasingFrequencies.forEach(item => {
+                        decreasingTable.append(`
+                            <tr>
+                                <td>${item.frequency}</td>
+                                <td>${item.initialEnergy.toFixed(2)}</td>
+                                <td>${item.finalEnergy.toFixed(2)}</td>
+                                <td class="text-danger">${item.change.toFixed(2)}</td>
+                            </tr>
+                        `);
+                    });
+                } else {
+                    decreasingTable.append('<tr><td colspan="4" class="text-center text-muted">无连续降低的频率点</td></tr>');
+                }
+                
+                // 显示结果
+                $('#trendFrequencyResult').show();
+            } catch (error) {
+                console.error('分析趋势频率时出错:', error);
+                alert('分析过程中出错，请检查控制台');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // 工具函数
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleString('zh-CN');
+            } catch (e) {
+                return dateString;
+            }
+        }
+        
+        function formatTrendStrength(strength) {
+            if (strength === null || strength === undefined) return '-';
+            return strength.toFixed(4);
+        }
+        
+        function getTrendClass(trendDirection) {
+            switch(trendDirection) {
+                case '上升': return 'trend-up';
+                case '下降': return 'trend-down';
+                default: return 'trend-stable';
+            }
+        }
+        
+        function getTrendColor(trendDirection) {
+            switch(trendDirection) {
+                case '上升': return '#4ade80';
+                case '下降': return '#f87171';
+                default: return '#94a3b8';
+            }
+        }
+        
+        function getYAxisLabel(curveType) {
+            switch(curveType) {
+                case 'energy': return '能量值 (dB)';
+                case 'normalized': return '归一化能量值 (0-1)';
+                case 'trend': return '趋势值';
+                default: return '值';
+            }
+        }
+    </script>
+</body>
+</html>

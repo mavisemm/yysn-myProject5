@@ -481,6 +481,27 @@ const getSelectedDeviceWorkshopId = (): string | null => {
 
 }
 
+const getFactoryIdByWorkshopId = (workshopId: string): string | null => {
+  for (const factory of deviceTreeData.value) {
+    const workshop = factory.children?.find(child => child.type === 'workshop' && child.id === workshopId)
+    if (workshop) return factory.id
+  }
+  return null
+}
+
+const collectAllFactoryAndWorkshopKeys = (data: DeviceNode[]): string[] => {
+  const keys: string[] = []
+  for (const factory of data) {
+    keys.push(factory.id)
+    factory.children?.forEach(child => {
+      if (child.type === 'workshop') {
+        keys.push(child.id)
+      }
+    })
+  }
+  return keys
+}
+
 
 // ==================== 搜索相关方法 ====================
 const handleWorkshopFocus = () => {
@@ -549,12 +570,15 @@ const selectDevice = (device: Device) => {
 }
 
 const updateExpandedKeys = () => {
-  const keys: string[] = ['factory-1']
+  const keys: string[] = []
 
   const workshopSearch = debouncedWorkshopSearch.value
   const deviceSearch = debouncedDeviceSearch.value
 
   if (!workshopSearch && !deviceSearch && !selectedWorkshop.value && !selectedDevice.value) {
+    // 默认：只展开第一个厂区 + 第一个车间（若存在）
+    const firstFactoryId = displayTreeData.value?.[0]?.id || 'factory-1'
+    keys.push(firstFactoryId)
     const firstWorkshopId = getFirstWorkshopId()
     if (firstWorkshopId) {
       keys.push(firstWorkshopId)
@@ -562,13 +586,10 @@ const updateExpandedKeys = () => {
   }
 
   else if (deviceSearch && !selectedDevice.value) {
-    if (displayTreeData.value[0]?.children) {
-      displayTreeData.value[0].children.forEach((workshop: DeviceNode) => {
-        if (!keys.includes(workshop.id)) {
-          keys.push(workshop.id)
-        }
-      })
-    }
+    // 关键字搜索设备时：展开所有包含匹配设备的车间（以及其所属工厂）
+    collectAllFactoryAndWorkshopKeys(displayTreeData.value).forEach(k => {
+      if (!keys.includes(k)) keys.push(k)
+    })
   }
 
   else if (selectedDevice.value) {
@@ -576,16 +597,17 @@ const updateExpandedKeys = () => {
     if (selectedDeviceWorkshopId && !keys.includes(selectedDeviceWorkshopId)) {
       keys.push(selectedDeviceWorkshopId)
     }
+    const factoryId = selectedDeviceWorkshopId ? getFactoryIdByWorkshopId(selectedDeviceWorkshopId) : null
+    if (factoryId && !keys.includes(factoryId)) {
+      keys.push(factoryId)
+    }
   }
 
   else if (workshopSearch || selectedWorkshop.value) {
-    if (displayTreeData.value[0]?.children) {
-      displayTreeData.value[0].children.forEach((workshop: DeviceNode) => {
-        if (!keys.includes(workshop.id)) {
-          keys.push(workshop.id)
-        }
-      })
-    }
+    // 搜索/选择车间时：展开所有匹配车间（以及其所属工厂）
+    collectAllFactoryAndWorkshopKeys(displayTreeData.value).forEach(k => {
+      if (!keys.includes(k)) keys.push(k)
+    })
   }
 
   deviceTreeStore.setExpandedKeys(keys)
@@ -665,7 +687,21 @@ watch(
 
 watch(
   () => debouncedDeviceSearch.value,
-  () => {
+  (newVal) => {
+    // 当用户手动输入搜索词时，不应继续被上一次“下拉选择的设备”锁定过滤
+    // 否则会出现：下拉能搜到，但设备树仍按旧 selectedDevice 过滤导致不同步/为空
+    const keyword = (newVal ?? '').trim()
+    if (!keyword) {
+      selectedDevice.value = null
+    } else if (selectedDevice.value) {
+      const lower = keyword.toLowerCase()
+      const nameLower = (selectedDevice.value.name ?? '').toLowerCase()
+      const customerIdLower = (selectedDevice.value.customerDeviceId ?? '').toLowerCase()
+      if (lower !== nameLower && (!customerIdLower || lower !== customerIdLower)) {
+        selectedDevice.value = null
+      }
+    }
+
     nextTick(() => {
       updateExpandedKeys()
     })
@@ -743,7 +779,13 @@ onUnmounted(() => {
             // 修改输入框内部文字颜色，使其在浅色背景上更易读
             .el-input__inner {
               background: transparent;
+              font-size: 12px;
+              line-height: 22px;
             }
+          }
+
+          :deep(.el-input__prefix) {
+            font-size: 12px;
           }
         }
 
@@ -765,6 +807,8 @@ onUnmounted(() => {
             cursor: pointer;
             transition: background-color 0.2s;
             /* 响应式字体大小 */
+            font-size: 12px;
+            line-height: 1.25;
             display: flex;
             align-items: center;
             color: #606266;
@@ -800,6 +844,8 @@ onUnmounted(() => {
             padding: 12px;
             text-align: center;
             /* 响应式字体大小 */
+            font-size: 12px;
+            line-height: 1.25;
             color: white;
           }
         }

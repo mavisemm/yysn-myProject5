@@ -24,7 +24,12 @@
             <div class="chart-item">
                 <div class="chart-header">
                     <span class="chart-title">温度随时间变化</span>
-                    <span class="chart-unit special-font-color">（单位：%）</span>
+                    <div class="chart-header-right">
+                        <span class="realtime-temp-inline">
+                            实时温度：<span class="special-font-color">{{ realtimeTempValueText }}</span>
+                        </span>
+                        <span class="chart-unit special-font-color">（单位：℃）</span>
+                    </div>
                 </div>
                 <div class="chart">
                     <CommonEcharts
@@ -40,10 +45,10 @@
             </div>
 
             <!-- 响度图表 -->
-            <div class="chart-item">
+            <div class="chart-item chart-item--wide">
                 <div class="chart-header">
                     <span class="chart-title">响度随时间变化</span>
-                    <span class="chart-unit special-font-color">（单位：%）</span>
+                    <span class="chart-unit special-font-color">（单位：dB）</span>
                 </div>
                 <div class="chart">
                     <CommonEcharts
@@ -55,20 +60,6 @@
                         :enable-linkage-zoom="true"
                         :enable-wheel-zoom="true"
                     />
-                </div>
-            </div>
-
-
-
-            <!-- 右下角面板：实时温度 -->
-            <div class="analysis-item realtime-temp-item">
-                <div class="module-header">
-                    <h3 class="module-title">实时温度</h3>
-                </div>
-                <div class="module-content realtime-temp-content">
-                    <div class="realtime-temp-value special-font-color">
-                        {{ realtimeTempValueText }}
-                    </div>
                 </div>
             </div>
         </div>
@@ -327,11 +318,7 @@ const soundOption = computed<EChartsOption>(() => {
     } as EChartsOption
 })
 
-// 趋势分析已迁移到独立组件 TrendAnalysisPanel.vue
-
-//（旧趋势分析函数已删除，统一由 TrendAnalysisPanel.vue 维护）
-
-//（趋势分析弹窗/图表逻辑已迁移到 TrendAnalysisPanel.vue）
+//（趋势分析相关功能已移除）
 
  
 // 根据数据范围计算 y 轴 min/max（支持负数，取整到合适刻度）
@@ -483,7 +470,7 @@ const loadSoundData = async (_pointId: string) => {
     }
 }
 
-// 趋势分析已迁移到独立组件 TrendAnalysisPanel.vue
+//（趋势分析相关功能已移除）
 
 // 创建一个ref来引用charts-grid容器
 const chartGridRef = ref<HTMLDivElement>()
@@ -597,6 +584,7 @@ onMounted(() => {
                 margin-bottom: 10px;
                 flex: 0 0 auto;
                 /* 固定头部高度 */
+                gap: 10px;
 
                 .chart-title {
                     font-size: 1rem;
@@ -608,6 +596,22 @@ onMounted(() => {
                     font-size: 0.9rem;
                     color: #fff;
                 }
+
+                .chart-header-right {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: flex-end;
+                    gap: 10px;
+                    min-width: 0;
+                    flex: 0 0 auto;
+                    white-space: nowrap;
+                }
+
+                .realtime-temp-inline {
+                    font-size: 0.9rem;
+                    font-weight: 500;
+                    color: #fff;
+                }
             }
 
             .chart {
@@ -615,6 +619,10 @@ onMounted(() => {
                 min-height: 0;
                 min-width: 0;
             }
+        }
+
+        .chart-item--wide {
+            grid-column: 1 / -1;
         }
 
         .analysis-item {
@@ -744,50 +752,20 @@ onMounted(() => {
 
         }
 
-        /* 实时温度：内容区水平/垂直居中（放在 analysis-item 同级，避免被表单样式嵌套吞掉） */
-        .analysis-item.realtime-temp-item {
-            .module-content.realtime-temp-content {
-                flex: 1;
-                min-height: 0;
-                width: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                text-align: center;
-                overflow: hidden;
-                border-radius: 8px;
-                background: rgba(10, 22, 40, 0.35);
-                box-shadow:
-                    inset 0 0 0 1px rgba(120, 220, 255, 0.14),
-                    0 8px 24px rgba(0, 0, 0, 0.18);
-            }
-
-            .realtime-temp-value {
-                width: 100%;
-                font-size: clamp(2.2rem, 4.2vw, 3.6rem);
-                font-weight: 800;
-                line-height: 1.05;
-                text-align: center;
-                letter-spacing: 0.5px;
-                color: rgba(110, 225, 255, 0.98);
-                text-shadow:
-                    0 2px 10px rgba(0, 0, 0, 0.45),
-                    0 0 18px rgba(80, 200, 255, 0.38);
-            }
-        }
     }
 }
 
-/* 灰色主题下（PageLayout 的 page-layout--gray），趋势分析表单 label 需要黑字 */
+/*（趋势分析相关样式已移除）*/
+/*
 :global(.page-layout--gray) .charts-analysis-module {
     .analysis-form {
         :deep(.el-form-item__label) {
             color: #000 !important;
         }
     }
-}
+}*/
 
-/* 趋势分析弹窗（teleported 到 body，需全局样式） */
+/*（趋势分析弹窗相关样式已移除）*/
 :global(.trend-chart-dialog) {
     width: 70vw !important;
     height: 95vh !important;

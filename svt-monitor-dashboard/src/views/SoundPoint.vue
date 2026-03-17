@@ -4,7 +4,7 @@
     <!-- 曲线图表区域：展示能量曲线和密度曲线 -->
     <SoundPointCharts
       :deviation-list="deviationList"
-      :point-list="devicePointList"
+      :point-list="[]"
       :selected-point-id="pointIdFromQuery"
       @chart-init="handleChartInit"
       ref="chartsComponentRef"
@@ -138,40 +138,6 @@ const syncSelectedColors = () => {
     if (!item.visible) item.color = undefined;
   });
 };
-
-/** 当前设备的点位列表（用于趋势分析弹窗的点位下拉） */
-const devicePointList = computed(() => {
-  const deviceId = deviceIdFromQuery.value;
-  if (!deviceId) return [];
-  const nodes = deviceTreeStore.deviceTreeData;
-  const points: { id: string; name: string; lastAlarmTime: string; alarmType: string; alarmValue: string; hasAlarm: boolean }[] = [];
-
-  const walk = (list: any[]) => {
-    for (const n of list) {
-      if (!n) continue;
-      if (n.type === 'device' && n.id === deviceId) {
-        const children = Array.isArray(n.children) ? n.children : [];
-        for (const c of children) {
-          if (c?.type === 'point') {
-            points.push({
-              id: String(c.id ?? c.pointId ?? ''),
-              name: String(c.name ?? c.pointName ?? '未知点位'),
-              lastAlarmTime: String(c.warningTime ?? ''),
-              alarmType: String(c.warningType ?? ''),
-              alarmValue: c.warningValue != null ? String(c.warningValue) : '',
-              hasAlarm: Boolean(c.hasAlarm)
-            });
-          }
-        }
-        return;
-      }
-      if (Array.isArray(n.children) && n.children.length) walk(n.children);
-    }
-  };
-
-  walk(nodes as any[]);
-  return points.filter(p => p.id);
-});
 
 /** 从点位详情 store 填充右侧详情（生产设备=productName，子部件=subProductName，检测设备=detectorName，听筒=receiverName，点位名称=pointName） */
 function applyStorePointInfo() {
@@ -448,7 +414,7 @@ const viewDetails = async (row: any) => {
         modalEnergyChartInstance.value = echarts.init(modalEnergyChartRef.value);
         const energyLegend = avgdbArr.length > 0 ? ['能量', '标准能量线'] : ['能量'];
         modalEnergyChartInstance.value.setOption({
-          tooltip: { trigger: 'axis', className: 'echarts-tooltip' },
+          tooltip: { trigger: 'axis', className: 'echarts-tooltip', appendToBody: true, extraCssText: 'z-index: 99999 !important;' },
           grid: baseGrid,
           legend: { show: true, top: 10, data: energyLegend },
           xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],
@@ -487,7 +453,7 @@ const viewDetails = async (row: any) => {
         modalDensityChartInstance.value = echarts.init(modalDensityChartRef.value);
         const densityLegend = avgdensityArr.length > 0 ? ['密度', '标准密度线'] : ['密度'];
         modalDensityChartInstance.value.setOption({
-          tooltip: { trigger: 'axis', className: 'echarts-tooltip' },
+          tooltip: { trigger: 'axis', className: 'echarts-tooltip', appendToBody: true, extraCssText: 'z-index: 99999 !important;' },
           grid: baseGrid,
           legend: { show: true, top: 10, data: densityLegend },
           xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],

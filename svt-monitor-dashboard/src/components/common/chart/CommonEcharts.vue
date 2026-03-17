@@ -442,16 +442,21 @@ const applyOption = () => {
         opt.tooltip = {
             ...rawTooltip,
             className: (rawTooltip as Record<string, unknown>).className ?? 'echarts-tooltip',
+            // 关键：避免被业务容器 overflow/z-index 压住
+            appendToBody: (rawTooltip as Record<string, unknown>).appendToBody ?? true,
             backgroundColor: (rawTooltip as Record<string, unknown>).backgroundColor ?? 'rgba(50, 50, 50, 0.9)',
             borderColor: (rawTooltip as Record<string, unknown>).borderColor ?? 'rgba(50, 50, 50, 0.9)',
-            textStyle: (rawTooltip as Record<string, unknown>).textStyle ?? { color: '#fff' }
+            textStyle: (rawTooltip as Record<string, unknown>).textStyle ?? { color: '#fff' },
+            extraCssText: (rawTooltip as Record<string, unknown>).extraCssText ?? 'z-index: 99999 !important;'
         };
     } else if (!opt.tooltip) {
         opt.tooltip = {
             className: 'echarts-tooltip',
+            appendToBody: true,
             backgroundColor: 'rgba(50, 50, 50, 0.9)',
             borderColor: 'rgba(50, 50, 50, 0.9)',
-            textStyle: { color: '#fff' }
+            textStyle: { color: '#fff' },
+            extraCssText: 'z-index: 99999 !important;'
         };
     }
 

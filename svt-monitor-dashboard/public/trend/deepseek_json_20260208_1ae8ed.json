@@ -1,0 +1,377 @@
+{
+  "analysisId": "TREND_ANALYSIS_20231015_001",
+  "analysisStartTime": "2023-10-01T00:00:00Z",
+  "analysisEndTime": "2023-10-15T23:59:59Z",
+  "analysisTimeMs": 1250,
+  "deviceCount": 5,
+  "receiverCount": 12,
+  "avgGroupCount": 3,
+  "totalDataPoints": 8560,
+  "intervalUnit": "天",
+  "intervalCount": 15,
+  "actualIntervalCount": 14,
+  "daysPerInterval": 1.0,
+  "intervalTrends": [
+    {
+      "intervalIndex": 1,
+      "intervalLabel": "2023-10-01",
+      "startDate": "2023-10-01T00:00:00Z",
+      "endDate": "2023-10-01T23:59:59Z",
+      "dataPointCount": 520,
+      "trendStrength": 0.1256,
+      "trendDirection": "上升",
+      "trendConfidence": 0.85,
+      "mainAvgGroupId": "GROUP_001",
+      "mainAvgGroupStrength": 0.1423,
+      "avgEnergy": 65.8,
+      "energyStd": 12.3,
+      "exceedThreshold": false,
+      "anomaly": false
+    },
+    {
+      "intervalIndex": 2,
+      "intervalLabel": "2023-10-02",
+      "startDate": "2023-10-02T00:00:00Z",
+      "endDate": "2023-10-02T23:59:59Z",
+      "dataPointCount": 580,
+      "trendStrength": 0.2345,
+      "trendDirection": "上升",
+      "trendConfidence": 0.92,
+      "mainAvgGroupId": "GROUP_001",
+      "mainAvgGroupStrength": 0.2567,
+      "avgEnergy": 68.2,
+      "energyStd": 11.8,
+      "exceedThreshold": true,
+      "anomaly": false
+    },
+    {
+      "intervalIndex": 3,
+      "intervalLabel": "2023-10-03",
+      "startDate": "2023-10-03T00:00:00Z",
+      "endDate": "2023-10-03T23:59:59Z",
+      "dataPointCount": 450,
+      "trendStrength": -0.0876,
+      "trendDirection": "下降",
+      "trendConfidence": 0.72,
+      "mainAvgGroupId": "GROUP_002",
+      "mainAvgGroupStrength": -0.0954,
+      "avgEnergy": 62.5,
+      "energyStd": 15.2,
+      "exceedThreshold": false,
+      "anomaly": true,
+      "anomalyReason": "数据点数量较少"
+    },
+    {
+      "intervalIndex": 4,
+      "intervalLabel": "2023-10-04",
+      "startDate": "2023-10-04T00:00:00Z",
+      "endDate": "2023-10-04T23:59:59Z",
+      "dataPointCount": 620,
+      "trendStrength": 0.1879,
+      "trendDirection": "上升",
+      "trendConfidence": 0.88,
+      "mainAvgGroupId": "GROUP_001",
+      "mainAvgGroupStrength": 0.2015,
+      "avgEnergy": 70.1,
+      "energyStd": 10.5,
+      "exceedThreshold": true,
+      "anomaly": false
+    },
+    {
+      "intervalIndex": 5,
+      "intervalLabel": "2023-10-05",
+      "startDate": "2023-10-05T00:00:00Z",
+      "endDate": "2023-10-05T23:59:59Z",
+      "dataPointCount": 590,
+      "trendStrength": 0.0567,
+      "trendDirection": "稳定",
+      "trendConfidence": 0.45,
+      "mainAvgGroupId": "GROUP_003",
+      "mainAvgGroupStrength": 0.0623,
+      "avgEnergy": 69.8,
+      "energyStd": 9.8,
+      "exceedThreshold": false,
+      "anomaly": false
+    }
+  ],
+  "receiverCurves": [
+    {
+      "deviceId": "DEVICE_001",
+      "receiverId": "RECEIVER_001",
+      "receiverName": "听筒1",
+      "intervalCurves": [
+        {
+          "intervalIndex": 1,
+          "intervalLabel": "2023-10-01",
+          "trendStrength": 0.1234,
+          "trendDirection": "上升",
+          "curvePoints": [
+            {
+              "freqIndex": 1,
+              "freqValue": 50.0,
+              "energy": 65.2,
+              "normalizedEnergy": 0.65
+            },
+            {
+              "freqIndex": 2,
+              "freqValue": 100.0,
+              "energy": 68.5,
+              "normalizedEnergy": 0.72
+            },
+            {
+              "freqIndex": 3,
+              "freqValue": 200.0,
+              "energy": 70.1,
+              "normalizedEnergy": 0.78
+            },
+            {
+              "freqIndex": 4,
+              "freqValue": 500.0,
+              "energy": 72.3,
+              "normalizedEnergy": 0.85
+            },
+            {
+              "freqIndex": 5,
+              "freqValue": 1000.0,
+              "energy": 68.9,
+              "normalizedEnergy": 0.71
+            }
+          ],
+          "normalizedCurvePoints": [
+            {
+              "freqIndex": 1,
+              "freqValue": 50.0,
+              "normalizedEnergy": 0.65
+            },
+            {
+              "freqIndex": 2,
+              "freqValue": 100.0,
+              "normalizedEnergy": 0.72
+            },
+            {
+              "freqIndex": 3,
+              "freqValue": 200.0,
+              "normalizedEnergy": 0.78
+            },
+            {
+              "freqIndex": 4,
+              "freqValue": 500.0,
+              "normalizedEnergy": 0.85
+            },
+            {
+              "freqIndex": 5,
+              "freqValue": 1000.0,
+              "normalizedEnergy": 0.71
+            }
+          ],
+          "dataPointCount": 45,
+          "mainAvgGroupId": "GROUP_001",
+          "anomaly": false
+        },
+        {
+          "intervalIndex": 2,
+          "intervalLabel": "2023-10-02",
+          "trendStrength": 0.2567,
+          "trendDirection": "上升",
+          "curvePoints": [
+            {
+              "freqIndex": 1,
+              "freqValue": 50.0,
+              "energy": 67.8,
+              "normalizedEnergy": 0.68
+            },
+            {
+              "freqIndex": 2,
+              "freqValue": 100.0,
+              "energy": 70.2,
+              "normalizedEnergy": 0.75
+            },
+            {
+              "freqIndex": 3,
+              "freqValue": 200.0,
+              "energy": 72.5,
+              "normalizedEnergy": 0.82
+            },
+            {
+              "freqIndex": 4,
+              "freqValue": 500.0,
+              "energy": 74.8,
+              "normalizedEnergy": 0.89
+            },
+            {
+              "freqIndex": 5,
+              "freqValue": 1000.0,
+              "energy": 70.5,
+              "normalizedEnergy": 0.73
+            }
+          ],
+          "dataPointCount": 52,
+          "mainAvgGroupId": "GROUP_001",
+          "anomaly": false
+        }
+      ],
+      "overallTrendStrength": 0.2345,
+      "overallTrendDirection": "上升",
+      "trendStability": 0.85,
+      "maxTrendStrength": 0.3456,
+      "maxTrendInterval": "2023-10-02",
+      "minTrendStrength": 0.0567,
+      "minTrendInterval": "2023-10-05",
+      "trendChangeRate": 0.045,
+      "trendPattern": "先上升后稳定"
+    },
+    {
+      "deviceId": "DEVICE_002",
+      "receiverId": "RECEIVER_002",
+      "receiverName": "听筒2",
+      "intervalCurves": [
+        {
+          "intervalIndex": 1,
+          "intervalLabel": "2023-10-01",
+          "trendStrength": 0.0987,
+          "trendDirection": "上升",
+          "curvePoints": [
+            {
+              "freqIndex": 1,
+              "freqValue": 50.0,
+              "energy": 62.3,
+              "normalizedEnergy": 0.61
+            },
+            {
+              "freqIndex": 2,
+              "freqValue": 100.0,
+              "energy": 65.8,
+              "normalizedEnergy": 0.68
+            }
+          ],
+          "dataPointCount": 38,
+          "mainAvgGroupId": "GROUP_002",
+          "anomaly": false
+        }
+      ],
+      "overallTrendStrength": 0.1678,
+      "overallTrendDirection": "上升",
+      "trendStability": 0.72,
+      "maxTrendStrength": 0.2345,
+      "maxTrendInterval": "2023-10-04",
+      "minTrendStrength": 0.0345,
+      "minTrendInterval": "2023-10-03",
+      "trendChangeRate": 0.032,
+      "trendPattern": "波动上升"
+    }
+  ],
+  "avgGroupCurves": [
+    {
+      "avgGroupId": "GROUP_001",
+      "groupCreateTime": "2023-09-15T10:30:00Z",
+      "curveCount": 120,
+      "avgEnergy": 67.8,
+      "intervalTrends": [
+        {
+          "intervalIndex": 1,
+          "intervalLabel": "2023-10-01",
+          "trendStrength": 0.1423,
+          "trendDirection": "上升",
+          "avgEnergy": 66.5,
+          "dataPointCount": 85,
+          "isMainGroup": true
+        },
+        {
+          "intervalIndex": 2,
+          "intervalLabel": "2023-10-02",
+          "trendStrength": 0.2567,
+          "trendDirection": "上升",
+          "avgEnergy": 69.2,
+          "dataPointCount": 92,
+          "isMainGroup": true
+        },
+        {
+          "intervalIndex": 3,
+          "intervalLabel": "2023-10-03",
+          "trendStrength": -0.0456,
+          "trendDirection": "下降",
+          "avgEnergy": 64.8,
+          "dataPointCount": 78,
+          "isMainGroup": false
+        },
+        {
+          "intervalIndex": 4,
+          "intervalLabel": "2023-10-04",
+          "trendStrength": 0.2015,
+          "trendDirection": "上升",
+          "avgEnergy": 70.5,
+          "dataPointCount": 95,
+          "isMainGroup": true
+        }
+      ],
+      "overallTrendStrength": 0.2567,
+      "overallTrendDirection": "上升",
+      "trendChangeRate": 0.032,
+      "trendStability": 0.88,
+      "occurrenceIntervals": 12,
+      "receiverCoverage": 8
+    },
+    {
+      "avgGroupId": "GROUP_002",
+      "groupCreateTime": "2023-09-20T14:20:00Z",
+      "curveCount": 85,
+      "avgEnergy": 63.2,
+      "intervalTrends": [
+        {
+          "intervalIndex": 1,
+          "intervalLabel": "2023-10-01",
+          "trendStrength": 0.0876,
+          "trendDirection": "上升",
+          "avgEnergy": 62.5,
+          "dataPointCount": 65,
+          "isMainGroup": true
+        },
+        {
+          "intervalIndex": 3,
+          "intervalLabel": "2023-10-03",
+          "trendStrength": -0.0954,
+          "trendDirection": "下降",
+          "avgEnergy": 60.8,
+          "dataPointCount": 58,
+          "isMainGroup": true
+        }
+      ],
+      "overallTrendStrength": -0.0234,
+      "overallTrendDirection": "下降",
+      "trendChangeRate": -0.045,
+      "trendStability": 0.65,
+      "occurrenceIntervals": 8,
+      "receiverCoverage": 5
+    }
+  ],
+  "summaryStats": {
+    "avgTrendStrength": 0.1234,
+    "trendStrengthStd": 0.0456,
+    "risingIntervals": 8,
+    "fallingIntervals": 3,
+    "stableIntervals": 2,
+    "anomalyIntervals": 1,
+    "mostSignificantInterval": "2023-10-02",
+    "mostSignificantAvgGroup": "GROUP_001",
+    "mostSignificantReceiver": "RECEIVER_001",
+    "overallTrendDirection": "上升",
+    "overallTrendStrength": 0.1567,
+    "trendChangePattern": "整体呈上升趋势，中间有波动",
+    "trendChangeRate": 0.0234,
+    "avgDataPointDensity": 45.6,
+    "dataCoverage": 0.93
+  },
+  "configInfo": {
+    "startTime": "2023-10-01T00:00:00Z",
+    "endTime": "2023-10-15T23:59:59Z",
+    "totalDays": 15,
+    "intervalUnit": "天",
+    "intervalCount": 15,
+    "daysPerInterval": 1.0,
+    "minDataPoints": 50,
+    "trendThreshold": 0.2,
+    "selectedDeviceCount": 5,
+    "selectedReceiverCount": 12,
+    "hasAvgGroupFilter": false
+  }
+}

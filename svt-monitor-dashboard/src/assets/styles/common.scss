@@ -113,6 +113,26 @@ textarea::placeholder,
   color: #fff !important;
 }
 
+/* =========================
+ * 全局弹窗/遮罩兜底样式
+ * 说明：真正避免“模块内弹窗/被裁剪”的关键是 Dialog teleport 到 body。
+ * 这里主要兜底 overlay 的定位与层级，避免个别布局导致遮罩层异常。
+ * ========================= */
+:global(.el-overlay) {
+  position: fixed !important;
+  inset: 0 !important;
+}
+
+:global(.el-overlay-dialog) {
+  position: fixed !important;
+  inset: 0 !important;
+}
+
+/* 确保弹窗永远在业务容器之上（不写死过大，避免压住 message/notification） */
+:global(.el-overlay) {
+  z-index: 3000;
+}
+
 ::-webkit-scrollbar {
   width: 4px;
   height: 8px;
