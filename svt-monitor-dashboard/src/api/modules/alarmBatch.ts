@@ -3,6 +3,11 @@ import request from '../request'
 const TAICANG_API_BASE_URL = 'http://122.224.196.178:8003'
 const DEFAULT_TENANT_ID = '2b410e834b4b4ae49ab8d52f6d49e967'
 
+function getTenantIdPreferred(): string {
+  const fromUrl = new URLSearchParams(window.location.search).get('tenantId')
+  return (fromUrl && fromUrl.trim()) || localStorage.getItem('tenantId') || DEFAULT_TENANT_ID
+}
+
 export type FilterOperate = 'EQ' | 'GE' | 'LE' | 'LIKE'
 
 export interface FilterProperty {
@@ -67,7 +72,7 @@ export const apiFindEvents = (body: FindBody) => {
 }
 
 export const apiGetDeviceNameDropdownList = () => {
-  const tenantId = localStorage.getItem('tenantId') || DEFAULT_TENANT_ID
+  const tenantId = getTenantIdPreferred()
   return request.get<DropdownResponse>('/taicang/hardware/device/name/getDropdownList', {
     params: { _t: Date.now(), tenantId, userId: '' },
     showLoading: false,
@@ -76,7 +81,7 @@ export const apiGetDeviceNameDropdownList = () => {
 }
 
 export const apiGetEventTypeDropdownList = () => {
-  const tenantId = localStorage.getItem('tenantId') || DEFAULT_TENANT_ID
+  const tenantId = getTenantIdPreferred()
   return request.get<DropdownResponse>('/taicang/hardware/eventType/getDropdownList', {
     params: { _t: Date.now(), tenantId, userId: '' },
     showLoading: false,

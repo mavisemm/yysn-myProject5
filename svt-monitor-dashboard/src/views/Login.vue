@@ -79,24 +79,41 @@ const handleLogin = async () => {
     loading.value = true
 
     try {
+        // 先清理旧登录态，避免“上一次残留 tenantId”污染本次会话
+        localStorage.removeItem('token')
+        localStorage.removeItem('tenantId')
+
         // 调用实际后端登录接口（8003）
         const res = await loginApi({
             userName: loginForm.userName,
             password: loginForm.password
         })
 
-        // 接口约定：rc === 0 即为登录成功，ret 通常为 tenantId
-        if (!res || res.rc !== 0) {
-            throw new Error(res?.err || '登录失败')
+        // 兼容两种返回结构：
+        // - 新结构：{ rc: 0, ret: '<tenantId>', err: null }
+        // - 旧结构（src0 项目）：{ result: 0, data: { tenantId, ... }, msg }
+        const isOk =
+            (res && typeof res === 'object' && 'rc' in res && (res as any).rc === 0) ||
+            (res && typeof res === 'object' && 'result' in res && (res as any).result === 0)
+
+        if (!isOk) {
+            const err = (res as any)?.err || (res as any)?.msg || '登录失败'
+            throw new Error(err)
         }
 
-        // 登录成功标记：路由守卫依赖 localStorage.token 判断是否已登录
-        // 这里只要 rc === 0，就写入一个非空 token
-        localStorage.setItem('token', res.ret ? String(res.ret) : 'login-ok')
+        const tenantIdFromRet = (res as any)?.ret
+        const tenantIdFromData = (res as any)?.data?.tenantId
+        const tenantId = tenantIdFromData || tenantIdFromRet
 
-        // 若后端返回了 tenantId，则写入 localStorage（供业务接口使用）
-        if (res.ret) {
-            localStorage.setItem('tenantId', String(res.ret))
+        // 登录成功标记：路由守卫依赖 localStorage.token 判断是否已登录
+        localStorage.setItem('token', 'login-ok')
+
+        // 登录成功必须写入 tenantId（供业务接口使用）
+        if (tenantId) {
+            localStorage.setItem('tenantId', String(tenantId))
+        } else {
+            // tenantId 缺失会导致业务数据被错误过滤
+            throw new Error('登录成功但未返回 tenantId')
         }
 
         // 显示成功消息

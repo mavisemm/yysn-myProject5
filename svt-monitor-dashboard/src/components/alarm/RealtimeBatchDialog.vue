@@ -116,6 +116,8 @@
         row-key="id"
         border
         height="100%"
+        virtualized
+        :row-height="32"
         @selection-change="onSelectionChange"
       >
         <el-table-column type="selection" width="50" />
@@ -160,7 +162,7 @@
     <div class="pager">
       <el-pagination
         v-model:current-page="pageForUi"
-        :page-size="30"
+        :page-size="10"
         layout="total, prev, pager, next"
         :total="store.realtimeTotal"
         @current-change="onPageChange"

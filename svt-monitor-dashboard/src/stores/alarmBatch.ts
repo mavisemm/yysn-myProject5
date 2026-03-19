@@ -70,7 +70,11 @@ function splitDeviceName(rawName: any): { main: string; sub: string } {
 }
 
 export const useAlarmBatchStore = defineStore('alarmBatch', () => {
-  const tenantId = computed(() => localStorage.getItem('tenantId') ?? '')
+  const tenantId = computed(() => {
+    // 优先用地址栏 tenantId（与路由守卫行为一致），fallback 到 localStorage
+    const fromUrl = new URLSearchParams(window.location.search).get('tenantId')
+    return (fromUrl && fromUrl.trim()) || (localStorage.getItem('tenantId') ?? '')
+  })
 
   const typeList = ref<DropdownItem[]>([])
   const deviceNameList = ref<DropdownItem[]>([])
@@ -86,26 +90,36 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const realtimeRows = ref<EventRow[]>([])
   const realtimeTotal = ref(0)
   const realtimePageIndex = ref(0)
-  const realtimePageSize = ref(30)
+  const realtimePageSize = ref(20)
   const realtimeSelectedRowKeys = ref<string[]>([])
   const realtimeLoading = ref(false)
 
   const historyRows = ref<EventRow[]>([])
   const historyTotal = ref(0)
   const historyPageIndex = ref(0)
-  const historyPageSize = ref(30)
+  const historyPageSize = ref(20)
   const historySelectedRowKeys = ref<string[]>([])
   const historyLoading = ref(false)
 
   const normalizeRows = (rows: EventRow[]) => {
     return rows.map((r) => {
-      const dataJson = safeParseJson(r.dataJson)
+      // `dataJson` 在部分环境里是一个很大的 JSON 字符串。
+      // 直接对每行都 JSON.parse 会在弹窗打开/翻页时造成明显的主线程卡顿。
+      // 这里改成“按需解析”：只有当我们确实需要从 dataJson 里补字段时才解析。
+      const needsDataJson =
+        (!r.deviceName && typeof r.dataJson === 'string') ||
+        (!r.pointName && typeof r.dataJson === 'string') ||
+        (!r.receiverName && typeof r.dataJson === 'string') ||
+        (r.shopName == null && typeof r.dataJson === 'string')
+
+      const dataJson = needsDataJson ? safeParseJson(r.dataJson) : (typeof r.dataJson === 'object' ? r.dataJson : undefined)
       const deviceName = r.deviceName ?? dataJson?.deviceName
       const { main, sub } = splitDeviceName(deviceName)
       const shopName = r.shopName ?? dataJson?.shopName
       return {
         ...r,
-        dataJson,
+        // 保留原始 dataJson（字符串/对象）避免不必要的深拷贝；如需已解析对象再取上面的 dataJson 变量
+        dataJson: dataJson ?? r.dataJson,
         deviceName,
         _deviceMainName: main,
         _deviceSubName: shopName ? String(shopName) : sub,
@@ -199,7 +213,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     realtimeQuery.value = {}
     realtimeSelectedRowKeys.value = []
     realtimePageIndex.value = 0
-    realtimePageSize.value = 30
+    realtimePageSize.value = 20
     realtimeRows.value = []
     realtimeTotal.value = 0
     realtimeLoading.value = false
@@ -209,7 +223,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     historyQuery.value = { alarmCode: 'ACCURATE_YES' }
     historySelectedRowKeys.value = []
     historyPageIndex.value = 0
-    historyPageSize.value = 30
+    historyPageSize.value = 20
     historyRows.value = []
     historyTotal.value = 0
     historyLoading.value = false

@@ -28,12 +28,15 @@ export function setupRouterGuard(router: Router) {
     const tenantIdInQuery = (to.query?.tenantId as string | undefined) ?? ''
     const tenantId = localStorage.getItem('tenantId') ?? ''
     if (isLoggedIn && requireTenantIdRouteNames.has(String(to.name ?? ''))) {
-      const effectiveTenantId = tenantIdInQuery || tenantId
+      // 已登录时，localStorage 的 tenantId 作为权威来源，避免被旧书签/历史URL里的 tenantId 污染
+      const effectiveTenantId = tenantId || tenantIdInQuery
       if (effectiveTenantId) {
         // 确保 tenantId 永远排在 query 的第一个
         const queryKeys = Object.keys(to.query ?? {})
         const isTenantIdFirst = queryKeys.length > 0 ? queryKeys[0] === 'tenantId' : false
-        if (!tenantIdInQuery || !isTenantIdFirst) {
+        // 若 URL 的 tenantId 与本地 tenantId 不一致，强制纠正为本地 tenantId
+        const shouldFixTenantId = Boolean(tenantId && tenantIdInQuery && tenantIdInQuery !== tenantId)
+        if (!tenantIdInQuery || !isTenantIdFirst || shouldFixTenantId) {
           const { tenantId: _omit, ...rest } = (to.query ?? {}) as Record<string, any>
           next({
             ...to,
