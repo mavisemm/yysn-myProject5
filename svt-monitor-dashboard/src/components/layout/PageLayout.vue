@@ -18,6 +18,10 @@
         <RouterView />
       </div>
     </div>
+
+    <!-- 全局预警批量操作弹窗 -->
+    <RealtimeBatchDialog />
+    <HistoryBatchDialog />
   </div>
 </template>
 
@@ -27,6 +31,8 @@ import MainHeader from './MainHeader.vue'
 import DeviceSidebar from './DeviceSidebar.vue'
 import { RouterView } from 'vue-router'
 import { usePointMessageStore } from '@/stores/pointMessage'
+import RealtimeBatchDialog from '@/components/alarm/RealtimeBatchDialog.vue'
+import HistoryBatchDialog from '@/components/alarm/HistoryBatchDialog.vue'
 
 const backgroundMode = ref<'image' | 'gray' | 'green' | 'navy' | 'solid'>('image')
 provide('backgroundMode', backgroundMode)

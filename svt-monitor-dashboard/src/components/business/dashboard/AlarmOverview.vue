@@ -16,6 +16,14 @@
                         <span class="legend-dot legend-dot-healthy"></span> 健康
                     </span>
                 </div>
+                <div class="batch-actions">
+                    <el-button size="small" class="batch-btn" @click="openRealtimeBatch">
+                        实时预警
+                    </el-button>
+                    <el-button size="small" class="batch-btn" @click="openHistoryBatch">
+                        历史预警
+                    </el-button>
+                </div>
             </div>
             <div class="search-section">
                 <!-- <div class="device-search-wrapper">
@@ -78,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
- import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDeviceTreeStore } from '@/stores/deviceTree';
 import { Search, Sort } from '@element-plus/icons-vue';
@@ -90,9 +98,20 @@ import { formatDateTime, disabledFutureDate, getDefaultDateRange } from '@/utils
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue';
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue';
 import { VibrationWsClient, type VibrationEventPayload } from '@/services/vibrationWs'
-import { fetchVibrationEventsForOverview } from '@/api/modules/vibrationEvent'
+import { fetchVibrationAlarmsForOverview, fetchVibrationEventsForOverview } from '@/api/modules/vibrationEvent'
+import { useAlarmBatchStore } from '@/stores/alarmBatch'
 
 const { t } = useLocale();
+
+const alarmBatchStore = useAlarmBatchStore()
+
+const openRealtimeBatch = () => {
+    void alarmBatchStore.openRealtime()
+}
+
+const openHistoryBatch = () => {
+    void alarmBatchStore.openHistory()
+}
 
 const router = useRouter()
 const deviceTreeStore = useDeviceTreeStore();
@@ -112,6 +131,36 @@ interface AlarmItem {
     statusText: string;
     time: string;
     measurementPoints: MeasurementPoint[];
+}
+
+/**
+ * 预警总览 websocket 新返回结构（你提供的字段）
+ * - 不解析 rawDataJson，直接使用同级字段与 data 内字段
+ */
+interface AlarmWsPayload {
+    alarmId?: string
+    tenantId?: string
+    deviceId?: string
+    deviceName?: string
+    workshopId?: string | null
+    workshopName?: string | null
+    alarmTime?: number
+    alarmTypeCode?: string
+    alarmTypeName?: string
+    statusCode?: string
+    probability?: number
+    judgeFlag?: boolean
+    data?: {
+        channelNo?: string | number
+        value?: number
+        threshold?: number
+        level?: string
+        unit?: string
+        pointName?: string
+        amplitude?: number
+    }
+    rawDataJson?: string
+    [k: string]: unknown
 }
 
 interface DeviceItem {
@@ -258,18 +307,84 @@ function mapLevelToStatus(level: string | undefined): MeasurementPoint['status']
     return 'healthy'
 }
 
-function buildMeasurementPointsFromDataJson(dataJson: string | undefined): MeasurementPoint[] {
-    let parsed: any = null
+function safeParseJson(input: any): any {
+    if (!input) return undefined
+    if (typeof input === 'object') return input
+    if (typeof input !== 'string') return undefined
     try {
-        parsed = dataJson ? JSON.parse(dataJson) : null
+        return JSON.parse(input)
     } catch {
-        parsed = null
+        return undefined
     }
-    const channelNo = parsed?.channelNo != null ? Number(parsed.channelNo) : NaN
-    const pointStatus = mapLevelToStatus(parsed?.level)
-    const pointName = parsed?.pointName ? String(parsed.pointName) : ''
+}
 
-    // 预警总览 UI 目前固定展示「点号」(1..8)，这里用 channelNo 映射到对应点位高亮
+function isAlarmWsPayload(x: any): x is AlarmWsPayload {
+    return !!x && typeof x === 'object' && ('alarmTypeCode' in x || 'alarmTime' in x || 'alarmId' in x) && 'data' in x
+}
+
+type OverviewNormalized = {
+    deviceId: string
+    deviceName?: string
+    shopName?: string
+    time: number
+    alarmTypeCode?: string
+    statusCode?: string
+    point: {
+        channelNo?: string | number
+        level?: string
+        pointName?: string
+    }
+}
+
+function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
+    // 新 websocket：按你给的结构
+    if (isAlarmWsPayload(input)) {
+        const deviceId = String(input.deviceId ?? '')
+        const t = Number(input.alarmTime ?? 0)
+        if (!deviceId || !Number.isFinite(t) || t <= 0) return null
+        return {
+            deviceId,
+            deviceName: input.deviceName ? String(input.deviceName) : undefined,
+            shopName: input.workshopName ? String(input.workshopName) : undefined,
+            time: t,
+            alarmTypeCode: input.alarmTypeCode ? String(input.alarmTypeCode) : undefined,
+            statusCode: input.statusCode ? String(input.statusCode) : undefined,
+            point: {
+                channelNo: input.data?.channelNo,
+                level: input.data?.level ? String(input.data.level) : undefined,
+                pointName: input.data?.pointName ? String(input.data.pointName) : undefined
+            }
+        }
+    }
+
+    // 旧 vibration 事件：兼容已有初始化接口与 mock
+    const evt = input as Partial<VibrationEventPayload>
+    if (!evt || typeof evt !== 'object') return null
+    const deviceId = String(evt.deviceId ?? '')
+    const t = Number(evt.time ?? 0)
+    if (!deviceId || !Number.isFinite(t) || t <= 0) return null
+
+    const parsed = safeParseJson(evt.dataJson)
+    return {
+        deviceId,
+        time: t,
+        alarmTypeCode: evt.eventTypeCode ? String(evt.eventTypeCode) : undefined,
+        statusCode: evt.statusCode ? String(evt.statusCode) : undefined,
+        shopName: parsed?.shopName ? String(parsed.shopName) : undefined,
+        point: {
+            channelNo: parsed?.channelNo,
+            level: parsed?.level ? String(parsed.level) : undefined,
+            pointName: parsed?.pointName ? String(parsed.pointName) : undefined
+        }
+    }
+}
+
+function buildMeasurementPointsFromPoint(point: OverviewNormalized['point']): MeasurementPoint[] {
+    const channelNo = point?.channelNo != null ? Number(point.channelNo) : NaN
+    const pointStatus = mapLevelToStatus(point?.level)
+    const pointName = point?.pointName ? String(point.pointName) : ''
+
+    // 预警总览 UI 目前固定展示「点号」(1..N)，这里用 channelNo 映射到对应点位高亮
     const total = 10
     const list: MeasurementPoint[] = Array.from({ length: total }).map((_, i) => ({
         name: i === 0 && pointName ? pointName : `测点${i + 1}`,
@@ -286,21 +401,31 @@ function buildMeasurementPointsFromDataJson(dataJson: string | undefined): Measu
     return list
 }
 
-function upsertAlarmFromEvent(evt: VibrationEventPayload) {
+function upsertAlarmFromEvent(input: any) {
+    const evt = normalizeToOverviewEvent(input)
+    if (!evt) return
+
+    // 仅展示未处理：VALID
+    if (evt.statusCode && String(evt.statusCode).toUpperCase() !== 'VALID') return
+
+    // 你要求：右上角“设备状态圆点”按 alarmTypeCode 判定
+    // - MACHINE_VIBRATION：故障报警（显示报警）
+    // - 趋势预警：后续另一个 websocket 接入后，再扩展映射规则
+    const isFaultAlarm = String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
+
     const deviceId = evt.deviceId
-    const { deviceName, shopName } = findDeviceInfo(deviceId)
+    const fromTree = findDeviceInfo(deviceId)
+    const deviceName = evt.deviceName || fromTree.deviceName
+    const shopName = (evt.shopName && evt.shopName !== '未知车间') ? evt.shopName : fromTree.shopName
+
     const d = new Date(evt.time)
     const timeStr = isNaN(d.getTime()) ? '' : d.toISOString()
-    const measurementPoints = buildMeasurementPointsFromDataJson(evt.dataJson)
-    const deviceStatus = (() => {
-        const hasAlarm = measurementPoints.some(p => p.status === 'alarm')
-        const hasWarning = measurementPoints.some(p => p.status === 'warning')
-        if (hasAlarm) return 'alarm'
-        if (hasWarning) return 'warning'
-        return 'healthy'
-    })()
 
-    const statusText = deviceStatus === 'alarm' ? '报警' : deviceStatus === 'warning' ? '预警' : '健康'
+    const measurementPoints = buildMeasurementPointsFromPoint(evt.point)
+    // 当前只接入“故障报警”一类 websocket；趋势预警未接入前，这里不会产生 warning
+    const deviceStatus: AlarmItem['status'] = isFaultAlarm ? 'alarm' : 'healthy'
+
+    const statusText = deviceStatus === 'alarm' ? '报警' : '健康'
 
     const item: AlarmItem = {
         id: deviceId,
@@ -476,8 +601,15 @@ onMounted(() => {
     const tenantId = localStorage.getItem('tenantId') ?? ''
     void (async () => {
         try {
-            const initEvents = await fetchVibrationEventsForOverview({ tenantId })
-            for (const evt of initEvents) upsertAlarmFromEvent(evt)
+            // 优先：你提供的“故障报警”接口（只返回 MACHINE_VIBRATION 的报警，不含趋势预警）
+            const alarmItems = await fetchVibrationAlarmsForOverview({ tenantId, pageIndex: 0, pageSize: 50 })
+            for (const it of alarmItems) upsertAlarmFromEvent(it)
+
+            // 兜底：若新接口为空/异常，再尝试旧的 event/find 列表（项目历史兼容）
+            if (alarmItems.length === 0) {
+                const initEvents = await fetchVibrationEventsForOverview({ tenantId })
+                for (const evt of initEvents) upsertAlarmFromEvent(evt)
+            }
         } catch (e) {
             // 接口可能并非列表型，失败也不影响 websocket 实时
             console.warn('预警总览初始化接口获取失败:', e)
@@ -671,6 +803,19 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
             .legend-dot-healthy {
                 background-color: #3ab000; // 绿色：健康
+            }
+        }
+
+        .batch-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+
+            .batch-btn {
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                color: rgba(255, 255, 255)!important;
             }
         }
 
