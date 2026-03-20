@@ -318,3 +318,76 @@ export const getWavByFreqGroupIdUrl = (freqGroupId: string | number): string => 
   const path = `/jiepai/hardware/device/type/das/soundDetector/findWavByFreqGroupId?freqGroupId=${freqGroupId}`
   return SOUND_WAV_BASE ? `${SOUND_WAV_BASE.replace(/\/$/, '')}${path}` : path
 }
+
+// ====== 预警详情中“频谱曲线/无工况基础数据/AI分析”接口（对应 src0 alarmModal 迁移）======
+
+export interface LatestFrequencyBinDto {
+  freq1: number
+  freq2: number
+  db?: number
+  density?: number
+  [k: string]: any
+}
+
+export interface LatestFrequencyByReceiverRet {
+  // 对应 src0：ret.length 循环生成 xAxis + db/density
+  ret?: LatestFrequencyBinDto[]
+}
+
+export interface LatestFrequencyNoSceneRet {
+  // 对应 src0：ret.soundFrequencyDtoList / ret.soundAvgFrequencyDtoList
+  productName?: string
+  subProductName?: string
+  deviceModel?: string
+  productionFactory?: string
+  soundFrequencyDtoList?: LatestFrequencyBinDto[]
+  soundAvgFrequencyDtoList?: LatestFrequencyBinDto[]
+  [k: string]: any
+}
+
+/**
+ * 频段声音曲线（对应 src0 VoiceSound.freqencySound -> findLatestFrequencyByReceiver）
+ */
+export const getLatestFrequencyByReceiver = (payload: {
+  receiverId: string
+  type: number
+}): Promise<{ rc: number; ret?: LatestFrequencyBinDto[] }> => {
+  return request.get('/taicang/device/sound/data/findLatestFrequencyByReceiver', {
+    params: {
+      userId: '',
+      tenantId: SOUND_TENANT_ID,
+      receiverId: payload.receiverId,
+      type: payload.type,
+      _t: Date.now()
+    },
+    showLoading: true
+  })
+}
+
+/**
+ * 无工况基础数据（对应 src0 VoiceSound.nosceneVoice -> findLatestFrequencyByReceiver/no-scene）
+ */
+export const getLatestFrequencyByReceiverNoScene = (payload: {
+  receiverId: string
+  type: number
+}): Promise<{ rc: number; ret?: LatestFrequencyNoSceneRet }> => {
+  return request.get('/taicang/device/sound/data/findLatestFrequencyByReceiver/no-scene', {
+    params: {
+      userId: '',
+      tenantId: SOUND_TENANT_ID,
+      receiverId: payload.receiverId,
+      type: payload.type,
+      _t: Date.now()
+    },
+    showLoading: true
+  })
+}
+
+/**
+ * 智能故障分析（对应 src0 VoiceSound.askAIModel -> qwen/max/analyze）
+ */
+export const askAIModel = (payload: any): Promise<{ rc: number; ret?: string; err?: string }> => {
+  return request.post('/taicang/device/sound/qwen/max/analyze', payload, {
+    showLoading: true
+  })
+}

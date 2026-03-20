@@ -20,8 +20,9 @@
     </div>
 
     <!-- 全局预警批量操作弹窗 -->
-    <RealtimeBatchDialog />
-    <HistoryBatchDialog />
+    <RealtimeBatchDialog @view="handleRealtimeView" />
+    <HistoryBatchDialog @view="handleHistoryView" />
+    <AlarmBatchViewModal v-model="alarmViewVisible" :row="alarmViewRow" />
   </div>
 </template>
 
@@ -33,6 +34,7 @@ import { RouterView } from 'vue-router'
 import { usePointMessageStore } from '@/stores/pointMessage'
 import RealtimeBatchDialog from '@/components/alarm/RealtimeBatchDialog.vue'
 import HistoryBatchDialog from '@/components/alarm/HistoryBatchDialog.vue'
+import AlarmBatchViewModal from '@/components/alarm/AlarmBatchViewModal.vue'
 
 const backgroundMode = ref<'image' | 'gray' | 'green' | 'navy' | 'solid'>('image')
 provide('backgroundMode', backgroundMode)
@@ -40,6 +42,17 @@ provide('backgroundMode', backgroundMode)
 const handleChangeBackground = (mode: 'image' | 'gray' | 'green' | 'navy' | 'solid') => {
   backgroundMode.value = mode
 }
+
+const alarmViewVisible = ref(false)
+const alarmViewRow = ref<any>(null)
+
+const openAlarmView = (row: any) => {
+  alarmViewRow.value = row
+  alarmViewVisible.value = true
+}
+
+const handleRealtimeView = (row: any) => openAlarmView(row)
+const handleHistoryView = (row: any) => openAlarmView(row)
 
 onMounted(() => {
   usePointMessageStore().loadPointMessage()

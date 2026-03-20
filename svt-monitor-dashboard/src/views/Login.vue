@@ -101,20 +101,58 @@ const handleLogin = async () => {
             throw new Error(err)
         }
 
-        const tenantIdFromRet = (res as any)?.ret
-        const tenantIdFromData = (res as any)?.data?.tenantId
-        const tenantId = tenantIdFromData || tenantIdFromRet
+        const normalizeToken = (val: unknown): string => {
+            if (val === null || val === undefined) return ''
+            if (typeof val === 'string') return val.trim()
+            if (typeof val === 'number') return String(val)
+            if (typeof val === 'object') {
+                const obj = val as Record<string, any>
+                return normalizeToken(obj.token ?? obj.accessToken ?? obj.jwt ?? obj.value)
+            }
+            return ''
+        }
+
+        const normalizeTenantId = (val: unknown): string => {
+            if (val === null || val === undefined) return ''
+            if (typeof val === 'string') return val.trim()
+            if (typeof val === 'number') return String(val)
+            if (typeof val === 'object') {
+                const obj = val as Record<string, any>
+                return normalizeTenantId(obj.tenantId ?? obj.tenant_id ?? obj.id ?? obj.value)
+            }
+            return ''
+        }
+
+        // 新结构（示例）：
+        // - { rc: 0, ret: { tenantId: 'xxx', token: 'yyy' }, err: null }
+        // - 或 { rc: 0, ret: 'xxx', token: 'yyy', err: null }
+        const token =
+            normalizeToken((res as any)?.token) ||
+            normalizeToken((res as any)?.ret?.token) ||
+            normalizeToken((res as any)?.data?.token) ||
+            normalizeToken((res as any)?.ret?.accessToken) ||
+            normalizeToken((res as any)?.data?.accessToken)
+
+        // 旧结构兼容：旧版可能是 ret = '<tenantId>'（string）
+        // 新结构：ret 可能是对象，此时不能直接把整个对象当 tenantId 存入 localStorage
+        const tenantId =
+            normalizeTenantId((res as any)?.data?.tenantId) ||
+            (typeof (res as any)?.ret === 'string' ? normalizeTenantId((res as any)?.ret) : '') ||
+            normalizeTenantId((res as any)?.ret) ||
+            normalizeTenantId((res as any)?.ret?.tenantId)
 
         // 登录成功标记：路由守卫依赖 localStorage.token 判断是否已登录
-        localStorage.setItem('token', 'login-ok')
+        // 同时 request 拦截器会把它拼到 Authorization: Bearer <token>
+        if (!token) {
+            throw new Error('登录成功但未返回 token')
+        }
+        localStorage.setItem('token', token)
 
         // 登录成功必须写入 tenantId（供业务接口使用）
-        if (tenantId) {
-            localStorage.setItem('tenantId', String(tenantId))
-        } else {
-            // tenantId 缺失会导致业务数据被错误过滤
+        if (!tenantId) {
             throw new Error('登录成功但未返回 tenantId')
         }
+        localStorage.setItem('tenantId', tenantId)
 
         // 显示成功消息
         ElMessage.success('登录成功')
