@@ -57,6 +57,9 @@ function addPendingRequest(config: InternalAxiosRequestConfig): void {
 let loadingInstance: any = null;
 let loadingCount = 0;
 
+// 连接/服务不可用场景：同一页面打开期间只提示一次，避免接口并发失败刷屏
+let hasShownBackendUnavailableNotification = false
+
 const showLoading = () => {
   if (loadingCount === 0) {
     loadingInstance = ElMessage({
@@ -179,9 +182,17 @@ service.interceptors.response.use(
     console.error('响应错误:', error)
     
     let errorMessage = '请求失败'
+    // 用于判断是否是“后端没开/网络不可达”的连接问题（通常会并发触发多次）
+    let isBackendUnavailable = false
     
     if (error.response) {
       const { status, data } = error.response
+
+      // 后端未开启/不可用时也可能直接返回 5xx，或以 408/504 超时形式出现；
+      // 这类错误在页面并发请求时会刷屏，因此纳入“仅提示一次”的限流范围。
+      if (status === 408 || status === 504 || status >= 500) {
+        isBackendUnavailable = true
+      }
       
       switch (status) {
         case 400:
@@ -223,12 +234,23 @@ service.interceptors.response.use(
       }
     } else if (error.code === 'ECONNABORTED') {
       errorMessage = '请求超时'
+      isBackendUnavailable = true
     } else {
       errorMessage = '网络异常，请检查网络连接'
+      // 没有 response 通常意味着服务不可达/后端未开启
+      isBackendUnavailable = true
     }
     
     if (!error.config?.hideNotification) {
-      ElMessage.error(errorMessage)
+      // 只对“连接/后端不可用”做限流，其它错误仍照常提示
+      if (isBackendUnavailable) {
+        if (!hasShownBackendUnavailableNotification) {
+          hasShownBackendUnavailableNotification = true
+          ElMessage.error(errorMessage)
+        }
+      } else {
+        ElMessage.error(errorMessage)
+      }
     }
     
     return Promise.reject(error)
