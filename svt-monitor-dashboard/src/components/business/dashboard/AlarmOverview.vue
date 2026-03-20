@@ -632,6 +632,23 @@ onMounted(() => {
                 console.error('订阅振动 websocket 失败:', e)
             }
         })()
+
+        // 弹窗首次打开时的表格加载：预热一页数据到 store 缓存里。
+        // 通过“可让出主线程”的解析方式预热，避免用户点击时被抢占（按钮不卡顿），同时尽量让弹窗首屏直接命中缓存。
+        void (async () => {
+            try {
+                if (alarmBatchStore.realtimeVisible || alarmBatchStore.historyVisible) return
+                // 只预热 realtime：避免同时解析 realtime+history 在用户点击时抢占主线程导致按钮延迟。
+                void alarmBatchStore.prefetchRealtimeListForDefault()
+
+                // history 预热延后一点点；不影响你点击实时按钮的首响应
+                window.setTimeout(() => {
+                    void alarmBatchStore.prefetchHistoryListForDefault()
+                }, 3500)
+            } catch {
+                // 预热失败不影响主流程
+            }
+        })()
     }
 });
 

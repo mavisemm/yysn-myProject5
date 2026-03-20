@@ -101,33 +101,96 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const historySelectedRowKeys = ref<string[]>([])
   const historyLoading = ref(false)
 
-  const normalizeRows = (rows: EventRow[]) => {
-    return rows.map((r) => {
-      // `dataJson` 在部分环境里是一个很大的 JSON 字符串。
-      // 直接对每行都 JSON.parse 会在弹窗打开/翻页时造成明显的主线程卡顿。
-      // 这里改成“按需解析”：只有当我们确实需要从 dataJson 里补字段时才解析。
-      const needsDataJson =
-        (!r.deviceName && typeof r.dataJson === 'string') ||
-        (!r.pointName && typeof r.dataJson === 'string') ||
-        (!r.receiverName && typeof r.dataJson === 'string') ||
-        (r.shopName == null && typeof r.dataJson === 'string')
+  // 列表缓存：减少弹窗反复打开/重复触发时的二次请求与重渲染。
+  // key 由「tenantId + 筛选条件 + pageIndex + pageSize」组成。
+  const REALTIME_LIST_CACHE_TTL_MS = 60_000
+  const HISTORY_LIST_CACHE_TTL_MS = 60_000
+  const MAX_LIST_CACHE_ENTRIES = 5
 
-      const dataJson = needsDataJson ? safeParseJson(r.dataJson) : (typeof r.dataJson === 'object' ? r.dataJson : undefined)
-      const deviceName = r.deviceName ?? dataJson?.deviceName
-      const { main, sub } = splitDeviceName(deviceName)
-      const shopName = r.shopName ?? dataJson?.shopName
-      return {
-        ...r,
-        // 保留原始 dataJson（字符串/对象）避免不必要的深拷贝；如需已解析对象再取上面的 dataJson 变量
-        dataJson: dataJson ?? r.dataJson,
-        deviceName,
-        _deviceMainName: main,
-        _deviceSubName: shopName ? String(shopName) : sub,
-        pointName: r.pointName ?? dataJson?.pointName,
-        receiverName: r.receiverName ?? dataJson?.receiverName,
-        _timeText: formatTimeText(r.time)
+  type ListCacheEntry = { rows: EventRow[]; total: number; fetchedAt: number }
+  const realtimeListCache = new Map<string, ListCacheEntry>()
+  const historyListCache = new Map<string, ListCacheEntry>()
+
+  const evictOldestIfNeeded = (cache: Map<string, ListCacheEntry>) => {
+    if (cache.size <= MAX_LIST_CACHE_ENTRIES) return
+    const firstKey = cache.keys().next().value
+    if (firstKey != null) cache.delete(firstKey)
+  }
+
+  const yieldToMainThread = () =>
+    new Promise<void>((resolve) => {
+      if (typeof requestAnimationFrame !== 'undefined') {
+        requestAnimationFrame(() => resolve())
+      } else {
+        setTimeout(() => resolve(), 0)
       }
     })
+
+  const normalizeOneRow = (r: EventRow): EventRow => {
+    // `dataJson` 在部分环境里是一个很大的 JSON 字符串。
+    // 直接对每行都 JSON.parse 会在弹窗打开/翻页时造成明显的主线程卡顿。
+    // 这里改成“按需解析”：只有当我们确实需要从 dataJson 里补字段时才解析。
+    const needsDataJson =
+      (!r.deviceName && typeof r.dataJson === 'string') ||
+      (!r.pointName && typeof r.dataJson === 'string') ||
+      (!r.receiverName && typeof r.dataJson === 'string') ||
+      (r.shopName == null && typeof r.dataJson === 'string')
+
+    const dataJson = needsDataJson ? safeParseJson(r.dataJson) : (typeof r.dataJson === 'object' ? r.dataJson : undefined)
+    const deviceName = r.deviceName ?? dataJson?.deviceName
+    const { main, sub } = splitDeviceName(deviceName)
+    const shopName = r.shopName ?? dataJson?.shopName
+    return {
+      ...r,
+      // 保留原始 dataJson（字符串/对象）避免不必要的深拷贝；如需已解析对象再取上面的 dataJson 变量
+      dataJson: dataJson ?? r.dataJson,
+      deviceName,
+      _deviceMainName: main,
+      _deviceSubName: shopName ? String(shopName) : sub,
+      pointName: r.pointName ?? dataJson?.pointName,
+      receiverName: r.receiverName ?? dataJson?.receiverName,
+      _timeText: formatTimeText(r.time)
+    }
+  }
+
+  const normalizeRows = (rows: EventRow[]) => rows.map(normalizeOneRow)
+
+  // Light mode: 避免解析 `dataJson`，以减小主线程被 JSON.parse 占用的概率。
+  // 只保留后端已经返回的 pointName/receiverName/deviceName 信息；
+  // 如果缺失，交给 UI 在“单元格首次展示”时做按需解析（并缓存）。
+  const normalizeOneRowLight = (r: EventRow): EventRow => {
+    const deviceName = r.deviceName
+    const shopName = r.shopName
+    const mainSub = deviceName ? splitDeviceName(deviceName) : { main: '', sub: '' }
+    return {
+      ...r,
+      dataJson: r.dataJson,
+      deviceName,
+      _deviceMainName: mainSub.main,
+      _deviceSubName: shopName ? String(shopName) : mainSub.sub,
+      pointName: r.pointName,
+      receiverName: r.receiverName,
+      _timeText: formatTimeText(r.time)
+    }
+  }
+
+  const normalizeRowsLight = (rows: EventRow[]) => rows.map(normalizeOneRowLight)
+
+  const normalizeRowsYielding = async (rows: EventRow[], budgetMs = 8) => {
+    // time-slicing：保证在后台解析时不会长时间占用主线程
+    const out: EventRow[] = []
+    const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now())
+    let lastYieldAt = now()
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]!
+      out.push(normalizeOneRow(row))
+      const t = now()
+      if (t - lastYieldAt >= budgetMs) {
+        await yieldToMainThread()
+        lastYieldAt = now()
+      }
+    }
+    return out
   }
 
   const ensureDropdowns = async () => {
@@ -168,44 +231,153 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   }
 
   let realtimeFetchToken = 0
-  const fetchRealtimeList = async (pageIndex = 0) => {
+  const realtimeFetchInFlight = new Map<string, Promise<void>>()
+  const buildRealtimeCacheKey = (pageIndex: number) => {
+    const q = realtimeQuery.value ?? {}
+    return JSON.stringify({
+      tenantId: tenantId.value,
+      pageIndex,
+      pageSize: realtimePageSize.value,
+      startTime: q.startTime ?? '',
+      endTime: q.endTime ?? '',
+      deviceId: q.deviceId ?? '',
+      eventTypeCode: q.eventTypeCode ?? ''
+    })
+  }
+
+  const fetchRealtimeList = async (pageIndex = 0, force = false, normalizeMode: 'sync' | 'yield' | 'light' = 'sync') => {
+    const cacheKey = buildRealtimeCacheKey(pageIndex)
+    if (!force) {
+      const cached = realtimeListCache.get(cacheKey)
+      if (cached && Date.now() - cached.fetchedAt <= REALTIME_LIST_CACHE_TTL_MS) {
+        realtimePageIndex.value = pageIndex
+        realtimeRows.value = cached.rows
+        realtimeTotal.value = cached.total
+        realtimeLoading.value = false
+        return
+      }
+
+      const inFlight = realtimeFetchInFlight.get(cacheKey)
+      if (inFlight) {
+        realtimePageIndex.value = pageIndex
+        await inFlight
+        realtimeLoading.value = false
+        return
+      }
+    }
+
     const token = ++realtimeFetchToken
     realtimePageIndex.value = pageIndex
     realtimeLoading.value = true
+
+    const promise = (async () => {
+      try {
+        const res = await apiFindEvents({
+          filterPropertyMap: [{ code: 'statusCode', operate: 'EQ', value: 'VALID' }, ...buildCommonFilters(realtimeQuery.value)],
+          pageIndex,
+          pageSize: realtimePageSize.value,
+          sortValueMap: [{ code: 'time', sort: 'desc' }]
+        })
+        if (token !== realtimeFetchToken) return
+        const items = res?.ret?.items ?? []
+        const normalized =
+          normalizeMode === 'light'
+            ? normalizeRowsLight(items)
+            : normalizeMode === 'yield'
+              ? await normalizeRowsYielding(items)
+              : normalizeRows(items)
+        const total = Number(res?.ret?.rowCount ?? res?.ret?.total ?? items.length ?? 0)
+        realtimeRows.value = normalized
+        realtimeTotal.value = total
+
+        realtimeListCache.set(cacheKey, { rows: normalized, total, fetchedAt: Date.now() })
+        evictOldestIfNeeded(realtimeListCache)
+      } finally {
+        if (token === realtimeFetchToken) realtimeLoading.value = false
+      }
+    })()
+
+    realtimeFetchInFlight.set(cacheKey, promise)
     try {
-      const res = await apiFindEvents({
-        filterPropertyMap: [{ code: 'statusCode', operate: 'EQ', value: 'VALID' }, ...buildCommonFilters(realtimeQuery.value)],
-        pageIndex,
-        pageSize: realtimePageSize.value,
-        sortValueMap: [{ code: 'time', sort: 'desc' }]
-      })
-      if (token !== realtimeFetchToken) return
-      const items = res?.ret?.items ?? []
-      realtimeRows.value = normalizeRows(items)
-      realtimeTotal.value = Number(res?.ret?.rowCount ?? res?.ret?.total ?? items.length ?? 0)
+      await promise
     } finally {
-      if (token === realtimeFetchToken) realtimeLoading.value = false
+      if (realtimeFetchInFlight.get(cacheKey) === promise) realtimeFetchInFlight.delete(cacheKey)
     }
   }
 
   let historyFetchToken = 0
-  const fetchHistoryList = async (pageIndex = 0) => {
+  const historyFetchInFlight = new Map<string, Promise<void>>()
+  const buildHistoryCacheKey = (pageIndex: number) => {
+    const q = historyQuery.value ?? { alarmCode: 'ACCURATE_YES' as AlarmCode }
+    return JSON.stringify({
+      tenantId: tenantId.value,
+      pageIndex,
+      pageSize: historyPageSize.value,
+      alarmCode: q.alarmCode ?? 'ACCURATE_YES',
+      startTime: q.startTime ?? '',
+      endTime: q.endTime ?? '',
+      deviceId: q.deviceId ?? '',
+      eventTypeCode: q.eventTypeCode ?? ''
+    })
+  }
+
+  const fetchHistoryList = async (pageIndex = 0, force = false, normalizeMode: 'sync' | 'yield' | 'light' = 'sync') => {
+    const cacheKey = buildHistoryCacheKey(pageIndex)
+    if (!force) {
+      const cached = historyListCache.get(cacheKey)
+      if (cached && Date.now() - cached.fetchedAt <= HISTORY_LIST_CACHE_TTL_MS) {
+        historyPageIndex.value = pageIndex
+        historyRows.value = cached.rows
+        historyTotal.value = cached.total
+        historyLoading.value = false
+        return
+      }
+
+      const inFlight = historyFetchInFlight.get(cacheKey)
+      if (inFlight) {
+        historyPageIndex.value = pageIndex
+        await inFlight
+        historyLoading.value = false
+        return
+      }
+    }
+
     const token = ++historyFetchToken
     historyPageIndex.value = pageIndex
     historyLoading.value = true
+
+    const promise = (async () => {
+      try {
+        const res = await apiFindEvents({
+          filterPropertyMap: [...buildCommonFilters(historyQuery.value)],
+          pageIndex,
+          pageSize: historyPageSize.value,
+          sortValueMap: [{ code: 'time', sort: 'desc' }]
+        })
+        if (token !== historyFetchToken) return
+        const items = res?.ret?.items ?? []
+        const normalized =
+          normalizeMode === 'light'
+            ? normalizeRowsLight(items)
+            : normalizeMode === 'yield'
+              ? await normalizeRowsYielding(items)
+              : normalizeRows(items)
+        const total = Number(res?.ret?.rowCount ?? res?.ret?.total ?? items.length ?? 0)
+        historyRows.value = normalized
+        historyTotal.value = total
+
+        historyListCache.set(cacheKey, { rows: normalized, total, fetchedAt: Date.now() })
+        evictOldestIfNeeded(historyListCache)
+      } finally {
+        if (token === historyFetchToken) historyLoading.value = false
+      }
+    })()
+
+    historyFetchInFlight.set(cacheKey, promise)
     try {
-      const res = await apiFindEvents({
-        filterPropertyMap: [...buildCommonFilters(historyQuery.value)],
-        pageIndex,
-        pageSize: historyPageSize.value,
-        sortValueMap: [{ code: 'time', sort: 'desc' }]
-      })
-      if (token !== historyFetchToken) return
-      const items = res?.ret?.items ?? []
-      historyRows.value = normalizeRows(items)
-      historyTotal.value = Number(res?.ret?.rowCount ?? res?.ret?.total ?? items.length ?? 0)
+      await promise
     } finally {
-      if (token === historyFetchToken) historyLoading.value = false
+      if (historyFetchInFlight.get(cacheKey) === promise) historyFetchInFlight.delete(cacheKey)
     }
   }
 
@@ -247,8 +419,29 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     resetHistory()
   }
 
-  const refreshAfterBatch = async () => {
-    await Promise.all([fetchRealtimeList(0), fetchHistoryList(0)])
+  let didPrefetchDefaultRealtime = false
+  let didPrefetchDefaultHistory = false
+
+  // 预热：在进入“预警总览”页面时先拉一页数据，避免用户点击弹窗后再等待首次渲染。
+  // 只预热默认筛选（Realtime 空条件，History 默认 Accurate-Yes）。
+  const prefetchRealtimeListForDefault = async () => {
+    if (didPrefetchDefaultRealtime) return
+    didPrefetchDefaultRealtime = true
+    await fetchRealtimeList(0, false, 'light')
+  }
+
+  const prefetchHistoryListForDefault = async () => {
+    if (didPrefetchDefaultHistory) return
+    didPrefetchDefaultHistory = true
+    await fetchHistoryList(0, false, 'light')
+  }
+
+  const refreshRealtimeAfterBatch = async () => {
+    await fetchRealtimeList(0, true)
+  }
+
+  const refreshHistoryAfterBatch = async () => {
+    await fetchHistoryList(0, true)
   }
 
   const batchYesRealtime = async () => {
@@ -256,7 +449,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     if (!ids.length) return
     await apiConfirmYes(ids)
     realtimeSelectedRowKeys.value = []
-    await refreshAfterBatch()
+    await refreshRealtimeAfterBatch()
   }
 
   const batchNotRealtime = async () => {
@@ -264,7 +457,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     if (!ids.length) return
     await apiConfirmNot(ids)
     realtimeSelectedRowKeys.value = []
-    await refreshAfterBatch()
+    await refreshRealtimeAfterBatch()
   }
 
   const batchDeleteRealtime = async () => {
@@ -272,7 +465,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     if (!ids.length) return
     await apiDeleteEvents(ids)
     realtimeSelectedRowKeys.value = []
-    await refreshAfterBatch()
+    await refreshRealtimeAfterBatch()
   }
 
   const batchYesHistory = async () => {
@@ -280,7 +473,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     if (!ids.length) return
     await apiConfirmYes(ids)
     historySelectedRowKeys.value = []
-    await refreshAfterBatch()
+    await refreshHistoryAfterBatch()
   }
 
   const batchNotHistory = async () => {
@@ -288,7 +481,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     if (!ids.length) return
     await apiConfirmNot(ids)
     historySelectedRowKeys.value = []
-    await refreshAfterBatch()
+    await refreshHistoryAfterBatch()
   }
 
   const batchDeleteHistory = async () => {
@@ -296,37 +489,61 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     if (!ids.length) return
     await apiDeleteEvents(ids)
     historySelectedRowKeys.value = []
-    await refreshAfterBatch()
+    await refreshHistoryAfterBatch()
   }
 
   const fetchAllValidIds = async (): Promise<string[]> => {
-    const res = await apiFindEvents({
-      filterPropertyMap: [{ code: 'statusCode', operate: 'EQ', value: 'VALID' }, { code: 'tenantId', operate: 'EQ', value: tenantId.value }],
-      pageIndex: 0,
-      pageSize: 10000,
-      sortValueMap: [{ code: 'time', sort: 'desc' }]
-    })
-    const items = res?.ret?.items ?? []
-    return items.map((x) => String(x.id)).filter(Boolean)
+    // 兜底：若后端 yesAll 不接受空 idList，再回退到分页拉取 id。
+    // 这里用小一些的 pageSize，避免一次性返回过大数组导致前端主线程卡顿。
+    const pageSize = 1000
+    const ids: string[] = []
+    let pageIndex = 0
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const res = await apiFindEvents({
+        filterPropertyMap: [
+          { code: 'statusCode', operate: 'EQ', value: 'VALID' },
+          { code: 'tenantId', operate: 'EQ', value: tenantId.value }
+        ],
+        pageIndex,
+        pageSize,
+        sortValueMap: [{ code: 'time', sort: 'desc' }]
+      })
+
+      const items = res?.ret?.items ?? []
+      for (const x of items) {
+        if (x?.id != null) ids.push(String(x.id))
+      }
+
+      if (items.length < pageSize) break
+      pageIndex++
+    }
+    return ids
   }
 
   const allYesHistory = async () => {
-    const ids = await fetchAllValidIds()
-    await apiConfirmYesAll(ids.length ? ids : undefined)
+    // 优先让后端自己处理“全部”，避免前端拉取海量 id。
+    // 若后端不接受空 idList，再回退到拉取 ids 的兜底方案。
+    try {
+      await apiConfirmYesAll(undefined)
+    } catch (e) {
+      const ids = await fetchAllValidIds()
+      await apiConfirmYesAll(ids.length ? ids : undefined)
+    }
     historySelectedRowKeys.value = []
-    await refreshAfterBatch()
+    await refreshHistoryAfterBatch()
   }
 
   const allNotHistory = async () => {
     await apiConfirmNotAll()
     historySelectedRowKeys.value = []
-    await refreshAfterBatch()
+    await refreshHistoryAfterBatch()
   }
 
   const allDeleteHistory = async () => {
     await apiDeleteAllValid()
     historySelectedRowKeys.value = []
-    await refreshAfterBatch()
+    await refreshHistoryAfterBatch()
   }
 
   return {
@@ -357,6 +574,8 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     ensureDropdowns,
     fetchRealtimeList,
     fetchHistoryList,
+    prefetchRealtimeListForDefault,
+    prefetchHistoryListForDefault,
     resetRealtime,
     resetHistory,
     openRealtime,

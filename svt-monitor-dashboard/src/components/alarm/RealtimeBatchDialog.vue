@@ -36,48 +36,42 @@
           />
         </el-form-item>
         <el-form-item label="设备名称：">
-          <el-select
+          <el-select-v2
             v-model="store.realtimeQuery.deviceId"
+            :options="deviceOptions"
             filterable
             clearable
             size="small"
             class="alarm-filter-control"
             popper-class="alarm-batch-popper"
             :popper-options="sameWidthPopperOptions"
+            :loading="store.dropdownsLoading"
+            :item-height="28"
+            :height="280"
             style="width: 220px"
             placeholder="请选择"
-          >
-            <el-option
-              v-for="d in deviceOptions"
-              :key="String(d.value)"
-              :label="String(d.label)"
-              :value="String(d.value)"
-            />
-          </el-select>
+          />
         </el-form-item>
         <el-form-item label="预警类型：">
-          <el-select
+          <el-select-v2
             v-model="store.realtimeQuery.eventTypeCode"
+            :options="typeOptions"
             filterable
             clearable
             size="small"
             class="alarm-filter-control"
             popper-class="alarm-batch-popper"
             :popper-options="sameWidthPopperOptions"
+            :loading="store.dropdownsLoading"
+            :item-height="28"
+            :height="280"
             style="width: 220px"
             placeholder="请选择"
-          >
-            <el-option
-              v-for="t in typeOptions"
-              :key="String(t.value)"
-              :label="String(t.label)"
-              :value="String(t.value)"
-            />
-          </el-select>
+          />
         </el-form-item>
 
         <el-form-item>
-          <el-button type="primary" size="small" @click="store.fetchRealtimeList(0)">查询</el-button>
+          <el-button type="primary" size="small" @click="store.fetchRealtimeList(0, true)">查询</el-button>
           <el-button size="small" @click="onReset">清空</el-button>
         </el-form-item>
       </el-form>
@@ -124,16 +118,16 @@
         <el-table-column label="设备名称" min-width="180">
           <template #default="{ row }">
             <div class="device-cell">
-              <div class="device-name">{{ row._deviceMainName || row.deviceName || '-' }}</div>
-              <div v-if="row._deviceSubName" class="device-sub">({{ row._deviceSubName }})</div>
+              <div class="device-name">{{ getDeviceMainName(row) || '-' }}</div>
+              <div v-if="getDeviceSubName(row)" class="device-sub">({{ getDeviceSubName(row) }})</div>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="点位名称" min-width="160">
-          <template #default="{ row }">{{ row.pointName || row?.dataJson?.pointName || '-' }}</template>
+          <template #default="{ row }">{{ getPointName(row) || '-' }}</template>
         </el-table-column>
         <el-table-column label="听筒名称" min-width="80">
-          <template #default="{ row }">{{ row.receiverName || row?.dataJson?.receiverName || '-' }}</template>
+          <template #default="{ row }">{{ getReceiverName(row) || '-' }}</template>
         </el-table-column>
         <el-table-column label="预警类型" min-width="160">
           <template #default="{ row }">{{ row?.eventType?.name || row.eventTypeCode || '-' }}</template>
@@ -162,7 +156,7 @@
     <div class="pager">
       <el-pagination
         v-model:current-page="pageForUi"
-        :page-size="10"
+        :page-size="store.realtimePageSize"
         layout="total, prev, pager, next"
         :total="store.realtimeTotal"
         @current-change="onPageChange"
@@ -198,9 +192,10 @@ watch(
   () => store.realtimeVisible,
   (visible) => {
     if (!visible) return
-    // 让弹窗先渲染出来，再并行拉下拉/列表，避免“打开瞬间卡住”
+    // 下拉已在应用启动时预拉；此处只拉表格，避免打开时与海量选项同帧竞争
     nextTick(() => {
-      void Promise.all([store.ensureDropdowns(), store.fetchRealtimeList(0)])
+      void store.ensureDropdowns()
+      void store.fetchRealtimeList(0)
     })
   }
 )
@@ -236,7 +231,7 @@ const onPageChange = (page: number) => {
 
 const onReset = () => {
   store.resetRealtime()
-  store.fetchRealtimeList(0)
+  store.fetchRealtimeList(0, true)
 }
 
 const confirmBatch = async (type: 'yes' | 'not' | 'delete') => {
@@ -245,6 +240,88 @@ const confirmBatch = async (type: 'yes' | 'not' | 'delete') => {
   if (type === 'yes') await store.batchYesRealtime()
   if (type === 'not') await store.batchNotRealtime()
   if (type === 'delete') await store.batchDeleteRealtime()
+}
+
+function safeParseJson(input: any): any {
+  if (!input) return undefined
+  if (typeof input === 'object') return input
+  if (typeof input !== 'string') return undefined
+  try {
+    return JSON.parse(input)
+  } catch {
+    return undefined
+  }
+}
+
+function splitDeviceName(rawName: any): { main: string; sub: string } {
+  const raw = String(rawName || '-')
+  const idxCn = raw.indexOf('（')
+  const idxEn = raw.indexOf('(')
+  const idx = idxCn !== -1 ? idxCn : idxEn
+  if (idx <= 0) return { main: raw, sub: '' }
+  const main = raw.slice(0, idx).trim()
+  const sub = raw
+    .slice(idx)
+    .replace(/^（|^\(/, '')
+    .replace(/）$|\)$/, '')
+    .trim()
+  return { main, sub }
+}
+
+// 对预热（light mode）没有解析的行，按需在可视单元格首次渲染时解析 dataJson
+// 通过缓存避免同一行反复 JSON.parse。
+const parsedRowCache = new Map<string, any>()
+function ensureRowParsed(row: any): any {
+  if (!row) return undefined
+  const rowId = row.id != null ? String(row.id) : ''
+  if (!rowId) return undefined
+
+  const canUseParsed = parsedRowCache.has(rowId)
+  if (canUseParsed) {
+    const cached = parsedRowCache.get(rowId)
+    return cached
+  }
+
+  // 如果后端已带上关键字段，就不需要解析 dataJson
+  const needsParse =
+    (!row.pointName || !row.receiverName || !row.deviceName) && typeof row.dataJson === 'string'
+  if (!needsParse && row.deviceName && row.pointName && row.receiverName) {
+    parsedRowCache.set(rowId, undefined)
+    return undefined
+  }
+
+  const raw = row.dataJson
+  const parsed = safeParseJson(raw)
+  parsedRowCache.set(rowId, parsed)
+  return parsed
+}
+
+const getDeviceMainName = (row: any): string => {
+  const parsed = ensureRowParsed(row)
+  const deviceName = row.deviceName ?? parsed?.deviceName
+  const main = deviceName ? splitDeviceName(deviceName).main : ''
+  return row._deviceMainName || main || row.deviceName || ''
+}
+
+const getDeviceSubName = (row: any): string => {
+  const parsed = ensureRowParsed(row)
+  const deviceName = row.deviceName ?? parsed?.deviceName
+  const shopName = row.shopName ?? parsed?.shopName
+  if (shopName) return String(shopName)
+  if (!deviceName) return row._deviceSubName || ''
+  return splitDeviceName(deviceName).sub || row._deviceSubName || ''
+}
+
+const getPointName = (row: any): string => {
+  if (row.pointName) return row.pointName
+  const parsed = ensureRowParsed(row)
+  return parsed?.pointName ?? ''
+}
+
+const getReceiverName = (row: any): string => {
+  if (row.receiverName) return row.receiverName
+  const parsed = ensureRowParsed(row)
+  return parsed?.receiverName ?? ''
 }
 </script>
 
