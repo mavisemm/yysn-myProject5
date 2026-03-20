@@ -94,26 +94,30 @@ export const apiGetPointListNew = (body: any) => {
 }
 
 export const apiConfirmYes = (idList: string[]) => {
-  return request.post<any>('/taicang/event/confirm/yes', { idList }, { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
+  // 后端期望请求体根为数组（List），不要再包一层 { idList: [...] }
+  return request.post<any>('/taicang/event/confirm/yes', idList, { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
 }
 
 export const apiConfirmNot = (idList: string[]) => {
-  return request.post<any>('/taicang/event/confirm/not', { idList }, { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
+  return request.post<any>('/taicang/event/confirm/not', idList, { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
 }
 
 export const apiDeleteEvents = (idList: string[]) => {
-  return request.post<any>('/taicang/event/delete', { idList }, { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
+  return request.post<any>('/taicang/event/delete', idList, { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
 }
 
 export const apiConfirmYesAll = (idList?: string[]) => {
-  return request.post<any>('/taicang/event/confirm/yesAll', idList ? { idList } : {}, { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
+  // 后端期望请求体根为数组（List）；没有 idList 时传空数组
+  return request.post<any>('/taicang/event/confirm/yesAll', idList ?? [], { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
 }
 
 export const apiConfirmNotAll = () => {
-  return request.post<any>('/taicang/event/confirm/notAll', {}, { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
+  // 后端期望请求体根为数组（List）
+  return request.post<any>('/taicang/event/confirm/notAll', [], { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
 }
 
 export const apiDeleteAllValid = () => {
-  return request.post<any>('/taicang/event/deleteAllValid', {}, { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
+  // 后端期望请求体根为数组（List）
+  return request.post<any>('/taicang/event/deleteAllValid', [], { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
 }
 

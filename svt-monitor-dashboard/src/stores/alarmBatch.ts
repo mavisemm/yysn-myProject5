@@ -90,14 +90,14 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const realtimeRows = ref<EventRow[]>([])
   const realtimeTotal = ref(0)
   const realtimePageIndex = ref(0)
-  const realtimePageSize = ref(20)
+  const realtimePageSize = ref(30)
   const realtimeSelectedRowKeys = ref<string[]>([])
   const realtimeLoading = ref(false)
 
   const historyRows = ref<EventRow[]>([])
   const historyTotal = ref(0)
   const historyPageIndex = ref(0)
-  const historyPageSize = ref(20)
+  const historyPageSize = ref(30)
   const historySelectedRowKeys = ref<string[]>([])
   const historyLoading = ref(false)
 
@@ -385,7 +385,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     realtimeQuery.value = {}
     realtimeSelectedRowKeys.value = []
     realtimePageIndex.value = 0
-    realtimePageSize.value = 20
+    realtimePageSize.value = 30
     realtimeRows.value = []
     realtimeTotal.value = 0
     realtimeLoading.value = false
@@ -395,7 +395,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     historyQuery.value = { alarmCode: 'ACCURATE_YES' }
     historySelectedRowKeys.value = []
     historyPageIndex.value = 0
-    historyPageSize.value = 20
+    historyPageSize.value = 30
     historyRows.value = []
     historyTotal.value = 0
     historyLoading.value = false
@@ -437,11 +437,13 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   }
 
   const refreshRealtimeAfterBatch = async () => {
-    await fetchRealtimeList(0, true)
+    // 保持当前页码刷新，避免批量操作后跳回第一页
+    await fetchRealtimeList(realtimePageIndex.value, true)
   }
 
   const refreshHistoryAfterBatch = async () => {
-    await fetchHistoryList(0, true)
+    // 保持当前页码刷新，避免批量操作后跳回第一页
+    await fetchHistoryList(historyPageIndex.value, true)
   }
 
   const batchYesRealtime = async () => {
