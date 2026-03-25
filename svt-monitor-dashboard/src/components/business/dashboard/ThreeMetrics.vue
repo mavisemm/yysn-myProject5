@@ -3,11 +3,17 @@
     <div class="metrics-area">
         <div v-for="(metric, index) in metrics" :key="index" class="chart-container">
             <div class="metric-header">
-                <div class="metric-header-text">
-                    <h3 class="metric-title">{{ metric.title }}</h3>
-                    <div v-if="metric.unit" class="metric-unit special-font-color">{{ metric.unit }}</div>
+                <div class="metric-title-row home-title home-title--ranking">
+                    <img class="metric-title-row__icon home-title__icon" src="@/assets/images/background/小图标.png" alt="" />
+                    <h3 class="metric-title app-section-title">{{ metric.title }}</h3>
+                    <span v-if="getRankings(index).length > 0" class="more-btn" @click="openRankDialog(index)">更多</span>
                 </div>
-                <span v-if="getRankings(index).length > 0" class="more-btn" @click="openRankDialog(index)">更多</span>
+
+                <div class="metric-columns-header">
+                    <span class="metric-col metric-col--seq">序号</span>
+                    <span class="metric-col metric-col--device">设备名称</span>
+                    <span class="metric-col metric-col--value">单位：{{ getUnitShort(metric.unit) }}</span>
+                </div>
             </div>
             <!-- 排名列表：根据可用高度动态显示前 N 条 -->
             <div class="rankings" :ref="(el) => setRankingsEl(el, index)">
@@ -15,15 +21,19 @@
                     <CommonEmptyState size="small" />
                 </div>
                 <template v-else>
-                    <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex" class="ranking-item"
+                    <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex"
+                        class="ranking-item" :class="{ 'ranking-item--with-bg': rankIndex % 2 === 0 }"
                         @click="goToDeviceDetail(rank)" style="cursor: pointer;">
-                        <span class="rank-device special-font-color">
-                            {{ rankIndex + 1 }}.&nbsp;
+                        <span class="col-seq">
+                            <img class="seq-icon" src="@/assets/images/background/首页-排名序标.png"
+                                alt="" />
+                            <span class="seq-num">{{ rankIndex + 1 }}</span>
+                        </span>
+                        <span class="col-device special-font-color" :title="getRankDeviceTooltip(rank)">
                             {{ rank.deviceName }}
                             <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
                         </span>
-                        <span v-if="rank.value !== undefined" class="rank-value special-font-color">{{ rank.value
-                            }}</span>
+                        <span v-if="rank.value !== undefined" class="col-value special-font-color">{{ rank.value }}</span>
                     </div>
                 </template>
             </div>
@@ -180,31 +190,65 @@ const getRankings = (index: number): RankingItem[] => {
     return devices;
 };
 
-/**
- * 列表显示条数：参照「预警总览」的做法，按窗口高度自适应
- * - 不再按容器高度做精确计算，避免各种 margin/padding 导致裁切
- * - 高度越高，可见行数越多；始终最少显示 2 行
- */
-const windowHeight = ref(window.innerHeight || 0);
+const rankingsElRefs = ref<(HTMLDivElement | null)[]>([null, null, null]);
+const visibleRowsByMetric = ref<number[]>([2, 2, 2]);
 
-const updateWindowSize = () => {
-    windowHeight.value = window.innerHeight || 0;
+let resizeObserver: ResizeObserver | null = null;
+let resizeListener: (() => void) | null = null;
+
+const setRankingsEl = (el: unknown, index: number) => {
+    const target = el instanceof Element ? (el as HTMLDivElement) : null
+    rankingsElRefs.value[index] = target
+    if (target && resizeObserver) resizeObserver.observe(target)
+}
+
+const getUnitShort = (unit?: string) => {
+    if (!unit) return ''
+    const match = unit.match(/单位[:：]\s*([^)）]+)\s*[)）]/)
+    return (match?.[1] ?? unit).trim()
 };
 
-const maxVisibleRows = computed(() => {
-    const h = windowHeight.value;
-    if (h >= 920) return 5;
-    if (h >= 770) return 4;
-    if (h >= 650) return 3;
-    return 2;
-});
+const getRankDeviceTooltip = (rank: RankingItem): string => {
+    if (rank.workshopName) return `${rank.deviceName}（${rank.workshopName}）`
+    return rank.deviceName
+};
 
-// 兼容模板上的 ref 绑定（不再使用具体元素）
-const setRankingsEl = (_el: unknown, _index: number) => { };
+const measureAndUpdateVisibleRows = () => {
+    const indices = props.metrics.map((_m, i) => i)
+
+    for (const index of indices) {
+        const el = rankingsElRefs.value[index]
+        if (!el) continue
+
+        const styles = window.getComputedStyle(el)
+        const firstItem = el.querySelector<HTMLElement>('.ranking-item')
+        const rowHeightCss = parseFloat(styles.getPropertyValue('--ranking-row-height') || '')
+        const rowHeight = Number.isFinite(rowHeightCss) && rowHeightCss > 0
+            ? rowHeightCss
+            : (firstItem?.getBoundingClientRect().height ?? 28)
+
+        const gapValue = parseFloat(styles.gap || '0')
+        const gap = Number.isFinite(gapValue) ? gapValue : 5
+
+        const height = el.clientHeight
+        const count = Math.floor((height + gap) / (rowHeight + gap))
+
+        // 保底：至少展示 2 行
+        visibleRowsByMetric.value[index] = Math.max(2, count)
+    }
+};
+
+const scheduleMeasure = () => {
+    // 等待一次布局/字体计算完成，避免读取到旧高度
+    window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => measureAndUpdateVisibleRows())
+    })
+}
 
 const displayRankings = (index: number): RankingItem[] => {
     const list = getRankings(index);
-    return list.slice(0, Math.min(maxVisibleRows.value, list.length));
+    const maxRows = visibleRowsByMetric.value[index] ?? 2
+    return list.slice(0, Math.min(maxRows, list.length))
 };
 
 const rankDialogVisible = ref(false);
@@ -228,17 +272,39 @@ const openRankDialog = (index: number) => {
 
 onMounted(async () => {
     await nextTick();
-    window.addEventListener('resize', updateWindowSize);
+
+    scheduleMeasure()
+
+    resizeListener = () => measureAndUpdateVisibleRows()
+    window.addEventListener('resize', resizeListener)
+
+    // 当容器尺寸因字体/布局变化而变化时，也能重新测算
+    if ('ResizeObserver' in window) {
+        resizeObserver = new ResizeObserver(() => measureAndUpdateVisibleRows())
+        rankingsElRefs.value.forEach(el => {
+            if (el) resizeObserver?.observe(el)
+        })
+    }
 });
 
 onBeforeUnmount(() => {
-    window.removeEventListener('resize', updateWindowSize);
+    if (resizeListener) window.removeEventListener('resize', resizeListener)
+    resizeObserver?.disconnect()
 });
 
 watch(
     () => props.rankings,
     async () => {
         await nextTick();
+        scheduleMeasure()
+    },
+    { deep: true }
+);
+
+watch(
+    () => props.metrics,
+    () => {
+        scheduleMeasure()
     },
     { deep: true }
 );
@@ -251,9 +317,16 @@ watch(
     gap: 10px;
     overflow: hidden;
     box-sizing: border-box;
-    background: url('@/assets/images/background/首页-Top5背景.png') no-repeat center center;
-    background-size: 100% 100%;
-    padding: 10px;
+    padding: 10px 20px 20px;
+
+    /* 直接作用到三个排名卡片根节点，避免嵌套选择器导致不命中 */
+    >.chart-container {
+        flex: 1;
+        background: url('@/assets/images/background/首页-排名背景.png') no-repeat center center;
+        background-size: 100% 100%;
+        border-radius: 12px;
+        overflow: hidden;
+    }
 
     >div {
         flex: 1;
@@ -268,45 +341,91 @@ watch(
             flex-direction: column;
             overflow: hidden;
             box-sizing: border-box;
-            background-color: lightblue;
+            background: transparent;
         }
 
         .metric-header {
             position: relative;
             flex-shrink: 0;
+            padding-bottom: 0;
 
-            .metric-header-text {
-                display: flex;
-                flex-direction: column;
+            .metric-title-row {
+                position: relative;
+                padding-left: 15px;
+                padding-top: 2px;
+                padding-bottom: 2px;
+            }
+
+            .metric-title-row__icon {
+                display: block;
+                flex-shrink: 0;
             }
 
             .more-btn {
                 position: absolute;
-                top: 4px;
-                right: 20px;
+                top: 50%;
+                right: 16px;
+                transform: translateY(-50%);
                 font-size: 0.9rem;
                 cursor: pointer;
                 user-select: none;
+                color: rgba(255, 255, 255, 0.45);
+                font-weight: 500;
 
                 &:hover {
                     text-decoration: underline;
                 }
             }
-        }
 
-        .chart-container .metric-unit {
-            text-align: center !important;
-            font-size: 1rem !important;
-            margin-bottom: 5px !important;
-            display: block !important;
+            .metric-columns-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 12px;
+                height: 30px;
+                flex: 0 0 auto;
+                color: #4E89FF;
+                font-size: 0.9rem;
+                letter-spacing: 0.3px;
+                box-sizing: border-box;
+                white-space: nowrap;
+            }
+
+            .metric-col {
+                min-width: 0;
+            }
+
+            .metric-col--seq {
+                width: 44px;
+                text-align: center;
+                flex: 0 0 auto;
+            }
+
+            .metric-col--device {
+                flex: 1;
+                text-align: left;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                padding-right: 6px;
+            }
+
+            .metric-col--value {
+                width: 84px;
+                flex: 0 0 auto;
+                text-align: right;
+                white-space: nowrap;
+            overflow: visible;
+            text-overflow: clip;
+                flex: 0 0 auto;
+                line-height: 1;
+            }
         }
 
         .rankings {
             display: flex;
             flex-direction: column;
-            gap: 5px;
-            --ranking-row-height: 22px;
-            margin-bottom: 4px;
+            --ranking-row-height: 30px;
             flex: 1;
             min-height: 0;
             overflow: hidden;
@@ -323,71 +442,85 @@ watch(
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 14px;
                 box-sizing: border-box;
-                padding: 6px 10px;
-                /* 排名行字体，稍小于标题 */
+                padding: 0 8px;
                 font-size: 0.9rem;
                 height: var(--ranking-row-height);
                 flex: 0 0 auto;
                 cursor: pointer;
                 transition: all 0.3s ease;
+                background-color: transparent;
 
-                &:hover {
-                    background: rgba(255, 255, 255, 0.3);
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                &.ranking-item--with-bg {
+                    background-image: url('@/assets/images/background/排名行背景.png');
+                    background-repeat: no-repeat;
+                    background-size: 100% 100%;
+                    background-color: transparent;
                 }
 
-                .rank-device {
-                    flex: 1;
-                    min-width: 0;
-                    text-align: left;
-                    margin-right: 8px;
+                &:hover {
+                    background-color: rgba(255, 255, 255, 0.15);
+                }
+
+                .col-seq {
+                    width: 44px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: flex-start;
+                    padding-left: 2px;
+                    gap: 4px;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
+                    flex: 0 0 auto;
+                    color: #ffffff;
                 }
 
-                .rank-value {
+                .seq-icon {
+                    width: 6px;
+                    height: 9px;
+                    object-fit: contain;
+                    flex: 0 0 auto;
+                    margin-left: -2px;
+                    margin-right: 5px;
+                }
+
+                .seq-num {
+                    display: inline-block;
+                    line-height: 1;
+                    flex: 0 0 auto;
+                }
+
+                .col-device {
+                    flex: 1;
+                    min-width: 0;
+                    text-align: left;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                padding-right: 6px;
+                    color: #ffffff;
+                }
+
+                .col-value {
                     flex-shrink: 0;
-                    //font-weight: bold;
+                    width: 84px;
                     text-align: right;
+                    color: #ffffff;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
                 }
             }
         }
 
         @media (max-width: 768px) {
             .rankings {
+                --ranking-row-height: 26px;
                 .ranking-item {
                     font-size: 0.8rem;
-                    padding: 6px 10px;
+                    padding: 0 10px;
                 }
-            }
-        }
-
-        /* 根据窗口高度与 maxVisibleRows 断点保持一致的样式收缩 */
-        @media (max-height: 920px) {
-            .ranking-item {
-                margin: 2px 10px;
-                padding: 6px 10px;
-            }
-        }
-
-        @media (max-height: 780px) {
-            .ranking-item { 
-                padding: 5px 12px;
-                font-size: 0.85rem;
-                margin: 1px 10px;
-            }
-        }
-
-        @media (max-height: 650px) {
-            .ranking-item {
-                margin: 1px 10px;
-                padding: 4px 12px;
-                font-size: 0.8rem;
             }
         }
     }
@@ -398,20 +531,15 @@ watch(
         font-weight: 500;
         letter-spacing: 1.22px;
         color: rgba(255, 255, 255, 1);
-        margin: 0 auto !important;
-        text-align: center !important;
+        margin: 0 !important;
+        text-align: left !important;
         /* 使用 rem，相对根字号自适应 */
         font-size: 1.2rem!important;
         display: block !important;
-        width: 100% !important;
+        width: auto !important;
     }
 
-        .chart-container .metric-unit {
-            text-align: center !important;
-            font-size: 1rem !important;
-            margin-bottom: 5px !important;
-            display: block !important;
-        }
+        
 }
 
 .rank-dialog :deep(.el-dialog__header) {

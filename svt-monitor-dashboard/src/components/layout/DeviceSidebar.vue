@@ -1,8 +1,13 @@
 <template>
   <aside class="device-sidebar">
     <!-- 标题 -->
-    <div class="sidebar-header">
-      <h3 class="sidebar-title">设备列表</h3>
+    <div class="sidebar-header home-title home-title--device-list">
+      <div class="sidebar-header__left home-title__left">
+        <img class="sidebar-header__icon home-title__icon" src="@/assets/images/background/小图标.png" alt="" />
+        <div class="title-with-legend">
+          <h3 class="app-section-title">设备列表</h3>
+        </div>
+      </div>
     </div>
 
     <!-- 搜索区域 -->
@@ -739,23 +744,16 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: url('@/assets/images/background/首页-设备列表背景.png') no-repeat center center;
-  background-size: 100% 100%;
   overflow: hidden;
+  padding: 10px 0 0;
 
   .sidebar-header {
     display: flex;
     align-items: center;
     flex-shrink: 0;
-    justify-content: space-between;
-    padding: 10px 20px 0;
+    justify-content: flex-start;
+    height: auto;
 
-    .sidebar-title{
-      font-weight: 500;
-      letter-spacing: 1.22px;
-      color: rgba(255, 255, 255, 1);
-      font-size: 1.4rem;
-    }
   }
 
   .search-area {
@@ -899,23 +897,29 @@ onUnmounted(() => {
         .el-tree-node__content {
           height: 40px;
           border-radius: 6px;
+          background: url('@/assets/images/background/设备树行背景.png') no-repeat center center;
+          background-size: 100% 100%;
+          background-color: transparent;
           transition: all 0.2s;
           cursor: pointer;
 
           &:hover {
-            background: rgba(150, 150, 150, 0.1);
+            background-color: rgba(150, 150, 150, 0.1);
           }
         }
 
         // 清除所有节点的默认选中样式（包括focus状态和is-current）
         .el-tree-node.is-current>.el-tree-node__content,
         .el-tree-node:focus>.el-tree-node__content {
-          background: transparent !important;
+          background-color: transparent !important;
         }
 
         // 自定义选中样式 - 基于 .is-selected 类，完全不依赖 el-tree 的 is-current
         .el-tree-node__content:has(.tree-node.is-selected) {
-          background: rgb(150, 150, 150, 0.2) !important;
+          background-image: url('@/assets/images/background/设备树选中行背景.png') !important;
+          background-repeat: no-repeat !important;
+          background-size: 100% 100% !important;
+          background-color: transparent !important;
         }
       }
     }
@@ -928,14 +932,14 @@ onUnmounted(() => {
     width: 100%;
     padding: 2px 0;
     /* 设备树整行文字基础颜色 */
-    color: rgba(153, 240, 255, 1);
+    color: rgba(255, 255, 255, 1);
 
     .expand-icon {
       cursor: pointer;
       transition: transform 0.2s;
       /* 响应式字体大小，以16px为基准 */
       /* 展开/收起图标颜色 */
-      color: rgba(153, 240, 255, 1) !important;
+      color: rgba(255, 255, 255, 1) !important;
     }
 
     .no-select {
@@ -956,7 +960,7 @@ onUnmounted(() => {
       display: flex;
       align-items: center;
       /* 设备树图标颜色 */
-      color: rgba(153, 240, 255, 1) !important;
+      color: rgba(255, 255, 255, 1) !important;
       flex-shrink: 0;
 
       .el-icon {
@@ -971,14 +975,14 @@ onUnmounted(() => {
       text-overflow: ellipsis;
       white-space: nowrap;
       /* 节点文字颜色 */
-      color: rgba(153, 240, 255, 1);
+      color: rgba(255, 255, 255, 1);
     }
 
     .node-count {
       margin-left: 8px;
       flex-shrink: 0;
       /* 统计文字颜色（设备数/点位数），与设备树文字保持一致 */
-      color: rgba(153, 240, 255, 1);
+      color: rgba(255, 255, 255, 1);
     }
   }
 }

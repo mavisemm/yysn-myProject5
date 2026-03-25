@@ -1039,9 +1039,44 @@
         let pointList = []; // 存储点位列表
         let tenantId = null; // 存储租户ID
         let apiIp = '122.224.196.178'; // 存储API IP地址，默认值
+        let authToken = null; // 存储登录token
+
+        function redirectToLogin() {
+            window.location.href = '/login';
+        }
+
+        function getValidToken() {
+            const token = localStorage.getItem('token');
+            if (!token) return null;
+            return token;
+        }
+
+        function setupAuthAjax() {
+            $.ajaxSetup({
+                beforeSend: function(xhr) {
+                    if (authToken) {
+                        xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+                    }
+                },
+                complete: function(xhr) {
+                    if (xhr && xhr.status === 401) {
+                        localStorage.removeItem('token');
+                        redirectToLogin();
+                    }
+                }
+            });
+        }
         
         // 页面加载完成后初始化
         $(document).ready(function() {
+            authToken = getValidToken();
+            if (!authToken) {
+                alert('登录已过期，请重新登录');
+                redirectToLogin();
+                return;
+            }
+            setupAuthAjax();
+
             // 从URL参数获取租户ID和IP地址
             const urlParams = new URLSearchParams(window.location.search);
             tenantId = urlParams.get('tenantId') || localStorage.getItem('tenantId');
@@ -1271,7 +1306,7 @@
             };
             
             // 发送请求到后台API（使用从URL参数获取的IP地址）
-            const apiUrl = `http://${apiIp}:36000/api/sound/long-term-trend/analyze`;
+            const apiUrl = `http://${apiIp}:8003/api/sound/long-term-trend/analyze`;
             $.ajax({
                 url: apiUrl,
                 method: 'POST',

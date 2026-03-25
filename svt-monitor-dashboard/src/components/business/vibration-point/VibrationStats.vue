@@ -95,8 +95,6 @@ onMounted(() => {
 
 .stats-card {
     width: 33.33%;
-    background: url('@/assets/images/background/首页-数据统计背景.png') no-repeat center center;
-    background-size: 100% 100%;
 
     .stats-grid {
         display: grid;

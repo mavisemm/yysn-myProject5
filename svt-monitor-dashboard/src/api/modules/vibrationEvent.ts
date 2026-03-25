@@ -73,7 +73,8 @@ export const fetchVibrationEventsForOverview = async (params?: {
 
   const pageSize = params?.pageSize ?? 30
   const res = await request.post<EventFindResponse>(
-    '/taicang/event/find',
+    // 兜底：必须直连 8003，避免落到 8006 的路由导致 405
+    'http://122.224.196.178:8003/taicang/event/find',
     {
       filterPropertyMap: [
         { code: 'statusCode', operate: 'EQ', value: 'VALID' },
@@ -120,7 +121,7 @@ export const fetchVibrationAlarmsForOverview = async (params?: {
   const pageSize = params?.pageSize ?? 50
 
   const res = await request.post<VibrationAlarmFindResponse>(
-    'http://122.224.196.178:8006/taicang/event/findVibrationAlarm',
+    '/taicang/event/findVibrationAlarm',
     {
       tenantId,
       statusCode: 'VALID',

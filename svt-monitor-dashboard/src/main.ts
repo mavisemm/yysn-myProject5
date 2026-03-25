@@ -7,7 +7,6 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
-import { useAlarmBatchStore } from '@/stores/alarmBatch'
 
 import './assets/styles/common.scss'
 
@@ -21,8 +20,5 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 app.use(ElementPlus, { locale: zhCn })
-
-// 预警批量弹窗用到的设备/类型下拉：首屏后台预拉，避免打开弹窗时与列表请求挤在同一帧渲染海量 DOM
-void useAlarmBatchStore(pinia).ensureDropdowns()
 
 app.mount('#app')

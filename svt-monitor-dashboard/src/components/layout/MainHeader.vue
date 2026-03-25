@@ -95,11 +95,10 @@
           />
         </div>
       </div>
-      <div class="nav-btn" @click="handleLogout">
-        <el-icon :size="24" color="rgba(153, 240, 255, 1)">
+      <div class="nav-btn logout-btn" @click="handleLogout">
+        <el-icon :size="24" color="#1acfd5">
           <SwitchButton />
         </el-icon>
-        <span>退出</span>
       </div>
     </div>
   </header>
@@ -265,7 +264,8 @@ const handleLogout = () => {
   align-items: center;
   position: relative;
   z-index: 100;
-  padding: 10px;
+  background: url('@/assets/images/background/头部背景.png') no-repeat center center;
+  background-size: 100% 100%;
 
   .header-left {
     display: flex;
@@ -273,7 +273,8 @@ const handleLogout = () => {
     gap: 8px;
     position: absolute;
     left: 10px;
-    top: calc(8vh - 30px);
+    top: 50%;
+    transform: translateY(-50%);
     z-index: 1;
 
     .nav-btn {
@@ -304,24 +305,36 @@ const handleLogout = () => {
 
     .title {
       margin: 0;
-      font-size: clamp(1.75rem, 2.2vw, 2rem);
-      font-weight: 400;
-      letter-spacing: 0px;
-      color: rgba(0, 255, 255, 1);
+      font-size: clamp(2.05rem, 2.45vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: #ffffff;
       text-align: center;
       vertical-align: top;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: min(60vw, 720px);
+      font-family: 'YouSheBiaoTiHei', 'Microsoft YaHei', sans-serif;
+      line-height: 1;
+      background: linear-gradient(180deg, #ffffff 0%, #b9dcfd 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+
+      text-shadow:
+        0 1px 0 linear-gradient(180deg, #eff7fd 0%, #b9dcfd 100%),
+        0 2px 0 rgba(46, 92, 156, 0.7),
+        0 3px 0 rgba(28, 68, 128, 0.62),
+        0 0 10px rgba(186, 215, 255, 0.3);
     }
   }
 
   /* 右侧：时间盒子（单独一个容器） */
   .header-right-clock {
     position: absolute;
-    right: 150px;
-    top: 80%;
+    right: 115px;
+    top: 50%;
     transform: translateY(-50%);
     z-index: 1;
   }
@@ -330,7 +343,8 @@ const handleLogout = () => {
   .header-right-actions {
     position: absolute;
     right: 10px;
-    top: calc(8vh - 30px);
+    top: 50%;
+    transform: translateY(-50%);
     z-index: 1;
     display: flex;
     align-items: center;
@@ -442,6 +456,14 @@ const handleLogout = () => {
     &:hover {
       background: rgba(150, 150, 150, 0.2);
       color: rgba(153, 240, 255, 1);
+    }
+  }
+
+  .logout-btn {
+    color: #1acfd5;
+
+    &:hover {
+      color: #1acfd5;
     }
   }
 }

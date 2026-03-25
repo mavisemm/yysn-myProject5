@@ -83,7 +83,7 @@ const handleLogin = async () => {
         localStorage.removeItem('token')
         localStorage.removeItem('tenantId')
 
-        // 调用实际后端登录接口（8003）
+        // 登录接口（与页面同源，由网关反代到声学后端）
         const res = await loginApi({
             userName: loginForm.userName,
             password: loginForm.password
@@ -133,31 +133,24 @@ const handleLogin = async () => {
             normalizeToken((res as any)?.ret?.accessToken) ||
             normalizeToken((res as any)?.data?.accessToken)
 
-        // 旧结构兼容：旧版可能是 ret = '<tenantId>'（string）
-        // 新结构：ret 可能是对象，此时不能直接把整个对象当 tenantId 存入 localStorage
         const tenantId =
             normalizeTenantId((res as any)?.data?.tenantId) ||
             (typeof (res as any)?.ret === 'string' ? normalizeTenantId((res as any)?.ret) : '') ||
             normalizeTenantId((res as any)?.ret) ||
             normalizeTenantId((res as any)?.ret?.tenantId)
 
-        // 登录成功标记：路由守卫依赖 localStorage.token 判断是否已登录
-        // 同时 request 拦截器会把它拼到 Authorization: Bearer <token>
         if (!token) {
             throw new Error('登录成功但未返回 token')
         }
         localStorage.setItem('token', token)
 
-        // 登录成功必须写入 tenantId（供业务接口使用）
         if (!tenantId) {
             throw new Error('登录成功但未返回 tenantId')
         }
         localStorage.setItem('tenantId', tenantId)
 
-        // 显示成功消息
         ElMessage.success('登录成功')
 
-        // 跳转到首页
         router.push('/')
     } catch (error) {
         console.error('登录错误:', error)

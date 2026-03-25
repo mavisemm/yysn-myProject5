@@ -32,6 +32,23 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // 预警详情：布局、历史异常库等 -> 8003
+      '/taicang/hardware/factory': {
+        target: 'http://122.224.196.178:8003',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/taicang/hardware/device/sound': {
+        target: 'http://122.224.196.178:8003',
+        changeOrigin: true,
+        secure: false,
+      },
+      // 登录等 -> 8003
+      '/taicang/hardware/user': {
+        target: 'http://122.224.196.178:8003',
+        changeOrigin: true,
+        secure: false,
+      },
       // 弹窗用：测点、设备名下拉、事件类型下拉 -> 8003
       '/taicang/hardware/device/check-point': {
         target: 'http://122.224.196.178:8003',
@@ -45,6 +62,12 @@ export default defineConfig({
       },
       '/taicang/hardware/eventType': {
         target: 'http://122.224.196.178:8003',
+        changeOrigin: true,
+        secure: false,
+      },
+      // 振动故障报警：该接口在 8006；用正则避免被下方 /taicang/event 前缀误匹配到 8003
+      '^/taicang/event/findVibrationAlarm$': {
+        target: 'http://122.224.196.178:8006',
         changeOrigin: true,
         secure: false,
       },

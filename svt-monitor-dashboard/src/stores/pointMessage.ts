@@ -5,6 +5,7 @@ import {
   type PointMessageCheckPointDto,
   type PointMessageGroupItem
 } from '@/api/modules/hardware'
+import { getTenantId } from '@/api/tenant'
 
 /** 前端使用的点位详情（与接口字段对应，便于声音点位页等展示） */
 export interface PointMessageInfo {
@@ -48,7 +49,7 @@ export const usePointMessageStore = defineStore('pointMessage', () => {
     return list
   }
 
-  async function loadPointMessage(tenantId = '2b410e834b4b4ae49ab8d52f6d49e967') {
+  async function loadPointMessage(tenantId: string = getTenantId()) {
     if (loading.value) return
     try {
       loading.value = true

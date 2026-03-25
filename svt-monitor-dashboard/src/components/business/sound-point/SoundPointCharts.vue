@@ -106,7 +106,7 @@ const handleTrendAnalysisClick = () => {
     const base = import.meta.env.BASE_URL || '/';
     const normalizedBase = base.endsWith('/') ? base : `${base}/`;
     const tenantId = localStorage.getItem('tenantId') ?? '';
-    // trend.html 默认请求 122.224.196.178:8003；这里把 tenantId/ip 透传过去，避免“全部点位”为空
+    // trend.html 内用 apiIp 调接口；这里透传 tenantId/ip，避免「全部点位」为空
     const params = new URLSearchParams();
     if (tenantId) params.set('tenantId', tenantId);
     params.set('ip', '122.224.196.178');
@@ -379,12 +379,6 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     height: 50%;
-    /* 放弃原来的小背景图，改为大模块边框样式 */
-    background: transparent;
-    background-image: none;
-    border-radius: 12px;
-    border: 1px solid #60a5fa; /* 与默认蓝色主题小模块边框保持一致 */
-    backdrop-filter: blur(6px);
 
     .charts-row {
         display: flex;

@@ -37,6 +37,48 @@ html, body {
   font-size: 1.2rem;
 }
 
+/* =========================
+ * 首页标题区域公共样式
+ * 用于：设备列表 / 预警总览 / 设备监测 / 排名三块标题
+ * ========================= */
+.home-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 100% 500%;
+}
+
+.home-title--device-list {
+  background-image: url('@/assets/images/background/首页-设备列表标题背景.png');
+}
+
+.home-title--device-monitor {
+  background-image: url('@/assets/images/background/首页-设备监测标题背景.png');
+}
+
+.home-title--ranking {
+  background-image: url('@/assets/images/background/首页-设备列表标题背景.png');
+}
+
+.home-title__icon {
+  display: block;
+  flex-shrink: 0;
+  width: clamp(18px, 3vw, 44px);
+  height: clamp(14px, 2.5vh, 30px);
+  object-fit: contain;
+}
+
+.home-title__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding-left: 15px;
+}
+
 .el-input__wrapper,
 .el-button,
 .el-tag,

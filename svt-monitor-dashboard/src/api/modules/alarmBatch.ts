@@ -1,12 +1,5 @@
 import request from '../request'
-
-const TAICANG_API_BASE_URL = 'http://122.224.196.178:8003'
-const DEFAULT_TENANT_ID = '2b410e834b4b4ae49ab8d52f6d49e967'
-
-function getTenantIdPreferred(): string {
-  const fromUrl = new URLSearchParams(window.location.search).get('tenantId')
-  return (fromUrl && fromUrl.trim()) || localStorage.getItem('tenantId') || DEFAULT_TENANT_ID
-}
+import { getTenantId } from '../tenant'
 
 export type FilterOperate = 'EQ' | 'GE' | 'LE' | 'LIKE'
 
@@ -68,24 +61,22 @@ export interface DropdownResponse {
 }
 
 export const apiFindEvents = (body: FindBody) => {
-  return request.post<FindResponse>('/taicang/event/find', body, { showLoading: false, customBaseURL: TAICANG_API_BASE_URL })
+  return request.post<FindResponse>('http://122.224.196.178:8003/taicang/event/find', body, { showLoading: false })
 }
 
 export const apiGetDeviceNameDropdownList = () => {
-  const tenantId = getTenantIdPreferred()
+  const tenantId = getTenantId()
   return request.get<DropdownResponse>('/taicang/hardware/device/name/getDropdownList', {
     params: { _t: Date.now(), tenantId, userId: '' },
-    showLoading: false,
-    customBaseURL: TAICANG_API_BASE_URL
+    showLoading: false
   })
 }
 
 export const apiGetEventTypeDropdownList = () => {
-  const tenantId = getTenantIdPreferred()
+  const tenantId = getTenantId()
   return request.get<DropdownResponse>('/taicang/hardware/eventType/getDropdownList', {
     params: { _t: Date.now(), tenantId, userId: '' },
-    showLoading: false,
-    customBaseURL: TAICANG_API_BASE_URL
+    showLoading: false
   })
 }
 
@@ -95,29 +86,29 @@ export const apiGetPointListNew = (body: any) => {
 
 export const apiConfirmYes = (idList: string[]) => {
   // 后端期望请求体根为数组（List），不要再包一层 { idList: [...] }
-  return request.post<any>('/taicang/event/confirm/yes', idList, { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
+  return request.post<any>('/taicang/event/confirm/yes', idList, { showLoading: true })
 }
 
 export const apiConfirmNot = (idList: string[]) => {
-  return request.post<any>('/taicang/event/confirm/not', idList, { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
+  return request.post<any>('/taicang/event/confirm/not', idList, { showLoading: true })
 }
 
 export const apiDeleteEvents = (idList: string[]) => {
-  return request.post<any>('/taicang/event/delete', idList, { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
+  return request.post<any>('/taicang/event/delete', idList, { showLoading: true })
 }
 
 export const apiConfirmYesAll = (idList?: string[]) => {
   // 后端期望请求体根为数组（List）；没有 idList 时传空数组
-  return request.post<any>('/taicang/event/confirm/yesAll', idList ?? [], { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
+  return request.post<any>('/taicang/event/confirm/yesAll', idList ?? [], { showLoading: true })
 }
 
 export const apiConfirmNotAll = () => {
   // 后端期望请求体根为数组（List）
-  return request.post<any>('/taicang/event/confirm/notAll', [], { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
+  return request.post<any>('/taicang/event/confirm/notAll', [], { showLoading: true })
 }
 
 export const apiDeleteAllValid = () => {
   // 后端期望请求体根为数组（List）
-  return request.post<any>('/taicang/event/deleteAllValid', [], { showLoading: true, customBaseURL: TAICANG_API_BASE_URL })
+  return request.post<any>('/taicang/event/deleteAllValid', [], { showLoading: true })
 }
 

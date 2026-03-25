@@ -483,6 +483,6 @@ export const getPointMessage = (params: {
   pageIndex: number;
   pageSize: number;
 }): Promise<PointMessageResponse> => {
-  // 后端实际端口为 8003，这里显式走 8003 避免走 8006 出错
-  return request.post('http://122.224.196.178:8003/taicang/hardware/device/check-point/find/point/message', params, { showLoading: false })
+  // 与页面同源请求，由部署侧 nginx/Vite 代理到声学后端
+  return request.post('/taicang/hardware/device/check-point/find/point/message', params, { showLoading: false })
 }

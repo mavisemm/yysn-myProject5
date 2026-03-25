@@ -1,4 +1,5 @@
 import request from '../request'
+import { getTenantId } from '../tenant'
 
 // 设备相关的 API 接口
 
@@ -75,7 +76,7 @@ export interface VibrationFrequencyData {
 
 export const getVibrationFrequencyData = (deviceId: string, pointId: string): Promise<NewApiResponse<VibrationFrequencyData>> => {
   return request.post('/api/device/vibration/data/frequency', {
-    tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
+    tenantId: getTenantId(),
     deviceId: deviceId,
     pointId: pointId
   })
@@ -91,7 +92,7 @@ export interface VibrationMetricData {
 
 export const getVibrationMetricData = (deviceId: string, pointId: string): Promise<NewApiResponse<VibrationMetricData>> => {
   return request.post('/api/device/vibration/data/metric/rms', {
-    tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
+    tenantId: getTenantId(),
     deviceId: deviceId,
     pointId: pointId
   })
@@ -105,7 +106,7 @@ export interface VibrationTimeDomainData {
 
 export const getVibrationTimeDomainData = (deviceId: string, pointId: string): Promise<NewApiResponse<VibrationTimeDomainData>> => {
   return request.post('/api/device/vibration/data/time', {
-    tenantId: '2b410e834b4b4ae49ab8d52f6d49e967',
+    tenantId: getTenantId(),
     deviceId: deviceId,
     pointId: pointId
   })

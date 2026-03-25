@@ -165,15 +165,11 @@ onMounted(() => {
   }
 
   .dashboard-box-stats {
-    height: calc((100% - 20px) * 0.2);
-  }
-
-  .dashboard-box-alarm {
-    height: calc((100% - 20px) * 0.5);
+    height: calc((100% - 20px) * 0.25);
   }
 
   .dashboard-box-metrics {
-    height: calc((100% - 20px) * 0.3);
+    flex: 1;
   }
 }
 </style>

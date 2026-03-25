@@ -1,6 +1,6 @@
 import request from '../request'
 
-const SOUND_TENANT_ID = '2b410e834b4b4ae49ab8d52f6d49e967'
+import { getTenantId } from '../tenant'
 
 // 声音相关 API 接口
 
@@ -264,7 +264,7 @@ export const getStandardFrequencyList = (payload: {
   return request.post('/taicang/hardware/device/standard-frequency-type/findSimpleFrequencyList', payload, {
     params: {
       userId: '',
-      tenantId: SOUND_TENANT_ID,
+      tenantId: getTenantId(),
       _t: Date.now()
     }
   })
@@ -284,7 +284,7 @@ export const getLatestDeviationByReceiver = (params?: {
   return request.get('/taicang/device/sound/data/findLatestDeviationByReceiver/no-scene', {
     params: {
       userId: '',
-      tenantId: SOUND_TENANT_ID,
+      tenantId: getTenantId(),
       ...(receiverId ? { receiverId } : {}),
       startTime,
       endTime,
@@ -302,7 +302,7 @@ export const findLatestFrequencyById = (params: { id: string | number; type: num
   return request.get('/taicang/device/sound/data/findLatestFrequencyById', {
     params: {
       userId: '',
-      tenantId: SOUND_TENANT_ID,
+      tenantId: getTenantId(),
       id: params.id,
       type: params.type,
       _t: Date.now()
@@ -355,7 +355,7 @@ export const getLatestFrequencyByReceiver = (payload: {
   return request.get('/taicang/device/sound/data/findLatestFrequencyByReceiver', {
     params: {
       userId: '',
-      tenantId: SOUND_TENANT_ID,
+      tenantId: getTenantId(),
       receiverId: payload.receiverId,
       type: payload.type,
       _t: Date.now()
@@ -374,7 +374,7 @@ export const getLatestFrequencyByReceiverNoScene = (payload: {
   return request.get('/taicang/device/sound/data/findLatestFrequencyByReceiver/no-scene', {
     params: {
       userId: '',
-      tenantId: SOUND_TENANT_ID,
+      tenantId: getTenantId(),
       receiverId: payload.receiverId,
       type: payload.type,
       _t: Date.now()

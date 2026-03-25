@@ -1,6 +1,14 @@
 <!-- 统计数据展示区域：显示各类设备统计数据 -->
 <template>
     <div class="stats-area">
+        <div class="header-section home-title home-title--device-monitor">
+            <div class="header-section__left home-title__left">
+                <img class="header-section__icon home-title__icon" src="@/assets/images/background/小图标.png" alt="" />
+                <div class="title-with-legend">
+                    <h3 class="app-section-title">设备监测</h3>
+                </div>
+            </div>
+        </div>
         <div class="stats-grid">
             <div v-for="(stat, index) in stats" :key="index" class="stat-card"
                 :class="[`stat-card-${index}`, (stat.title === '趋势预警设备' || stat.title === '故障报警设备') ? 'stat-card-trend' : '']"
@@ -12,7 +20,14 @@
                         <el-icon v-else><Monitor /></el-icon>
                     </div>
                     <div class="stat-text-wrap">
-                        <div class="stat-number">{{ stat.number }}</div>
+                            <div class="stat-number">
+                                <template v-for="(ch, i) in splitNumberChars(stat.number)" :key="i">
+                                    <span v-if="isSingleDigit(ch)" class="digit-bg">
+                                        <span class="digit-text">{{ ch }}</span>
+                                    </span>
+                                    <span v-else class="digit-text digit-text-plain">{{ ch }}</span>
+                                </template>
+                            </div>
                         <div class="stat-text">{{ stat.title }}</div>
                     </div>
                 </div>
@@ -37,14 +52,23 @@ const emit = defineEmits<{
 }>();
 
 const ICON_BY_TITLE: Record<string, string> = {
-    '健康设备': new URL('@/assets/images/background/首页-健康设备数.png', import.meta.url).href,
-    '监控总设备': new URL('@/assets/images/background/首页-监控总设备数.png', import.meta.url).href,
-    '趋势预警设备': new URL('@/assets/images/background/首页-监测点位数.png', import.meta.url).href,
-    '故障报警设备': new URL('@/assets/images/background/首页-预警设备数.png', import.meta.url).href,
+    '健康设备': new URL('@/assets/images/background/首页-健康设备.png', import.meta.url).href,
+    '监控总设备': new URL('@/assets/images/background/首页-监控总设备.png', import.meta.url).href,
+    '趋势预警设备': new URL('@/assets/images/background/首页-趋势预警设备.png', import.meta.url).href,
+    '故障报警设备': new URL('@/assets/images/background/首页-故障报警设备.png', import.meta.url).href,
 };
 
 const getIconSrc = (title: string) => {
     return ICON_BY_TITLE[title] || '';
+};
+
+const splitNumberChars = (value: StatItem['number']): string[] => {
+    const str = String(value ?? 0);
+    return str.split('');
+};
+
+const isSingleDigit = (ch: string): boolean => {
+    return /^[0-9]$/.test(ch);
 };
 
 const handleCardClick = (title: string) => {
@@ -66,12 +90,36 @@ function isAlertOrWarning(stat: StatItem) {
     height: 100%;
     min-width: 0;
     min-height: 0;
+    padding: 10px 20px 0;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
     box-sizing: border-box;
-    background: url('@/assets/images/background/首页-Top5背景.png') no-repeat center center;
-    background-size: 100% 100%;
+
+    .header-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        flex: 0 0 auto;
+
+        .title-with-legend {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex: 0 0 auto;
+            min-width: 0;
+        }
+
+        h3 {
+            margin: 0;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+    }
 
     .stats-grid {
+        flex: 1;
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 10px;
@@ -80,7 +128,7 @@ function isAlertOrWarning(stat: StatItem) {
         min-width: 0;
         overflow: hidden;
         box-sizing: border-box;
-        padding: 10px 20px;
+        padding-top: 10px;
 
         .stat-card {
             min-width: 0;
@@ -89,12 +137,11 @@ function isAlertOrWarning(stat: StatItem) {
             display: flex;
             align-items: center;
             justify-content: center;
-            /* 统计卡片基础文字大小，随根字号自适应 */
             font-size: 0.9rem;
-            // font-weight: bold;
             color: white;
             box-sizing: border-box;
-            border-radius: 8px;
+            background: url('@/assets/images/background/首页-数据统计小背景.png') no-repeat center center;
+            background-size: 100% 100%;
 
             &.stat-card-trend {
                 cursor: pointer;
@@ -126,8 +173,7 @@ function isAlertOrWarning(stat: StatItem) {
             display: flex;
             align-items: center;
             justify-content: center;
-            /* 随视口缩放：小屏 24px，大屏最大 52px */
-            width: clamp(24px, 5vw, 58px);
+            width: clamp(24px, 6vw, 100px);
             margin-right: 10px;
 
             .stat-icon-img {
@@ -180,16 +226,41 @@ function isAlertOrWarning(stat: StatItem) {
 
         .stat-number {
             /* 数值文字 */
-            font-size: 1.8rem;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            width: 100%;
-            max-width: 100%;
-            min-width: 0;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-            text-align: center;
+
+            /* 每个数字由 digit-bg 承担尺寸；这里仅控制文字 */
+            font-size: 1.8rem;
+            line-height: 1;
+        }
+
+        .digit-bg {
+            width: clamp(18px, 3vw, 44px);
+            height: clamp(22px, 3.2vw, 50px);
+            background: url('@/assets/images/background/数字背景.png') no-repeat center center;
+            background-size: 100% 100%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+        }
+
+        .digit-text {
+            color: #00f2fe;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .digit-text-plain {
+            background: none;
         }
     }
 }

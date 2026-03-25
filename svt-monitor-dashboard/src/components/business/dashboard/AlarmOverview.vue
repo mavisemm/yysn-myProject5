@@ -2,20 +2,11 @@
 <template>
     <div class="alarm-overview">
         <!-- 顶部区域：标题和搜索栏 -->
-        <div class="header-section">
-            <div class="title-with-legend">
+        <div class="header-section home-title home-title--device-monitor">
+            <div class="header-section__left home-title__left">
+                <img class="header-section__icon home-title__icon" src="@/assets/images/background/小图标.png" alt="" />
+                <div class="title-with-legend">
                 <h3 class="app-section-title">预警总览</h3>
-                <div class="status-legend">
-                    <span class="legend-item">
-                        <span class="legend-dot legend-dot-alarm"></span> 报警
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot legend-dot-warning"></span> 预警
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot legend-dot-healthy"></span> 健康
-                    </span>
-                </div>
                 <div class="batch-actions">
                     <el-button size="small" class="batch-btn" @click="openRealtimeBatch">
                         实时预警
@@ -23,6 +14,7 @@
                     <el-button size="small" class="batch-btn" @click="openHistoryBatch">
                         历史预警
                     </el-button>
+                </div>
                 </div>
             </div>
             <div class="search-section">
@@ -47,6 +39,11 @@
             </div>
         </div>
 
+        <div class="status-legend">
+            <img class="status-legend__img" src="@/assets/images/background/首页-预警总览-图例.png"
+                alt="图例：报警、预警、健康" />
+        </div>
+
         <!-- 主内容区域 -->
         <div v-if="filteredAlarms.length === 0" class="alarm-empty">
             <CommonEmptyState />
@@ -56,6 +53,7 @@
             'grid-template-rows': `repeat(${responsivePageSize.rows}, 1fr)`
         }">
             <div v-for="(alarm, index) in displayedAlarms" :key="index" class="alarm-card"
+                :class="`alarm-card--${getDeviceDisplayStatus(alarm)}`"
                 @click="goToDeviceDetail(alarm)">
                 <!-- 第一部分：设备名和状态 -->
                 <div class="card-header">
@@ -70,7 +68,7 @@
                 <!-- 第三部分：测点网格 -->
                 <div class="measurement-grid">
                     <div v-for="item in getDisplayPoints(alarm.measurementPoints)" :key="item.pointNum"
-                        :class="['point-item', item.point.status]">
+                        :class="['point-item', getPointStyleClass(item.point.status, getDeviceDisplayStatus(alarm))]">
                         {{ item.pointNum }}
                     </div>
                 </div>
@@ -131,6 +129,61 @@ interface AlarmItem {
     statusText: string;
     time: string;
     measurementPoints: MeasurementPoint[];
+}
+
+function buildMockMeasurementPoints(type: 'healthy' | 'warning' | 'alarm'): MeasurementPoint[] {
+    const total = 10;
+    const points: MeasurementPoint[] = Array.from({ length: total }).map((_, i) => ({
+        name: `测点${i + 1}`,
+        status: 'healthy'
+    }));
+
+    if (type === 'warning') {
+        points[2] = { name: points[2]!.name, status: 'warning' };
+        points[6] = { name: points[6]!.name, status: 'warning' };
+    }
+
+    if (type === 'alarm') {
+        points[1] = { name: points[1]!.name, status: 'alarm' };
+        points[4] = { name: points[4]!.name, status: 'warning' };
+    }
+
+    return points;
+}
+
+function createMockOverviewAlarms(): AlarmItem[] {
+    return [
+        {
+            id: 'MOCK-HEALTHY-001',
+            deviceName: '一号风机',
+            shopName: '合成车间',
+            deviceNameWithShop: '一号风机（合成车间）',
+            status: 'healthy',
+            statusText: '健康',
+            time: new Date().toISOString(),
+            measurementPoints: buildMockMeasurementPoints('healthy')
+        },
+        {
+            id: 'MOCK-WARNING-001',
+            deviceName: '二号压缩机',
+            shopName: '尿素车间',
+            deviceNameWithShop: '二号压缩机（尿素车间）',
+            status: 'warning',
+            statusText: '预警',
+            time: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+            measurementPoints: buildMockMeasurementPoints('warning')
+        },
+        {
+            id: 'MOCK-ALARM-001',
+            deviceName: '三号泵',
+            shopName: '动力车间',
+            deviceNameWithShop: '三号泵（动力车间）',
+            status: 'alarm',
+            statusText: '报警',
+            time: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+            measurementPoints: buildMockMeasurementPoints('alarm')
+        }
+    ];
 }
 
 /**
@@ -199,19 +252,9 @@ const currentPage = ref(1);
 const containerWidth = ref(window.innerWidth);
 const containerHeight = ref(window.innerHeight);
 
-// 预警总览：列数随宽度变化，高度足够时显示两行
+// 预警总览：固定一行四个
 const responsivePageSize = computed(() => {
-    const width = containerWidth.value;
-    const height = containerHeight.value;
-    let columns = 1;
-    if (width >= 1600) columns = 6;
-    else if (width >= 1400) columns = 5;
-    else if (width >= 1200) columns = 4;
-    else if (width >= 992) columns = 4;
-    else if (width >= 768) columns = 3;
-    else if (width >= 576) columns = 2;
-    const rows = height >= 800 ? 2 : 1;
-    return { pageSize: columns * rows, columns, rows };
+    return { pageSize: 4, columns: 4, rows: 1 };
 });
 
 const rowsCount = computed(() => {
@@ -594,6 +637,11 @@ onMounted(() => {
             }
         })()
     }
+
+    // 本地开发/演示兜底：无真实数据时注入 3 条假数据（健康/预警/报警各一条）
+    if (alarms.value.length === 0) {
+        alarms.value = createMockOverviewAlarms()
+    }
 });
 
 onUnmounted(() => {
@@ -637,6 +685,16 @@ function getDeviceDisplayStatus(alarm: AlarmItem): 'alarm' | 'warning' | 'health
     const hasWarning = points.some(p => p.status === 'warning');
     if (hasAlarm) return 'alarm';
     if (hasWarning) return 'warning';
+    return 'healthy';
+}
+
+function getPointStyleClass(
+    pointStatus: MeasurementPoint['status'],
+    deviceStatus: 'alarm' | 'warning' | 'healthy'
+): string {
+    if (deviceStatus === 'healthy') return 'healthy';
+    if (deviceStatus === 'alarm') return pointStatus === 'alarm' ? 'alarm' : 'alarm-device';
+    if (deviceStatus === 'warning') return pointStatus === 'warning' ? 'warning' : 'warning-device';
     return 'healthy';
 }
 
@@ -721,35 +779,9 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         .status-legend {
             display: flex;
             align-items: center;
-            gap: 12px;
-            color: rgba(255, 255, 255, 0.85);
-            font-size: 0.9rem;
-            white-space: nowrap;
-
-            .legend-item {
-                display: inline-flex;
-                align-items: center;
-                gap: 4px;
-            }
-
-            .legend-dot {
-                width: 10px;
-                height: 10px;
-                border-radius: 50%;
-                display: inline-block;
-            }
-
-            .legend-dot-alarm {
-                background-color: #c21d1d; // 红色：报警
-            }
-
-            .legend-dot-warning {
-                background-color: #E5ED00; // 黄色：预警
-            }
-
-            .legend-dot-healthy {
-                background-color: #3ab000; // 绿色：健康
-            }
+            flex-shrink: 0;
+            margin-left: auto;
+            align-self: flex-end;
         }
 
         .batch-actions {
@@ -759,6 +791,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             white-space: nowrap;
 
             .batch-btn {
+                font-size: 0.8rem;
                 background: rgba(255, 255, 255, 0.08);
                 border: 1px solid rgba(255, 255, 255, 0.18);
                 color: rgba(255, 255, 255)!important;
@@ -818,6 +851,22 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         }
     }
 
+    // status-legend 已经挪到了 header-section 外面，这里需要单独定义样式以保证生效
+    .status-legend {
+        padding: 10px 0 0;
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        align-self: flex-end; // 靠右
+    }
+
+    .status-legend__img {
+        display: block;
+        height: 0.8rem; // 统一高度
+        width: auto;
+        object-fit: contain;
+    }
+
     .alarm-empty {
         flex: 1;
         display: flex;
@@ -843,21 +892,33 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         }
 
         .alarm-card {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
+            width: 16vw;
+            height: 20vh;
             padding: 12px;
             display: flex;
             flex-direction: column;
-            border-radius: 14px;
             transition: all 0.3s ease;
-            max-height: 150px;
+            max-height: 170px;
             min-height: 0;
             overflow: hidden;
-            height: 100%;
             cursor: pointer;
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-size: 100% 100%;
+
+            &.alarm-card--healthy {
+                background-image: url('@/assets/images/background/首页-预警总览-健康设备背景.png');
+            }
+
+            &.alarm-card--alarm {
+                background-image: url('@/assets/images/background/首页-预警总览-报警设备背景.png');
+            }
+
+            &.alarm-card--warning {
+                background-image: url('@/assets/images/background/首页-预警总览-预警设备背景.png');
+            }
 
             &:hover {
-                background: rgba(255, 255, 255, 0.3);
                 transform: translateY(-2px);
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
@@ -867,6 +928,10 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 8px;
+                padding: 2px 8px;
+                background-repeat: no-repeat;
+                background-position: center center;
+                background-size: 100% 100%;
 
                 .device-name {
                     /* 设备名（车间名）文字样式 */
@@ -882,32 +947,40 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                 }
 
                 .status-dot {
-                    width: 12px;
-                    height: 12px;
-                    border-radius: 50%;
+                    width: 2.2vw;
+                    height: 0.6vh;
                     display: inline-block;
                     vertical-align: middle;
                     margin-left: 8px;
+                    background-repeat: no-repeat;
+                    background-position: center center;
+                    background-size: contain;
 
                     &.alarm {
-                        background: url('@/assets/images/background/首页-报警设备.png') no-repeat center center;
-                        background-size: contain;
-                        background-color: #e6a23c;
+                        background-image: url('@/assets/images/background/首页-预警总览-报警.png');
                         // animation: status-dot-blink 1.5s ease-in-out infinite;
                     }
 
                     &.warning {
-                        background: url('@/assets/images/background/首页-预警设备.png') no-repeat center center;
-                        background-size: contain;
-                        background-color: #f56c6c;
+                        background-image: url('@/assets/images/background/首页-预警总览-预警.png');
                     }
 
                     &.healthy {
-                        background: url('@/assets/images/background/首页-健康设备.png') no-repeat center center;
-                        background-size: contain;
-                        background-color: #67c23a;
+                        background-image: url('@/assets/images/background/首页-预警总览-健康.png');
                     }
                 }
+            }
+
+            &.alarm-card--healthy .card-header {
+                background-image: url('@/assets/images/background/首页-预警总览-健康标题.png');
+            }
+
+            &.alarm-card--alarm .card-header {
+                background-image: url('@/assets/images/background/首页-预警总览-报警标题.png');
+            }
+
+            &.alarm-card--warning .card-header {
+                background-image: url('@/assets/images/background/首页-预警总览-预警标题.png');
             }
 
             .alarm-time {
@@ -924,15 +997,17 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                 .measurement-grid {
                 display: grid;
                 grid-template-columns: repeat(4, 1fr);
-                gap: 6px;
+                gap: 5px;
                 flex: 1;
                 min-height: 0;
                 
                 .point-item {
+                    width: 3.3vw;
+                    height: 3.5vh;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    max-height: 25px;
+                    max-height: 35px;
                     font-size: 0.75rem;
                     white-space: nowrap;
                     text-align: center;
@@ -943,17 +1018,27 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                     color: white;
 
                     &.healthy {
-                        background: url('@/assets/images/background/首页-健康测点.png') no-repeat center center;
+                        background: url('@/assets/images/background/首页-预警总览-健康点位.png') no-repeat center center;
                         background-size: 100% 100%;
                     }
 
                     &.warning {
-                        background: url('@/assets/images/background/首页-预警测点.png') no-repeat center center;
+                        background: url('@/assets/images/background/首页-预警总览-预警点位.png') no-repeat center center;
                         background-size: 100% 100%;
                     }
 
                     &.alarm {
-                        background: url('@/assets/images/background/首页-报警测点.png') no-repeat center center;
+                        background: url('@/assets/images/background/首页-预警总览-报警点位.png') no-repeat center center;
+                        background-size: 100% 100%;
+                    }
+
+                    &.alarm-device {
+                        background: url('@/assets/images/background/首页-预警总览-报警设备.png') no-repeat center center;
+                        background-size: 100% 100%;
+                    }
+
+                    &.warning-device {
+                        background: url('@/assets/images/background/首页-预警总览-预警设备.png') no-repeat center center;
                         background-size: 100% 100%;
                     }
                 }
@@ -966,6 +1051,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         justify-content: center;
         width: 100%;
         overflow: hidden;
+        padding-top: 10px;
     }
 
     @keyframes status-dot-blink {

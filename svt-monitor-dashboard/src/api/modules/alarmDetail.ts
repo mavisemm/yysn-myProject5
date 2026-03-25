@@ -1,7 +1,5 @@
 import request from '../request'
 
-const TAICANG_API_BASE_URL = 'http://122.224.196.178:8003'
-
 export interface AlarmEventDetail {
   id: string
   eventId?: string
@@ -34,8 +32,7 @@ export const apiGetEventById = async (params: { id: string | number }): Promise<
     params: {
       id: params.id
     },
-    showLoading: true,
-    customBaseURL: TAICANG_API_BASE_URL
+    showLoading: true
   })
 }
 
@@ -47,8 +44,7 @@ export const apiGetDevicePosition = async (params: { objectId: string | number }
     params: {
       objectId: params.objectId
     },
-    showLoading: false,
-    customBaseURL: TAICANG_API_BASE_URL
+    showLoading: false
   })
 }
 
@@ -57,8 +53,7 @@ export const apiGetDevicePosition = async (params: { objectId: string | number }
  */
 export const apiGetAbnormalHistory = async (payload: any): Promise<ApiRcRet<{ items: any[] }>> => {
   return request.post('/taicang/hardware/device/sound/scene/find', payload, {
-    showLoading: true,
-    customBaseURL: TAICANG_API_BASE_URL
+    showLoading: true
   })
 }
 
@@ -72,8 +67,7 @@ export const apiConfirmSoundNot = async (payload: {
   tenantId: string
 }): Promise<any> => {
   return request.post('/taicang/event/confirm/soundNot', payload, {
-    showLoading: true,
-    customBaseURL: TAICANG_API_BASE_URL
+    showLoading: true
   })
 }
 
@@ -87,8 +81,7 @@ export const apiConfirmSoundYes = async (payload: {
   tenantId: string
 }): Promise<any> => {
   return request.post('/taicang/event/confirm/soundYes', payload, {
-    showLoading: true,
-    customBaseURL: TAICANG_API_BASE_URL
+    showLoading: true
   })
 }
 

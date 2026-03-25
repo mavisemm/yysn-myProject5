@@ -20,8 +20,27 @@
                 </div>
             </div>
 
-            <!-- 温度图表 -->
+            <!-- 响度图表 -->
             <div class="chart-item">
+                <div class="chart-header">
+                    <span class="chart-title">响度随时间变化</span>
+                    <span class="chart-unit special-font-color">（单位：dB）</span>
+                </div>
+                <div class="chart">
+                    <CommonEcharts
+                        :option="soundOption"
+                        :enable-data-zoom="false"
+                        :not-merge="true"
+                        :tooltip-follow-mouse="true"
+                        linkage-group="device-detail-charts"
+                        :enable-linkage-zoom="true"
+                        :enable-wheel-zoom="true"
+                    />
+                </div>
+            </div>
+
+            <!-- 温度图表 -->
+            <div class="chart-item chart-item--wide">
                 <div class="chart-header">
                     <span class="chart-title">温度随时间变化</span>
                     <div class="chart-header-right">
@@ -34,25 +53,6 @@
                 <div class="chart">
                     <CommonEcharts
                         :option="tempOption"
-                        :enable-data-zoom="false"
-                        :not-merge="true"
-                        :tooltip-follow-mouse="true"
-                        linkage-group="device-detail-charts"
-                        :enable-linkage-zoom="true"
-                        :enable-wheel-zoom="true"
-                    />
-                </div>
-            </div>
-
-            <!-- 响度图表 -->
-            <div class="chart-item chart-item--wide">
-                <div class="chart-header">
-                    <span class="chart-title">响度随时间变化</span>
-                    <span class="chart-unit special-font-color">（单位：dB）</span>
-                </div>
-                <div class="chart">
-                    <CommonEcharts
-                        :option="soundOption"
                         :enable-data-zoom="false"
                         :not-merge="true"
                         :tooltip-follow-mouse="true"
@@ -133,6 +133,9 @@ const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefin
 const isGrayTheme = computed(() => backgroundMode?.value === 'gray')
 const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'))
 const chartSplitLineColor = computed(() => (isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(150,150,150, 0.2)'))
+const TEMP_COLOR = '#ff4d4f'
+const VIB_COLOR = '#1890ff'
+const SOUND_COLOR = '#fadb14'
 
 const HOURS_24 = Array.from({ length: 24 }, (_, i) => `${i}`)
 
@@ -156,7 +159,7 @@ const tempOption = computed<EChartsOption>(() => {
         grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
         dataZoom: [
             { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-            { type: 'slider', xAxisIndex: [0], bottom: '5%', height: '10%', fillerColor: 'rgba(255, 206, 86, 0.3)', borderColor: 'rgba(255, 206, 86, 0.5)', handleStyle: { color: '#FFCE56' }, filterMode: 'none' }
+            { type: 'slider', xAxisIndex: [0], bottom: '5%', height: '10%', fillerColor: 'rgba(255, 77, 79, 0.3)', borderColor: 'rgba(255, 77, 79, 0.5)', handleStyle: { color: TEMP_COLOR }, filterMode: 'none' }
         ],
         xAxis: {
             type: 'category',
@@ -183,8 +186,8 @@ const tempOption = computed<EChartsOption>(() => {
                 type: 'line',
                 smooth: true,
                 symbolSize: 1,
-                itemStyle: { color: '#FFCE56' },
-                lineStyle: { color: '#FFCE56', width: 2 },
+                itemStyle: { color: TEMP_COLOR },
+                lineStyle: { color: TEMP_COLOR, width: 2 },
                 areaStyle: {
                     color: {
                         type: 'linear',
@@ -193,8 +196,8 @@ const tempOption = computed<EChartsOption>(() => {
                         x2: 0,
                         y2: 1,
                         colorStops: [
-                            { offset: 0, color: 'rgba(255, 206, 86, 0.5)' },
-                            { offset: 1, color: 'rgba(255, 206, 86, 0.1)' }
+                            { offset: 0, color: 'rgba(255, 77, 79, 0.5)' },
+                            { offset: 1, color: 'rgba(255, 77, 79, 0.1)' }
                         ]
                     },
                     opacity: 0.3
@@ -225,7 +228,7 @@ const vibOption = computed<EChartsOption>(() => {
         grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
         dataZoom: [
             { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-            { type: 'slider', xAxisIndex: [0], bottom: '5%', height: '10%', fillerColor: 'rgba(255, 206, 86, 0.3)', borderColor: 'rgba(255, 206, 86, 0.5)', handleStyle: { color: '#FFCE56' }, filterMode: 'none' }
+            { type: 'slider', xAxisIndex: [0], bottom: '5%', height: '10%', fillerColor: 'rgba(24, 144, 255, 0.3)', borderColor: 'rgba(24, 144, 255, 0.5)', handleStyle: { color: VIB_COLOR }, filterMode: 'none' }
         ],
         xAxis: {
             type: 'category',
@@ -250,10 +253,10 @@ const vibOption = computed<EChartsOption>(() => {
             type: 'line',
             smooth: true,
             symbolSize: 1,
-            itemStyle: { color: '#FFCE56' },
-            lineStyle: { color: '#FFCE56', width: 2 },
+            itemStyle: { color: VIB_COLOR },
+            lineStyle: { color: VIB_COLOR, width: 2 },
             areaStyle: {
-                color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(255, 206, 86, 0.5)' }, { offset: 1, color: 'rgba(255, 206, 86, 0.1)' }] },
+                color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(24, 144, 255, 0.5)' }, { offset: 1, color: 'rgba(24, 144, 255, 0.1)' }] },
                 opacity: 0.3
             }
         }] : [],
@@ -281,7 +284,7 @@ const soundOption = computed<EChartsOption>(() => {
         grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
         dataZoom: [
             { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-            { type: 'slider', xAxisIndex: [0], bottom: '5%', height: '10%', fillerColor: 'rgba(234, 124, 204, 0.3)', borderColor: 'rgba(234, 124, 204, 0.5)', handleStyle: { color: '#ea7ccc' }, filterMode: 'none' }
+            { type: 'slider', xAxisIndex: [0], bottom: '5%', height: '10%', fillerColor: 'rgba(250, 219, 20, 0.3)', borderColor: 'rgba(250, 219, 20, 0.5)', handleStyle: { color: SOUND_COLOR }, filterMode: 'none' }
         ],
         xAxis: {
             type: 'category',
@@ -307,10 +310,10 @@ const soundOption = computed<EChartsOption>(() => {
             type: 'line',
             smooth: true,
             symbolSize: 1,
-            itemStyle: { color: '#ea7ccc' },
-            lineStyle: { color: '#ea7ccc', width: 2 },
+            itemStyle: { color: SOUND_COLOR },
+            lineStyle: { color: SOUND_COLOR, width: 2 },
             areaStyle: {
-                color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(234, 124, 204, 0.5)' }, { offset: 1, color: 'rgba(234, 124, 204, 0.1)' }] },
+                color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(250, 219, 20, 0.5)' }, { offset: 1, color: 'rgba(250, 219, 20, 0.1)' }] },
                 opacity: 0.3
             }
         }] : [],

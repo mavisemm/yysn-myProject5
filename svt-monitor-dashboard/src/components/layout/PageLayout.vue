@@ -19,6 +19,8 @@
       </div>
     </div>
 
+    <div class="page-footer" />
+
     <!-- 全局预警批量操作弹窗 -->
     <RealtimeBatchDialog @view="handleRealtimeView" />
     <HistoryBatchDialog @view="handleHistoryView" />
@@ -31,6 +33,7 @@ import { onMounted, provide, ref } from 'vue'
 import MainHeader from './MainHeader.vue'
 import DeviceSidebar from './DeviceSidebar.vue'
 import { RouterView } from 'vue-router'
+import { useAlarmBatchStore } from '@/stores/alarmBatch'
 import { usePointMessageStore } from '@/stores/pointMessage'
 import RealtimeBatchDialog from '@/components/alarm/RealtimeBatchDialog.vue'
 import HistoryBatchDialog from '@/components/alarm/HistoryBatchDialog.vue'
@@ -55,6 +58,8 @@ const handleRealtimeView = (row: any) => openAlarmView(row)
 const handleHistoryView = (row: any) => openAlarmView(row)
 
 onMounted(() => {
+  // 仅进入已登录主布局后预拉：避免登录页尚未拿到 token 时先发业务接口
+  void useAlarmBatchStore().ensureDropdowns()
   usePointMessageStore().loadPointMessage()
 })
 </script>
@@ -65,13 +70,40 @@ onMounted(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
   overflow: hidden;
-  background: url('@/assets/images/background/首页-背景.png') no-repeat center center;
+  background-color: #091428;
+  background-image: url('@/assets/images/background/背景图.png');
+  background-repeat: no-repeat;
+  background-position: center center;
   background-size: 100vw 100vh;
-  padding: 0 0.7vw 2.4vh 0.7vw;
+  padding: 0 0.5vw;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  &::before {
+    left: -0.3vw;
+    width: 5vw;
+    background: url('@/assets/images/background/left背景.png') no-repeat center center;
+    background-size: 100% 100%;
+  }
+
+  &::after {
+    right: -0.2vw;
+    width: 5vw;
+    background: url('@/assets/images/background/right背景.png') no-repeat center center;
+    background-size: 100% 100%;
+  }
 
   /* 默认蓝色背景下的小模块：透明底 + 蓝色边框（替代背景图里的边框） */
-  :deep(.stats-area),
   :deep(.alarm-overview),
   :deep(.metrics-area),
   :deep(.device-sidebar),
@@ -87,9 +119,6 @@ onMounted(() => {
   :deep(.time-card) {
     background: transparent !important;
     background-image: none !important;
-    border-radius: 12px;
-    border: 1px solid #60a5fa; /* 亮蓝色，适配默认蓝色背景 */
-    backdrop-filter: blur(4px);
   }
 
   /* 灰色主题 */
@@ -112,7 +141,6 @@ onMounted(() => {
 
     /* 卡片/模块：透明底 + 边框替代背景图 */
     :deep(.charts-section),
-    :deep(.stats-area),
     :deep(.alarm-overview),
     :deep(.metrics-area),
     :deep(.device-sidebar),
@@ -144,7 +172,6 @@ onMounted(() => {
 
     /* 卡片/模块：透明底 + 边框 */
     :deep(.charts-section),
-    :deep(.stats-area),
     :deep(.alarm-overview),
     :deep(.metrics-area),
     :deep(.device-sidebar),
@@ -175,7 +202,6 @@ onMounted(() => {
     background-size: 100vw 100vh;
 
     :deep(.charts-section),
-    :deep(.stats-area),
     :deep(.alarm-overview),
     :deep(.metrics-area),
     :deep(.device-sidebar),
@@ -203,7 +229,6 @@ onMounted(() => {
     background-size: 100vw 100vh;
 
     :deep(.charts-section),
-    :deep(.stats-area),
     :deep(.alarm-overview),
     :deep(.metrics-area),
     :deep(.device-sidebar),
@@ -226,19 +251,19 @@ onMounted(() => {
   }
 
   .main-content {
-    height: 92vh;
     flex: 1;
+    height: auto;
     display: flex;
     overflow: hidden;
     min-height: 0;
-    padding: 10px;
+    position: relative;
+    z-index: 1;
 
     .content-wrapper {
       flex: 1;
       display: flex;
       flex-direction: column;
       height: 100%;
-      padding-left: 8px;
 
 
       &::-webkit-scrollbar {
@@ -257,6 +282,16 @@ onMounted(() => {
       }
     }
   }
+}
+
+.page-footer {
+  height: 4vh;
+  flex-shrink: 0;
+  width: 100%;
+  background: url('@/assets/images/background/footer背景.png') no-repeat center center;
+  background-size: 100% 100%;
+  position: relative;
+  z-index: 1;
 }
 
 @media (max-width: 800px) {

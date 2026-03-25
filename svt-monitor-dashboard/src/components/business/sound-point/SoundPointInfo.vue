@@ -94,8 +94,6 @@ watch(() => props.audioPath, (newPath) => {
 
 <style lang="scss" scoped>
 .info-section-right {
-    background: url('@/assets/images/background/首页-数据统计背景.png') no-repeat center center;
-    background-size: 100% 100%;
     flex: 1;
     border-radius: 8px;
     display: flex;

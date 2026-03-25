@@ -86,14 +86,30 @@ service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     removePendingRequest(config)
     
-    // 携带认证 token
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+    const url = config.url || ''
+    const isLoginRequest = url.includes('/taicang/hardware/user/name/login')
+
+    // 携带认证 token（登录接口不需要 token）
+    if (!isLoginRequest) {
+      const token = localStorage.getItem('token')
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
     }
     
-    if (config.url && (config.url.startsWith('/taicang') || config.url.startsWith('/vortex') || config.url.startsWith('/jiepai') || config.url.startsWith('/cas') || config.url.startsWith('/zhongyuan'))) {
-      config.baseURL = '';
+    // 统一由 VITE_API_BASE_URL（生产通常为 8006）承载，再由网关反代到各后端；
+    // 避免浏览器直连 8003/36052 带来的跨域问题。
+    if (
+      !import.meta.env.PROD &&
+      config.url &&
+      (config.url.startsWith('/taicang') ||
+        config.url.startsWith('/vortex') ||
+        config.url.startsWith('/jiepai') ||
+        config.url.startsWith('/cas') ||
+        config.url.startsWith('/zhongyuan'))
+    ) {
+      // 开发环境退回到当前源路径，交给 devServer.proxy
+      config.baseURL = ''
     }
     
     if (config.customBaseURL) {
@@ -138,7 +154,7 @@ service.interceptors.response.use(
     if (res.hasOwnProperty('rc')) {
       if (res.rc !== 0) {
         if (!response.config.hideNotification) {
-          ElMessage.error(res.err || '请求失败')
+          ElMessage.error(res.err || '请求失败1')
         }
         
         return Promise.reject(new Error(res.err || 'Error'))
@@ -148,7 +164,7 @@ service.interceptors.response.use(
     } else {
       if (res.code && res.code !== 200) {
         if (!response.config.hideNotification) {
-          ElMessage.error(res.message || '请求失败')
+          ElMessage.error(res.message || '请求失败2')
         }
         
         if (res.code === 401) {
@@ -181,7 +197,7 @@ service.interceptors.response.use(
     
     console.error('响应错误:', error)
     
-    let errorMessage = '请求失败'
+    let errorMessage = '请求失败3'
     // 用于判断是否是“后端没开/网络不可达”的连接问题（通常会并发触发多次）
     let isBackendUnavailable = false
     
@@ -200,10 +216,13 @@ service.interceptors.response.use(
           break
         case 401:
           errorMessage = '未授权，请重新登录'
-          localStorage.removeItem('token')
-          setTimeout(() => {
-            window.location.href = '/login'
-          }, 1000)
+          // 登录接口本身不依赖 token：避免错误凭据导致误清 token/跳转
+          if (!(error.config?.url || '').includes('/taicang/hardware/user/name/login')) {
+            localStorage.removeItem('token')
+            setTimeout(() => {
+              window.location.href = '/login'
+            }, 1000)
+          }
           break
         case 403:
           errorMessage = '拒绝访问'
