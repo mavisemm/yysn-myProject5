@@ -77,7 +77,7 @@ onMounted(() => {
   background-repeat: no-repeat;
   background-position: center center;
   background-size: 100vw 100vh;
-  padding: 0 0.5vw;
+  padding: 0 1.5vw;
 
   &::before,
   &::after {

@@ -31,21 +31,26 @@ const route = useRoute()
 const router = useRouter()
 const deviceTreeStore = useDeviceTreeStore()
 
-const pointIdFromQuery = computed(() => (route.query.pointId as string) || '')
+const receiverId = computed(() => {
+  const rid = route.params.receiverId
+  const resolved = Array.isArray(rid) ? rid[0] : rid
+  return (typeof resolved === 'string' ? resolved : '') || ''
+})
 
 // 设备树切换点位时路由 query 会变，需更新选中状态
 watch(
-  () => route.query.pointId,
+  () => route.params.receiverId,
   (newId) => {
     if (newId) {
-      deviceTreeStore.setSelectedDeviceId(newId as string)
+      const resolved = Array.isArray(newId) ? newId[0] : newId
+      if (typeof resolved === 'string' && resolved) deviceTreeStore.setSelectedDeviceId(resolved)
     }
   }
 )
 
 onMounted(() => {
-  if (pointIdFromQuery.value) {
-    deviceTreeStore.setSelectedDeviceId(pointIdFromQuery.value)
+  if (receiverId.value) {
+    deviceTreeStore.setSelectedDeviceId(receiverId.value)
   }
 })
 

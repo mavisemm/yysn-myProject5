@@ -16,7 +16,8 @@ export interface DeviceNode {
   hasAlarm?: boolean
   
   // 设备树中实际使用的字段
-  pointId?: string        // 点位ID
+  receiverId?: string    // 点位ID（后端已统一使用 receiverId）
+  deviceId?: string      // 点位级 deviceId（用于振动接口入参，不能等同 equipmentId）
   pointName?: string      // 点位名称
   warningTime?: string    // 预警时间
   warningType?: string    // 预警类型

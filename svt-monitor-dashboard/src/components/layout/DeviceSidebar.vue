@@ -663,10 +663,19 @@ const handleNodeClick = (data: DeviceNode, node: Node) => {
   // 点位点击时跳转路由并设置选中状态，但不自动展开
   if (data.type === 'point') {
     deviceTreeStore.setSelectedDeviceId(data.id)
-    const deviceId = node.parent?.data?.id || ''
+    const receiverId = data.receiverId ?? ''
+    if (!receiverId) {
+      ElMessage.warning('该点位缺少 receiverId，无法进入点位页')
+      return
+    }
+    // 声音/振动点位页地址：不在 query 里携带点位级 deviceId
+    // query.deviceId 改为 query.equipmentId（设备树设备节点 id）
+    const equipmentId = node.parent?.data?.id || ''
     router.push({
       name: 'SoundPoint',
-      query: { pointId: data.id, deviceId: deviceId }
+      // query key 插入顺序：equipmentId -> receiverId
+      params: { receiverId },
+      query: { equipmentId }
     })
   }
 }
@@ -853,6 +862,8 @@ onUnmounted(() => {
 
   .device-tree-container {
     padding: 10px 20px 20px;
+    background: url('@/assets/images/background/首页-设备列表背景.png') no-repeat center center;
+    background-size: 100% 100%;
     flex: 1;
     display: flex;
     flex-direction: column;

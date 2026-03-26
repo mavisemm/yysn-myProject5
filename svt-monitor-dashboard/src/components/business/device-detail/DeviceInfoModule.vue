@@ -77,7 +77,7 @@
                 <div class="info-row" v-if="!isEditing">
                     <div class="info-item">
                         <span class="info-label  ">设备名称：</span>
-                        <span class="info-value  ">{{ deviceInfo.deviceName }}</span>
+                        <span class="info-value  ">{{ deviceInfo.equipmentName }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label  ">设备型号：</span>
@@ -88,7 +88,7 @@
                 <div class="info-row" v-else>
                     <div class="info-item">
                         <span class="info-label  ">设备名称：</span>
-                        <el-input v-model="editForm.deviceName" size="small" class="info-input" />
+                        <el-input v-model="editForm.equipmentName" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
                         <span class="info-label  ">设备型号：</span>
@@ -222,7 +222,7 @@
 import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { ElButton, ElInput, ElMessage, ElForm, ElFormItem } from 'element-plus'
 import * as echarts from 'echarts'
-import { getDeviceInfoByDeviceId, editDeviceInfo, getDeviceHealth, type DeviceInfoDto, type DeviceHealthResponse } from '@/api/modules/hardware'
+import { getDeviceInfoByEquipmentId, editEquipmentInfo, getEquipmentHealth, type DeviceInfoDto, type DeviceHealthResponse } from '@/api/modules/hardware'
 import { service } from '@/api/request'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
 
@@ -238,8 +238,8 @@ const formatValueWithUnit = (value: unknown, unit: string) => {
 // 定义设备信息类型 - 对应API返回的数据结构
 interface DeviceInfo {
     id: number;
-    deviceId: string;
-    deviceName: string;
+    equipmentId: string;
+    equipmentName: string;
     deviceModel: string;
     deviceFactory: string;
     locationDetail: string;
@@ -296,8 +296,8 @@ const soundStageReportDownloading = ref(false)
 // 设备信息响应式数据
 const deviceInfo = ref<DeviceInfo>({
     id: 0,
-    deviceId: '',
-    deviceName: '',
+    equipmentId: '',
+    equipmentName: '',
     deviceModel: '',
     deviceFactory: '',
     locationDetail: '',
@@ -457,9 +457,14 @@ const loadDeviceInfo = async () => {
     if (!props.deviceId) return;
 
     try {
-        const response = await getDeviceInfoByDeviceId(props.deviceId);
+        const response = await getDeviceInfoByEquipmentId(props.deviceId);
         if (response.rc === 0 && response.ret) {
-            deviceInfo.value = response.ret;
+            const raw: any = response.ret
+            deviceInfo.value = {
+                ...response.ret,
+                equipmentId: raw.equipmentId ?? '',
+                equipmentName: raw.equipmentName ?? ''
+            } as any
             hasDeviceInfo.value = true;
             syncExtraFieldsFromDeviceInfo();
         } else {
@@ -478,20 +483,25 @@ const loadDeviceDataParallel = async () => {
     try {
         // 并行执行设备信息 + 声音/振动健康度查询
         const [infoResponse, soundHealthResponse, vibrationHealthResponse] = await Promise.all([
-            getDeviceInfoByDeviceId(props.deviceId),
-            getDeviceHealth({
-                deviceId: props.deviceId,
+            getDeviceInfoByEquipmentId(props.deviceId),
+            getEquipmentHealth({
+                equipmentId: props.deviceId,
                 type: 'sound'
             }),
-            getDeviceHealth({
-                deviceId: props.deviceId,
+            getEquipmentHealth({
+                equipmentId: props.deviceId,
                 type: 'vibration'
             }),
         ]);
 
         // 处理设备信息响应
         if (infoResponse.rc === 0 && infoResponse.ret) {
-            deviceInfo.value = infoResponse.ret;
+            const raw: any = infoResponse.ret
+            deviceInfo.value = {
+                ...infoResponse.ret,
+                equipmentId: raw.equipmentId ?? '',
+                equipmentName: raw.equipmentName ?? ''
+            } as any
             syncExtraFieldsFromDeviceInfo();
         } else {
             ElMessage.error('获取设备信息失败');
@@ -797,8 +807,8 @@ const toggleEdit = async () => {
             // 构造要发送的设备信息对象
             const deviceInfoDto: DeviceInfoDto = {
                 id: deviceInfo.value.id,
-                deviceId: props.deviceId,
-                deviceName: editForm.value.deviceName,
+                equipmentId: props.deviceId,
+                equipmentName: editForm.value.equipmentName,
                 deviceModel: editForm.value.deviceModel,
                 deviceFactory: editForm.value.deviceFactory,
                 locationDetail: editForm.value.locationDetail,
@@ -810,7 +820,7 @@ const toggleEdit = async () => {
             // 把弹窗新增的字段按 label1/value1... 推送给后端
             (deviceInfoDto as any).deviceNewInfo = buildDeviceNewInfo(extraFields.value)
 
-            const response = await editDeviceInfo(props.deviceId, deviceInfoDto);
+            const response = await editEquipmentInfo(props.deviceId, deviceInfoDto);
 
             if (response.rc === 0) {
                 // 更新本地数据
@@ -947,8 +957,6 @@ onUnmounted(() => {
     min-width: 200px;
     max-width: 400px;
     flex: 0 0 auto;
-    background: url('@/assets/images/background/设备详情页-设备信息背景.png') no-repeat center center;
-    background-size: 100% 100%;
     border-radius: 8px;
     display: flex;
     flex-direction: column;

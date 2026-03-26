@@ -21,6 +21,9 @@ export interface RealtimeQuery {
   startTime?: string
   endTime?: string
   deviceId?: string
+  // 兼容新地址字段名：设备详情页/点位页 query 使用 equipmentId
+  // 这里语义等同于设备级 deviceId（后端过滤字段仍叫 deviceId）
+  equipmentId?: string
   eventTypeCode?: string
 }
 
@@ -220,7 +223,8 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     const filters: FilterProperty[] = []
     const tId = tenantId.value
     if (tId) filters.push({ code: 'tenantId', operate: 'EQ', value: tId })
-    if (query.deviceId) filters.push({ code: 'deviceId', operate: 'EQ', value: query.deviceId })
+    const effectiveDeviceId = query.deviceId ?? query.equipmentId
+    if (effectiveDeviceId) filters.push({ code: 'deviceId', operate: 'EQ', value: effectiveDeviceId })
     if (query.eventTypeCode) filters.push({ code: 'eventTypeCode', operate: 'EQ', value: query.eventTypeCode })
 
     const start = toMillis(query.startTime)
@@ -234,13 +238,14 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const realtimeFetchInFlight = new Map<string, Promise<void>>()
   const buildRealtimeCacheKey = (pageIndex: number) => {
     const q = realtimeQuery.value ?? {}
+    const effectiveDeviceId = q.deviceId ?? q.equipmentId
     return JSON.stringify({
       tenantId: tenantId.value,
       pageIndex,
       pageSize: realtimePageSize.value,
       startTime: q.startTime ?? '',
       endTime: q.endTime ?? '',
-      deviceId: q.deviceId ?? '',
+      deviceId: effectiveDeviceId ?? '',
       eventTypeCode: q.eventTypeCode ?? ''
     })
   }
@@ -309,6 +314,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const historyFetchInFlight = new Map<string, Promise<void>>()
   const buildHistoryCacheKey = (pageIndex: number) => {
     const q = historyQuery.value ?? { alarmCode: 'ACCURATE_YES' as AlarmCode }
+    const effectiveDeviceId = q.deviceId ?? q.equipmentId
     return JSON.stringify({
       tenantId: tenantId.value,
       pageIndex,
@@ -316,7 +322,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
       alarmCode: q.alarmCode ?? 'ACCURATE_YES',
       startTime: q.startTime ?? '',
       endTime: q.endTime ?? '',
-      deviceId: q.deviceId ?? '',
+      deviceId: effectiveDeviceId ?? '',
       eventTypeCode: q.eventTypeCode ?? ''
     })
   }

@@ -6,9 +6,8 @@ export interface AlarmEventDetail {
   eventTypeCode?: string
   statusCode?: string
   time?: number | string
-  deviceId?: string
-  deviceName?: string
-  pointId?: string
+  equipmentId?: string
+  equipmentName?: string
   pointName?: string
   receiverName?: string
   receiverId?: string

@@ -134,8 +134,6 @@ const playAudio = (row: any) => {
 
 <style lang="scss" scoped>
 .table-section-left {
-  background: url('@/assets/images/background/设备详情页-点位列表背景.png') no-repeat center center;
-  background-size: 100% 100%;
   flex: 2;
   border-radius: 8px;
   display: flex;

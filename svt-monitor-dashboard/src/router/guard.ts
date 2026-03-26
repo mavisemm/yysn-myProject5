@@ -11,7 +11,7 @@ export function setupRouterGuard(router: Router) {
     
     // 如果访问的是公共页面且已登录，则跳转到首页
     if (publicPages.includes(to.path) && isLoggedIn) {
-      next('/')
+      next('/dashboard')
       return
     }
     
@@ -24,23 +24,39 @@ export function setupRouterGuard(router: Router) {
 
     // 业务要求：在首页、设备详情、声音点位、振动点位的地址栏拼接 tenantId
     // tenantId 来自登录接口返回并存储在 localStorage
-    const requireTenantIdRouteNames = new Set(['Dashboard', 'DeviceDetail', 'SoundPoint', 'VibrationPoint'])
+    const requireTenantIdRouteNames = new Set(['Dashboard', 'DeviceDetail', 'DeviceDetailQueryLegacy', 'SoundPoint', 'VibrationPoint'])
     const tenantIdInQuery = (to.query?.tenantId as string | undefined) ?? ''
     const tenantId = localStorage.getItem('tenantId') ?? ''
     if (isLoggedIn && requireTenantIdRouteNames.has(String(to.name ?? ''))) {
       // 已登录时，localStorage 的 tenantId 作为权威来源，避免被旧书签/历史URL里的 tenantId 污染
       const effectiveTenantId = tenantId || tenantIdInQuery
       if (effectiveTenantId) {
-        // 确保 tenantId 永远排在 query 的第一个
-        const queryKeys = Object.keys(to.query ?? {})
-        const isTenantIdFirst = queryKeys.length > 0 ? queryKeys[0] === 'tenantId' : false
-        // 若 URL 的 tenantId 与本地 tenantId 不一致，强制纠正为本地 tenantId
-        const shouldFixTenantId = Boolean(tenantId && tenantIdInQuery && tenantIdInQuery !== tenantId)
-        if (!tenantIdInQuery || !isTenantIdFirst || shouldFixTenantId) {
-          const { tenantId: _omit, ...rest } = (to.query ?? {}) as Record<string, any>
+        // 统一 query 参数顺序：tenantId -> equipmentId -> receiverId（receiverId 永远放在最后）
+        const queryObj = (to.query ?? {}) as Record<string, any>
+        const { tenantId: _omit, ...rest } = queryObj
+        const { equipmentId, receiverId, ...others } = rest as Record<string, any>
+        // DeviceDetail 页面本身用 path 的 :id 表示 equipmentId
+        // 为避免“路径+query 双重 equipmentId”，这里剔除 query.equipmentId
+        const equipmentIdForQuery = to.name === 'DeviceDetail' ? undefined : equipmentId
+        const reorderedQuery: Record<string, any> = {
+          tenantId: effectiveTenantId,
+          ...(equipmentIdForQuery !== undefined ? { equipmentId: equipmentIdForQuery } : {}),
+          ...others,
+          ...(receiverId !== undefined ? { receiverId } : {})
+        }
+
+        const currentKeys = Object.keys(queryObj)
+        const reorderedKeys = Object.keys(reorderedQuery)
+        const isOrderCorrect = currentKeys.length === reorderedKeys.length
+          && currentKeys.every((k, i) => k === reorderedKeys[i])
+
+        const shouldFixTenantValue = Boolean(tenantId && tenantIdInQuery && tenantIdInQuery !== tenantId)
+        const shouldFixTenantMissing = !tenantIdInQuery
+
+        if (!isOrderCorrect || shouldFixTenantValue || shouldFixTenantMissing) {
           next({
             ...to,
-            query: { tenantId: effectiveTenantId, ...rest },
+            query: reorderedQuery,
             replace: true
           })
           return

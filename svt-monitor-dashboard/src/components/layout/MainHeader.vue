@@ -189,51 +189,59 @@ onBeforeUnmount(() => {
 const goHome = () => {
   // 重置设备树状态到初始状态
   deviceTreeStore.resetDeviceTreeState()
-  router.push('/')
+  router.push('/dashboard')
 }
 
 const goToDevice = () => {
-  let deviceId = route.params.id as string
+  // 设备详情：equipmentId 走 path 的 params.id
+  if (route.name === 'DeviceDetail') {
+    const id = route.params.id
+    if (typeof id === 'string' && id) return
+  }
 
-  if (!deviceId && (route.name === 'SoundPoint' || route.name === 'VibrationPoint')) {
-    // 优先从query中获取deviceId
-    const queryDeviceId = route.query.deviceId
-    if (queryDeviceId) {
-      const resolvedId = Array.isArray(queryDeviceId) ? queryDeviceId[0] : queryDeviceId
-      if (resolvedId) {
-        deviceId = resolvedId
-      }
-    }
+  // 点位页跳回设备详情：地址里 query.equipmentId 就是我们要的设备 id
+  let equipmentId = (route.query.equipmentId as string) || ''
 
-    // 如果query中没有deviceId，则尝试从pointId推断设备ID
-    if (!deviceId) {
-      const pointId = route.query.pointId
-      if (pointId) {
-        const resolvedPointId = Array.isArray(pointId) ? pointId[0] : pointId
-        if (resolvedPointId) {
-          // 从点位ID中提取设备ID（假设点位ID格式为 设备ID-其他信息）
-          const devicePart = resolvedPointId.split('-')[0]
-          if (devicePart) {
-            deviceId = devicePart
+  if (!equipmentId && (route.name === 'SoundPoint' || route.name === 'VibrationPoint')) {
+    // 兜底：如果 query 没带 equipmentId，则用 receiverId 在设备树里反查父设备（equipmentId）
+    const receiverIdParam = route.params.receiverId
+    const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
+    if (typeof receiverId === 'string' && receiverId) {
+      const findParentDeviceId = (rid: string): string | null => {
+        for (const factory of deviceTreeStore.deviceTreeData) {
+          for (const workshop of (factory.children ?? [])) {
+            for (const device of (workshop.children ?? [])) {
+              if (device.type !== 'device') continue
+              const hasPoint = (device.children ?? []).some(p => p.type === 'point' && p.id === rid)
+              if (hasPoint) return device.id
+            }
           }
         }
+        return null
       }
+      equipmentId = findParentDeviceId(receiverId) ?? ''
     }
   }
 
-  if (deviceId) {
-    router.push({ name: 'DeviceDetail', params: { id: deviceId } })
+  if (equipmentId) {
+    router.push({ name: 'DeviceDetail', params: { id: equipmentId } })
   } else {
-    router.push('/')
+    router.push('/dashboard')
   }
 }
 
 const goToVibration = () => {
-  router.push({ name: 'VibrationPoint', query: route.query })
+  const receiverIdParam = route.params.receiverId
+  const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
+  if (typeof receiverId !== 'string' || !receiverId) return
+  router.push({ name: 'VibrationPoint', params: { receiverId }, query: route.query })
 }
 
 const goToSound = () => {
-  router.push({ name: 'SoundPoint', query: route.query })
+  const receiverIdParam = route.params.receiverId
+  const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
+  if (typeof receiverId !== 'string' || !receiverId) return
+  router.push({ name: 'SoundPoint', params: { receiverId }, query: route.query })
 }
 
 const handleLogout = () => {

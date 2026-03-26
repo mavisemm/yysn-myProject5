@@ -30,7 +30,7 @@
                             <span class="seq-num">{{ rankIndex + 1 }}</span>
                         </span>
                         <span class="col-device special-font-color" :title="getRankDeviceTooltip(rank)">
-                            {{ rank.deviceName }}
+                            {{ rank.equipmentName }}
                             <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
                         </span>
                         <span v-if="rank.value !== undefined" class="col-value special-font-color">{{ rank.value }}</span>
@@ -54,7 +54,7 @@
                 <div v-for="(rank, rankIndex) in dialogRankings" :key="rankIndex" class="dialog-ranking-item"
                     @click="goToDeviceDetail(rank)">
                     <span class="rank-num special-font-color">{{ rankIndex + 1 }}.</span>
-                    <span class="rank-device special-font-color">{{ rank.deviceName }}
+                    <span class="rank-device special-font-color">{{ rank.equipmentName }}
                         <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
                     </span>
                     <span v-if="rank.value !== undefined" class="rank-value special-font-color">{{ rank.value }}</span>
@@ -73,9 +73,9 @@ import type { DeviceNode } from '@/types/device'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 
 interface RankingItem {
-    deviceName: string;
+    equipmentName: string;
     workshopName: string;
-    deviceId?: string;
+    equipmentId?: string;
     value?: number;
 }
 
@@ -140,54 +140,61 @@ const isValidDevice = (deviceId: string): boolean => {
  * 跳转到设备详情页（Top3 列表与「更多」弹窗内点击设备均会调用）
  */
 const goToDeviceDetail = (rank: RankingItem) => {
-    let deviceId = rank.deviceId;
-    if (!deviceId) {
-        deviceId = deviceNameToIdMap[rank.deviceName];
+    let equipmentId = rank.equipmentId;
+    if (!equipmentId) {
+        equipmentId = deviceNameToIdMap[rank.equipmentName];
     }
-    if (deviceId && isValidDevice(deviceId)) {
+    if (equipmentId && isValidDevice(equipmentId)) {
         rankDialogVisible.value = false;
-        deviceTreeStore.setSelectedDeviceId(deviceId);
+        deviceTreeStore.setSelectedDeviceId(equipmentId);
         router.push({
             name: 'DeviceDetail',
-            params: { id: deviceId },
-            query: { deviceName: rank.deviceName, workshopName: rank.workshopName || '' }
+            query: {
+                equipmentId: equipmentId,
+                equipmentName: rank.equipmentName,
+                workshopName: rank.workshopName || ''
+            }
         }).catch(() => { });
     }
 }
 
 
 /**
- * 排名数据：如果未提供则使用设备树中的真实设备数据
+ * 排名数据：
+ * - 只有在“完全未提供 rankings（undefined）”时，才回退到设备树生成列表
+ * - 当 rankings 已传入但为空（例如 top5 接口返回空），严格返回空，显示 Empty 状态
  */
-const rankingData = props.rankings || [
-    [],
-    [],
-    []
-];
+const rankingData = props.rankings;
 
 /**
  * 获取指定指标的排名数据（完整列表）
  */
 const getRankings = (index: number): RankingItem[] => {
-    if (rankingData[index] && rankingData[index].length > 0) {
+    if (rankingData?.[index]?.length) {
         return rankingData[index];
     }
 
-    const devices: RankingItem[] = [];
-    const traverse = (nodes: DeviceNode[]) => {
-        nodes.forEach(node => {
-            if (node.type === 'device') {
-                devices.push({
-                    deviceName: node.name,
-                    workshopName: node.workshopName || '',
-                    deviceId: node.id
-                });
-            }
-            if (node.children) traverse(node.children);
-        });
-    };
-    traverse(deviceTreeStore.deviceTreeData);
-    return devices;
+    // 未提供 rankings（完全不传）时，才用设备树“生成一个列表”兜底
+    if (!rankingData) {
+        const devices: RankingItem[] = [];
+        const traverse = (nodes: DeviceNode[]) => {
+            nodes.forEach(node => {
+                if (node.type === 'device') {
+                    devices.push({
+                        equipmentName: node.name,
+                        workshopName: node.workshopName || '',
+                        equipmentId: node.id
+                    });
+                }
+                if (node.children) traverse(node.children);
+            });
+        };
+        traverse(deviceTreeStore.deviceTreeData);
+        return devices;
+    }
+
+    // rankings 已传入但该 index 为空：不再回退，避免展示“伪排名”
+    return [];
 };
 
 const rankingsElRefs = ref<(HTMLDivElement | null)[]>([null, null, null]);
@@ -209,8 +216,8 @@ const getUnitShort = (unit?: string) => {
 };
 
 const getRankDeviceTooltip = (rank: RankingItem): string => {
-    if (rank.workshopName) return `${rank.deviceName}（${rank.workshopName}）`
-    return rank.deviceName
+    if (rank.workshopName) return `${rank.equipmentName}（${rank.workshopName}）`
+    return rank.equipmentName
 };
 
 const measureAndUpdateVisibleRows = () => {
@@ -317,7 +324,7 @@ watch(
     gap: 10px;
     overflow: hidden;
     box-sizing: border-box;
-    padding: 10px 20px 20px;
+    padding: 10px 20px 0 20px;
 
     /* 直接作用到三个排名卡片根节点，避免嵌套选择器导致不命中 */
     >.chart-container {
@@ -378,10 +385,11 @@ watch(
             }
 
             .metric-columns-header {
+                gap: 10px;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 0 12px;
+                padding: 0 6px;
                 height: 30px;
                 flex: 0 0 auto;
                 color: #4E89FF;

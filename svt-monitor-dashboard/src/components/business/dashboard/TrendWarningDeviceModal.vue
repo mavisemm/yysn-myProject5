@@ -7,18 +7,18 @@
                 <template #empty>
                     <div class="table-empty">暂无数据</div>
                 </template>
-                <el-table-column prop="deviceName" label="设备名称" min-width="120">
+                <el-table-column prop="equipmentName" label="设备名称" min-width="120">
                     <template #default="{ row }">
-                        <span v-if="row.deviceId" class="link-cell" @click.stop="goToDeviceDetail(row)">{{
-                            row.deviceName }}</span>
-                        <span v-else>{{ row.deviceName }}</span>
+                        <span v-if="row.equipmentId" class="link-cell" @click.stop="goToDeviceDetail(row)">{{
+                            row.equipmentName }}</span>
+                        <span v-else>{{ row.equipmentName }}</span>
                     </template>
                 </el-table-column>
-                <el-table-column prop="pointName" label="点位名称" min-width="120">
+                <el-table-column prop="receiverName" label="点位名称" min-width="120">
                     <template #default="{ row }">
-                        <span v-if="row.pointId && row.deviceId" class="link-cell" @click.stop="goToSoundPoint(row)">{{
-                            row.pointName }}</span>
-                        <span v-else>{{ row.pointName }}</span>
+                        <span v-if="row.receiverId && row.pointDeviceId" class="link-cell" @click.stop="goToSoundPoint(row)">{{
+                            row.receiverName }}</span>
+                        <span v-else>{{ row.receiverName }}</span>
                     </template>
                 </el-table-column>
                 <el-table-column prop="value" :label="props.mode === 'trend' ? '预警值' : '报警值'" min-width="100">
@@ -65,37 +65,40 @@ const visible = ref(props.modelValue);
 const deviceTreeStore = useDeviceTreeStore();
 
 interface TableRow {
-    deviceName: string;
-    pointName: string;
+    equipmentName: string;
     receiverName: string;
+    /** 设备树设备节点（equipmentId） */
+    equipmentId?: string;
     /** 预警/报警值（根据弹窗模式显示不同列名） */
     value?: string | number;
-    pointId?: string;
-    deviceId?: string;
+    /** 点位 id（receiverId） */
+    receiverId?: string;
+    /** 点位级 deviceId（用于振动接口入参） */
+    pointDeviceId?: string;
 }
 
 /** 占位行用的假数据：设备名称、点位名称（按需循环使用） */
 const MOCK_DEVICE_NAMES = ['1#循环水泵', '2#循环水泵', '3#引风机', '4#空压机', '5#冷却塔风机', '五线一路风机12', '旋压机', '五线三路风机', '往复式压缩机', '七线一路风机'];
 const MOCK_POINT_NAMES = ['JXA29F6105', '尾顶电磁阀1号点位', 'JXA24F5307', 'JS32F21', 'JXA29F8108', 'JXA29F6106', 'SHJY-XYJ1号点位', '3', 'JS32F20', 'JXA29F8107'];
 
-/** 从设备树取「每个设备取第一条点位」的列表，保证每条来自不同设备，带 pointId/deviceId 用于跳转 */
+/** 从设备树取「每个设备取第一条点位」的列表，保证每条来自不同设备，带 receiverId/deviceId 用于跳转 */
 function getOneRowPerDevice(nodes: DeviceNode[]): TableRow[] {
     const rows: TableRow[] = [];
     nodes.forEach(factory => {
         factory.children?.forEach(workshop => {
             workshop.children?.forEach(device => {
                 if (device.type !== 'device') return;
-                const deviceName = device.name || device.equipmentName || '—';
+                const equipmentName = device.name || device.equipmentName || '—';
                 const firstPoint = device.children?.find(p => p.type === 'point');
                 if (!firstPoint) return;
-                const pointName = firstPoint.name || firstPoint.pointName || '—';
+                const receiverName = firstPoint.name || firstPoint.pointName || '—';
                 rows.push({
-                    deviceName,
-                    pointName,
-                    receiverName: pointName,
+                    equipmentName,
+                    receiverName,
                     value: '—',
-                    pointId: firstPoint.id,
-                    deviceId: device.id
+                    receiverId: firstPoint.id,
+                    equipmentId: device.id,
+                    pointDeviceId: firstPoint.deviceId
                 });
             });
         });
@@ -134,27 +137,28 @@ const tableData = computed(() => {
             ? Number(trendValue.toFixed(1))
             : Number(faultValue.toFixed(1));
         const i = fromTree.length + index;
-        const deviceName = MOCK_DEVICE_NAMES[i % MOCK_DEVICE_NAMES.length] ?? '—';
-        const pointName = MOCK_POINT_NAMES[i % MOCK_POINT_NAMES.length] ?? '—';
-        return { deviceName, pointName, receiverName: pointName, value };
+        const equipmentName = MOCK_DEVICE_NAMES[i % MOCK_DEVICE_NAMES.length] ?? '—';
+        const receiverName = MOCK_POINT_NAMES[i % MOCK_POINT_NAMES.length] ?? '—';
+        return { equipmentName, receiverName, value } as TableRow;
     });
     return [...fromTree, ...placeholders];
 });
 
 /** 点击设备名称跳转设备详情页 */
 const goToDeviceDetail = (row: TableRow) => {
-    if (!row.deviceId) return;
+    if (!row.equipmentId) return;
     handleClose();
-    router.push({ name: 'DeviceDetail', params: { id: row.deviceId } });
+    router.push({ name: 'DeviceDetail', params: { id: row.equipmentId } });
 };
 
 /** 点击点位名称跳转声音点位页 */
 const goToSoundPoint = (row: TableRow) => {
-    if (!row.pointId || !row.deviceId) return;
+    if (!row.receiverId || !row.equipmentId) return;
     handleClose();
     router.push({
         name: 'SoundPoint',
-        query: { pointId: row.pointId, deviceId: row.deviceId }
+        params: { receiverId: row.receiverId },
+        query: { equipmentId: row.equipmentId }
     });
 };
 

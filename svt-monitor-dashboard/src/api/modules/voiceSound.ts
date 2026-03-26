@@ -41,7 +41,7 @@ export interface AISoundAnalysis {
 
 export interface SoundPoint {
   id: string
-  pointId: string
+  receiverId: string
   pointName: string
   deviceId: string
   deviceName: string
@@ -115,7 +115,6 @@ export interface SoundDeviationItem {
   productName: string | null
   subProductId: string | null
   subProductName: string | null
-  pointId: number
   pointGroupId: number
   pointName: string | null
   status: number
@@ -233,7 +232,7 @@ export const uploadSoundForAnalysis = (formData: FormData): Promise<SoundAnalysi
 // 获取历史声音数据
 export const getHistoricalSoundData = (params?: {
   deviceId?: string
-  pointId?: string
+  receiverId?: string
   startTime?: string
   endTime?: string
   page?: number
@@ -270,14 +269,13 @@ export const getStandardFrequencyList = (payload: {
   })
 }
 
-// 获取声音点位页最新偏差列表（点位由 receiverId/pointId 传入，不传 deviceId）
+// 获取声音点位页最新偏差列表（点位由 receiverId 传入，不传 deviceId）
 export const getLatestDeviationByReceiver = (params?: {
   receiverId?: string
-  pointId?: string
   startTime?: string
   endTime?: string
 }): Promise<SoundDeviationItem[]> => {
-  const receiverId = params?.receiverId ?? params?.pointId ?? ''
+  const receiverId = params?.receiverId ?? ''
   const now = Date.now()
   const startTime = params?.startTime ?? String(now - 24 * 60 * 60 * 1000)
   const endTime = params?.endTime ?? String(now)

@@ -318,7 +318,5 @@ onUnmounted(() => {
 
 .waterfall-card {
     width: 66.66%;
-    background: url('@/assets/images/background/首页-预警总览背景.png') no-repeat center center;
-    background-size: 100% 100%;
 }
 </style>

@@ -108,11 +108,11 @@ const soundChartData = ref<ChartDataPoint | null>(null)
 // “实时温度”面板：目前无接口，先用假数据展示
 const realtimeTempMockValue = ref<number>(33)
 
-function mockTemperatureByPointId(pointId: string): number {
-    // 简单稳定 hash：同一 pointId 始终同一温度，不同点位有差异
+function mockTemperatureByReceiverId(receiverId: string): number {
+    // 简单稳定 hash：同一 receiverId 始终同一温度，不同点位有差异
     let hash = 0
-    for (let i = 0; i < pointId.length; i++) {
-        hash = (hash * 31 + pointId.charCodeAt(i)) >>> 0
+    for (let i = 0; i < receiverId.length; i++) {
+        hash = (hash * 31 + receiverId.charCodeAt(i)) >>> 0
     }
     // 生成 25.0 ~ 45.0 ℃ 的假温度
     const base = 25
@@ -338,15 +338,15 @@ function computeTempYAxisRange(dataMin: number, dataMax: number): { min: number;
 }
 
 // 加载温度趋势数据
-const loadTemperatureData = async (pointId: string) => {
-    if (!pointId) return
+const loadTemperatureData = async (receiverId: string) => {
+    if (!receiverId) return
 
     try {
         const startTime = '2026-02-04 00:00:00'
         const endTime = '2026-02-04 23:59:59'
 
         const response = await getTemperatureTrend({
-            point_id: 'P001',
+            receiverId,
             start_time: startTime,
             end_time: endTime
         })
@@ -388,15 +388,15 @@ function computeVibYAxisRange(dataMin: number, dataMax: number): { min: number; 
 }
 
 // 加载振动趋势数据
-const loadVibrationData = async (pointId: string) => {
-    if (!pointId) return
+const loadVibrationData = async (receiverId: string) => {
+    if (!receiverId) return
 
     try {
         const startTime = '2026-02-04 00:00:00'
         const endTime = '2026-02-04 23:59:59'
 
         const response = await getVibrationTrend({
-            point_id: 'P001',
+            receiverId,
             start_time: startTime,
             end_time: endTime
         })
@@ -438,14 +438,15 @@ function computeSoundYAxisRange(dataMin: number, dataMax: number): { min: number
     return { min, max }
 }
 
-// 加载响度趋势数据（point_id 暂用死数据 PT-001-A）
-const loadSoundData = async (_pointId: string) => {
+// 加载响度趋势数据
+const loadSoundData = async (receiverId: string) => {
+    if (!receiverId) return
     try {
         const startTime = '2026-02-04 00:00:00'
         const endTime = '2026-02-04 23:59:59'
 
         const response = await getSoundTrend({
-            point_id: 'P001',
+            receiverId,
             start_time: startTime,
             end_time: endTime
         })
@@ -489,18 +490,18 @@ watch(
         const oldListLength = oldList ? oldList.length : 0
         const newListLength = newList.length
         if (oldListLength === 0 && newListLength > 0) {
-            const pointId = newList[0]?.id
-            if (pointId) {
-                loadTemperatureData(pointId)
-                loadVibrationData(pointId)
-                loadSoundData(pointId)
+            const receiverId = newList[0]?.id
+            if (receiverId) {
+                loadTemperatureData(receiverId)
+                loadVibrationData(receiverId)
+                loadSoundData(receiverId)
             }
         } else if (!props.selectedPointId && newListLength > 0) {
-            const pointId = newList[0]?.id
-            if (pointId) {
-                loadTemperatureData(pointId)
-                loadVibrationData(pointId)
-                loadSoundData(pointId)
+            const receiverId = newList[0]?.id
+            if (receiverId) {
+                loadTemperatureData(receiverId)
+                loadVibrationData(receiverId)
+                loadSoundData(receiverId)
             }
         }
     },
@@ -524,9 +525,9 @@ watch(
 watch(
     [() => props.selectedPointId, () => props.pointList],
     ([selId, list]) => {
-        const pointId = selId || list?.[0]?.id || ''
-        if (!pointId) return
-        realtimeTempMockValue.value = mockTemperatureByPointId(pointId)
+        const receiverId = selId || list?.[0]?.id || ''
+        if (!receiverId) return
+        realtimeTempMockValue.value = mockTemperatureByReceiverId(receiverId)
     },
     { immediate: true, deep: true }
 )
@@ -538,11 +539,11 @@ onMounted(() => {
             chartsInitialized.value = true
             const firstPoint = props.pointList?.[0]
             if (firstPoint) {
-                const pointId = props.selectedPointId || firstPoint.id
-                if (pointId) {
-                    loadTemperatureData(pointId)
-                    loadVibrationData(pointId)
-                    loadSoundData(pointId)
+                const receiverId = props.selectedPointId || firstPoint.id
+                if (receiverId) {
+                    loadTemperatureData(receiverId)
+                    loadVibrationData(receiverId)
+                    loadSoundData(receiverId)
                 }
             }
         }, 150)
@@ -568,8 +569,6 @@ onMounted(() => {
         overflow: auto;
 
         .chart-item {
-            background: url('@/assets/images/background/设备详情页-echarts背景.png') no-repeat center center;
-            background-size: 100% 100%;
             border-radius: 8px;
             padding: 10px;
             display: flex;
@@ -629,8 +628,6 @@ onMounted(() => {
         }
 
         .analysis-item {
-            background: url('@/assets/images/background/设备详情页-echarts背景.png') no-repeat center center;
-            background-size: 100% 100%;
             border-radius: 8px;
             padding: 10px;
             display: flex;

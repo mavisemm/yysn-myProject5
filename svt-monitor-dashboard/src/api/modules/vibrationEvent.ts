@@ -25,8 +25,8 @@ export interface EventFindResponse {
 export interface VibrationAlarmFindItem {
   alarmId?: string
   tenantId?: string
-  deviceId?: string
-  deviceName?: string
+  equipmentId?: string
+  equipmentName?: string
   workshopId?: string | null
   workshopName?: string | null
   alarmTime?: number

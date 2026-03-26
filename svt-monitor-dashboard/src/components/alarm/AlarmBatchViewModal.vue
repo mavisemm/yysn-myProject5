@@ -306,7 +306,11 @@ const currentStatusText = computed(() => {
   return eventDetail.value?.statusText ?? eventDetail.value?.statusCode ?? props.row?.statusText ?? props.row?.statusCode ?? '-'
 })
 
-const currentDeviceName = computed(() => eventDetail.value?.deviceName ?? props.row?.deviceName ?? '-')
+const currentDeviceName = computed(() =>
+  eventDetail.value?.equipmentName
+  ?? props.row?.equipmentName
+  ?? '-'
+)
 const currentPointName = computed(() => eventDetail.value?.pointName ?? props.row?.pointName ?? '-')
 const currentReceiverName = computed(() => eventDetail.value?.receiverName ?? props.row?.receiverName ?? '-')
 
@@ -343,7 +347,7 @@ const audioSrc = computed(() => {
 })
 
 const receiverId = computed(() => {
-  // 声音频谱曲线接口需要 receiverId（不能用 pointId 乱兜底，否则曲线会加载失败）
+  // 声音频谱曲线接口需要 receiverId（不能用旧字段乱兜底，否则曲线会加载失败）
   return (
     dataParse.value?.receiverId ??
     dataParse.value?.receiverID ??
@@ -355,8 +359,13 @@ const receiverId = computed(() => {
     ''
   )
 })
-const pointId = computed(() => dataParse.value?.pointId ?? eventDetail.value?.pointId ?? '')
-const deviceId = computed(() => eventDetail.value?.deviceId ?? dataParse.value?.deviceId ?? props.row?.deviceId ?? '')
+// 预警详情里“设备ID”在 8006 侧语义是 equipmentId
+const deviceId = computed(() =>
+  eventDetail.value?.equipmentId
+  ?? dataParse.value?.equipmentId
+  ?? props.row?.equipmentId
+  ?? ''
+)
 
 const positionText = computed(() => {
   if (position.value == null) return '-'
@@ -619,7 +628,7 @@ const onYesModalOpen = async () => {
   yesExceptionId.value = undefined
   yesNewName.value = ''
 
-  const pid = pointId.value
+  const pid = receiverId.value
   if (!pid) return
 
   try {
@@ -628,7 +637,7 @@ const onYesModalOpen = async () => {
       filterPropertyMap: [
         { code: 'tenantId', operate: 'EQ', value: tid },
         { code: 'type', operate: 'EQ', value: 0 },
-        { code: 'pointId', operate: 'EQ', value: pid }
+        { code: 'receiverId', operate: 'EQ', value: pid }
       ],
       sortValueMap: [{ code: 'time', sort: 'desc' }]
     }

@@ -41,8 +41,8 @@ import { getAllStats } from '@/api/modules/stats';
  * 排名项目类型定义
  */
 interface RankingItem {
-  deviceId?: string;
-  deviceName: string;
+  equipmentId?: string;
+  equipmentName: string;
   workshopName: string;
   value?: number;
 }
@@ -89,8 +89,8 @@ const fetchTop5Data = async () => {
 
     if (vibrationData.rc === 0 && vibrationData.ret?.length) {
       rankings.value[0] = vibrationData.ret.map(item => ({
-        deviceId: item.deviceId,
-        deviceName: item.deviceName,
+        equipmentId: item.equipmentId,
+        equipmentName: item.equipmentName,
         workshopName: item.workshopName,
         value: item.value
       }));
@@ -98,8 +98,8 @@ const fetchTop5Data = async () => {
 
     if (soundData.rc === 0 && soundData.ret?.length) {
       rankings.value[1] = soundData.ret.map(item => ({
-        deviceId: item.deviceId,
-        deviceName: item.deviceName,
+        equipmentId: item.equipmentId,
+        equipmentName: item.equipmentName,
         workshopName: item.workshopName,
         value: item.value
       }));
@@ -107,8 +107,8 @@ const fetchTop5Data = async () => {
 
     if (temperatureData.rc === 0 && temperatureData.ret?.length) {
       rankings.value[2] = temperatureData.ret.map(item => ({
-        deviceId: item.deviceId,
-        deviceName: item.deviceName,
+        equipmentId: item.equipmentId,
+        equipmentName: item.equipmentName,
         workshopName: item.workshopName,
         value: item.value
       }));

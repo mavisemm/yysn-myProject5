@@ -5,7 +5,7 @@
     <SoundPointCharts
       :deviation-list="deviationList"
       :point-list="[]"
-      :selected-point-id="pointIdFromQuery"
+      :selected-point-id="receiverId"
       @chart-init="handleChartInit"
       ref="chartsComponentRef"
     />
@@ -58,8 +58,11 @@ import {
 } from '@/api/modules/voiceSound';
 
 const route = useRoute();
-const pointIdFromQuery = computed(() => (route.query.pointId as string) || '');
-const deviceIdFromQuery = computed(() => (route.query.deviceId as string) || '');
+const receiverId = computed(() => {
+  const rid = route.params.receiverId
+  const resolved = Array.isArray(rid) ? rid[0] : rid
+  return (typeof resolved === 'string' ? resolved : '') || ''
+});
 
 // 导入新组件
 import SoundPointCharts from '@/components/business/sound-point/SoundPointCharts.vue';
@@ -141,9 +144,9 @@ const syncSelectedColors = () => {
 
 /** 从点位详情 store 填充右侧详情（生产设备=productName，子部件=subProductName，检测设备=detectorName，听筒=receiverName，点位名称=pointName） */
 function applyStorePointInfo() {
-  const pointId = pointIdFromQuery.value;
-  if (!pointId) return;
-  const point = pointMessageStore.getPointByKey(pointId);
+  const rid = receiverId.value;
+  if (!rid) return;
+  const point = pointMessageStore.getPointByKey(rid);
   if (!point) return;
   clusterName.value = point.groupName ?? '';
   productionEquipment.value = point.productName ?? '';
@@ -206,7 +209,7 @@ const normalizeDeviationList = (list: SoundDeviationItem[]): DeviationListItem[]
       productionEquipment: raw.deviceName ?? raw.productName ?? raw.productionFactory ?? '',
       subComponent: raw.subProductName ?? '',
       detectionEquipment: raw.detectorName ?? raw.deviceName ?? '',
-      microphone: raw.receiverName ?? raw.pointName ?? (raw.pointId != null ? String(raw.pointId) : '')
+      microphone: raw.receiverName ?? raw.pointName ?? (raw.receiverId != null ? String(raw.receiverId) : '')
     };
   });
 };
@@ -214,8 +217,7 @@ const normalizeDeviationList = (list: SoundDeviationItem[]): DeviationListItem[]
 const loadDeviationList = async () => {
   try {
     const res = await getLatestDeviationByReceiver({
-      pointId: pointIdFromQuery.value || undefined,
-      receiverId: pointIdFromQuery.value || undefined
+      receiverId: receiverId.value || undefined
     });
     const rawList = Array.isArray(res)
       ? res
@@ -242,8 +244,8 @@ const loadDeviationList = async () => {
       productionEquipment.value = firstRaw.deviceName ?? firstRaw.productName ?? firstRaw.productionFactory ?? '';
       subComponent.value = firstRaw.subProductName ?? '';
       detectionEquipment.value = firstRaw.detectorName ?? firstRaw.deviceName ?? '';
-      // 本项用 pointId，另一项用 receiverId；听筒显示优先 receiverName，无则 pointName 或 pointId
-      microphone.value = firstRaw.receiverName ?? firstRaw.pointName ?? (firstRaw.pointId != null ? String(firstRaw.pointId) : '');
+      // 听筒显示优先 receiverName，无则 pointName 或 receiverId
+      microphone.value = firstRaw.receiverName ?? firstRaw.pointName ?? (firstRaw.receiverId != null ? String(firstRaw.receiverId) : '');
       if (firstItem?.id) {
         audioPath.value = getWavByFreqGroupIdUrl(firstItem.id);
       }
@@ -577,11 +579,12 @@ const handleResize = () => {
 
 // 设备树切换点位时路由 query 会变，需重新拉取数据并更新选中状态
 watch(
-  () => route.query.pointId,
+  () => route.params.receiverId,
   (newId, oldId) => {
     if (newId !== oldId) {
       if (newId) {
-        deviceTreeStore.setSelectedDeviceId(newId as string);
+        const resolved = Array.isArray(newId) ? newId[0] : newId
+        if (resolved) deviceTreeStore.setSelectedDeviceId(resolved as string);
         applyStorePointInfo();
       }
       loadDeviationList();
@@ -590,8 +593,8 @@ watch(
 );
 
 onMounted(() => {
-  if (pointIdFromQuery.value) {
-    deviceTreeStore.setSelectedDeviceId(pointIdFromQuery.value);
+  if (receiverId.value) {
+    deviceTreeStore.setSelectedDeviceId(receiverId.value);
     applyStorePointInfo();
   }
   loadDeviationList();

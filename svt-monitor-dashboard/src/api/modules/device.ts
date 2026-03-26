@@ -74,11 +74,11 @@ export interface VibrationFrequencyData {
   freqSpeedData: string
 }
 
-export const getVibrationFrequencyData = (deviceId: string, pointId: string): Promise<NewApiResponse<VibrationFrequencyData>> => {
+export const getVibrationFrequencyData = (deviceId: string, receiverId: string): Promise<NewApiResponse<VibrationFrequencyData>> => {
   return request.post('/api/device/vibration/data/frequency', {
     tenantId: getTenantId(),
     deviceId: deviceId,
-    pointId: pointId
+    receiverId: receiverId
   })
 }
 
@@ -90,11 +90,11 @@ export interface VibrationMetricData {
   accelerationMax: number
 }
 
-export const getVibrationMetricData = (deviceId: string, pointId: string): Promise<NewApiResponse<VibrationMetricData>> => {
+export const getVibrationMetricData = (deviceId: string, receiverId: string): Promise<NewApiResponse<VibrationMetricData>> => {
   return request.post('/api/device/vibration/data/metric/rms', {
     tenantId: getTenantId(),
     deviceId: deviceId,
-    pointId: pointId
+    receiverId: receiverId
   })
 }
 
@@ -104,10 +104,10 @@ export interface VibrationTimeDomainData {
   timedomaindata: string
 }
 
-export const getVibrationTimeDomainData = (deviceId: string, pointId: string): Promise<NewApiResponse<VibrationTimeDomainData>> => {
+export const getVibrationTimeDomainData = (deviceId: string, receiverId: string): Promise<NewApiResponse<VibrationTimeDomainData>> => {
   return request.post('/api/device/vibration/data/time', {
     tenantId: getTenantId(),
     deviceId: deviceId,
-    pointId: pointId
+    receiverId: receiverId
   })
 }

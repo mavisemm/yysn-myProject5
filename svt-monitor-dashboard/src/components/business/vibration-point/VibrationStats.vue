@@ -29,14 +29,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getVibrationMetricData, type VibrationMetricData } from '@/api/modules/device'
 import { ElMessage } from 'element-plus'
+import { useDeviceTreeStore } from '@/stores/deviceTree'
 
 const route = useRoute()
-const deviceId = computed(() => (route.query.deviceId as string) || '')
-const pointId = computed(() => (route.query.pointId as string) || '')
+const deviceTreeStore = useDeviceTreeStore()
+
+const resolvePointDeviceId = (rid: string): string => {
+    if (!rid) return ''
+    for (const factory of deviceTreeStore.deviceTreeData) {
+        for (const workshop of (factory.children ?? [])) {
+            for (const device of (workshop.children ?? [])) {
+                if (device.type !== 'device') continue
+                const hit = (device.children ?? []).find(p => p.type === 'point' && p.id === rid)
+                if (hit?.deviceId) return hit.deviceId
+            }
+        }
+    }
+    return ''
+}
+
+const receiverIdFromParams = computed(() => {
+    const rid = route.params.receiverId
+    const resolved = Array.isArray(rid) ? rid[0] : rid
+    return (typeof resolved === 'string' ? resolved : '') || ''
+})
+
+// 点位页：接口入参需要点位级 deviceId，但地址只携带 equipmentId（用于点位级 deviceId 解析）和 receiverId（用于定位点位）
+const pointDeviceId = computed(() => resolvePointDeviceId(receiverIdFromParams.value))
 
 const vibrationData = ref<VibrationMetricData>({
     velocityRms: 0,
@@ -48,12 +71,12 @@ const vibrationData = ref<VibrationMetricData>({
 const formatValue = (value: number): string => value.toFixed(2)
 
 const loadVibrationData = async () => {
-    if (!deviceId.value || !pointId.value) {
+    if (!pointDeviceId.value || !receiverIdFromParams.value) {
         ElMessage.warning('缺少设备或点位信息')
         return
     }
     try {
-        const response = await getVibrationMetricData(deviceId.value, pointId.value)
+        const response = await getVibrationMetricData(pointDeviceId.value, receiverIdFromParams.value)
         if (response.rc === 0 && response.ret) {
             vibrationData.value = {
                 velocityRms: response.ret.velocityRms ?? 0,
@@ -69,9 +92,10 @@ const loadVibrationData = async () => {
     }
 }
 
-onMounted(() => {
-    loadVibrationData()
-})
+watch([receiverIdFromParams, pointDeviceId], ([rid, pid]) => {
+    if (!rid || !pid) return
+    void loadVibrationData()
+}, { immediate: true })
 </script>
 
 <style lang="scss" scoped>

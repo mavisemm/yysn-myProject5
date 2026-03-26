@@ -59,6 +59,8 @@ import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 
 interface PointInfo {
     id: string
+    /** 点位级 deviceId（用于振动接口入参） */
+    deviceId?: string
     name: string
     lastAlarmTime: string
     alarmType: string
@@ -74,7 +76,7 @@ interface PointListModuleProps {
 const props = defineProps<PointListModuleProps>()
 
 const emit = defineEmits<{
-    'point-selected': [pointId: string]
+    'point-selected': [receiverId: string]
 }>()
 
 // 处理外部传入的选中状态
@@ -113,8 +115,18 @@ const onRowClick = (row: PointInfo) => {
 const handleUnprocessedClick = (row: PointInfo) => {
     if (!row.hasAlarm) return // 如果是已处理状态，不执行跳转
 
-    // 获取当前设备ID用于返回时识别
-    const currentDeviceId = route.params.id as string || ''
+    // SoundPoint/VibrationPoint 页面地址使用 equipmentId（当前 DeviceDetail 的 query）
+    const equipmentIdFromQuery = route.query.equipmentId
+    const equipmentIdFromQueryResolved = Array.isArray(equipmentIdFromQuery)
+        ? equipmentIdFromQuery[0]
+        : equipmentIdFromQuery
+
+    const equipmentIdFromLegacy = route.params.id
+    const equipmentIdFromLegacyResolved = Array.isArray(equipmentIdFromLegacy)
+        ? equipmentIdFromLegacy[0]
+        : equipmentIdFromLegacy
+
+    const equipmentId = (equipmentIdFromQueryResolved as string | undefined) || (equipmentIdFromLegacyResolved as string | undefined) || ''
 
     switch (row.alarmType) {
         case '声音':
@@ -122,9 +134,10 @@ const handleUnprocessedClick = (row: PointInfo) => {
             router.push({
                 name: 'SoundPoint',
                 query: {
-                    pointId: row.id,
-                    deviceId: currentDeviceId
-                }
+                    // query key 插入顺序：equipmentId -> receiverId
+                    equipmentId,
+                },
+                params: { receiverId: row.id }
             })
             break
         case '振动':
@@ -132,9 +145,10 @@ const handleUnprocessedClick = (row: PointInfo) => {
             router.push({
                 name: 'VibrationPoint',
                 query: {
-                    pointId: row.id,
-                    deviceId: currentDeviceId
-                }
+                    // query key 插入顺序：equipmentId -> receiverId
+                    equipmentId,
+                },
+                params: { receiverId: row.id }
             })
             break
         case '温度':
@@ -171,8 +185,6 @@ defineExpose({
     display: flex;
     flex-direction: column;
     height: 50%;
-    background: url('@/assets/images/background/设备详情页-点位列表背景.png') no-repeat center center;
-    background-size: 100% 100%;
     border-radius: 8px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
     overflow: hidden;

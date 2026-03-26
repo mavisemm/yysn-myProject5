@@ -14,7 +14,7 @@ export interface DeviceRealTimeData {
 }
 
 export interface DataPoint {
-  pointId: string
+  receiverId: string
   pointName: string
   pointType: string
   value: number
@@ -138,14 +138,14 @@ export const getVibrationData = (deviceId: string): Promise<VibrationResponse> =
 // 获取实时数据历史趋势
 export const getRealTimeDataTrend = (
   deviceId: string,
-  pointId: string,
+  receiverId: string,
   params?: {
     startTime?: string
     endTime?: string
     interval?: string
   }
 ): Promise<any> => {
-  return request.get(`/device/realtime/${deviceId}/trend/${pointId}`, {
+  return request.get(`/device/realtime/${deviceId}/trend/${receiverId}`, {
     params,
     showLoading: false
   })

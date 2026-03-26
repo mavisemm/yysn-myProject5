@@ -239,8 +239,8 @@ export const getDeviceHealthReport = (deviceId: string, params?: {
 
 // 获取TOP5设备数据
 export interface TopDevice {
-  deviceId: string;
-  deviceName: string;
+  equipmentId: string;
+  equipmentName: string;
   workshopId: string;
   workshopName: string;
   value: number; // 数值，如振动烈度、声音响度或温度
@@ -266,8 +266,8 @@ export interface DeviceInfoResponse {
   rc: number;
   ret: {
     id: number;
-    deviceId: string;
-    deviceName: string;
+    equipmentId: string;
+    equipmentName: string;
     deviceModel: string;
     deviceFactory: string;
     locationDetail: string;
@@ -282,16 +282,17 @@ export interface DeviceInfoResponse {
 }
 
 // 根据设备ID获取设备详情信息
-export const getDeviceInfoByDeviceId = (deviceId: string): Promise<DeviceInfoResponse> => {
+export const getDeviceInfoByEquipmentId = (equipmentId: string): Promise<DeviceInfoResponse> => {
   return request.get(`/taicang/hardware/device/info/vibration/findByDeviceId`, {
-    params: { deviceId },
+    params: { equipmentId },
     showLoading: true
   })
 }
 
 // 点位列表项（selectCheckPointIn 接口返回）
 export interface CheckPointItem {
-  pointId: string
+  receiverId: string
+  deviceId?: string
   pointName: string
   warningTime: string | null
   warningType: string
@@ -304,10 +305,10 @@ export interface SelectCheckPointInResponse {
   err: string | null
 }
 
-// 根据设备ID获取点位列表（设备详情页点位列表）
-export const getSelectCheckPointIn = (deviceId: string): Promise<SelectCheckPointInResponse> => {
+// 根据设备ID(equipmentId)获取点位列表（设备详情页点位列表）
+export const getSelectCheckPointIn = (equipmentId: string): Promise<SelectCheckPointInResponse> => {
   return request.get('/taicang/hardware/device/vibration/selectCheckPointIn', {
-    params: { deviceId },
+    params: { equipmentId },
     showLoading: false
   })
 }
@@ -315,8 +316,8 @@ export const getSelectCheckPointIn = (deviceId: string): Promise<SelectCheckPoin
 // 设备编辑信息类型定义
 export interface DeviceInfoDto {
   id: number;
-  deviceId: string;
-  deviceName: string;
+  equipmentId: string;
+  equipmentName: string;
   deviceModel: string;
   deviceFactory: string;
   locationDetail: string;
@@ -334,9 +335,9 @@ export interface DeviceEditResponse {
 }
 
 // 编辑设备信息
-export const editDeviceInfo = (deviceId: string, deviceInfo: DeviceInfoDto): Promise<DeviceEditResponse> => {
+export const editEquipmentInfo = (equipmentId: string, deviceInfo: DeviceInfoDto): Promise<DeviceEditResponse> => {
   return request.post(`/taicang/hardware/device/info/vibration/edit`, {
-    deviceId,
+    equipmentId,
     deviceInfo
   }, {
     showLoading: true
@@ -354,9 +355,9 @@ export interface TemperatureTrendResponse {
   err: string | null;
 }
 
-// 获取温度趋势数据（请求参数：point_id, start_time, end_time）
+// 获取温度趋势数据（请求参数：receiverId, start_time, end_time）
 export const getTemperatureTrend = (params: {
-  point_id: string;
+  receiverId: string;
   start_time: string;
   end_time: string;
 }): Promise<TemperatureTrendResponse> => {
@@ -377,10 +378,10 @@ export interface VibrationTrendResponse {
   err?: string | null;
 }
 
-// 获取振动趋势数据（请求参数：point_id, start_time, end_time）
+// 获取振动趋势数据（请求参数：receiverId, start_time, end_time）
 // 后端可能直接返回数组，或 { rc, ret: 数组 }
 export const getVibrationTrend = (params: {
-  point_id: string;
+  receiverId: string;
   start_time: string;
   end_time: string;
 }): Promise<VibrationTrendResponse | VibrationTrendItem[]> => {
@@ -403,9 +404,9 @@ export interface SoundTrendResponse {
   err?: string | null;
 }
 
-// 获取响度趋势数据（请求参数：point_id, start_time, end_time）
+// 获取响度趋势数据（请求参数：receiverId, start_time, end_time）
 export const getSoundTrend = (params: {
-  point_id: string;
+  receiverId: string;
   start_time: string;
   end_time: string;
 }): Promise<SoundTrendResponse | SoundTrendItem[]> => {
@@ -419,8 +420,8 @@ export const getSoundTrend = (params: {
 export interface DeviceHealthResponse {
   rc: number;
   ret: {
-    deviceId: string;
-    deviceName: string;
+    equipmentId: string;
+    equipmentName: string;
     // 声音健康度分數，振动場景可能為 null
     healthScore: number | null;
     type: 'sound' | 'vibration';
@@ -431,8 +432,8 @@ export interface DeviceHealthResponse {
 }
 
 // 获取设备健康度
-export const getDeviceHealth = (params: {
-  deviceId: string;
+export const getEquipmentHealth = (params: {
+  equipmentId: string;
   type: 'sound' | 'vibration';
 }): Promise<DeviceHealthResponse> => {
   return request.post('/taicang/hardware/device/info/vibration/health', params, {
@@ -477,7 +478,7 @@ export interface PointMessageResponse {
   err: string | null;
 }
 
-/** 获取点位详情列表（项目打开时调用，供声音点位页等按 receiverId/pointId 查详情） */
+/** 获取点位详情列表（项目打开时调用，供声音点位页等按 receiverId 查详情） */
 export const getPointMessage = (params: {
   filterPropertyMap: PointMessageFilterItem[];
   pageIndex: number;

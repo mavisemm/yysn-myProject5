@@ -193,6 +193,9 @@ function createMockOverviewAlarms(): AlarmItem[] {
 interface AlarmWsPayload {
     alarmId?: string
     tenantId?: string
+    // 新字段：设备级 equipmentId/equipmentName
+    equipmentId?: string
+    equipmentName?: string
     deviceId?: string
     deviceName?: string
     workshopId?: string | null
@@ -329,12 +332,12 @@ type OverviewNormalized = {
 function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
     // 新 websocket：按你给的结构
     if (isAlarmWsPayload(input)) {
-        const deviceId = String(input.deviceId ?? '')
+        const deviceId = String(input.equipmentId ?? '')
         const t = Number(input.alarmTime ?? 0)
         if (!deviceId || !Number.isFinite(t) || t <= 0) return null
         return {
             deviceId,
-            deviceName: input.deviceName ? String(input.deviceName) : undefined,
+            deviceName: input.equipmentName ? String(input.equipmentName) : undefined,
             shopName: input.workshopName ? String(input.workshopName) : undefined,
             time: t,
             alarmTypeCode: input.alarmTypeCode ? String(input.alarmTypeCode) : undefined,
@@ -725,17 +728,17 @@ function formatAlarmTime(time: string | undefined): string {
 }
 
 const goToDeviceDetail = (alarm: AlarmItem) => {
-    const deviceId = alarm.id;
-    if (!deviceId) {
+    const equipmentId = alarm.id;
+    if (!equipmentId) {
         console.warn('缺少设备ID，无法跳转:', alarm);
         return;
     }
 
     // 直接按设备ID跳转设备详情页，并同步选中设备
-    deviceTreeStore.setSelectedDeviceId(deviceId);
+    deviceTreeStore.setSelectedDeviceId(equipmentId);
     router.push({
         name: 'DeviceDetail',
-        params: { id: deviceId }
+        params: { id: equipmentId }
     }).catch(err => {
         console.error('路由跳转失败:', err);
     });
@@ -751,8 +754,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    background: url('@/assets/images/background/首页-Top5背景.png') no-repeat center center;
-    background-size: 100% 100%;
 
     .header-section {
         display: flex;

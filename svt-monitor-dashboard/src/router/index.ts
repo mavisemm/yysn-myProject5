@@ -9,25 +9,45 @@ const routes: RouteRecordRaw[] = [
     component: PageLayout,
     children: [
       {
-        path: '',
+        path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/Dashboard.vue'),
         meta: { title: 'Dashboard' }
       },
       {
+        path: '',
+        redirect: 'dashboard'
+      },
+      {
+        // 设备详情页：equipmentId 放在 path
         path: 'device-detail/:id',
         name: 'DeviceDetail',
         component: () => import('@/views/DeviceDetail.vue'),
         meta: { title: 'Device Detail' }
       },
       {
-        path: 'sound-point',
+        // 兼容旧地址：/device-detail?equipmentId=xxx
+        path: 'device-detail',
+        name: 'DeviceDetailQueryLegacy',
+        redirect: (to) => {
+          const equipmentId = (to.query?.equipmentId as string | undefined) ?? ''
+          return {
+            name: 'DeviceDetail',
+            params: { id: equipmentId },
+            query: { ...(to.query ?? {}) }
+          }
+        }
+      },
+      {
+        // 声音点位页：receiverId 放在 path
+        path: 'sound-point/:receiverId',
         name: 'SoundPoint',
         component: () => import('@/views/SoundPoint.vue'),
         meta: { title: 'Sound Point' }
       },
       {
-        path: 'vibration-point',
+        // 振动点位页：receiverId 放在 path
+        path: 'vibration-point/:receiverId',
         name: 'VibrationPoint',
         component: () => import('@/views/VibrationPoint.vue'),
         meta: { title: 'Vibration Point' }
@@ -42,7 +62,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/'
+    redirect: '/dashboard'
   }
 ]
 

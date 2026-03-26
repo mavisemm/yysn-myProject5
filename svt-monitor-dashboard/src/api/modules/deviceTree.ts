@@ -10,7 +10,14 @@ export interface DeviceTreeNode {
   pointCount?: number;
   onlineCount?: number;
   alarmCount?: number;
+  // 仅 point 节点使用：点位级 deviceId（振动接口入参）
+  deviceId?: string;
   workshopName?: string;
+  // 设备树设备节点：equipmentId
+  equipmentId?: string;
+  equipmentName?: string;
+  // 点位节点：receiverId
+  receiverId?: string;
   children?: DeviceTreeNode[];
 }
 
@@ -40,9 +47,11 @@ export interface EquipmentData {
 }
 
 export interface PointData {
+  // 后端字段命名：点位展示名通常为 receiverName（如果接口未返回则使用 pointName）
+  receiverName?: string;
   pointName: string;
-  pointId?: string;
   receiverId?: string;
+  deviceId?: string;
   warningTime?: string;
   warningType?: string;
   warningValue?: number | string;
@@ -86,14 +95,21 @@ export const transformDeviceTreeData = (responseData: DeviceTreeResponse): Devic
         status: 'normal', 
         workshopName: workshop.workshopName,
         customerDeviceId: equipment.customerDeviceId,
-        children: equipment.children.map(point => ({
-          id: point.pointId || point.receiverId || '',
-          name: point.pointName,
+        equipmentId: equipment.equipmentId,
+        equipmentName: equipment.equipmentName,
+        children: equipment.children.map((point, pointIndex) => ({
+          // el-tree 使用 node-key=id，不能让所有节点都退化成空字符串
+          id: point.receiverId ?? `${equipment.equipmentId}-${pointIndex}`,
+          // 点位展示：优先 receiverName，没有再回退 pointName
+          name: point.receiverName || point.pointName,
           type: 'point',
           status: 'normal',
           warningTime: point.warningTime,
           warningType: point.warningType,
-          warningValue: point.warningValue
+          warningValue: point.warningValue,
+          // 点位级 deviceId：用于振动点位页的接口入参（不能等同 equipmentId）
+          deviceId: point.deviceId,
+          receiverId: point.receiverId
         }))
       }))
     }))

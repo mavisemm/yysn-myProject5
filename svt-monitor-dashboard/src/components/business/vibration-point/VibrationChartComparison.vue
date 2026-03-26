@@ -30,17 +30,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, inject, shallowRef } from 'vue';
+import { ref, onUnmounted, computed, inject, shallowRef, watch } from 'vue';
 import type { Ref } from 'vue';
 import { useRoute } from 'vue-router';
 import * as echarts from 'echarts';
 import type { EChartsOption } from 'echarts';
 import { CommonEcharts } from '@/components/common/chart';
 import { getVibrationFrequencyData, getVibrationTimeDomainData } from '@/api/modules/device';
+import { useDeviceTreeStore } from '@/stores/deviceTree';
 
 const route = useRoute();
-const deviceId = computed(() => (route.query.deviceId as string) || '');
-const pointId = computed(() => (route.query.pointId as string) || '');
+const receiverIdFromParams = computed(() => {
+    const rid = route.params.receiverId;
+    const resolved = Array.isArray(rid) ? rid[0] : rid;
+    return (typeof resolved === 'string' ? resolved : '') || '';
+});
+const deviceTreeStore = useDeviceTreeStore();
+
+const resolvePointDeviceId = (rid: string): string => {
+    if (!rid) return '';
+    for (const factory of deviceTreeStore.deviceTreeData) {
+        for (const workshop of (factory.children ?? [])) {
+            for (const device of (workshop.children ?? [])) {
+                if (device.type !== 'device') continue;
+                const hit = (device.children ?? []).find(p => p.type === 'point' && p.id === rid);
+                if (hit?.deviceId) return hit.deviceId;
+            }
+        }
+    }
+    return '';
+};
+
+// 点位页：接口入参需要点位级 deviceId，但地址只携带 equipmentId/receiverId
+const pointDeviceId = computed(() => resolvePointDeviceId(receiverIdFromParams.value));
 
 /** 主题：灰色时坐标轴/分割线为黑，否则白 */
 const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
@@ -414,10 +436,11 @@ const timeOption = computed<EChartsOption>(() => {
     } as EChartsOption;
 });
 
-onMounted(async () => {
+const loadVibrationChartsData = async () => {
+    if (!pointDeviceId.value || !receiverIdFromParams.value) return;
+
     try {
-        if (!deviceId.value || !pointId.value) return;
-        const freqResponse = await getVibrationFrequencyData(deviceId.value, pointId.value);
+        const freqResponse = await getVibrationFrequencyData(pointDeviceId.value, receiverIdFromParams.value);
         if (freqResponse.rc === 0 && freqResponse.ret) {
             try {
                 const frequencyArray = JSON.parse(freqResponse.ret.frequency);
@@ -439,8 +462,7 @@ onMounted(async () => {
     }
 
     try {
-        if (!deviceId.value || !pointId.value) return;
-        const timeResponse = await getVibrationTimeDomainData(deviceId.value, pointId.value);
+        const timeResponse = await getVibrationTimeDomainData(pointDeviceId.value, receiverIdFromParams.value);
         if (timeResponse.rc === 0 && timeResponse.ret) {
             try {
                 const timeDomainArray = timeResponse.ret.timedomaindata
@@ -463,7 +485,12 @@ onMounted(async () => {
     } catch (error) {
         console.error('获取振动时域数据失败:', error);
     }
-});
+};
+
+watch([receiverIdFromParams, pointDeviceId], ([rid, pid]) => {
+    if (!rid || !pid) return;
+    void loadVibrationChartsData();
+}, { immediate: true });
 
 onUnmounted(() => {
     if (freqChartCleanup) {
@@ -510,7 +537,5 @@ onUnmounted(() => {
 .freq-card,
 .time-card {
     width: 50%;
-    background: url('@/assets/images/background/设备详情页-点位列表背景.png') no-repeat center center;
-    background-size: 100% 100%;
 }
 </style>

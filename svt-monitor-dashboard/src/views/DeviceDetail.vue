@@ -2,7 +2,7 @@
 <template>
   <div class="device-detail">
     <!-- 左侧设备信息模块：显示设备基本信息 -->
-    <DeviceInfoModule v-if="deviceId" :device-id="deviceId" @edit-status-change="handleEditStatusChange" />
+    <DeviceInfoModule v-if="equipmentId" :device-id="equipmentId" @edit-status-change="handleEditStatusChange" />
 
     <!-- 右侧内容模块：包含点位列表和图表分析 -->
     <div class="right-content">
@@ -33,15 +33,18 @@ type PointListModuleType = InstanceType<typeof PointListModule>
 const route = useRoute()
 const deviceTreeStore = useDeviceTreeStore()
 
-const deviceId = computed<string | null>(() => {
-  const id = route.params.id;
-  if (Array.isArray(id)) {
-    return id[0] || null;
-  }
-  if (typeof id !== 'string' || !id) {
-    return null;
-  }
-  return id;
+const equipmentId = computed<string | null>(() => {
+  // 新地址：/device-detail?equipmentId=xxx
+  const q = route.query.equipmentId
+  const qId = Array.isArray(q) ? q[0] : q
+  if (typeof qId === 'string' && qId) return qId
+
+  // 兼容旧地址：/device-detail/:id
+  const p = route.params.id
+  const pId = Array.isArray(p) ? p[0] : p
+  if (typeof pId === 'string' && pId) return pId
+
+  return null
 })
 
 interface PointInfo {
@@ -50,6 +53,8 @@ interface PointInfo {
   lastAlarmTime: string,
   alarmType: string,
   alarmValue: string,
+  /** 点位级 deviceId（用于振动接口入参） */
+  deviceId?: string,
   hasAlarm: boolean
 }
 
@@ -62,7 +67,7 @@ const isEditing = ref(false)
 const hasUnsavedChanges = ref(false)
 
 const analysisForm = ref({
-  pointId: '',
+  receiverId: '',
   days: 7,
   dateRange: [] as [Date, Date] | []
 })
@@ -78,10 +83,23 @@ const analysisResult = ref<AnalysisResult>({
 })
 
 const initDeviceData = async () => {
-  if (!deviceId.value) return
+  if (!equipmentId.value) return
 
   try {
-    const res = await getSelectCheckPointIn(deviceId.value)
+    const resolvePointDeviceId = (rid: string): string | undefined => {
+      for (const factory of deviceTreeStore.deviceTreeData) {
+        for (const workshop of (factory.children ?? [])) {
+          for (const device of (workshop.children ?? [])) {
+            if (device.type !== 'device') continue
+            const hit = (device.children ?? []).find(p => p.type === 'point' && p.id === rid)
+            if (hit && hit.deviceId) return hit.deviceId
+          }
+        }
+      }
+      return undefined
+    }
+
+    const res = await getSelectCheckPointIn(equipmentId.value)
     if (res.rc !== 0 || !Array.isArray(res.ret)) {
       pointList.value = []
       return
@@ -94,11 +112,12 @@ const initDeviceData = async () => {
       return t || '无'
     }
     const list: PointInfo[] = res.ret.map((item) => ({
-      id: item.pointId,
+      id: item.receiverId,
       name: item.pointName || '未知点位',
       lastAlarmTime: item.warningTime != null && item.warningTime !== '' ? item.warningTime : '无',
       alarmType: typeStrToDisplay(item.warningType),
       alarmValue: item.warningValue != null && Number(item.warningValue) !== 0 ? String(item.warningValue) : '无',
+      deviceId: (item as any).deviceId ?? resolvePointDeviceId(item.receiverId),
       hasAlarm: item.isAlarm === 0  // 0=有预警(未处理)，1=没预警(已处理)
     }))
     pointList.value = list.sort((a, b) => {
@@ -139,19 +158,18 @@ const initDeviceData = async () => {
  * 仅由设备ID（路由）变化触发点位列表加载，避免重复请求
  */
 watch(
-  () => route.params.id,
-  (newId) => {
-    const id = newId ? (Array.isArray(newId) ? newId[0] : newId) : null;
-    if (id) {
-      deviceTreeStore.setSelectedDeviceId(id);
-      initDeviceData();
+  () => equipmentId.value,
+  (id) => {
+    if (id && typeof id === 'string') {
+      deviceTreeStore.setSelectedDeviceId(id)
+      initDeviceData()
     }
   },
   { immediate: true }
 )
 
 onMounted(() => {
-  deviceTreeStore.setSelectedDeviceId(deviceId.value);
+  deviceTreeStore.setSelectedDeviceId(equipmentId.value);
   setupPageResizeObserver();
   window.addEventListener('resize', resizeAllCharts);
 })
