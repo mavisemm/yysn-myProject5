@@ -8,7 +8,7 @@
         <div class="device-main">
             <!-- 设备图片：放在最上方 -->
             <div class="device-image-container">
-                <img src="@/assets/images/background/设备详情页-设备实物图.png" alt="设备图片" class="device-image" />
+                <img :src="deviceImageSrc" alt="设备图片" class="device-image" />
             </div>
 
             <!-- 健康度：同时显示（上：声音，下：振动） -->
@@ -226,6 +226,61 @@ import { getDeviceInfoByEquipmentId, editEquipmentInfo, getEquipmentHealth, type
 import { service } from '@/api/request'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
 
+const FALLBACK_DEVICE_IMAGE_URL: string = new URL('@/assets/images/background/背景图.png', import.meta.url).href
+
+const deviceImages = import.meta.glob('@/assets/images/background/*.{png,jpg,jpeg,webp,svg}', {
+    eager: true,
+    import: 'default'
+}) as Record<string, string>
+
+const normalizeDeviceImageKey = (name: string) =>
+    String(name ?? '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/[（(].*?[）)]/g, '')
+        .replace(/[-_]/g, '')
+
+const deviceImageByBaseName = (() => {
+    const map = new Map<string, string>()
+    for (const [path, url] of Object.entries(deviceImages)) {
+        const fileName = path.split('/').pop() ?? ''
+        const base = fileName.replace(/\.[^.]+$/, '')
+        if (!base) continue
+        map.set(base, url)
+    }
+    return map
+})()
+
+const resolveDeviceImageFromName = (equipmentName: string): string => {
+    const rawName = String(equipmentName ?? '').trim()
+    if (!rawName) return FALLBACK_DEVICE_IMAGE_URL
+
+    // 1) 原始文件名精确匹配（例如：五线一路风机 -> 五线一路风机.png）
+    const exact = deviceImageByBaseName.get(rawName)
+    if (exact) return exact
+
+    // 2) 规范化后精确匹配（去空格、大小写、括号备注、连字符）
+    const normalizedRawName = normalizeDeviceImageKey(rawName)
+    if (!normalizedRawName) return FALLBACK_DEVICE_IMAGE_URL
+    for (const [baseName, url] of deviceImageByBaseName.entries()) {
+        if (normalizeDeviceImageKey(baseName) === normalizedRawName) {
+            return url
+        }
+    }
+
+    // 3) 包含匹配（兼容“设备名后面带编号/前缀”等场景）
+    for (const [baseName, url] of deviceImageByBaseName.entries()) {
+        const normalizedBase = normalizeDeviceImageKey(baseName)
+        if (!normalizedBase) continue
+        if (normalizedBase.includes(normalizedRawName) || normalizedRawName.includes(normalizedBase)) {
+            return url
+        }
+    }
+
+    return FALLBACK_DEVICE_IMAGE_URL
+}
+
 const formatValueWithUnit = (value: unknown, unit: string) => {
     if (value === null || value === undefined) return ''
     const raw = typeof value === 'string' ? value.trim() : value
@@ -308,6 +363,10 @@ const deviceInfo = ref<DeviceInfo>({
     createdTime: null,
     updatedTime: null,
     deviceNewInfo: []
+})
+
+const deviceImageSrc = computed<string>(() => {
+    return resolveDeviceImageFromName(deviceInfo.value.equipmentName)
 })
 
 // 根据后端返回的 deviceNewInfo 解析出 extraFields（按 label1/value1 顺序，还兼容旧的扁平结构）
@@ -1146,8 +1205,9 @@ onUnmounted(() => {
 
             .device-image {
                 width: 100%;
-                height: 150px;
-                object-fit: cover;
+                height: auto;
+                object-fit: contain;
+                display: block;
                 border-radius: 8px;
             }
         }
