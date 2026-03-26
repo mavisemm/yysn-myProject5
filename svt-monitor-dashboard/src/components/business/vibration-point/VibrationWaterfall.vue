@@ -28,11 +28,10 @@ import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vu
 const waterfallChartRef = ref<HTMLElement>();
 const waterfallChartInstance = shallowRef<echarts.ECharts | null>(null);
 
-/** 主题：灰色时坐标轴/字体为黑，3D 网格线灰→黑；非灰为白/灰 */
-const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
-const isGrayTheme = computed(() => backgroundMode?.value === 'gray');
-const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#ffffff'));
-const chartGridLineColor = computed(() => (isGrayTheme.value ? '#000' : '#999999'));
+/** 已移除灰色/绿色主题：统一使用非灰配色 */
+const backgroundMode = inject<Ref<'image' | 'navy' | 'solid'> | undefined>('backgroundMode');
+const chartAxisColor = computed(() => '#ffffff');
+const chartGridLineColor = computed(() => '#999999');
 
 const intervalHours = ref(1);
 const dateRange = ref<[string, string] | null>(null);

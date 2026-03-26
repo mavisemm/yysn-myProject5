@@ -62,8 +62,14 @@
                 </div>
 
                 <!-- 第二部分：厂区名 + 报警时间 -->
-                <div class="alarm-time">{{ alarm.shopName ? alarm.shopName + ' ' : '' }}&nbsp;&nbsp;{{
-                    formatAlarmTime(alarm.time) }}</div>
+                <div class="alarm-time">
+                    <template v-if="getDeviceDisplayStatus(alarm) !== 'healthy'">
+                        {{ alarm.shopName ? alarm.shopName + ' ' : '' }}&nbsp;&nbsp;{{ formatAlarmTime(alarm.time) }}
+                    </template>
+                    <template v-else>
+                        {{ alarm.shopName ? alarm.shopName : '' }}
+                    </template>
+                </div>
 
                 <!-- 第三部分：测点网格 -->
                 <div class="measurement-grid">
@@ -131,59 +137,135 @@ interface AlarmItem {
     measurementPoints: MeasurementPoint[];
 }
 
-function buildMockMeasurementPoints(type: 'healthy' | 'warning' | 'alarm'): MeasurementPoint[] {
-    const total = 10;
+function buildMockMeasurementPoints(
+    type: 'healthy' | 'warning' | 'alarm',
+    config?: {
+        /** 点位号（从 1 开始），标记为 warning */
+        warningPointNums?: number[]
+        /** 点位号（从 1 开始），标记为 alarm */
+        alarmPointNums?: number[]
+    }
+): MeasurementPoint[] {
+    // 你要求预警点位包含 11：假数据至少要覆盖到 11
+    const total = 16
     const points: MeasurementPoint[] = Array.from({ length: total }).map((_, i) => ({
         name: `测点${i + 1}`,
         status: 'healthy'
     }));
 
+    const warningPointNums = config?.warningPointNums ?? []
+    const alarmPointNums = config?.alarmPointNums ?? []
+
     if (type === 'warning') {
-        points[2] = { name: points[2]!.name, status: 'warning' };
-        points[6] = { name: points[6]!.name, status: 'warning' };
+        for (const pn of warningPointNums) {
+            const idx = pn - 1
+            if (idx >= 0 && idx < points.length) points[idx] = { name: points[idx]!.name, status: 'warning' }
+        }
     }
 
     if (type === 'alarm') {
-        points[1] = { name: points[1]!.name, status: 'alarm' };
-        points[4] = { name: points[4]!.name, status: 'warning' };
+        for (const pn of alarmPointNums) {
+            const idx = pn - 1
+            if (idx >= 0 && idx < points.length) points[idx] = { name: points[idx]!.name, status: 'alarm' }
+        }
+        // alarm 设备下，如果你还想同时标 warning 点位，也可以在 config 中提供
+        for (const pn of warningPointNums) {
+            const idx = pn - 1
+            if (idx >= 0 && idx < points.length) {
+                // 不覆盖 alarm 点位
+                if (points[idx]!.status !== 'alarm') points[idx] = { name: points[idx]!.name, status: 'warning' }
+            }
+        }
     }
 
-    return points;
+    return points
 }
 
-function createMockOverviewAlarms(): AlarmItem[] {
-    return [
-        {
-            id: 'MOCK-HEALTHY-001',
-            deviceName: '一号风机',
-            shopName: '合成车间',
-            deviceNameWithShop: '一号风机（合成车间）',
-            status: 'healthy',
-            statusText: '健康',
-            time: new Date().toISOString(),
-            measurementPoints: buildMockMeasurementPoints('healthy')
-        },
-        {
-            id: 'MOCK-WARNING-001',
-            deviceName: '二号压缩机',
-            shopName: '尿素车间',
-            deviceNameWithShop: '二号压缩机（尿素车间）',
-            status: 'warning',
-            statusText: '预警',
-            time: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-            measurementPoints: buildMockMeasurementPoints('warning')
-        },
-        {
-            id: 'MOCK-ALARM-001',
-            deviceName: '三号泵',
-            shopName: '动力车间',
-            deviceNameWithShop: '三号泵（动力车间）',
-            status: 'alarm',
-            statusText: '报警',
-            time: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
-            measurementPoints: buildMockMeasurementPoints('alarm')
+function createMockOverviewAlarmsFromDevices(devices: DeviceItem[]): AlarmItem[] {
+    if (!devices?.length) return [];
+
+    const now = Date.now();
+    // 用于指定的“无年份”时间：03-18 13:03（会落在当前年份）
+    const specifiedWarningTime = (() => {
+        const d = new Date(now)
+        d.setMonth(2) // 3月
+        d.setDate(18)
+        d.setHours(13, 3, 0, 0)
+        return d
+    })()
+    // 你要求的假数据规则：
+    // - 去掉“反应器进料泵A”
+    // - 不要有告警设备（alarm）
+    // - 只保留两台预警设备（warning）
+    const mockCandidates = devices.filter(d => d.deviceName !== '反应器进料泵A' && d.deviceName !== '往复式压缩机')
+    const candidates = mockCandidates.length > 0 ? mockCandidates : devices
+
+    // 关键：不要再用 i % 轮转，否则当候选设备数量少于 4 时会因为 Map 去重覆盖
+    // 导致 “预警数量不是 2 台”。这里显式选出“两台不同设备”作为 warning。
+    const uniqById = new Map<string, DeviceItem>()
+    for (const d of candidates) {
+        const key = String(d.id)
+        if (!uniqById.has(key)) uniqById.set(key, d)
+    }
+    const uniqCandidates = Array.from(uniqById.values())
+
+    const warningDevices = uniqCandidates.slice(0, 2)
+    const healthyDevices = uniqCandidates.slice(2, 4)
+
+    const mockPlan: Array<{ device: DeviceItem; type: 'healthy' | 'warning'; offsetMs: number; warningPointNums?: number[] }> = []
+    // 需求：第一台预警设备点位为 5，第二台预警设备点位为 11
+    // （默认 sortOrder=desc 时，由于 offset 更小代表更“新”，用于保证“第一台/第二台”在展示上更符合直觉）
+    if (warningDevices[0]) mockPlan.push({ device: warningDevices[0], type: 'warning', offsetMs: 6 * 60 * 1000, warningPointNums: [5] })
+    if (warningDevices[1]) mockPlan.push({ device: warningDevices[1], type: 'warning', offsetMs: 22 * 60 * 1000, warningPointNums: [11] })
+    if (healthyDevices[0]) mockPlan.push({ device: healthyDevices[0], type: 'healthy', offsetMs: 0 })
+    if (healthyDevices[1]) mockPlan.push({ device: healthyDevices[1], type: 'healthy', offsetMs: 30 * 60 * 1000 })
+
+    // 用 Map 去重（以防极端情况下 device.id 重复/缺失），但 mockPlan 已保证 warning 设备为两台不同的 id
+    const uniq = new Map<string, AlarmItem>()
+    for (let i = 0; i < mockPlan.length; i++) {
+        const { device, type, offsetMs, warningPointNums } = mockPlan[i]!
+        const deviceName = String(device.deviceName ?? '')
+
+        // 按你的测试要求，强制调整某些“路由设备”的状态/时间
+        let finalType: 'healthy' | 'warning' = type
+        let finalWarningPointNums = warningPointNums
+        let finalTimeIso = new Date(now - offsetMs).toISOString()
+
+        // 五线一路：改为预警，且时间固定为 03-18 13:03
+        if (deviceName.includes('五线一路')) {
+            finalType = 'warning'
+            finalTimeIso = specifiedWarningTime.toISOString()
+            // 若此时 warningPointNums 丢失（例如原本在 healthy slot），补上默认预警点位
+            if (!finalWarningPointNums || finalWarningPointNums.length === 0) {
+                finalWarningPointNums = [5]
+            }
         }
-    ];
+
+        // 五线三路：改为健康
+        if (deviceName.includes('五线三路')) {
+            finalType = 'healthy'
+            finalWarningPointNums = undefined
+        }
+
+        const statusText = finalType === 'warning' ? '预警' : '健康'
+
+        uniq.set(String(device.id), {
+            id: String(device.id),
+            deviceName: device.deviceName,
+            shopName: device.workshopName,
+            deviceNameWithShop: `${device.deviceName}（${device.workshopName}）`,
+            status: finalType,
+            statusText,
+            time: finalTimeIso,
+            measurementPoints: buildMockMeasurementPoints(
+                finalType,
+                finalType === 'warning' ? { warningPointNums: finalWarningPointNums ?? [5] } : undefined
+            ),
+        })
+    }
+
+    // 预警总览：固定一行最多展示 4 张
+    return Array.from(uniq.values()).slice(0, 4)
 }
 
 /**
@@ -270,6 +352,97 @@ const pageSize = ref(responsivePageSize.value.pageSize);
 const sortOrder = ref<'asc' | 'desc'>("desc");
 
 const alarms = ref<AlarmItem[]>([])
+
+/**
+ * CommonDateTimePicker 的 value-format/value 采用：YYYY-MM-DD HH:mm:ss
+ * 不同运行环境对 `new Date("YYYY-MM-DD HH:mm:ss")` 解析可能不一致，
+ * 这里使用手动拆分，确保本地时间语义稳定。
+ */
+const parsePickerDateTime = (s: string): Date => {
+    const str = (s ?? '').trim()
+    if (!str) return new Date(NaN)
+
+    // 兼容意外格式：如果不包含空格，直接退回 Date 解析
+    if (!str.includes(' ')) return new Date(str)
+
+    const parts = str.split(' ')
+    const datePart = parts[0]
+    const timePart = parts[1]
+    if (!datePart || !timePart) return new Date(NaN)
+
+    const dateParts = datePart.split('-')
+    if (dateParts.length !== 3) return new Date(NaN)
+    const y = Number(dateParts[0])
+    const m = Number(dateParts[1])
+    const d = Number(dateParts[2])
+
+    const timeParts = String(timePart).split(':')
+    // 理论上 element-plus 会带 HH:mm:ss，这里兜底 ss
+    const hh = Number(timeParts[0])
+    const mm = Number(timeParts[1])
+    const ss = Number(timeParts[2] ?? '0')
+
+    if (![y, m, d, hh, mm, ss].every(n => Number.isFinite(n))) return new Date(NaN)
+
+    return new Date(y, m - 1, d, hh, mm, ss, 0)
+}
+
+/**
+ * 容错解析报警时间：
+ * - 正常情况下 alarm.time 来自 `toISOString()`，会包含年份，可直接 `new Date(time)`。
+ * - 但如果后端/数据源只返回 `MM-DD HH:mm[:ss]`（无年份），这里用 fallbackYear 补年份，避免时间筛选失效。
+ */
+const parseAlarmTime = (timeStr: string | undefined, fallbackYear: number): Date | null => {
+    if (!timeStr) return null
+    const raw = String(timeStr).trim()
+    if (!raw) return null
+
+    // 如果包含 4 位年份，直接走 Date 解析
+    if (/\d{4}/.test(raw)) {
+        const d = new Date(raw)
+        return isNaN(d.getTime()) ? null : d
+    }
+
+    // 例如：01-15 10:32 或 01-15 10:32:09
+    const m = raw.match(/^(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
+    if (!m) {
+        const d = new Date(raw)
+        return isNaN(d.getTime()) ? null : d
+    }
+
+    const month = Number(m[1])
+    const day = Number(m[2])
+    const hh = Number(m[3])
+    const mm = Number(m[4])
+    const ss = Number(m[5] ?? 0)
+
+    if (![month, day, hh, mm, ss].every(n => Number.isFinite(n))) return null
+    return new Date(fallbackYear, month - 1, day, hh, mm, ss, 0)
+}
+
+watch(
+    () => dateRange.value,
+    () => {
+        // 时间筛选后重置页码，避免当前页超出新结果范围导致“看起来像失效”
+        currentPage.value = 1
+    },
+    { deep: true }
+)
+
+// 设备树加载完成后，如果当前仍是 MOCK 假数据，就用设备树真实设备重新造假（保证跳转设备详情可用）
+watch(
+    () => deviceTreeStore.deviceTreeData,
+    (nodes) => {
+        const devices = extractDevicesFromTree(nodes ?? [])
+        if (!devices.length) return
+
+        const isAllMock = alarms.value.length === 0 || alarms.value.every(a => String(a.id).startsWith('MOCK-'))
+        if (!isAllMock) return
+
+        alarms.value = createMockOverviewAlarmsFromDevices(devices)
+    },
+    { immediate: true }
+)
 
 function findDeviceInfo(deviceId: string): { deviceName: string; shopName: string } {
     const walk = (nodes: DeviceNode[], currentWorkshopName = ''): { deviceName: string; shopName: string } | null => {
@@ -456,6 +629,12 @@ const filteredDevices = computed(() => {
 
 const filteredAlarms = computed(() => {
     let result = [...alarms.value];
+    const sortFallbackYear = (() => {
+        const s = dateRange.value?.[0]
+        if (!s) return new Date().getFullYear()
+        const d = parsePickerDateTime(s)
+        return isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear()
+    })()
 
     if (deviceSearch.value) {
         const searchMatch = deviceSearch.value.match(/^(.+)\((.+)\)$/);
@@ -476,34 +655,44 @@ const filteredAlarms = computed(() => {
     }
 
     if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
-        const startDate = new Date(dateRange.value[0]);
-        let endDate = new Date(dateRange.value[1]);
+        const startDate = parsePickerDateTime(dateRange.value[0])
+        let endDate = parsePickerDateTime(dateRange.value[1])
+        const fallbackYear = startDate.getFullYear()
 
-        startDate.setHours(0, 0, 0, 0);
+        // 解析失败：直接返回未应用时间筛选的结果，避免把列表过滤成空
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return result;
 
+        // 以用户选择的起止时间为准；只在用户选择了“未来结束时间”时才裁剪上限。
         const now = new Date();
-        const endDay = new Date(endDate);
-        endDay.setHours(0, 0, 0, 0);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        if (endDay.getTime() === today.getTime()) {
+        if (endDate.getTime() > now.getTime()) {
             endDate = now;
-        } else {
-            endDate.setHours(23, 59, 59, 999);
         }
 
         result = result.filter(alarm => {
-            if (!alarm.time) return false; 
-            const alarmDateTime = new Date(alarm.time);
+            // 你要求：健康设备不显示“报警时间”，因此日期筛选时不应该把它们排除掉。
+            // （若该健康卡片仍然带 time 字段，也允许保留；展示侧仍按规则不渲染时间栏）
+            if (!alarm.time) return false;
+            const alarmDateTime = parseAlarmTime(alarm.time, fallbackYear)
+            if (!alarmDateTime) return false
             return alarmDateTime >= startDate && alarmDateTime <= endDate;
         });
     }
 
-    // 仅按时间排序（纯时间顺序），不再按状态分组
+    // 你要求：先按“报警-预警-健康”优先级，再在同组内按时间排序
+    const statusOrder: Record<'alarm' | 'warning' | 'healthy', number> = {
+        alarm: 0,
+        warning: 1,
+        healthy: 2
+    };
     result.sort((a, b) => {
-        const timeA = a.time ? new Date(a.time).getTime() : NaN;
-        const timeB = b.time ? new Date(b.time).getTime() : NaN;
+        const aStatus = getDeviceDisplayStatus(a);
+        const bStatus = getDeviceDisplayStatus(b);
+
+        const statusDiff = statusOrder[aStatus] - statusOrder[bStatus];
+        if (statusDiff !== 0) return statusDiff;
+
+        const timeA = a.time ? (parseAlarmTime(a.time, sortFallbackYear)?.getTime() ?? NaN) : NaN;
+        const timeB = b.time ? (parseAlarmTime(b.time, sortFallbackYear)?.getTime() ?? NaN) : NaN;
 
         const aHasTime = !isNaN(timeA);
         const bHasTime = !isNaN(timeB);
@@ -514,11 +703,7 @@ const filteredAlarms = computed(() => {
         if (!aHasTime && !bHasTime) return 0;
 
         // 都有时间时，按 sortOrder 升降序
-        if (sortOrder.value === 'desc') {
-            return timeB - timeA;
-        } else {
-            return timeA - timeB;
-        }
+        return sortOrder.value === 'desc' ? (timeB - timeA) : (timeA - timeB);
     });
 
     return result;
@@ -641,9 +826,15 @@ onMounted(() => {
         })()
     }
 
-    // 本地开发/演示兜底：无真实数据时注入 3 条假数据（健康/预警/报警各一条）
+    // 本地开发/演示兜底：无真实告警数据时，用设备树生成假卡片（用于联调跳转）
     if (alarms.value.length === 0) {
-        alarms.value = createMockOverviewAlarms()
+        const devices = extractDevicesFromTree(deviceTreeStore.deviceTreeData)
+        if (devices.length) {
+            alarms.value = createMockOverviewAlarmsFromDevices(devices)
+        } else {
+            // 设备树为空时不要展示任何假数据：保持空列表以触发“暂无数据”
+            alarms.value = []
+        }
     }
 });
 
@@ -929,7 +1120,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 8px;
-                padding: 2px 8px;
+                padding: 2px 0;
                 background-repeat: no-repeat;
                 background-position: center center;
                 background-size: 100% 100%;

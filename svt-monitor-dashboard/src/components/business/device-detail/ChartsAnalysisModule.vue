@@ -44,9 +44,9 @@
                 <div class="chart-header">
                     <span class="chart-title">温度随时间变化</span>
                     <div class="chart-header-right">
-                        <span class="realtime-temp-inline">
+                        <!-- <span class="realtime-temp-inline">
                             实时温度：<span class="special-font-color">{{ realtimeTempValueText }}</span>
-                        </span>
+                        </span> -->
                         <span class="chart-unit special-font-color">（单位：℃）</span>
                     </div>
                 </div>
@@ -67,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch, computed, inject } from 'vue'
+import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import type { Ref } from 'vue'
 import { getTemperatureTrend, getVibrationTrend, getSoundTrend } from '@/api/modules/hardware'
 import { CommonEcharts } from '@/components/common/chart'
@@ -128,11 +128,9 @@ const realtimeTempValueText = computed(() => {
     return `${shown}℃`
 })
 
-// 灰色主题下图表坐标轴/分割线用黑色，否则白色
-const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode')
-const isGrayTheme = computed(() => backgroundMode?.value === 'gray')
-const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'))
-const chartSplitLineColor = computed(() => (isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(150,150,150, 0.2)'))
+// 灰色主题已移除：统一使用非灰配色
+const chartAxisColor = computed(() => '#fff')
+const chartSplitLineColor = computed(() => 'rgba(150,150,150, 0.2)')
 const TEMP_COLOR = '#ff4d4f'
 const VIB_COLOR = '#1890ff'
 const SOUND_COLOR = '#fadb14'
@@ -234,7 +232,8 @@ const vibOption = computed<EChartsOption>(() => {
             type: 'category',
             data: timeLabels,
             axisLabel: { fontSize: 10, color: c },
-            axisLine: { lineStyle: { color: c } },
+            // 保证 x 轴落在 grid 底部，而不是放在 y=0 处（避免看起来跑到中间）
+            axisLine: { lineStyle: { color: c }, onZero: false },
             axisTick: { lineStyle: { color: c } }
         },
         yAxis: {
@@ -342,13 +341,8 @@ const loadTemperatureData = async (receiverId: string) => {
     if (!receiverId) return
 
     try {
-        const startTime = '2026-02-04 00:00:00'
-        const endTime = '2026-02-04 23:59:59'
-
         const response = await getTemperatureTrend({
-            receiverId,
-            start_time: startTime,
-            end_time: endTime
+            receiverId
         })
 
         if (response.rc === 0 && response.ret && Array.isArray(response.ret) && response.ret.length > 0) {
@@ -392,13 +386,8 @@ const loadVibrationData = async (receiverId: string) => {
     if (!receiverId) return
 
     try {
-        const startTime = '2026-02-04 00:00:00'
-        const endTime = '2026-02-04 23:59:59'
-
         const response = await getVibrationTrend({
-            receiverId,
-            start_time: startTime,
-            end_time: endTime
+            receiverId
         })
 
         const list = Array.isArray(response) ? response : (response.ret && Array.isArray(response.ret) ? response.ret : [])
@@ -442,13 +431,8 @@ function computeSoundYAxisRange(dataMin: number, dataMax: number): { min: number
 const loadSoundData = async (receiverId: string) => {
     if (!receiverId) return
     try {
-        const startTime = '2026-02-04 00:00:00'
-        const endTime = '2026-02-04 23:59:59'
-
         const response = await getSoundTrend({
-            receiverId,
-            start_time: startTime,
-            end_time: endTime
+            receiverId
         })
 
         const list = Array.isArray(response) ? response : (response.ret && Array.isArray(response.ret) ? response.ret : [])

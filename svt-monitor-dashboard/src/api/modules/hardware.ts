@@ -292,6 +292,8 @@ export const getDeviceInfoByEquipmentId = (equipmentId: string): Promise<DeviceI
 // 点位列表项（selectCheckPointIn 接口返回）
 export interface CheckPointItem {
   receiverId: string
+  /** 点位名称（统一字段，等价于 pointName） */
+  receiverName?: string
   deviceId?: string
   pointName: string
   warningTime: string | null
@@ -310,6 +312,24 @@ export const getSelectCheckPointIn = (equipmentId: string): Promise<SelectCheckP
   return request.get('/taicang/hardware/device/vibration/selectCheckPointIn', {
     params: { equipmentId },
     showLoading: false
+  }).then((res: SelectCheckPointInResponse) => {
+    if (!res || !Array.isArray(res.ret)) return res
+
+    res.ret = res.ret.map((raw: any) => {
+      const receiverId =
+        String(raw?.receiverId ?? raw?.pointId ?? raw?.id ?? '')
+      const receiverName =
+        String(raw?.receiverName ?? raw?.pointName ?? raw?.name ?? '')
+
+      return {
+        ...raw,
+        receiverId,
+        receiverName,
+        // 兼容旧字段：如果后端没返回 pointName，则用 receiverName 回填
+        pointName: raw?.pointName ?? receiverName,
+      } as CheckPointItem
+    })
+    return res
   })
 }
 
@@ -355,11 +375,9 @@ export interface TemperatureTrendResponse {
   err: string | null;
 }
 
-// 获取温度趋势数据（请求参数：receiverId, start_time, end_time）
+// 获取温度趋势数据（请求参数：receiverId）
 export const getTemperatureTrend = (params: {
   receiverId: string;
-  start_time: string;
-  end_time: string;
 }): Promise<TemperatureTrendResponse> => {
   return request.get('/taicang/hardware/device/info/vibration/temperature/trend', {
     params,
@@ -378,12 +396,10 @@ export interface VibrationTrendResponse {
   err?: string | null;
 }
 
-// 获取振动趋势数据（请求参数：receiverId, start_time, end_time）
+// 获取振动趋势数据（请求参数：receiverId）
 // 后端可能直接返回数组，或 { rc, ret: 数组 }
 export const getVibrationTrend = (params: {
   receiverId: string;
-  start_time: string;
-  end_time: string;
 }): Promise<VibrationTrendResponse | VibrationTrendItem[]> => {
   return request.get('/taicang/hardware/device/info/vibration/trend', {
     params,
@@ -404,11 +420,9 @@ export interface SoundTrendResponse {
   err?: string | null;
 }
 
-// 获取响度趋势数据（请求参数：receiverId, start_time, end_time）
+// 获取响度趋势数据（请求参数：receiverId）
 export const getSoundTrend = (params: {
   receiverId: string;
-  start_time: string;
-  end_time: string;
 }): Promise<SoundTrendResponse | SoundTrendItem[]> => {
   return request.get('/taicang/hardware/device/info/vibration/sound/trend', {
     params,

@@ -15,7 +15,7 @@
                 height="100%"
                 :fit="true"
                 :header-cell-style="{ background: 'transparent', color: 'var(--special-font-color)', 'text-align': 'center' }"
-                :cell-style="{ background: 'transparent', color: 'var(--special-font-color)', 'text-align': 'center' }"
+                :cell-style="{ background: 'transparent', color: '#fff', 'text-align': 'center' }"
                 @row-click="onRowClick"
                 highlight-current-row
             >
@@ -198,6 +198,7 @@ defineExpose({
 
         .module-title {
             margin: 0;
+            color: #fff !important;
         }
     }
 
@@ -264,14 +265,14 @@ defineExpose({
         }
 
         tr {
-            background: transparent !important;
+            background-color: transparent !important;
         }
 
         tbody tr {
-            background: transparent !important;
+            background-color: transparent !important;
 
             &:hover:not(.current-row) {
-                background: rgba(150, 150, 150, 0.1) !important;
+                background-color: rgba(150, 150, 150, 0.1) !important;
             }
         }
 
@@ -292,7 +293,7 @@ defineExpose({
 
             font-weight: 400;
             letter-spacing: 0px;
-            color: rgba(153, 240, 255, 0.7) !important;
+            color: #4E89FF !important;
             text-align: center;
             vertical-align: top;
 
@@ -307,10 +308,28 @@ defineExpose({
 
             font-weight: 400;
             letter-spacing: 0px;
-            color: rgba(153, 240, 255, 0.7) !important;
+            color: #fff !important;
             text-align: center;
             vertical-align: top;
 
+        }
+
+        // 表体每行之间的渐变分隔线（整行）
+        .el-table__body tbody tr {
+            background-image: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.25) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            background-repeat: no-repeat;
+            background-size: 100% 1px;
+            background-position: bottom left;
+        }
+
+        // 最后一行不显示分隔线
+        .el-table__body tbody tr:last-child {
+            background-image: none;
         }
 
         /* 为操作列取消ellipsis效果 */

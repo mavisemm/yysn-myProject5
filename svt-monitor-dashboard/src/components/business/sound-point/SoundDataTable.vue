@@ -7,8 +7,8 @@
         height="100%"
         @row-click="handleRowClick"
         :header-cell-style="{
-          background: 'rgba(255, 255, 255, 0.3)',
-          color: 'white',
+          background: 'transparent',
+          color: 'var(--special-font-color)',
           textAlign: 'center',
         }"
         :cell-style="{ background: 'transparent', color: 'white', textAlign: 'center' }"
@@ -180,7 +180,9 @@ const playAudio = (row: any) => {
     }
 
     .el-table__header-wrapper {
-      background: rgba(255, 255, 255, 0.3) !important;
+      background: rgba(150, 150, 150, 0.2) !important;
+      border-radius: 6px 6px 0 0 !important;
+      overflow: hidden;
     }
 
     tr {

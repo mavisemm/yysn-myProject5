@@ -1101,7 +1101,8 @@
         // 从后台获取点位列表
         function loadPointList(apiIp) {
             // 发送请求到后台API获取点位列表
-            const apiUrl = `http://${apiIp}:8003/taicang/hardware/device/check-point/find/point/detail`;
+            // 使用同源相对路径，交给 Vite/devServer 代理转发，避免浏览器跨域(CORS)
+            const apiUrl = `/taicang/hardware/device/check-point/find/point/detail`;
             
             // 请求参数
             let params = {
@@ -1305,8 +1306,8 @@
                 // }
             };
             
-            // 发送请求到后台API（使用从URL参数获取的IP地址）
-            const apiUrl = `http://${apiIp}:8003/api/sound/long-term-trend/analyze`;
+            // 使用同源相对路径，交给 Vite/devServer 代理转发，避免浏览器跨域(CORS)
+            const apiUrl = '/api/sound/long-term-trend/analyze';
             $.ajax({
                 url: apiUrl,
                 method: 'POST',
@@ -1775,6 +1776,22 @@
             `);
         }
         
+        // 通用缩放（类似 ECharts dataZoom），使用 chartjs-plugin-zoom
+        const chartZoomPluginOptions = {
+            pan: { enabled: true, mode: 'x' },
+            zoom: {
+                wheel: { enabled: true },
+                pinch: { enabled: true },
+                drag: {
+                    enabled: true,
+                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                    borderColor: 'rgba(59, 130, 246, 0.8)',
+                    borderWidth: 1
+                },
+                mode: 'x'
+            }
+        };
+        
         // 初始化图表
         function initCharts() {
             // 整体趋势图表
@@ -1881,7 +1898,8 @@
                                     return label;
                                 }
                             }
-                        }
+                        },
+                        zoom: chartZoomPluginOptions
                     }
                 }
             });
@@ -1945,7 +1963,8 @@
                                     return `${label}: ${value} (${percentage}%)`;
                                 }
                             }
-                        }
+                        },
+                        zoom: chartZoomPluginOptions
                     }
                 }
             });
@@ -2028,7 +2047,8 @@
                                     return label;
                                 }
                             }
-                        }
+                        },
+                        zoom: chartZoomPluginOptions
                     }
                 }
             });
@@ -2191,7 +2211,8 @@
                         tooltip: {
                             mode: 'index',
                             intersect: false,
-                        }
+                        },
+                        zoom: chartZoomPluginOptions
                     },
                     scales: {
                         x: {
@@ -2340,7 +2361,8 @@
                         },
                         legend: {
                             position: 'top',
-                        }
+                        },
+                        zoom: chartZoomPluginOptions
                     },
                     scales: {
                         x: {
@@ -2411,7 +2433,8 @@
                                     return label;
                                 }
                             }
-                        }
+                        },
+                        zoom: chartZoomPluginOptions
                     },
                     scales: {
                         x: {
@@ -2559,7 +2582,8 @@
                                     }
                                 }
                             }
-                        }
+                        },
+                        zoom: chartZoomPluginOptions
                     }
                 }
             });

@@ -89,8 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, computed, onUnmounted } from 'vue';
-import type { Ref } from 'vue';
+import { ref, computed, onUnmounted } from 'vue';
 import type { EChartsOption } from 'echarts';
 import { CommonEcharts } from '@/components/common/chart';
 import { useRangeControls } from '@/composables/useRangeControls';
@@ -120,11 +119,9 @@ const pointList = computed(() => props.pointList || []);
 const energyChartRef = ref<InstanceType<typeof CommonEcharts>>();
 const densityChartRef = ref<InstanceType<typeof CommonEcharts>>();
 
-/** 主题：灰色时坐标轴/分割线为黑，否则白 */
-const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
-const isGrayTheme = computed(() => backgroundMode?.value === 'gray');
-const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'));
-const chartSplitLineColor = computed(() => (isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(150,150,150, 0.2)'));
+// 灰色主题已移除：固定使用非灰配色
+const chartAxisColor = computed(() => '#fff');
+const chartSplitLineColor = computed(() => 'rgba(150,150,150, 0.2)');
 
 /** 选中的条目（带颜色） */
 const selectedItemsWithColor = computed(() => {

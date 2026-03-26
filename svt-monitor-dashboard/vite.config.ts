@@ -83,6 +83,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // 趋势分析接口 -> 8003（需放在 /api 通配前，避免被转发到 8006）
+      '/api/sound': {
+        target: 'http://122.224.196.178:8003',
+        changeOrigin: true,
+        secure: false,
+      },
       // 其他 /taicang 接口 -> 8006
       '/taicang': {
         target: 'http://122.224.196.178:8006',

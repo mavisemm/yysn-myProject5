@@ -2,8 +2,6 @@
   <div
     class="page-layout"
     :class="{
-      'page-layout--gray': backgroundMode === 'gray',
-      'page-layout--green': backgroundMode === 'green',
       'page-layout--navy': backgroundMode === 'navy',
       'page-layout--solid': backgroundMode === 'solid'
     }"
@@ -39,10 +37,11 @@ import RealtimeBatchDialog from '@/components/alarm/RealtimeBatchDialog.vue'
 import HistoryBatchDialog from '@/components/alarm/HistoryBatchDialog.vue'
 import AlarmBatchViewModal from '@/components/alarm/AlarmBatchViewModal.vue'
 
-const backgroundMode = ref<'image' | 'gray' | 'green' | 'navy' | 'solid'>('image')
+// 默认进入后展示“背景3”(=solid)
+const backgroundMode = ref<'image' | 'navy' | 'solid'>('solid')
 provide('backgroundMode', backgroundMode)
 
-const handleChangeBackground = (mode: 'image' | 'gray' | 'green' | 'navy' | 'solid') => {
+const handleChangeBackground = (mode: 'image' | 'navy' | 'solid') => {
   backgroundMode.value = mode
 }
 
@@ -121,78 +120,6 @@ onMounted(() => {
     background-image: none !important;
   }
 
-  /* 灰色主题 */
-  &.page-layout--gray {
-    background:
-      radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.9) 0, rgba(255, 255, 255, 0) 40%),
-      radial-gradient(circle at 80% 100%, rgba(255, 255, 255, 0.8) 0, rgba(255, 255, 255, 0) 45%),
-      linear-gradient(135deg, #e5e7eb 0%, #d4d7dd 35%, #c5c9d3 70%, #b8becb 100%);
-    background-size: 100vw 100vh;
-
-    color: #000;
-    :deep(*) {
-      color: #000 !important;
-    }
-
-    :deep(.echarts-tooltip),
-    :deep(.echarts-tooltip *) {
-      color: #fff !important;
-    }
-
-    /* 卡片/模块：透明底 + 边框替代背景图 */
-    :deep(.charts-section),
-    :deep(.alarm-overview),
-    :deep(.metrics-area),
-    :deep(.device-sidebar),
-    :deep(.info-section-right),
-    :deep(.stats-card),
-    :deep(.device-info-module),
-    :deep(.point-list-module),
-    :deep(.chart-item),
-    :deep(.analysis-item),
-    :deep(.table-section-left),
-    :deep(.waterfall-card),
-    :deep(.freq-card),
-    :deep(.time-card) {
-      background: transparent !important;
-      background-image: none !important;
-      border-radius: 12px;
-      border: 1px solid #8ea3c0;
-      backdrop-filter: blur(4px);
-    }
-  }
-
-  /* 绿色主题 */
-  &.page-layout--green {
-    background:
-      radial-gradient(circle at 20% 0%, rgba(74, 222, 128, 0.25) 0, rgba(74, 222, 128, 0) 45%),
-      radial-gradient(circle at 80% 100%, rgba(34, 197, 94, 0.25) 0, rgba(34, 197, 94, 0) 45%),
-      linear-gradient(145deg, #022c22 0%, #064e3b 35%, #047857 70%, #0f766e 100%);
-    background-size: 100vw 100vh;
-
-    /* 卡片/模块：透明底 + 边框 */
-    :deep(.charts-section),
-    :deep(.alarm-overview),
-    :deep(.metrics-area),
-    :deep(.device-sidebar),
-    :deep(.info-section-right),
-    :deep(.stats-card),
-    :deep(.device-info-module),
-    :deep(.point-list-module),
-    :deep(.chart-item),
-    :deep(.analysis-item),
-    :deep(.table-section-left),
-    :deep(.waterfall-card),
-    :deep(.freq-card),
-    :deep(.time-card) {
-      background: transparent !important;
-      background-image: none !important;
-      border-radius: 12px;
-      border: 1px solid #22c55e;
-      backdrop-filter: blur(4px);
-    }
-  }
-
   /* 深蓝主题 */
   &.page-layout--navy {
     background:
@@ -217,9 +144,6 @@ onMounted(() => {
     :deep(.time-card) {
       background: transparent !important;
       background-image: none !important;
-      border-radius: 12px;
-      border: 1px solid #38bdf8; /* 亮蓝青 */
-      backdrop-filter: blur(4px);
     }
   }
 
@@ -244,9 +168,6 @@ onMounted(() => {
     :deep(.time-card) {
       background: transparent !important;
       background-image: none !important;
-      border-radius: 12px;
-      border: 1px solid #6366f1;
-      backdrop-filter: blur(4px);
     }
   }
 

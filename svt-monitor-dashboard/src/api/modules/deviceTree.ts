@@ -84,7 +84,8 @@ export const transformDeviceTreeData = (responseData: DeviceTreeResponse): Devic
     type: 'factory',
     status: 'normal', 
     children: factory.children.map(workshop => ({
-      id: workshop.workshopId,
+      // workshopId 可能在不同工厂下重复；el-tree 用 node-key=id，必须保证唯一
+      id: `${factory.factoryId}-${workshop.workshopId}`,
       name: workshop.workshopName,
       type: 'workshop',
       status: 'normal', 

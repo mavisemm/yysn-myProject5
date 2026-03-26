@@ -286,13 +286,11 @@ const resolvedEmpty = computed(() => {
     return isOptionEmpty(props.option);
 });
 
-/** 主题：灰色时坐标轴/分割线为黑，否则白 */
-const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
-const isGrayTheme = computed(() => backgroundMode?.value === 'gray');
-const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'));
-const chartSplitLineColor = computed(() =>
-    isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.1)'
-);
+/** 灰色主题已移除：统一使用非灰配色 */
+const backgroundMode = inject<Ref<'image' | 'navy' | 'solid'> | undefined>('backgroundMode');
+const isGrayTheme = computed(() => false);
+const chartAxisColor = computed(() => '#fff');
+const chartSplitLineColor = computed(() => 'rgba(255,255,255,0.1)');
 
 /** 根据 props 设置/更新图表联动缩放 */
 const applyLinkageZoom = () => {

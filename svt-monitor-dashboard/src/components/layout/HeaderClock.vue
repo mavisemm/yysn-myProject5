@@ -18,9 +18,15 @@ const now = ref<Date | null>(null)
 let timerId: number | null = null
 const route = useRoute()
 
-// 首页（/ 或 name === 'Home'）展示完整日期+星期，其它页面仅展示时分秒
+// 首页展示完整日期+星期，其它页面仅展示时分秒
+// 说明：本项目“首页”实际通常是 /dashboard（route.name === 'Dashboard'），
+// 这里额外兼容 /（父路由）以及 name === 'Home' 的情况，避免不同路由配置导致显示不一致。
 const showFull = computed(() => {
-  return route.path === '/' || route.name === 'Home'
+  const name = route.name
+  return route.path === '/' ||
+    route.path.startsWith('/dashboard') ||
+    name === 'Home' ||
+    name === 'Dashboard'
 })
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -70,8 +76,13 @@ onUnmounted(() => {
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  color: rgba(153, 240, 255, 0.9);
   white-space: nowrap;
+  font-family: 'DIN';
+  font-style: normal;
+  background: linear-gradient(177.37deg, #FFFFFF 2.19%, #7EA8FF 160.82%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 
   .clock-left {
     display: flex;
@@ -93,9 +104,14 @@ onUnmounted(() => {
     justify-content: center;
     font-size: 1.6rem;
 
-    .clock-time {
-      letter-spacing: 1px;
-    }
+    // .clock-time {
+    //   font-family: 'DIN';
+    //   font-style: normal;
+    //   background: linear-gradient(177.37deg, #FFFFFF 2.19%, #7EA8FF 160.82%);
+    //   -webkit-background-clip: text;
+    //   -webkit-text-fill-color: transparent;
+    //   background-clip: text;
+    // }
   }
 }
 </style>

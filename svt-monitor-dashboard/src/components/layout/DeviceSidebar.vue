@@ -242,12 +242,12 @@ onMounted(async () => {
 
   const expandDefaultNodes = () => {
     timeoutId = window.setTimeout(() => {
+      const firstFactoryId = displayTreeData.value?.[0]?.id
       const firstWorkshopId = getFirstWorkshopId()
-      if (firstWorkshopId) {
-        deviceTreeStore.setExpandedKeys(['factory-1', firstWorkshopId])
-      } else {
-        deviceTreeStore.setExpandedKeys(['factory-1'])
-      }
+      const keys: string[] = []
+      if (firstFactoryId) keys.push(firstFactoryId)
+      if (firstWorkshopId) keys.push(firstWorkshopId)
+      deviceTreeStore.setExpandedKeys(keys)
     }, 100)
   }
 
@@ -582,8 +582,8 @@ const updateExpandedKeys = () => {
 
   if (!workshopSearch && !deviceSearch && !selectedWorkshop.value && !selectedDevice.value) {
     // 默认：只展开第一个厂区 + 第一个车间（若存在）
-    const firstFactoryId = displayTreeData.value?.[0]?.id || 'factory-1'
-    keys.push(firstFactoryId)
+    const firstFactoryId = displayTreeData.value?.[0]?.id
+    if (firstFactoryId) keys.push(firstFactoryId)
     const firstWorkshopId = getFirstWorkshopId()
     if (firstWorkshopId) {
       keys.push(firstWorkshopId)
@@ -766,7 +766,7 @@ onUnmounted(() => {
   }
 
   .search-area {
-    padding: 10px 20px 0;
+    padding: 10px 10px 0;
     flex-shrink: 0;
 
     .search-row {
@@ -861,7 +861,7 @@ onUnmounted(() => {
   }
 
   .device-tree-container {
-    padding: 10px 20px 20px;
+    padding: 10px 10px 20px;
     background: url('@/assets/images/background/首页-设备列表背景.png') no-repeat center center;
     background-size: 100% 100%;
     flex: 1;

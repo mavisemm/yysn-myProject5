@@ -66,37 +66,25 @@
           <div
             v-if="currentBackground !== 'image'"
             class="theme-square theme-square--image"
-            title="默认蓝色背景"
+            title="背景1"
             @click="selectBackground('image')"
-          />
-          <div
-            v-if="currentBackground !== 'gray'"
-            class="theme-square theme-square--gray"
-            title="灰色背景"
-            @click="selectBackground('gray')"
-          />
-          <div
-            v-if="currentBackground !== 'green'"
-            class="theme-square theme-square--green"
-            title="绿色背景"
-            @click="selectBackground('green')"
           />
           <div
             v-if="currentBackground !== 'navy'"
             class="theme-square theme-square--navy"
-            title="深蓝色背景"
+            title="背景2"
             @click="selectBackground('navy')"
           />
           <div
             v-if="currentBackground !== 'solid'"
             class="theme-square theme-square--solid"
-            title="纯色背景"
+            title="默认背景"
             @click="selectBackground('solid')"
           />
         </div>
       </div>
       <div class="nav-btn logout-btn" @click="handleLogout">
-        <el-icon :size="24" color="#1acfd5">
+        <el-icon :size="26" color="#99f0ff">
           <SwitchButton />
         </el-icon>
       </div>
@@ -125,12 +113,12 @@ const route = useRoute()
 const deviceTreeStore = useDeviceTreeStore()
 
 interface Props {
-  currentBackground?: 'image' | 'gray' | 'green' | 'navy' | 'solid'
+  currentBackground?: 'image' | 'navy' | 'solid'
 }
-withDefaults(defineProps<Props>(), { currentBackground: 'image' })
+withDefaults(defineProps<Props>(), { currentBackground: 'navy' })
 
 const emit = defineEmits<{
-  (e: 'change-background', mode: 'image' | 'gray' | 'green' | 'navy' | 'solid'): void
+  (e: 'change-background', mode: 'image' | 'navy' | 'solid'): void
 }>()
 
 const showThemeDropdown = ref(false)
@@ -174,7 +162,7 @@ const showSoundButton = computed(() => {
   return route.name === 'VibrationPoint'
 })
 
-const selectBackground = (mode: 'image' | 'gray' | 'green' | 'navy' | 'solid') => {
+const selectBackground = (mode: 'image' | 'navy' | 'solid') => {
   emit('change-background', mode)
   showThemeDropdown.value = false
 }
@@ -380,14 +368,6 @@ const handleLogout = () => {
       background: #135ba9;
     }
 
-    &--gray {
-      background: linear-gradient(135deg, #4a4a4a 0%, #6b7280 50%, #9ca3af 100%);
-    }
-    
-    &--green {
-      background: linear-gradient(135deg, #064e3b 0%, #10b981 45%, #6ee7b7 100%);
-    }
-
     &--navy {
       background: #061028;
     }
@@ -432,20 +412,12 @@ const handleLogout = () => {
       background: #135ba9;
     }
 
-    &--gray {
-      background: linear-gradient(135deg, #4a4a4a 0%, #6b7280 50%, #9ca3af 100%);
-    }
-
-    &--green {
-      background: linear-gradient(135deg, #064e3b 0%, #10b981 45%, #6ee7b7 100%);
-    }
-
     &--navy {
       background: #061028;
     }
 
     &--solid {
-      background: #151155;
+      background: #12316b;
     }
   }
 
@@ -468,10 +440,11 @@ const handleLogout = () => {
   }
 
   .logout-btn {
-    color: #1acfd5;
+    color: rgba(153, 240, 255, 1);
+    font-weight: 700;
 
     &:hover {
-      color: #1acfd5;
+      color: rgba(153, 240, 255, 1);
     }
   }
 }

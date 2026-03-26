@@ -419,12 +419,14 @@ watch(
             }
 
             .metric-col--value {
-                width: 84px;
+                // 表头展示内容为“单位：xx”，文字宽度可能大于 84px
+                // 父容器有 overflow: hidden 时会导致右侧被裁剪，因此适当增大并做省略
+                width: 110px;
                 flex: 0 0 auto;
                 text-align: right;
                 white-space: nowrap;
-            overflow: visible;
-            text-overflow: clip;
+                overflow: hidden;
+                text-overflow: ellipsis;
                 flex: 0 0 auto;
                 line-height: 1;
             }

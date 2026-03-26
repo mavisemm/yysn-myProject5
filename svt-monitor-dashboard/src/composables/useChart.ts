@@ -1,4 +1,4 @@
-import { onUnmounted, inject, computed } from 'vue';
+import { onUnmounted, computed } from 'vue';
 import type { Ref } from 'vue';
 import { observeResize } from '@/utils/chart';
 
@@ -7,11 +7,11 @@ import { observeResize } from '@/utils/chart';
  * 用于在业务组件中构建 option 时统一坐标轴/分割线颜色
  */
 export function useChartTheme() {
-    const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
-    const isGrayTheme = computed(() => backgroundMode?.value === 'gray');
-    const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'));
+    // 已移除灰色主题：固定走非灰的配色
+    const isGrayTheme = computed(() => false);
+    const chartAxisColor = computed(() => '#fff');
     const chartSplitLineColor = computed(() =>
-        isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.1)'
+        'rgba(255,255,255,0.1)'
     );
     return {
         isGrayTheme,

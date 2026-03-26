@@ -25,7 +25,17 @@
   </div>
 
   <!-- 详情弹窗（查看曲线）：能量一个 echarts，密度一个 echarts -->
-  <el-dialog v-model="voiceVisible" title="详情" width="70vw" align-center class="voice-detail-dialog" destroy-on-close
+  <el-dialog
+    v-model="voiceVisible"
+    title="详情"
+    width="70vw"
+    align-center
+    class="voice-detail-dialog"
+    destroy-on-close
+    :z-index="3000"
+    :teleported="true"
+    :append-to-body="true"
+    :modal-append-to-body="true"
     @opened="handleModalOpened" @closed="handleModalClosed">
     <div class="modal-charts">
       <div class="modal-chart-item">

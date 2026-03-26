@@ -154,7 +154,7 @@ service.interceptors.response.use(
     if (res.hasOwnProperty('rc')) {
       if (res.rc !== 0) {
         if (!response.config.hideNotification) {
-          ElMessage.error(res.err || '请求失败1')
+          ElMessage.error(res.err || '请求失败')
         }
         
         return Promise.reject(new Error(res.err || 'Error'))
@@ -164,7 +164,7 @@ service.interceptors.response.use(
     } else {
       if (res.code && res.code !== 200) {
         if (!response.config.hideNotification) {
-          ElMessage.error(res.message || '请求失败2')
+          ElMessage.error(res.message || '请求失败')
         }
         
         if (res.code === 401) {
@@ -197,7 +197,7 @@ service.interceptors.response.use(
     
     console.error('响应错误:', error)
     
-    let errorMessage = '请求失败3'
+    let errorMessage = '请求失败'
     // 用于判断是否是“后端没开/网络不可达”的连接问题（通常会并发触发多次）
     let isBackendUnavailable = false
     

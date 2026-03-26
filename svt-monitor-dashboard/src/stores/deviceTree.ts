@@ -31,7 +31,8 @@ export const useDeviceTreeStore = defineStore('deviceTree', () => {
   const selectedDeviceId = ref<string | null>(null)
 
   // 展开的节点
-  const expandedKeys = ref<string[]>(['factory-1'])
+  // 注意：不能在此处硬编码固定 key（否则在工厂/车间数据变化时可能展开错误节点）
+  const expandedKeys = ref<string[]>([])
 
   // 设置选中的设备ID
   const setSelectedDeviceId = (id: string | null) => {
@@ -46,7 +47,12 @@ export const useDeviceTreeStore = defineStore('deviceTree', () => {
   // 重置设备树到初始状态
   const resetDeviceTreeState = () => {
     selectedDeviceId.value = null
-    expandedKeys.value = ['factory-1']  // 默认展开第一个工厂节点
+    const firstFactoryId = deviceTreeData.value?.[0]?.id
+    const firstWorkshopId = getDefaultWorkshopId()
+    const keys: string[] = []
+    if (firstFactoryId) keys.push(firstFactoryId)
+    if (firstWorkshopId) keys.push(firstWorkshopId)
+    expandedKeys.value = keys
   }
 
   // 获取默认展开的第一个车间ID

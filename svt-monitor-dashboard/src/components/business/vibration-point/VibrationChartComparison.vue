@@ -30,8 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted, computed, inject, shallowRef, watch } from 'vue';
-import type { Ref } from 'vue';
+import { ref, onUnmounted, computed, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import * as echarts from 'echarts';
 import type { EChartsOption } from 'echarts';
@@ -64,11 +63,9 @@ const resolvePointDeviceId = (rid: string): string => {
 // 点位页：接口入参需要点位级 deviceId，但地址只携带 equipmentId/receiverId
 const pointDeviceId = computed(() => resolvePointDeviceId(receiverIdFromParams.value));
 
-/** 主题：灰色时坐标轴/分割线为黑，否则白 */
-const backgroundMode = inject<Ref<'image' | 'gray' | 'green' | 'navy'> | undefined>('backgroundMode');
-const isGrayTheme = computed(() => backgroundMode?.value === 'gray');
-const chartAxisColor = computed(() => (isGrayTheme.value ? '#000' : '#fff'));
-const chartSplitLineColor = computed(() => (isGrayTheme.value ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.1)'));
+// 灰色主题已移除：固定使用非灰配色
+const chartAxisColor = computed(() => '#fff');
+const chartSplitLineColor = computed(() => 'rgba(255,255,255,0.1)');
 
 const freqChartRef = ref<InstanceType<typeof CommonEcharts>>();
 const freqChartInstance = shallowRef<echarts.ECharts | null>(null);
