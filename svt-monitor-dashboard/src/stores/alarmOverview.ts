@@ -19,6 +19,10 @@ export interface AlarmItem {
   measurementPoints: MeasurementPoint[]
 }
 
+function makeHealthyPoint(i: number): MeasurementPoint {
+  return { name: `测点${i + 1}`, status: 'healthy' }
+}
+
 /**
  * 预警总览 websocket 新返回结构（与 AlarmOverview.vue 里原逻辑一致）
  */
@@ -89,6 +93,9 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
     const deviceId = String(input.equipmentId ?? '')
     const t = Number(input.alarmTime ?? 0)
     if (!deviceId || !Number.isFinite(t) || t <= 0) return null
+
+    // 新结构有时字段可能不完整；优先 data.xxx，data 不全则从 rawDataJson 兜底
+    const parsedFromRaw = safeParseJson((input as any).rawDataJson)
     return {
       deviceId,
       deviceName: input.equipmentName ? String(input.equipmentName) : undefined,
@@ -97,9 +104,9 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
       alarmTypeCode: input.alarmTypeCode ? String(input.alarmTypeCode) : undefined,
       statusCode: input.statusCode ? String(input.statusCode) : undefined,
       point: {
-        channelNo: input.data?.channelNo,
-        level: input.data?.level ? String(input.data.level) : undefined,
-        pointName: input.data?.pointName ? String(input.data.pointName) : undefined
+        channelNo: input.data?.channelNo ?? parsedFromRaw?.channelNo,
+        level: (input.data?.level ?? parsedFromRaw?.level) ? String(input.data?.level ?? parsedFromRaw?.level) : undefined,
+        pointName: (input.data?.pointName ?? parsedFromRaw?.pointName) ? String(input.data?.pointName ?? parsedFromRaw?.pointName) : undefined
       }
     }
   }
@@ -127,23 +134,42 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
 }
 
 function buildMeasurementPointsFromPoint(point: OverviewNormalized['point']): MeasurementPoint[] {
-  const channelNo = point?.channelNo != null ? Number(point.channelNo) : NaN
-  const pointStatus = mapLevelToStatus(point?.level)
-  const pointName = point?.pointName ? String(point.pointName) : ''
+  // 预警总览 UI 的点位高亮依赖 measurementPoints 的下标 (i+1)。
+  // 你给的数据里 channelNo 可能是字母串，因此必须优先从 pointName 抽取数字（如 "19号点位" -> 19）。
+  const BASE_TOTAL = 16
 
-  const total = 10
+  const pointName = point?.pointName ? String(point.pointName) : ''
+  const pointNumFromName = (() => {
+    if (!pointName) return null
+    const m = pointName.match(/(\d+)/)
+    if (!m) return null
+    const n = Number(m[1])
+    return Number.isFinite(n) && n > 0 ? n : null
+  })()
+
+  const pointNumFromChannel = (() => {
+    if (point?.channelNo == null) return null
+    const n = Number(point.channelNo)
+    return Number.isFinite(n) && n > 0 ? n : null
+  })()
+
+  const pointNum = pointNumFromName ?? pointNumFromChannel
+  const pointStatus = mapLevelToStatus(point?.level)
+
+  const total = Math.max(BASE_TOTAL, pointNum ?? 0)
   const list: MeasurementPoint[] = Array.from({ length: total }).map((_, i) => ({
-    name: i === 0 && pointName ? pointName : `测点${i + 1}`,
+    name: `测点${i + 1}`,
     status: 'healthy'
   }))
 
-  if (!isNaN(channelNo) && channelNo >= 1 && channelNo <= total) {
-    const existing = list[channelNo - 1]
-    list[channelNo - 1] = {
-      name: pointName || existing?.name || `测点${channelNo}`,
+  if (pointNum != null && pointNum >= 1 && pointNum <= list.length) {
+    const existing = list[pointNum - 1]
+    list[pointNum - 1] = {
+      name: pointName || existing?.name || `测点${pointNum}`,
       status: pointStatus
     }
   }
+
   return list
 }
 
@@ -168,6 +194,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
 
     const isFaultAlarm = String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
     const deviceId = evt.deviceId
+    const idx = alarms.value.findIndex((a) => a.id === deviceId)
 
     const deviceName = evt.deviceName ? String(evt.deviceName) : deviceId
     const shopName = evt.shopName ? String(evt.shopName) : ''
@@ -175,7 +202,62 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     const d = new Date(evt.time)
     const timeStr = isNaN(d.getTime()) ? '' : d.toISOString()
 
-    const measurementPoints = buildMeasurementPointsFromPoint(evt.point)
+    // 点位高亮：基于 MACHINE_VIBRATION 直接标记为 alarm（即使后端 level 字段缺失/不一致）
+    const derivedPointStatus: MeasurementPoint['status'] = isFaultAlarm ? 'alarm' : mapLevelToStatus(evt.point.level)
+
+    // 更新当前设备已有的测点状态（避免每次 websocket 只保留一个点位的 alarm/warning）
+    const prev = idx >= 0 ? alarms.value[idx] : undefined
+    const pointName = evt.point.pointName ? String(evt.point.pointName) : ''
+    const pointNum = (() => {
+      if (pointName) {
+        const m = pointName.match(/(\d+)/)
+        if (m) {
+          const n = Number(m[1])
+          if (Number.isFinite(n) && n > 0) return n
+        }
+      }
+      if (evt.point.channelNo != null) {
+        const n = Number(evt.point.channelNo)
+        if (Number.isFinite(n) && n > 0) return n
+      }
+      return null
+    })()
+
+    const BASE_TOTAL = 16
+    const prevPoints = prev?.measurementPoints ?? []
+    const total = Math.max(BASE_TOTAL, prevPoints.length, pointNum ?? 0)
+
+    const measurementPoints: MeasurementPoint[] = (() => {
+      if (!prevPoints.length) {
+        // 首次：用 buildMeasurementPointsFromPoint 的逻辑创建基础列表（并确保总长度包含点位）
+        const built = buildMeasurementPointsFromPoint({
+          ...evt.point,
+          // buildMeasurementPointsFromPoint 内部用 level 推导 status；这里先按当前 derivedPointStatus 覆盖
+          level: evt.point.level
+        })
+        // 确保点位索引能覆盖该点
+        if (pointNum != null && built.length < pointNum) {
+          const expanded = Array.from({ length: total }).map((_, i) => built[i] ?? makeHealthyPoint(i))
+          return expanded.map((p, i) => (i === (pointNum - 1) ? { ...p, name: pointName || p.name, status: derivedPointStatus } : p))
+        }
+        return built.map((p, i) => (pointNum != null && i === (pointNum - 1) ? { ...p, name: pointName || p.name, status: derivedPointStatus } : p))
+      }
+
+      // 已有测点：在原数组基础上更新一个点位状态
+      const next = Array.from({ length: total }).map((_, i) => {
+        return prevPoints[i] ?? makeHealthyPoint(i)
+      })
+
+      if (pointNum != null && pointNum >= 1 && pointNum <= next.length) {
+        next[pointNum - 1] = {
+          name: pointName || next[pointNum - 1]?.name || `测点${pointNum}`,
+          status: derivedPointStatus
+        }
+      }
+
+      return next
+    })()
+
     const deviceStatus: AlarmItem['status'] = isFaultAlarm ? 'alarm' : 'healthy'
     const statusText = deviceStatus === 'alarm' ? '报警' : '健康'
 
@@ -190,7 +272,6 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       measurementPoints
     }
 
-    const idx = alarms.value.findIndex((a) => a.id === deviceId)
     if (idx >= 0) alarms.value.splice(idx, 1, item)
     else alarms.value.unshift(item)
   }

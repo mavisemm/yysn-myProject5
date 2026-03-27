@@ -194,6 +194,10 @@ onUnmounted(() => {
     flex-direction: column;
   }
 
+  .dashboard-box-alarm {
+    min-height: 290px !important;
+  }
+  
   .dashboard-box-stats {
     height: calc((100% - 20px) * 0.25);
   }
