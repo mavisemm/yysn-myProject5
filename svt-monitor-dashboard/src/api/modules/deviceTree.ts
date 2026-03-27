@@ -1,4 +1,5 @@
 import request from '../request';
+import { getTenantId } from '../tenant'
 
 // 定义设备树相关的类型
 export interface DeviceTreeNode {
@@ -61,7 +62,11 @@ export interface PointData {
  * 获取设备树数据
  */
 export const getDeviceTreeData = (): Promise<DeviceTreeResponse> => {
-  return request.get<DeviceTreeResponse>('/taicang/hardware/device/vibration/tree')
+  return request.get<DeviceTreeResponse>('/taicang/hardware/device/vibration/tree', {
+    params: {
+      tenantId: getTenantId()
+    }
+  })
     .then(response => {
       return response;
     })

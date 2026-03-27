@@ -11,11 +11,7 @@
     <div class="voiceContainer">
       <!-- 左上：预警信息 -->
       <div class="voiceContainerItem">
-        <div class="panelTitle">预警信息</div>
-        <div class="panelRow">
-          <span class="k">预警信息：</span>
-          <span class="v">{{ currentEventTypeName }}</span>
-        </div>
+        <div class="panelTitle">预警信息：{{ currentEventTypeName }}</div>
         <div class="panelRow">
           <span class="k">发生时间：</span>
           <span class="v">{{ eventTimeText }}</span>
@@ -53,7 +49,7 @@
           <div class="controlsRow">
             <el-button
               type="success"
-              size="small"
+              size="large"
               :disabled="!currentEventId"
               class="controlBtnLarge"
               @click="onConfirmYes"
@@ -62,7 +58,7 @@
             </el-button>
             <el-button
               type="warning"
-              size="small"
+              size="large"
               :disabled="!currentEventId"
               class="controlBtnLarge"
               @click="notVisible = true"
@@ -73,7 +69,7 @@
           <div class="controlsRow controlsRow--ai">
             <el-button
               type="primary"
-              size="small"
+              size="large"
               :disabled="!currentEventId"
               class="controlBtnLarge"
               @click="openAIModal"
@@ -135,8 +131,15 @@
       @closed="resetYesModal"
     >
       <div class="modalBlock">
-        <div class="modalLabel">历史异常库</div>
-        <el-select v-model="yesExceptionId" placeholder="重置" style="width: 100%" size="small" clearable>
+        <el-select
+          v-model="yesExceptionId"
+          placeholder="历史异常库"
+          style="width: 100%"
+          size="small"
+          class="historySelect"
+          popper-class="historySelectPopper"
+        >
+          <el-option label="重置" value="" />
           <el-option v-for="it in abnormalList" :key="it.id" :label="it.name" :value="it.id" />
         </el-select>
       </div>
@@ -235,6 +238,7 @@ const energyChartRef = ref<HTMLDivElement | null>(null)
 const densityChartRef = ref<HTMLDivElement | null>(null)
 const energyChart = shallowRef<echarts.ECharts | null>(null)
 const densityChart = shallowRef<echarts.ECharts | null>(null)
+const chartLinkGroup = 'alarm-batch-view-link-group'
 
 const disposeCharts = () => {
   try {
@@ -287,19 +291,40 @@ const aiHtmlContent = ref<string>('')
 const nosceneVoiceRet = ref<any | null>(null)
 
 const currentEventId = computed(() => {
-  return String(eventDetail.value?.id ?? props.row?.id ?? '')
+  return String(eventDetail.value?.id ?? eventDetail.value?.eventId ?? props.row?.id ?? props.row?.eventId ?? '')
 })
 
 const currentEventTypeCode = computed(() => {
   return String(eventDetail.value?.eventTypeCode ?? props.row?.eventTypeCode ?? '')
 })
+const isNoSceneSoundWarn = computed(() => currentEventTypeCode.value === 'NO_SCENE_SOUND_WARN')
 
 const currentEventTypeName = computed(() => {
   return eventDetail.value?.eventType?.name ?? currentEventTypeCode.value ?? '-'
 })
 
+function formatDateTime(input: unknown): string {
+  if (input == null || input === '') return '-'
+  const raw = String(input).trim()
+  if (!raw) return '-'
+
+  const n = Number(raw)
+  let date: Date
+  if (Number.isFinite(n)) {
+    const ms = n < 1e12 ? n * 1000 : n
+    date = new Date(ms)
+  } else {
+    date = new Date(raw)
+  }
+  if (Number.isNaN(date.getTime())) return raw
+
+  const pad = (v: number) => String(v).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
 const eventTimeText = computed(() => {
-  return eventDetail.value?._timeText ?? eventDetail.value?.time ?? props.row?._timeText ?? props.row?.time ?? '-'
+  const t = eventDetail.value?.time ?? props.row?.time ?? eventDetail.value?._timeText ?? props.row?._timeText
+  return formatDateTime(t)
 })
 
 const currentStatusText = computed(() => {
@@ -307,12 +332,28 @@ const currentStatusText = computed(() => {
 })
 
 const currentDeviceName = computed(() =>
-  eventDetail.value?.equipmentName
+  eventDetail.value?.deviceName
+  ?? props.row?.deviceName
+  ?? (isNoSceneSoundWarn.value ? nosceneVoiceRet.value?.deviceName : undefined)
+  ?? (isNoSceneSoundWarn.value ? nosceneVoiceRet.value?.productName : undefined)
+  ?? eventDetail.value?.equipmentName
   ?? props.row?.equipmentName
   ?? '-'
 )
-const currentPointName = computed(() => eventDetail.value?.pointName ?? props.row?.pointName ?? '-')
-const currentReceiverName = computed(() => eventDetail.value?.receiverName ?? props.row?.receiverName ?? '-')
+const currentPointName = computed(() =>
+  (isNoSceneSoundWarn.value ? nosceneVoiceRet.value?.subProductName : undefined)
+  ?? eventDetail.value?.subProductName
+  ?? props.row?.subProductName
+  ?? eventDetail.value?.pointName
+  ?? props.row?.pointName
+  ?? '-'
+)
+const currentReceiverName = computed(() =>
+  (isNoSceneSoundWarn.value ? nosceneVoiceRet.value?.receiverName : undefined)
+  ?? eventDetail.value?.receiverName
+  ?? props.row?.receiverName
+  ?? '-'
+)
 
 const currentDeviationValueText = computed(() => {
   const raw =
@@ -336,11 +377,30 @@ const currentDeviationValueText = computed(() => {
   return s || '-'
 })
 
+const currentFreqGroupId = computed(() => {
+  // 音频接口需要 freqGroupId；不同事件来源字段名可能不一致，做多字段兜底
+  return (
+    dataParse.value?.frepGroupId ??
+    dataParse.value?.freqGroupId ??
+    dataParse.value?.freq_group_id ??
+    dataParse.value?.freqGroupID ??
+    eventDetail.value?.frepGroupId ??
+    eventDetail.value?.freqGroupId ??
+    eventDetail.value?.freq_group_id ??
+    eventDetail.value?.freqGroupID ??
+    props.row?.frepGroupId ??
+    props.row?.freqGroupId ??
+    props.row?.freq_group_id ??
+    props.row?.freqGroupID ??
+    ''
+  )
+})
+
 const audioSrc = computed(() => {
-  const id = currentEventId.value
-  if (!id) return ''
+  const freqGroupId = currentFreqGroupId.value || currentEventId.value
+  if (!freqGroupId) return ''
   try {
-    return getWavByFreqGroupIdUrl(id)
+    return getWavByFreqGroupIdUrl(freqGroupId)
   } catch {
     return ''
   }
@@ -366,6 +426,17 @@ const deviceId = computed(() =>
   ?? props.row?.equipmentId
   ?? ''
 )
+const pointId = computed(() =>
+  dataParse.value?.pointId
+  ?? dataParse.value?.point_id
+  ?? dataParse.value?.subProductId
+  ?? eventDetail.value?.pointId
+  ?? eventDetail.value?.subProductId
+  ?? (props.row as any)?.pointId
+  ?? (props.row as any)?.subProductId
+  ?? localStorage.getItem('pointId')
+  ?? ''
+)
 
 const positionText = computed(() => {
   if (position.value == null) return '-'
@@ -384,6 +455,9 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
   await nextTick()
   energyChart.value = echarts.init(energyChartRef.value)
   densityChart.value = echarts.init(densityChartRef.value)
+  energyChart.value.group = chartLinkGroup
+  densityChart.value.group = chartLinkGroup
+  echarts.connect(chartLinkGroup)
 
   const xArr: string[] = []
   const nowDbArr: (number | undefined)[] = []
@@ -406,7 +480,7 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
   energyChart.value.setOption({
     tooltip: { trigger: 'axis', appendToBody: true, extraCssText: 'z-index:99999 !important;' },
     grid: baseGrid,
-    legend: { show: true, top: 10, data: ['能量'] },
+    legend: { show: false },
     xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
     yAxis: [{ type: 'value', name: '能量' }],
     dataZoom,
@@ -416,7 +490,7 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
   densityChart.value.setOption({
     tooltip: { trigger: 'axis', appendToBody: true, extraCssText: 'z-index:99999 !important;' },
     grid: baseGrid,
-    legend: { show: true, top: 10, data: ['密度'] },
+    legend: { show: false },
     xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
     yAxis: [{ type: 'value', name: '密度' }],
     dataZoom,
@@ -433,6 +507,9 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
   await nextTick()
   energyChart.value = echarts.init(energyChartRef.value)
   densityChart.value = echarts.init(densityChartRef.value)
+  energyChart.value.group = chartLinkGroup
+  densityChart.value.group = chartLinkGroup
+  echarts.connect(chartLinkGroup)
 
   const soundFrequencyDtoList = Array.isArray(ret?.soundFrequencyDtoList) ? ret.soundFrequencyDtoList : []
   const soundAvgFrequencyDtoList = Array.isArray(ret?.soundAvgFrequencyDtoList) ? ret.soundAvgFrequencyDtoList : []
@@ -465,7 +542,7 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
   energyChart.value.setOption({
     tooltip: { trigger: 'axis', appendToBody: true, extraCssText: 'z-index:99999 !important;' },
     grid: baseGrid,
-    legend: { show: true, top: 10, data: avgDbArr.length > 0 ? ['能量', '标准能量线'] : ['能量'] },
+    legend: { show: false },
     xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
     yAxis: [{ type: 'value', name: '能量' }],
     dataZoom,
@@ -478,7 +555,7 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
   densityChart.value.setOption({
     tooltip: { trigger: 'axis', appendToBody: true, extraCssText: 'z-index:99999 !important;' },
     grid: baseGrid,
-    legend: { show: true, top: 10, data: avgDensityArr.length > 0 ? ['密度', '标准密度线'] : ['密度'] },
+    legend: { show: false },
     xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
     yAxis: [{ type: 'value', name: '密度' }],
     dataZoom,
@@ -628,7 +705,7 @@ const onYesModalOpen = async () => {
   yesExceptionId.value = undefined
   yesNewName.value = ''
 
-  const pid = receiverId.value
+  const pid = pointId.value
   if (!pid) return
 
   try {
@@ -637,7 +714,7 @@ const onYesModalOpen = async () => {
       filterPropertyMap: [
         { code: 'tenantId', operate: 'EQ', value: tid },
         { code: 'type', operate: 'EQ', value: 0 },
-        { code: 'receiverId', operate: 'EQ', value: pid }
+        { code: 'pointId', operate: 'EQ', value: pid }
       ],
       sortValueMap: [{ code: 'time', sort: 'desc' }]
     }
@@ -788,6 +865,7 @@ onBeforeUnmount(() => {
   max-height: 90vh;
   display: flex;
   flex-direction: column;
+  font-size: 15px;
 }
 
 .alarm-batch-view-dialog :deep(.el-dialog__body) {
@@ -826,12 +904,13 @@ onBeforeUnmount(() => {
   padding: 10px 12px 6px;
   font-weight: 600;
   color: rgba(0, 0, 0, 0.72);
+  font-size: 16px;
 }
 
 .panelRow {
   padding: 8px 12px;
   color: rgba(0, 0, 0, 0.78);
-  font-size: 13px;
+  font-size: 14px;
   display: flex;
   gap: 8px;
 }
@@ -873,7 +952,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   color: rgba(0, 0, 0, 0.45);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .no-chart--overlay {
@@ -891,12 +970,17 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 12px;
   padding: 0 6px 6px;
+  justify-content: center;
+  align-items: center;
 }
 
 .controlsRow {
   display: flex;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 320px;
+  justify-content: center;
 }
 
 .modalBlock {
@@ -906,12 +990,12 @@ onBeforeUnmount(() => {
 .modalLabel {
   margin-bottom: 6px;
   color: rgba(0, 0, 0, 0.65);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .modalHint {
   color: #e74c3c;
-  font-size: 12px;
+  font-size: 13px;
   margin: -6px 0 12px;
 }
 
@@ -923,7 +1007,7 @@ onBeforeUnmount(() => {
 }
 
 .aiMeta {
-  font-size: 13px;
+  font-size: 14px;
   margin-bottom: 6px;
   color: rgba(0, 0, 0, 0.65);
 }
@@ -973,16 +1057,28 @@ onBeforeUnmount(() => {
 
 .audioEmpty {
   color: rgba(0, 0, 0, 0.45);
-  font-size: 12px;
+  font-size: 13px;
   padding: 10px 0;
 }
 
 .controlBtnLarge {
-  width: 48%;
+  width: 180px;
+  min-width: 180px;
+  height: 44px;
+  font-size: 16px;
 }
 
 .controlsRow--ai {
   justify-content: center;
+}
+
+.historySelect :deep(.el-input__inner) {
+  font-size: 12px !important;
+}
+
+:deep(.historySelectPopper .el-select-dropdown__item),
+:deep(.historySelectPopper .el-select-dropdown__item span) {
+  font-size: 12px !important;
 }
 </style>
 
