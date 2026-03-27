@@ -79,7 +79,7 @@ interface TableRow {
 
 /** 占位行用的假数据：设备名称、点位名称（按需循环使用） */
 const MOCK_DEVICE_NAMES = ['1#循环水泵', '2#循环水泵', '3#引风机', '4#空压机', '5#冷却塔风机', '五线一路风机12', '旋压机', '五线三路风机', '往复式压缩机', '七线一路风机'];
-const MOCK_POINT_NAMES = ['JXA29F6105', '尾顶电磁阀1号点位', 'JXA24F5307', 'JS32F21', 'JXA29F8108', 'JXA29F6106', 'SHJY-XYJ1号点位', '3', 'JS32F20', 'JXA29F8107'];
+const MOCK_POINT_NAMES = ['JXA29F6104', '尾顶电磁阀1号点位', 'JXA24F5307', 'JS32F21', 'JXA29F8108', 'JXA29F6106', 'SHJY-XYJ1号点位', '3', 'JS32F20', 'JXA29F8107'];
 
 /** 从设备树取「每个设备取第一条点位」的列表，保证每条来自不同设备，带 receiverId/deviceId 用于跳转 */
 function getOneRowPerDevice(nodes: DeviceNode[]): TableRow[] {
@@ -89,9 +89,20 @@ function getOneRowPerDevice(nodes: DeviceNode[]): TableRow[] {
             workshop.children?.forEach(device => {
                 if (device.type !== 'device') return;
                 const equipmentName = device.name || device.equipmentName || '—';
-                const firstPoint = device.children?.find(p => p.type === 'point');
+                const points = (device.children ?? []).filter(p => p.type === 'point');
+                const targetPointName = 'JXA29F6104'
+                // 五线一路风机：点位强制展示为 JXA29F6104（优先匹配设备树中同名点位，保证跳转也正确）
+                const specifiedPoint =
+                    String(equipmentName).includes('五线一路')
+                        ? points.find(p => (p.name || (p as any).pointName) === targetPointName)
+                        : undefined
+
+                const firstPoint = specifiedPoint ?? points[0];
                 if (!firstPoint) return;
-                const receiverName = firstPoint.name || firstPoint.pointName || '—';
+                const receiverName =
+                    String(equipmentName).includes('五线一路')
+                        ? targetPointName
+                        : (firstPoint.name || (firstPoint as any).pointName || '—');
                 rows.push({
                     equipmentName,
                     receiverName,

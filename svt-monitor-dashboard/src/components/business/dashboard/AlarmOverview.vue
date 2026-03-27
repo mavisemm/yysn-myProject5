@@ -40,8 +40,22 @@
         </div>
 
         <div class="status-legend">
-            <img class="status-legend__img" src="@/assets/images/background/首页-预警总览-图例.png"
-                alt="图例：报警、预警、健康" />
+            <div class="status-legend__item">
+                <img class="status-legend__icon" src="@/assets/images/background/首页-报警图例.png" alt="报警图例" />
+                <span class="status-legend__text">报警</span>
+            </div>
+            <div class="status-legend__item">
+                <img class="status-legend__icon" src="@/assets/images/background/首页-预警图例.png" alt="预警图例" />
+                <span class="status-legend__text">预警</span>
+            </div>
+            <div class="status-legend__item">
+                <img class="status-legend__icon" src="@/assets/images/background/首页-健康图例.png" alt="健康图例" />
+                <span class="status-legend__text">健康</span>
+            </div>
+            <div class="status-legend__item">
+                <img class="status-legend__icon" src="@/assets/images/background/首页-离线图例.png" alt="离线图例" />
+                <span class="status-legend__text">离线</span>
+            </div>
         </div>
 
         <!-- 主内容区域 -->
@@ -63,7 +77,7 @@
 
                 <!-- 第二部分：厂区名 + 报警时间 -->
                 <div class="alarm-time">
-                    <template v-if="getDeviceDisplayStatus(alarm) !== 'healthy'">
+                    <template v-if="getDeviceDisplayStatus(alarm) !== 'healthy' && getDeviceDisplayStatus(alarm) !== 'offline'">
                         {{ alarm.shopName ? alarm.shopName + ' ' : '' }}&nbsp;&nbsp;{{ formatAlarmTime(alarm.time) }}
                     </template>
                     <template v-else>
@@ -123,7 +137,7 @@ const deviceTreeStore = useDeviceTreeStore();
 // 定义类型：报警(alarm)、预警(warning)、健康(healthy) 三种状态
 interface MeasurementPoint {
     name: string;
-    status: 'healthy' | 'warning' | 'alarm';
+    status: 'healthy' | 'warning' | 'alarm' | 'offline';
 }
 
 interface AlarmItem {
@@ -131,14 +145,14 @@ interface AlarmItem {
     deviceName: string;
     shopName: string;
     deviceNameWithShop: string;
-    status: 'alarm' | 'warning' | 'healthy';
+    status: 'alarm' | 'warning' | 'healthy' | 'offline';
     statusText: string;
     time: string;
     measurementPoints: MeasurementPoint[];
 }
 
 function buildMockMeasurementPoints(
-    type: 'healthy' | 'warning' | 'alarm',
+    type: 'healthy' | 'warning' | 'alarm' | 'offline',
     config?: {
         /** 点位号（从 1 开始），标记为 warning */
         warningPointNums?: number[]
@@ -193,32 +207,32 @@ function createMockOverviewAlarmsFromDevices(devices: DeviceItem[]): AlarmItem[]
         d.setHours(13, 3, 0, 0)
         return d
     })()
-    // 你要求的假数据规则：
-    // - 去掉“反应器进料泵A”
-    // - 不要有告警设备（alarm）
-    // - 只保留两台预警设备（warning）
-    const mockCandidates = devices.filter(d => d.deviceName !== '反应器进料泵A' && d.deviceName !== '往复式压缩机')
-    const candidates = mockCandidates.length > 0 ? mockCandidates : devices
-
-    // 关键：不要再用 i % 轮转，否则当候选设备数量少于 4 时会因为 Map 去重覆盖
-    // 导致 “预警数量不是 2 台”。这里显式选出“两台不同设备”作为 warning。
+    // 你最新要求的假数据规则：
+    // - 设备树共 5 台：1 台预警、2 台健康、2 台离线
+    // - 离线固定为：反应器进料泵A、往复式压缩机
     const uniqById = new Map<string, DeviceItem>()
-    for (const d of candidates) {
+    for (const d of devices) {
         const key = String(d.id)
         if (!uniqById.has(key)) uniqById.set(key, d)
     }
-    const uniqCandidates = Array.from(uniqById.values())
+    const uniqDevices = Array.from(uniqById.values())
 
-    const warningDevices = uniqCandidates.slice(0, 2)
-    const healthyDevices = uniqCandidates.slice(2, 4)
+    const offlineNameSet = new Set(['反应器进料泵A', '往复式压缩机'])
+    const offlineDevices = uniqDevices.filter(d => offlineNameSet.has(String(d.deviceName ?? ''))).slice(0, 2)
+    const nonOfflineDevices = uniqDevices.filter(d => !offlineNameSet.has(String(d.deviceName ?? '')))
 
-    const mockPlan: Array<{ device: DeviceItem; type: 'healthy' | 'warning'; offsetMs: number; warningPointNums?: number[] }> = []
-    // 需求：第一台预警设备点位为 5，第二台预警设备点位为 11
-    // （默认 sortOrder=desc 时，由于 offset 更小代表更“新”，用于保证“第一台/第二台”在展示上更符合直觉）
-    if (warningDevices[0]) mockPlan.push({ device: warningDevices[0], type: 'warning', offsetMs: 6 * 60 * 1000, warningPointNums: [5] })
-    if (warningDevices[1]) mockPlan.push({ device: warningDevices[1], type: 'warning', offsetMs: 22 * 60 * 1000, warningPointNums: [11] })
+    // “预警就现在这台”：优先匹配五线一路；若不存在，退化到非离线设备中的第一台
+    const warningDevice = nonOfflineDevices.find(d => String(d.deviceName ?? '').includes('五线一路')) ?? nonOfflineDevices[0]
+    const healthyDevices = nonOfflineDevices
+        .filter(d => String(d.id) !== String(warningDevice?.id ?? ''))
+        .slice(0, 2)
+
+    const mockPlan: Array<{ device: DeviceItem; type: 'healthy' | 'warning' | 'offline'; offsetMs: number; warningPointNums?: number[] }> = []
+    if (warningDevice) mockPlan.push({ device: warningDevice, type: 'warning', offsetMs: 6 * 60 * 1000, warningPointNums: [4] })
     if (healthyDevices[0]) mockPlan.push({ device: healthyDevices[0], type: 'healthy', offsetMs: 0 })
     if (healthyDevices[1]) mockPlan.push({ device: healthyDevices[1], type: 'healthy', offsetMs: 30 * 60 * 1000 })
+    if (offlineDevices[0]) mockPlan.push({ device: offlineDevices[0], type: 'offline', offsetMs: 12 * 60 * 1000 })
+    if (offlineDevices[1]) mockPlan.push({ device: offlineDevices[1], type: 'offline', offsetMs: 45 * 60 * 1000 })
 
     // 用 Map 去重（以防极端情况下 device.id 重复/缺失），但 mockPlan 已保证 warning 设备为两台不同的 id
     const uniq = new Map<string, AlarmItem>()
@@ -227,7 +241,7 @@ function createMockOverviewAlarmsFromDevices(devices: DeviceItem[]): AlarmItem[]
         const deviceName = String(device.deviceName ?? '')
 
         // 按你的测试要求，强制调整某些“路由设备”的状态/时间
-        let finalType: 'healthy' | 'warning' = type
+        let finalType: 'healthy' | 'warning' | 'offline' = type
         let finalWarningPointNums = warningPointNums
         let finalTimeIso = new Date(now - offsetMs).toISOString()
 
@@ -235,19 +249,17 @@ function createMockOverviewAlarmsFromDevices(devices: DeviceItem[]): AlarmItem[]
         if (deviceName.includes('五线一路')) {
             finalType = 'warning'
             finalTimeIso = specifiedWarningTime.toISOString()
-            // 若此时 warningPointNums 丢失（例如原本在 healthy slot），补上默认预警点位
-            if (!finalWarningPointNums || finalWarningPointNums.length === 0) {
-                finalWarningPointNums = [5]
-            }
+            // 不论 mockPlan 里原始预警点位如何，强制五线一路为 4 号点位预警
+            finalWarningPointNums = [4]
         }
 
-        // 五线三路：改为健康
-        if (deviceName.includes('五线三路')) {
-            finalType = 'healthy'
+        // 你指定：反应器进料泵A、往复式压缩机固定离线
+        if (offlineNameSet.has(deviceName)) {
+            finalType = 'offline'
             finalWarningPointNums = undefined
         }
 
-        const statusText = finalType === 'warning' ? '预警' : '健康'
+        const statusText = finalType === 'warning' ? '预警' : finalType === 'offline' ? '离线' : '健康'
 
         uniq.set(String(device.id), {
             id: String(device.id),
@@ -264,8 +276,7 @@ function createMockOverviewAlarmsFromDevices(devices: DeviceItem[]): AlarmItem[]
         })
     }
 
-    // 预警总览：固定一行最多展示 4 张
-    return Array.from(uniq.values()).slice(0, 4)
+    return Array.from(uniq.values())
 }
 
 /**
@@ -679,10 +690,11 @@ const filteredAlarms = computed(() => {
     }
 
     // 你要求：先按“报警-预警-健康”优先级，再在同组内按时间排序
-    const statusOrder: Record<'alarm' | 'warning' | 'healthy', number> = {
+    const statusOrder: Record<'alarm' | 'warning' | 'healthy' | 'offline', number> = {
         alarm: 0,
         warning: 1,
-        healthy: 2
+        healthy: 2,
+        offline: 3
     };
     result.sort((a, b) => {
         const aStatus = getDeviceDisplayStatus(a);
@@ -873,7 +885,8 @@ const isValidDevice = (deviceId: string): boolean => {
  * 根据该设备下所有测点取最高等级：报警 > 预警 > 健康。
  * 即：存在任一测点为「报警」则显示报警；否则存在任一测点为「预警」则显示预警；否则显示健康。
  */
-function getDeviceDisplayStatus(alarm: AlarmItem): 'alarm' | 'warning' | 'healthy' {
+function getDeviceDisplayStatus(alarm: AlarmItem): 'alarm' | 'warning' | 'offline' | 'healthy' {
+    if (alarm.status === 'offline') return 'offline';
     const points = alarm.measurementPoints ?? [];
     const hasAlarm = points.some(p => p.status === 'alarm');
     const hasWarning = points.some(p => p.status === 'warning');
@@ -884,9 +897,10 @@ function getDeviceDisplayStatus(alarm: AlarmItem): 'alarm' | 'warning' | 'health
 
 function getPointStyleClass(
     pointStatus: MeasurementPoint['status'],
-    deviceStatus: 'alarm' | 'warning' | 'healthy'
+    deviceStatus: 'alarm' | 'warning' | 'offline' | 'healthy'
 ): string {
     if (deviceStatus === 'healthy') return 'healthy';
+    if (deviceStatus === 'offline') return 'offline';
     if (deviceStatus === 'alarm') return pointStatus === 'alarm' ? 'alarm' : 'alarm-device';
     if (deviceStatus === 'warning') return pointStatus === 'warning' ? 'warning' : 'warning-device';
     return 'healthy';
@@ -896,7 +910,7 @@ function getPointStyleClass(
 function getDisplayPoints(points: MeasurementPoint[]): { point: MeasurementPoint; pointNum: number }[] {
     const list = points ?? [];
     const withNum = list.map((p, i) => ({ point: p, pointNum: i + 1 }));
-    const order = { alarm: 0, warning: 1, healthy: 2 };
+    const order = { alarm: 0, warning: 1, healthy: 2, offline: 3 };
     const sorted = withNum.sort((a, b) => {
         const statusDiff = order[a.point.status] - order[b.point.status];
         if (statusDiff !== 0) return statusDiff;
@@ -1052,11 +1066,25 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         align-self: flex-end; // 靠右
     }
 
-    .status-legend__img {
+    .status-legend__item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 14px;
+    }
+
+    .status-legend__icon {
         display: block;
-        height: 0.8rem; // 统一高度
+        height: 0.8rem;
         width: auto;
         object-fit: contain;
+    }
+
+    .status-legend__text {
+        font-size: 0.78rem;
+        line-height: 1;
+        color: rgba(255, 255, 255, 0.9);
+        white-space: nowrap;
     }
 
     .alarm-empty {
@@ -1100,6 +1128,10 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
             &.alarm-card--healthy {
                 background-image: url('@/assets/images/background/首页-预警总览-健康设备背景.png');
+            }
+
+            &.alarm-card--offline {
+                background-image: url('@/assets/images/background/首页-预警总览-离线设备背景.png');
             }
 
             &.alarm-card--alarm {
@@ -1160,11 +1192,19 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                     &.healthy {
                         background-image: url('@/assets/images/background/首页-预警总览-健康.png');
                     }
+
+                    &.offline {
+                        background-image: url('@/assets/images/background/首页-预警总览-离线.png');
+                    }
                 }
             }
 
             &.alarm-card--healthy .card-header {
                 background-image: url('@/assets/images/background/首页-预警总览-健康标题.png');
+            }
+
+            &.alarm-card--offline .card-header {
+                background-image: url('@/assets/images/background/首页-预警总览-离线标题.png');
             }
 
             &.alarm-card--alarm .card-header {
@@ -1211,6 +1251,11 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
                     &.healthy {
                         background: url('@/assets/images/background/首页-预警总览-健康点位.png') no-repeat center center;
+                        background-size: 100% 100%;
+                    }
+
+                    &.offline {
+                        background: url('@/assets/images/background/首页-预警总览-离线点位.png') no-repeat center center;
                         background-size: 100% 100%;
                     }
 

@@ -114,6 +114,73 @@
             height: 300px;
             margin: 20px 0;
         }
+
+        .chart-datazoom {
+            margin-top: 6px;
+            padding: 8px 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        .chart-datazoom-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: #475569;
+        }
+
+        .chart-datazoom .range-wrap {
+            position: relative;
+            height: 20px;
+        }
+
+        .chart-datazoom input[type="range"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            pointer-events: none;
+            margin: 0;
+            appearance: none;
+            -webkit-appearance: none;
+            background: transparent;
+        }
+
+        .chart-datazoom input[type="range"]::-webkit-slider-thumb {
+            pointer-events: auto;
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #3b82f6;
+            border: 1px solid #1d4ed8;
+            cursor: pointer;
+        }
+
+        .chart-datazoom input[type="range"]::-webkit-slider-runnable-track {
+            height: 4px;
+            border-radius: 2px;
+            background: #cbd5e1;
+        }
+
+        .chart-datazoom input[type="range"]::-moz-range-thumb {
+            pointer-events: auto;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #3b82f6;
+            border: 1px solid #1d4ed8;
+            cursor: pointer;
+        }
+
+        .chart-datazoom input[type="range"]::-moz-range-track {
+            height: 4px;
+            border-radius: 2px;
+            background: #cbd5e1;
+        }
         
         .trend-indicator {
             display: inline-flex;
@@ -1036,6 +1103,7 @@
         let currentGroupChart = null;
         let currentOverallTrendChart = null;
         let currentTrendDistributionChart = null;
+        const dataZoomStateMap = {};
         let pointList = []; // 存储点位列表
         let tenantId = null; // 存储租户ID
         let apiIp = '122.224.196.178'; // 存储API IP地址，默认值
@@ -1207,7 +1275,7 @@
             // 重置缩放
             $('#resetZoomBtn').on('click', function() {
                 if (currentReceiverChart) {
-                    currentReceiverChart.resetZoom();
+                    resetChartViewport(currentReceiverChart, 'receiverCurveChart');
                 }
             });
             
@@ -1777,8 +1845,240 @@
         }
         
         // 通用缩放（类似 ECharts dataZoom），使用 chartjs-plugin-zoom
+        function getXAxisScaleId(chart) {
+            if (!chart || !chart.options || !chart.options.scales) {
+                return null;
+            }
+            if (chart.options.scales.x) {
+                return 'x';
+            }
+            const xScale = Object.keys(chart.options.scales).find(scaleId => chart.options.scales[scaleId].axis === 'x');
+            return xScale || null;
+        }
+
+        function formatDataZoomLabel(label) {
+            if (label === null || label === undefined || label === '') {
+                return '-';
+            }
+            const text = String(label);
+            if (text.length <= 26) {
+                return text;
+            }
+            return `${text.slice(0, 12)}...${text.slice(-10)}`;
+        }
+
+        function updateDataZoomInfo(chart, state, labels, start, end) {
+            let startLabel = labels[start];
+            let endLabel = labels[end];
+
+            // 优先使用坐标轴当前 scale 的可视范围边界，避免受 ticks 自动抽样影响
+            const xScaleId = getXAxisScaleId(chart);
+            const xScale = xScaleId && chart && chart.scales ? chart.scales[xScaleId] : null;
+            if (xScale) {
+                const minIndex = Number.isFinite(xScale.min) ? Math.ceil(Number(xScale.min)) : start;
+                const maxIndex = Number.isFinite(xScale.max) ? Math.floor(Number(xScale.max)) : end;
+                const safeStart = Math.max(0, Math.min(minIndex, labels.length - 1));
+                const safeEnd = Math.max(0, Math.min(maxIndex, labels.length - 1));
+                startLabel = labels[safeStart];
+                endLabel = labels[safeEnd];
+            }
+
+            startLabel = formatDataZoomLabel(startLabel);
+            endLabel = formatDataZoomLabel(endLabel);
+            state.infoEl.textContent = `区间: ${startLabel} ~ ${endLabel}`;
+        }
+
+        function resetChartViewport(chart, canvasId) {
+            if (!chart) {
+                return;
+            }
+            const xScaleId = getXAxisScaleId(chart);
+            if (xScaleId && chart.options && chart.options.scales && chart.options.scales[xScaleId]) {
+                delete chart.options.scales[xScaleId].min;
+                delete chart.options.scales[xScaleId].max;
+            }
+            if (typeof chart.resetZoom === 'function') {
+                chart.resetZoom();
+            }
+            // 某些版本插件在 resetZoom 后会再次写入缩放范围，这里再清一次
+            if (xScaleId && chart.options && chart.options.scales && chart.options.scales[xScaleId]) {
+                delete chart.options.scales[xScaleId].min;
+                delete chart.options.scales[xScaleId].max;
+            }
+            chart.update('none');
+            if (canvasId) {
+                syncSliderFromChart(chart, canvasId);
+                setTimeout(function() {
+                    syncSliderFromChart(chart, canvasId);
+                }, 0);
+            }
+        }
+
+        function applyDataZoomFromSlider(chart, canvasId) {
+            const state = dataZoomStateMap[canvasId];
+            const xScaleId = getXAxisScaleId(chart);
+            if (!state || !xScaleId) {
+                return;
+            }
+            const labels = chart.data && chart.data.labels ? chart.data.labels : [];
+            if (!labels.length) {
+                return;
+            }
+
+            const maxIndex = labels.length - 1;
+            let start = Math.max(0, Math.min(parseInt(state.startInput.value, 10), maxIndex));
+            let end = Math.max(0, Math.min(parseInt(state.endInput.value, 10), maxIndex));
+            if (start > end) {
+                const mid = start;
+                start = end;
+                end = mid;
+                state.startInput.value = String(start);
+                state.endInput.value = String(end);
+            }
+
+            chart.options.scales[xScaleId].min = start;
+            chart.options.scales[xScaleId].max = end;
+            chart.update('none');
+            updateDataZoomInfo(chart, state, labels, start, end);
+        }
+
+        function syncSliderFromChart(chart, canvasId) {
+            const state = dataZoomStateMap[canvasId];
+            const xScaleId = getXAxisScaleId(chart);
+            if (!state || !xScaleId) {
+                return;
+            }
+            const labels = chart.data && chart.data.labels ? chart.data.labels : [];
+            if (!labels.length) {
+                return;
+            }
+            const maxIndex = labels.length - 1;
+            const scaleConfig = chart.options.scales[xScaleId] || {};
+            const startRaw = scaleConfig.min !== undefined ? scaleConfig.min : 0;
+            const endRaw = scaleConfig.max !== undefined ? scaleConfig.max : maxIndex;
+            // 缩放插件会给出小数边界；显示区间时按可见范围取整，避免 endLabel 偏移
+            let start = Math.ceil(Number(startRaw));
+            let end = Math.floor(Number(endRaw));
+            if (!Number.isFinite(start)) {
+                start = 0;
+            }
+            if (!Number.isFinite(end)) {
+                end = maxIndex;
+            }
+            start = Math.max(0, Math.min(start, maxIndex));
+            end = Math.max(0, Math.min(end, maxIndex));
+            if (start > end) {
+                start = Math.max(0, Math.min(Math.floor(Number(startRaw)), maxIndex));
+                end = Math.max(0, Math.min(Math.ceil(Number(endRaw)), maxIndex));
+            }
+
+            state.startInput.max = String(maxIndex);
+            state.endInput.max = String(maxIndex);
+            state.startInput.value = String(start);
+            state.endInput.value = String(end);
+            updateDataZoomInfo(
+                chart,
+                state,
+                labels,
+                Number(state.startInput.value),
+                Number(state.endInput.value)
+            );
+        }
+
+        function bindDataZoomSlider(chart, canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || !chart) {
+                return;
+            }
+            const labels = chart.data && chart.data.labels ? chart.data.labels : [];
+            if (!labels.length || !getXAxisScaleId(chart)) {
+                return;
+            }
+            const chartContainer = canvas.closest('.chart-container');
+            if (!chartContainer) {
+                return;
+            }
+
+            let state = dataZoomStateMap[canvasId];
+            if (!state) {
+                const control = document.createElement('div');
+                control.className = 'chart-datazoom';
+                control.innerHTML = `
+                    <div class="chart-datazoom-header">
+                        <span>dataZoom (横向拖拽)</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary dz-reset-btn">重置</button>
+                    </div>
+                    <div class="range-wrap">
+                        <input type="range" class="dz-start" min="0" value="0" step="1">
+                        <input type="range" class="dz-end" min="0" value="0" step="1">
+                    </div>
+                    <div class="mt-1 text-muted dz-info"></div>
+                `;
+                chartContainer.insertAdjacentElement('afterend', control);
+
+                state = {
+                    control,
+                    startInput: control.querySelector('.dz-start'),
+                    endInput: control.querySelector('.dz-end'),
+                    infoEl: control.querySelector('.dz-info'),
+                    getChart: null
+                };
+                dataZoomStateMap[canvasId] = state;
+
+                const syncFromCanvasEvent = function() {
+                    const activeChart = state.getChart ? state.getChart() : null;
+                    if (!activeChart) {
+                        return;
+                    }
+                    setTimeout(function() {
+                        syncSliderFromChart(activeChart, canvasId);
+                    }, 0);
+                };
+                canvas.addEventListener('wheel', syncFromCanvasEvent, { passive: true });
+                canvas.addEventListener('mouseup', syncFromCanvasEvent);
+                canvas.addEventListener('touchend', syncFromCanvasEvent);
+                canvas.addEventListener('mouseleave', syncFromCanvasEvent);
+
+                state.startInput.addEventListener('input', function() {
+                    applyDataZoomFromSlider(chart, canvasId);
+                });
+                state.endInput.addEventListener('input', function() {
+                    applyDataZoomFromSlider(chart, canvasId);
+                });
+                control.querySelector('.dz-reset-btn').addEventListener('click', function() {
+                    const activeChart = state.getChart ? state.getChart() : chart;
+                    if (!activeChart) {
+                        return;
+                    }
+                    const currentLabels = activeChart.data && activeChart.data.labels ? activeChart.data.labels : [];
+                    if (!currentLabels.length) {
+                        return;
+                    }
+                    resetChartViewport(activeChart, canvasId);
+                });
+            }
+
+            state.getChart = () => chart;
+            syncSliderFromChart(chart, canvasId);
+            state.startInput.oninput = function() {
+                applyDataZoomFromSlider(chart, canvasId);
+            };
+            state.endInput.oninput = function() {
+                applyDataZoomFromSlider(chart, canvasId);
+            };
+        }
+
         const chartZoomPluginOptions = {
-            pan: { enabled: true, mode: 'x' },
+            pan: {
+                enabled: true,
+                mode: 'x',
+                onPanComplete: ({ chart }) => {
+                    const targetCanvasId = chart && chart.canvas ? chart.canvas.id : '';
+                    if (targetCanvasId) {
+                        syncSliderFromChart(chart, targetCanvasId);
+                    }
+                }
+            },
             zoom: {
                 wheel: { enabled: true },
                 pinch: { enabled: true },
@@ -1788,7 +2088,25 @@
                     borderColor: 'rgba(59, 130, 246, 0.8)',
                     borderWidth: 1
                 },
-                mode: 'x'
+                mode: 'x',
+                onZoomComplete: ({ chart }) => {
+                    const targetCanvasId = chart && chart.canvas ? chart.canvas.id : '';
+                    if (targetCanvasId) {
+                        syncSliderFromChart(chart, targetCanvasId);
+                    }
+                }
+            },
+            onZoomComplete: ({ chart }) => {
+                const targetCanvasId = chart && chart.canvas ? chart.canvas.id : '';
+                if (targetCanvasId) {
+                    syncSliderFromChart(chart, targetCanvasId);
+                }
+            },
+            onPanComplete: ({ chart }) => {
+                const targetCanvasId = chart && chart.canvas ? chart.canvas.id : '';
+                if (targetCanvasId) {
+                    syncSliderFromChart(chart, targetCanvasId);
+                }
             }
         };
         
@@ -1903,6 +2221,7 @@
                     }
                 }
             });
+            bindDataZoomSlider(currentOverallTrendChart, 'overallTrendChart');
         }
         
         // 创建趋势分布图表
@@ -2052,6 +2371,7 @@
                     }
                 }
             });
+            bindDataZoomSlider(currentIntervalChart, 'intervalTrendChart');
         }
         
         // 绘制听筒曲线
@@ -2249,6 +2569,7 @@
                     }
                 }
             });
+            bindDataZoomSlider(currentReceiverChart, 'receiverCurveChart');
             
             // 存储当前接收器数据，供点击事件使用
             currentReceiver = receiver;
@@ -2380,6 +2701,7 @@
                     }
                 }
             });
+            bindDataZoomSlider(currentStrengthChart, 'strengthTrendChart');
             
             // 创建趋势强度变化图
             const trendCtx = document.getElementById('trendStrengthChart').getContext('2d');
@@ -2457,6 +2779,7 @@
                     }
                 }
             });
+            bindDataZoomSlider(currentTrendStrengthChart, 'trendStrengthChart');
             
             // 更新信息面板
             document.getElementById('strengthTrendInfo').innerHTML = 
@@ -2587,6 +2910,7 @@
                     }
                 }
             });
+            bindDataZoomSlider(currentGroupChart, 'groupTrendChart');
         }
         
         // 应用间隔筛选

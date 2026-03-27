@@ -37,17 +37,13 @@ html, body {
   font-size: 1.2rem;
 }
 
-/* =========================
- * 首页标题区域公共样式
- * 用于：设备列表 / 预警总览 / 设备监测 / 排名三块标题
- * ========================= */
 .home-title {
   display: flex;
   align-items: center;
   gap: 10px;
   background-repeat: no-repeat;
   background-position: center center;
-  background-size: 100% 500%;
+  background-size: 100% 250%;
 }
 
 .home-title--device-list {
