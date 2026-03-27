@@ -104,6 +104,7 @@
 </template>
 
 <script setup lang="ts">
+import { storeToRefs } from 'pinia'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDeviceTreeStore } from '@/stores/deviceTree';
@@ -115,9 +116,9 @@ import type { DeviceNode } from '@/types/device';
 import { formatDateTime, disabledFutureDate, getDefaultDateRange } from '@/utils/datetime';
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue';
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue';
-import { VibrationWsClient, type VibrationEventPayload } from '@/services/vibrationWs'
-import { fetchVibrationAlarmsForOverview, fetchVibrationEventsForOverview } from '@/api/modules/vibrationEvent'
+import type { VibrationEventPayload } from '@/services/vibrationWs'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
+import { useAlarmOverviewStore } from '@/stores/alarmOverview'
 
 const { t } = useLocale();
 
@@ -362,7 +363,8 @@ const pageSize = ref(responsivePageSize.value.pageSize);
 
 const sortOrder = ref<'asc' | 'desc'>("desc");
 
-const alarms = ref<AlarmItem[]>([])
+const alarmOverviewStore = useAlarmOverviewStore()
+const { alarms } = storeToRefs(alarmOverviewStore)
 
 /**
  * CommonDateTimePicker 的 value-format/value 采用：YYYY-MM-DD HH:mm:ss
@@ -620,7 +622,7 @@ function upsertAlarmFromEvent(input: any) {
     else alarms.value.unshift(item)
 }
 
-let wsClient: VibrationWsClient | null = null
+// websocket 已迁移到 alarmOverviewStore，由 Dashboard.vue 负责启动/停止
 
 const allDevices = computed(() => {
     return extractDevicesFromTree(deviceTreeStore.deviceTreeData);
@@ -784,77 +786,14 @@ const updateContainerSize = () => {
     }
 };
 
+// 预警总览初始化与 websocket 订阅已迁移到 alarmOverviewStore（由 Dashboard.vue 启动）。
+// 这里保留 resize 监听与 UI 相关逻辑。
 onMounted(() => {
     window.addEventListener('resize', updateContainerSize);
-
-    // 初始化：先用 HTTP 拿一批（如果接口返回），再订阅 websocket 实时更新
-    const tenantId = localStorage.getItem('tenantId') ?? ''
-    void (async () => {
-        try {
-            // 优先：你提供的“故障报警”接口（只返回 MACHINE_VIBRATION 的报警，不含趋势预警）
-            const alarmItems = await fetchVibrationAlarmsForOverview({ tenantId, pageIndex: 0, pageSize: 50 })
-            for (const it of alarmItems) upsertAlarmFromEvent(it)
-
-            // 兜底：若新接口为空/异常，再尝试旧的 event/find 列表（项目历史兼容）
-            if (alarmItems.length === 0) {
-                const initEvents = await fetchVibrationEventsForOverview({ tenantId })
-                for (const evt of initEvents) upsertAlarmFromEvent(evt)
-            }
-        } catch (e) {
-            // 接口可能并非列表型，失败也不影响 websocket 实时
-            console.warn('预警总览初始化接口获取失败:', e)
-            // 接口不通时：不再注入 mock 假数据，直接等待后续 websocket 实时事件
-        }
-    })()
-
-    if (tenantId) {
-        wsClient = new VibrationWsClient({ token: localStorage.getItem('token') ?? undefined })
-        void (async () => {
-            try {
-                await wsClient?.connect()
-                wsClient?.subscribeVibrationTopic(tenantId, (payload) => {
-                    upsertAlarmFromEvent(payload)
-                })
-            } catch (e) {
-                console.error('订阅振动 websocket 失败:', e)
-            }
-        })()
-
-        // 弹窗首次打开时的表格加载：预热一页数据到 store 缓存里。
-        // 通过“可让出主线程”的解析方式预热，避免用户点击时被抢占（按钮不卡顿），同时尽量让弹窗首屏直接命中缓存。
-        void (async () => {
-            try {
-                if (alarmBatchStore.realtimeVisible || alarmBatchStore.historyVisible) return
-                // 只预热 realtime：避免同时解析 realtime+history 在用户点击时抢占主线程导致按钮延迟。
-                void alarmBatchStore.prefetchRealtimeListForDefault()
-
-                // history 预热延后一点点；不影响你点击实时按钮的首响应
-                window.setTimeout(() => {
-                    void alarmBatchStore.prefetchHistoryListForDefault()
-                }, 3500)
-            } catch {
-                // 预热失败不影响主流程
-            }
-        })()
-    }
-
-    // 本地开发/演示兜底：无真实告警数据时，用设备树生成假卡片（用于联调跳转）
-    if (alarms.value.length === 0) {
-        const devices = extractDevicesFromTree(deviceTreeStore.deviceTreeData)
-        if (devices.length) {
-            alarms.value = createMockOverviewAlarmsFromDevices(devices)
-        } else {
-            // 设备树为空时不要展示任何假数据：保持空列表以触发“暂无数据”
-            alarms.value = []
-        }
-    }
-});
+})
 
 onUnmounted(() => {
     window.removeEventListener('resize', updateContainerSize);
-
-    wsClient?.disconnect()
-    wsClient = null
 
     if (hideDropdownTimerId) {
         clearTimeout(hideDropdownTimerId);

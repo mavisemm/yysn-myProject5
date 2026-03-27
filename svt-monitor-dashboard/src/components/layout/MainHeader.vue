@@ -97,6 +97,8 @@ import { ref, computed, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
+import { useAlarmBatchStore } from '@/stores/alarmBatch'
+import { useAlarmOverviewStore } from '@/stores/alarmOverview'
 import HeaderClock from './HeaderClock.vue'
 
 import {
@@ -111,6 +113,8 @@ const router = useRouter()
 const route = useRoute()
 
 const deviceTreeStore = useDeviceTreeStore()
+const alarmBatchStore = useAlarmBatchStore()
+const alarmOverviewStore = useAlarmOverviewStore()
 
 interface Props {
   currentBackground?: 'image' | 'navy' | 'solid'
@@ -243,7 +247,11 @@ const handleLogout = () => {
       customClass: 'logout-confirm-box',
     }
   ).then(() => {
-    localStorage.removeItem('token')
+    // 退出登录：清空 localStorage（切换用户时确保无残留）
+    localStorage.clear()
+    // 清空会影响“仅首次预热/实时订阅”的内存状态
+    alarmBatchStore.resetPrefetchState()
+    alarmOverviewStore.reset()
     router.push('/login')
     ElMessage.success('已安全退出')
   }).catch(() => {

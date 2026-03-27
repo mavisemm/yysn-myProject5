@@ -35,14 +35,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { onMounted, ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElForm, ElFormItem, ElInput, ElButton, ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import { login as loginApi } from '@/api/modules/login'
+import { useAlarmBatchStore } from '@/stores/alarmBatch'
+import { useAlarmOverviewStore } from '@/stores/alarmOverview'
 
 // 引入路由
 const router = useRouter()
+
+// 进入登录页时清空 localStorage，避免残留会话影响下一次登录
+onMounted(() => {
+    localStorage.clear()
+    // 登录页也同步重置内存态，确保换用户登录后能重新预热/重连
+    useAlarmBatchStore().resetPrefetchState()
+    useAlarmOverviewStore().reset()
+})
 
 // 表单数据
 const loginForm = reactive({

@@ -84,10 +84,9 @@ const modalDensityChartRef = ref<HTMLDivElement>();
 
 const modalEnergyChartInstance = shallowRef<echarts.ECharts | null>(null);
 const modalDensityChartInstance = shallowRef<echarts.ECharts | null>(null);
+const modalChartLinkGroup = 'sound-point-modal-link-group';
 /** 联动时避免 dataZoom 事件回环 */
 let dataZoomSyncing = false;
-/** 联动时避免 tooltip 事件回环 */
-let tooltipSyncing = false;
 /** 弹窗内图表容器 resize 监听 */
 let modalChartsResizeObserver: ResizeObserver | null = null;
 
@@ -424,11 +423,12 @@ const viewDetails = async (row: any) => {
           modalEnergyChartInstance.value = null;
         }
         modalEnergyChartInstance.value = echarts.init(modalEnergyChartRef.value);
-        const energyLegend = avgdbArr.length > 0 ? ['能量', '标准能量线'] : ['能量'];
+        modalEnergyChartInstance.value.group = modalChartLinkGroup;
         modalEnergyChartInstance.value.setOption({
-          tooltip: { trigger: 'axis', className: 'echarts-tooltip', appendToBody: true, extraCssText: 'z-index: 99999 !important;' },
+          tooltip: { trigger: 'axis', triggerOn: 'mousemove|click', className: 'echarts-tooltip', appendToBody: true, extraCssText: 'z-index: 99999 !important;' },
+          axisPointer: { link: [{ xAxisIndex: 'all' }] },
           grid: baseGrid,
-          legend: { show: true, top: 10, data: energyLegend },
+          legend: { show: false },
           xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],
           yAxis: [{ type: 'value', name: '能量' }],
           dataZoom: [...dataZoom],
@@ -443,17 +443,6 @@ const viewDetails = async (row: any) => {
           const tgt = modalDensityChartInstance.value;
           if (src && tgt) applyDataZoom(src, tgt);
         });
-        modalEnergyChartInstance.value.on('updateAxisPointer', (event: any) => {
-          if (tooltipSyncing) return;
-          const other = modalDensityChartInstance.value;
-          const batch = event?.batch;
-          const dataIndex = Array.isArray(batch) && batch[0]?.dataIndex != null ? batch[0].dataIndex : undefined;
-          if (other && dataIndex != null) {
-            tooltipSyncing = true;
-            other.dispatchAction({ type: 'showTip', dataIndex });
-            setTimeout(() => { tooltipSyncing = false; }, 0);
-          }
-        });
       }
 
       // 密度图表
@@ -463,11 +452,12 @@ const viewDetails = async (row: any) => {
           modalDensityChartInstance.value = null;
         }
         modalDensityChartInstance.value = echarts.init(modalDensityChartRef.value);
-        const densityLegend = avgdensityArr.length > 0 ? ['密度', '标准密度线'] : ['密度'];
+        modalDensityChartInstance.value.group = modalChartLinkGroup;
         modalDensityChartInstance.value.setOption({
-          tooltip: { trigger: 'axis', className: 'echarts-tooltip', appendToBody: true, extraCssText: 'z-index: 99999 !important;' },
+          tooltip: { trigger: 'axis', triggerOn: 'mousemove|click', className: 'echarts-tooltip', appendToBody: true, extraCssText: 'z-index: 99999 !important;' },
+          axisPointer: { link: [{ xAxisIndex: 'all' }] },
           grid: baseGrid,
-          legend: { show: true, top: 10, data: densityLegend },
+          legend: { show: false },
           xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],
           yAxis: [{ type: 'value', name: '密度' }],
           dataZoom: [...dataZoom],
@@ -482,17 +472,10 @@ const viewDetails = async (row: any) => {
           const tgt = modalEnergyChartInstance.value;
           if (src && tgt) applyDataZoom(src, tgt);
         });
-        modalDensityChartInstance.value.on('updateAxisPointer', (event: any) => {
-          if (tooltipSyncing) return;
-          const other = modalEnergyChartInstance.value;
-          const batch = event?.batch;
-          const dataIndex = Array.isArray(batch) && batch[0]?.dataIndex != null ? batch[0].dataIndex : undefined;
-          if (other && dataIndex != null) {
-            tooltipSyncing = true;
-            other.dispatchAction({ type: 'showTip', dataIndex });
-            setTimeout(() => { tooltipSyncing = false; }, 0);
-          }
-        });
+      }
+
+      if (modalEnergyChartInstance.value && modalDensityChartInstance.value) {
+        echarts.connect(modalChartLinkGroup);
       }
     });
   } catch (e) {
@@ -565,6 +548,7 @@ const handleModalClosed = () => {
   document.body.style.overflow = '';
   modalChartsResizeObserver?.disconnect();
   modalChartsResizeObserver = null;
+  echarts.disconnect(modalChartLinkGroup);
   if (modalEnergyChartInstance.value) {
     modalEnergyChartInstance.value.dispose();
     modalEnergyChartInstance.value = null;
@@ -613,6 +597,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
+  echarts.disconnect(modalChartLinkGroup);
   modalEnergyChartInstance.value?.dispose();
   modalDensityChartInstance.value?.dispose();
 });

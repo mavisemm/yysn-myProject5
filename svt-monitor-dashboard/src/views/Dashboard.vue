@@ -28,13 +28,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, reactive, computed } from 'vue';
+import { onMounted, onUnmounted, ref, reactive, computed } from 'vue';
 import DashboardStats from '@/components/business/dashboard/DashboardStats.vue';
 import AlarmOverview from '@/components/business/dashboard/AlarmOverview.vue';
 import ThreeMetrics from '@/components/business/dashboard/ThreeMetrics.vue';
 import TrendWarningDeviceModal from '@/components/business/dashboard/TrendWarningDeviceModal.vue';
 import { getTop5Devices } from '@/api/modules/hardware';
 import { getAllStats } from '@/api/modules/stats';
+import { useAlarmBatchStore } from '@/stores/alarmBatch'
+import { useAlarmOverviewStore } from '@/stores/alarmOverview'
+import { useDeviceTreeStore } from '@/stores/deviceTree'
 
 
 /**
@@ -143,9 +146,36 @@ const fetchStatsData = async () => {
 };
 
 onMounted(() => {
+  // 预警总览：初始化 + websocket 订阅（不再依赖 AlarmOverview.vue 的 onMounted）
+  const alarmOverviewStore = useAlarmOverviewStore()
+  void alarmOverviewStore.start({
+    token: localStorage.getItem('token') ?? undefined,
+    tenantId: localStorage.getItem('tenantId') ?? undefined
+  })
+
+  // 设备树：进入 dashboard 后强制拉取一次
+  // 避免“store 初始化时 tenantId 尚未就绪”的时序问题导致首次看不到 tree 请求
+  // 但：从其它页面返回首页不需要重复拉取，所以仅当 deviceTreeData 为空时才触发
+  const deviceTreeStore = useDeviceTreeStore()
+  if (!deviceTreeStore.deviceTreeData.length) {
+    void deviceTreeStore.loadDeviceTreeData()
+  }
+
+  // 弹窗列表预热（find），仅默认条件；是否“仅首次”由 alarmBatchStore 内部控制
+  const alarmBatchStore = useAlarmBatchStore()
+  void alarmBatchStore.prefetchRealtimeListForDefault()
+  window.setTimeout(() => {
+    void alarmBatchStore.prefetchHistoryListForDefault()
+  }, 3500)
+
   fetchTop5Data();
   fetchStatsData();
 });
+
+onUnmounted(() => {
+  // 离开 dashboard 时断开 websocket，避免后台持续占用连接
+  useAlarmOverviewStore().stop()
+})
 </script>
 
 <style lang="scss" scoped>

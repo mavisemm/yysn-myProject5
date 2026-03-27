@@ -433,13 +433,32 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const prefetchRealtimeListForDefault = async () => {
     if (didPrefetchDefaultRealtime) return
     didPrefetchDefaultRealtime = true
+    // dropdown 逻辑跟随 find 预热：只有当我们要预热列表时才确保下拉数据就绪
+    await ensureDropdowns()
     await fetchRealtimeList(0, false, 'light')
   }
 
   const prefetchHistoryListForDefault = async () => {
     if (didPrefetchDefaultHistory) return
     didPrefetchDefaultHistory = true
+    // dropdown 逻辑跟随 find 预热：只有当我们要预热列表时才确保下拉数据就绪
+    await ensureDropdowns()
     await fetchHistoryList(0, false, 'light')
+  }
+
+  /**
+   * 退出登录/切换用户时调用：清空“仅首次预热”标记与列表缓存，
+   * 确保新用户登录进入 dashboard 后会重新执行预热。
+   */
+  const resetPrefetchState = () => {
+    didPrefetchDefaultRealtime = false
+    didPrefetchDefaultHistory = false
+    // 切用户/退出登录后 dropdown 也应跟随重新预热逻辑再拉取
+    typeList.value = []
+    deviceNameList.value = []
+    dropdownsPromise = null
+    realtimeListCache.clear()
+    historyListCache.clear()
   }
 
   const refreshRealtimeAfterBatch = async () => {
@@ -584,6 +603,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     fetchHistoryList,
     prefetchRealtimeListForDefault,
     prefetchHistoryListForDefault,
+    resetPrefetchState,
     resetRealtime,
     resetHistory,
     openRealtime,

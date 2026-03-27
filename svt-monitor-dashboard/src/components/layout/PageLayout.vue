@@ -58,7 +58,7 @@ const handleHistoryView = (row: any) => openAlarmView(row)
 
 onMounted(() => {
   // 仅进入已登录主布局后预拉：避免登录页尚未拿到 token 时先发业务接口
-  void useAlarmBatchStore().ensureDropdowns()
+  // 注意：getDropdown 先不预热，弹窗打开时再按需拉取
   usePointMessageStore().loadPointMessage()
 })
 </script>

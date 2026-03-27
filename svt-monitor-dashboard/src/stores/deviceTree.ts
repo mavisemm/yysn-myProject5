@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { DeviceNode } from '@/types/device'
 import { getDeviceTreeData, transformDeviceTreeData, type DeviceTreeResponse } from '@/api/modules/deviceTree'
+import { getTenantId } from '@/api/tenant'
 
 export const useDeviceTreeStore = defineStore('deviceTree', () => {
   // 设备树数据
@@ -24,8 +25,33 @@ export const useDeviceTreeStore = defineStore('deviceTree', () => {
     }
   };
   
-  // 初始化时加载设备树数据
-  void loadDeviceTreeData();
+  // 初始化时加载设备树数据：
+  // 登录进入 dashboard 的极短时间内若 tenantId 尚未写入 localStorage，
+  // 会导致首次请求拿不到正确 tenantId；因此做一个轻量重试。
+  const loadWithTenantRetry = () => {
+    const tryLoad = async () => {
+      const tId = getTenantId()
+      if (!tId) return false
+      await loadDeviceTreeData()
+      return true
+    }
+
+    void (async () => {
+      // 先尝试一次
+      const ok = await tryLoad()
+      if (ok) return
+
+      // 再尝试两次（总共约 1s 内），避免“登录后看不到 tree 请求”
+      await new Promise((r) => setTimeout(r, 250))
+      const ok2 = await tryLoad()
+      if (ok2) return
+
+      await new Promise((r) => setTimeout(r, 750))
+      void tryLoad()
+    })()
+  }
+
+  loadWithTenantRetry()
 
   // 当前选中的设备ID
   const selectedDeviceId = ref<string | null>(null)
