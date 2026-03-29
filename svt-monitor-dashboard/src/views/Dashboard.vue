@@ -79,6 +79,8 @@ const trendWarningCount = computed(() => {
   return Number(item?.number ?? 0);
 });
 
+let historyPrefetchTimerId: number | null = null;
+
 /**
  * 获取Top5设备数据
  */
@@ -146,6 +148,8 @@ const fetchStatsData = async () => {
 };
 
 onMounted(() => {
+  const hasToken = () => Boolean(localStorage.getItem('token'))
+
   // 预警总览：初始化 + websocket 订阅（不再依赖 AlarmOverview.vue 的 onMounted）
   const alarmOverviewStore = useAlarmOverviewStore()
   void alarmOverviewStore.start({
@@ -155,17 +159,23 @@ onMounted(() => {
 
   // 设备树：进入 dashboard 后强制拉取一次
   // 避免“store 初始化时 tenantId 尚未就绪”的时序问题导致首次看不到 tree 请求
-  // 但：从其它页面返回首页不需要重复拉取，所以仅当 deviceTreeData 为空时才触发
+  // tenantId 不变也可能增删设备，因此这里每次进入都刷新
   const deviceTreeStore = useDeviceTreeStore()
-  if (!deviceTreeStore.deviceTreeData.length) {
-    void deviceTreeStore.loadDeviceTreeData()
-  }
+  void deviceTreeStore.loadDeviceTreeData()
 
   // 弹窗列表预热（find），仅默认条件；是否“仅首次”由 alarmBatchStore 内部控制
   const alarmBatchStore = useAlarmBatchStore()
-  void alarmBatchStore.prefetchRealtimeListForDefault()
-  window.setTimeout(() => {
-    void alarmBatchStore.prefetchHistoryListForDefault()
+  if (hasToken()) {
+    void alarmBatchStore.prefetchRealtimeListForDefault().catch((e) => {
+      console.error('预热实时列表失败:', e)
+    })
+  }
+
+  historyPrefetchTimerId = window.setTimeout(() => {
+    if (!hasToken()) return
+    void alarmBatchStore.prefetchHistoryListForDefault().catch((e) => {
+      console.error('预热历史列表失败:', e)
+    })
   }, 3500)
 
   fetchTop5Data();
@@ -175,6 +185,10 @@ onMounted(() => {
 onUnmounted(() => {
   // 离开 dashboard 时断开 websocket，避免后台持续占用连接
   useAlarmOverviewStore().stop()
+  if (historyPrefetchTimerId) {
+    clearTimeout(historyPrefetchTimerId)
+    historyPrefetchTimerId = null
+  }
 })
 </script>
 

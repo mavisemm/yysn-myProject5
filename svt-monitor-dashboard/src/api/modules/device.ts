@@ -101,7 +101,8 @@ export const getVibrationMetricData = (deviceId: string, receiverId: string): Pr
 // 振动时域图数据接口
 export interface VibrationTimeDomainData {
   time: number
-  timedomaindata: string
+  // 后端历史上返回过逗号分隔字符串；目前为数组。这里做兼容，最终在组件侧统一转成 number[]
+  timedomaindata: string | number[] | string[]
 }
 
 export const getVibrationTimeDomainData = (deviceId: string, receiverId: string): Promise<NewApiResponse<VibrationTimeDomainData>> => {

@@ -93,7 +93,18 @@ service.interceptors.request.use(
     if (!isLoginRequest) {
       const token = localStorage.getItem('token')
       if (token) {
-        config.headers.Authorization = `Bearer ${token}`
+        const raw = String(token).trim()
+        // 兼容 token 可能已包含 `Bearer ` 前缀（甚至重复前缀）
+        let tokenValue = raw
+        while (/^Bearer\s+/i.test(tokenValue)) {
+          tokenValue = tokenValue.replace(/^Bearer\s+/i, '').trim()
+        }
+
+        config.headers = config.headers ?? {}
+        // 后端通常按 Bearer 格式解析；这里统一成单一 Bearer 前缀
+        config.headers.Authorization = `Bearer ${tokenValue}`
+        // 额外兜底：有些后端可能读取自定义 header 名
+        config.headers.token = tokenValue
       }
     }
     

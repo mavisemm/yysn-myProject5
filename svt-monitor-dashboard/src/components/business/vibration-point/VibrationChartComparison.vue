@@ -462,10 +462,15 @@ const loadVibrationChartsData = async () => {
         const timeResponse = await getVibrationTimeDomainData(pointDeviceId.value, receiverIdFromParams.value);
         if (timeResponse.rc === 0 && timeResponse.ret) {
             try {
-                const timeDomainArray = timeResponse.ret.timedomaindata
-                    .split(',')
-                    .map((s) => parseFloat(s.trim()))
-                    .filter((n) => !isNaN(n));
+                const raw = (timeResponse.ret as any).timedomaindata;
+                const timeDomainArray: number[] = Array.isArray(raw)
+                    ? raw
+                          .map((v: any) => (typeof v === 'number' ? v : parseFloat(String(v).trim())))
+                          .filter((n: number) => Number.isFinite(n))
+                    : String(raw ?? '')
+                          .split(',')
+                          .map((s) => parseFloat(s.trim()))
+                          .filter((n) => Number.isFinite(n));
                 if (Array.isArray(timeDomainArray) && timeDomainArray.length > 0 &&
                     typeof timeResponse.ret.time === 'number' && timeResponse.ret.time > 0) {
                     timeDomainData.value = timeDomainArray;

@@ -42,6 +42,7 @@ import { User, Lock } from '@element-plus/icons-vue'
 import { login as loginApi } from '@/api/modules/login'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
 import { useAlarmOverviewStore } from '@/stores/alarmOverview'
+import { useDeviceTreeStore } from '@/stores/deviceTree'
 
 // 引入路由
 const router = useRouter()
@@ -52,6 +53,8 @@ onMounted(() => {
     // 登录页也同步重置内存态，确保换用户登录后能重新预热/重连
     useAlarmBatchStore().resetPrefetchState()
     useAlarmOverviewStore().reset()
+    // 清理设备树内存缓存，避免“重新登录后 dashboard 不发 tree 请求”
+    useDeviceTreeStore().clearDeviceTreeData()
 })
 
 // 表单数据

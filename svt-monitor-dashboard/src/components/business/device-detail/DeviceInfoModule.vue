@@ -38,7 +38,7 @@
             </div>
 
             <el-dialog
-                v-model="soundStageReportDialogVisible"
+                v-model="soundStageReport.dialogVisible"
                 title="阶段性报告"
                 width="530px"
                 :close-on-click-modal="true"
@@ -48,12 +48,12 @@
                 :modal-append-to-body="true"
             >
                 <div class="sound-stage-report-row">
-                    <CommonDateTimePicker v-model="soundStageReportDateRange" width="100%" />
+                    <CommonDateTimePicker v-model="soundStageReport.dateRange" width="100%" />
                     <el-button
                         class="sound-stage-report-download"
                         size="small"
                         type="primary"
-                        :loading="soundStageReportDownloading"
+                        :loading="soundStageReport.downloading"
                         @click="downloadSoundStageReport"
                     >
                         下载
@@ -219,7 +219,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
+import { ref, computed, reactive, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { ElButton, ElInput, ElMessage, ElForm, ElFormItem } from 'element-plus'
 import * as echarts from 'echarts'
 import { getDeviceInfoByEquipmentId, editEquipmentInfo, getEquipmentHealth, type DeviceInfoDto, type DeviceHealthResponse } from '@/api/modules/hardware'
@@ -344,9 +344,11 @@ const newOptionInput = ref('');
 const newFieldOptions = ref<string[]>([]);
 
 type DateRange = [string, string] | null
-const soundStageReportDialogVisible = ref(false)
-const soundStageReportDateRange = ref<DateRange>(null)
-const soundStageReportDownloading = ref(false)
+const soundStageReport = reactive({
+    dialogVisible: false,
+    dateRange: null as DateRange,
+    downloading: false
+})
 
 // 设备信息响应式数据
 const deviceInfo = ref<DeviceInfo>({
@@ -454,7 +456,7 @@ const removeOption = (index: number) => {
 }
 
 const openSoundStageReportDialog = () => {
-    soundStageReportDialogVisible.value = true
+    soundStageReport.dialogVisible = true
 }
 
 const sanitizeFilename = (name: string) => name.replace(/[\\/:*?"<>|]/g, '-')
@@ -464,14 +466,14 @@ const downloadSoundStageReport = async () => {
         ElMessage.warning('缺少设备ID')
         return
     }
-    const range = soundStageReportDateRange.value
+    const range = soundStageReport.dateRange
     if (!range || range.length !== 2 || !range[0] || !range[1]) {
         ElMessage.warning('请选择时间范围')
         return
     }
 
     const [startTime, endTime] = range
-    soundStageReportDownloading.value = true
+    soundStageReport.downloading = true
     try {
         const res = await service.get(`/hardware/device/health-report/${props.deviceId}`, {
             params: { startTime, endTime, type: 'sound' },
@@ -502,12 +504,12 @@ const downloadSoundStageReport = async () => {
         a.remove()
         URL.revokeObjectURL(url)
 
-        soundStageReportDialogVisible.value = false
+        soundStageReport.dialogVisible = false
     } catch (e) {
         console.error('下载阶段性报告失败:', e)
         ElMessage.error('下载失败')
     } finally {
-        soundStageReportDownloading.value = false
+        soundStageReport.downloading = false
     }
 }
 

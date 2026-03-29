@@ -215,23 +215,25 @@ const selectedDeviceId = computed(() => deviceTreeStore.selectedDeviceId)
 
 // 监听选中状态变化并更新树组件
 const updateSelection = async (newId: string | null) => {
-  if (deviceTreeRef.value && deviceTreeRef.value.setCurrentKey) {
-    await nextTick();
-    // 如果newId为null，则清除选中状态；否则设置选中指定的节点
-    if (newId) {
-      deviceTreeRef.value.setCurrentKey(newId);
-    } else {
-      // 清除选中状态
-      deviceTreeRef.value.setCurrentKey(null);
-    }
+  await nextTick()
+  const tree = deviceTreeRef.value
+  if (!tree || typeof tree.setCurrentKey !== 'function') return
+  try {
+    tree.setCurrentKey(newId || null)
+  } catch (e) {
+    console.warn('更新设备树选中状态失败:', e)
   }
 }
 
 // 监听展开节点变化，更新树组件状态
 const updateExpansion = async (newKeys: string[]) => {
-  if (newKeys && deviceTreeRef.value && deviceTreeRef.value.setExpandedKeys) {
-    await nextTick();
-    deviceTreeRef.value.setExpandedKeys(newKeys)
+  await nextTick()
+  const tree = deviceTreeRef.value
+  if (!newKeys || !tree || typeof tree.setExpandedKeys !== 'function') return
+  try {
+    tree.setExpandedKeys(newKeys)
+  } catch (e) {
+    console.warn('更新设备树展开状态失败:', e)
   }
 }
 

@@ -22,10 +22,16 @@ export class VibrationWsClient {
 
   constructor(opts?: { brokerURL?: string; token?: string }) {
     const brokerURL = opts?.brokerURL ?? (import.meta.env.VITE_VIBRATION_WS_URL as string | undefined) ?? buildDefaultBrokerURL()
+    const rawToken = (opts?.token ?? '').toString().trim()
+    let tokenValue = rawToken
+    while (/^Bearer\s+/i.test(tokenValue)) {
+      tokenValue = tokenValue.replace(/^Bearer\s+/i, '').trim()
+    }
+    const authorization = tokenValue ? `Bearer ${tokenValue}` : undefined
 
     this.client = new Client({
       brokerURL,
-      connectHeaders: opts?.token ? { Authorization: `Bearer ${opts.token}` } : {},
+      connectHeaders: authorization ? { Authorization: authorization } : {},
       reconnectDelay: 3000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,

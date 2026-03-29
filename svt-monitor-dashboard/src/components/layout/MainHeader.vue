@@ -252,6 +252,8 @@ const handleLogout = () => {
     // 清空会影响“仅首次预热/实时订阅”的内存状态
     alarmBatchStore.resetPrefetchState()
     alarmOverviewStore.reset()
+    // 清空设备树内存缓存，确保下次登录强制刷新
+    deviceTreeStore.clearDeviceTreeData()
     router.push('/login')
     ElMessage.success('已安全退出')
   }).catch(() => {

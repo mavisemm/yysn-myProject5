@@ -427,22 +427,34 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
 
   let didPrefetchDefaultRealtime = false
   let didPrefetchDefaultHistory = false
+  // 用于“退出登录后取消尾部预热”——每次 reset 自增版本号，预热流程完成前检查版本不一致则直接返回。
+  let prefetchAuthEpoch = 0
+
+  const hasAuthToken = () => Boolean(localStorage.getItem('token'))
 
   // 预热：在进入“预警总览”页面时先拉一页数据，避免用户点击弹窗后再等待首次渲染。
   // 只预热默认筛选（Realtime 空条件，History 默认 Accurate-Yes）。
   const prefetchRealtimeListForDefault = async () => {
     if (didPrefetchDefaultRealtime) return
+    if (!hasAuthToken()) return
     didPrefetchDefaultRealtime = true
+    const epoch = prefetchAuthEpoch
     // dropdown 逻辑跟随 find 预热：只有当我们要预热列表时才确保下拉数据就绪
     await ensureDropdowns()
+    if (epoch !== prefetchAuthEpoch) return
+    if (!hasAuthToken()) return
     await fetchRealtimeList(0, false, 'light')
   }
 
   const prefetchHistoryListForDefault = async () => {
     if (didPrefetchDefaultHistory) return
+    if (!hasAuthToken()) return
     didPrefetchDefaultHistory = true
+    const epoch = prefetchAuthEpoch
     // dropdown 逻辑跟随 find 预热：只有当我们要预热列表时才确保下拉数据就绪
     await ensureDropdowns()
+    if (epoch !== prefetchAuthEpoch) return
+    if (!hasAuthToken()) return
     await fetchHistoryList(0, false, 'light')
   }
 
@@ -453,6 +465,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const resetPrefetchState = () => {
     didPrefetchDefaultRealtime = false
     didPrefetchDefaultHistory = false
+    prefetchAuthEpoch++
     // 切用户/退出登录后 dropdown 也应跟随重新预热逻辑再拉取
     typeList.value = []
     deviceNameList.value = []

@@ -70,6 +70,13 @@ export const useDeviceTreeStore = defineStore('deviceTree', () => {
     expandedKeys.value = keys
   }
 
+  // 清空设备树数据（用于退出登录/重新登录后强制刷新）
+  const clearDeviceTreeData = () => {
+    deviceTreeData.value = []
+    selectedDeviceId.value = null
+    expandedKeys.value = []
+  }
+
   // 重置设备树到初始状态
   const resetDeviceTreeState = () => {
     selectedDeviceId.value = null
@@ -98,6 +105,7 @@ export const useDeviceTreeStore = defineStore('deviceTree', () => {
     expandedKeys,
     setSelectedDeviceId,
     setExpandedKeys,
+    clearDeviceTreeData,
     resetDeviceTreeState,
     getDefaultWorkshopId,
     loadDeviceTreeData
