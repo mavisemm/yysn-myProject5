@@ -96,9 +96,9 @@ const getAlarmTypeTag = (type: string) => {
 /** 根据预警类型返回单位：振动 m/s²，温度 ℃，声音 dB */
 const getAlarmValueUnit = (type: string) => {
     switch (type) {
-        case '振动': return ' m/s²'
-        case '温度': return ' ℃'
-        case '声音': return ' dB'
+        case '振动': return ''
+        case '温度': return ''
+        case '声音': return ''
         default: return ''
     }
 }

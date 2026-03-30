@@ -8,7 +8,7 @@
         <div class="device-main">
             <!-- 设备图片：放在最上方 -->
             <div class="device-image-container">
-                <img :src="deviceImageSrc" alt="设备图片" class="device-image" />
+                <img v-if="deviceImageSrc" :src="deviceImageSrc" alt="设备图片" class="device-image" />
             </div>
 
             <!-- 健康度：同时显示（上：声音，下：振动） -->
@@ -226,8 +226,6 @@ import { getDeviceInfoByEquipmentId, editEquipmentInfo, getEquipmentHealth, type
 import { service } from '@/api/request'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
 
-const FALLBACK_DEVICE_IMAGE_URL: string = new URL('@/assets/images/background/背景图.png', import.meta.url).href
-
 const deviceImages = import.meta.glob('@/assets/images/background/*.{png,jpg,jpeg,webp,svg}', {
     eager: true,
     import: 'default'
@@ -254,7 +252,7 @@ const deviceImageByBaseName = (() => {
 
 const resolveDeviceImageFromName = (equipmentName: string): string => {
     const rawName = String(equipmentName ?? '').trim()
-    if (!rawName) return FALLBACK_DEVICE_IMAGE_URL
+    if (!rawName) return ''
 
     // 1) 原始文件名精确匹配（例如：五线一路风机 -> 五线一路风机.png）
     const exact = deviceImageByBaseName.get(rawName)
@@ -262,7 +260,7 @@ const resolveDeviceImageFromName = (equipmentName: string): string => {
 
     // 2) 规范化后精确匹配（去空格、大小写、括号备注、连字符）
     const normalizedRawName = normalizeDeviceImageKey(rawName)
-    if (!normalizedRawName) return FALLBACK_DEVICE_IMAGE_URL
+    if (!normalizedRawName) return ''
     for (const [baseName, url] of deviceImageByBaseName.entries()) {
         if (normalizeDeviceImageKey(baseName) === normalizedRawName) {
             return url
@@ -278,7 +276,7 @@ const resolveDeviceImageFromName = (equipmentName: string): string => {
         }
     }
 
-    return FALLBACK_DEVICE_IMAGE_URL
+    return ''
 }
 
 const formatValueWithUnit = (value: unknown, unit: string) => {
@@ -368,8 +366,12 @@ const deviceInfo = ref<DeviceInfo>({
 })
 
 const deviceImageSrc = computed<string>(() => {
+    if (!isDeviceInfoLoaded.value) return ''
     return resolveDeviceImageFromName(deviceInfo.value.equipmentName)
 })
+
+const isDeviceInfoLoaded = ref(false)
+let currentDeviceInfoRequestId = 0
 
 // 根据后端返回的 deviceNewInfo 解析出 extraFields（按 label1/value1 顺序，还兼容旧的扁平结构）
 const syncExtraFieldsFromDeviceInfo = () => {
@@ -540,6 +542,10 @@ const loadDeviceInfo = async () => {
 // 并行加载设备信息和健康度（根据用户记忆要求）
 const loadDeviceDataParallel = async () => {
     if (!props.deviceId) return;
+    const requestId = ++currentDeviceInfoRequestId
+    isDeviceInfoLoaded.value = false
+    // 请求返回前先清空名称，避免短暂显示上一个设备图片
+    deviceInfo.value.equipmentName = ''
 
     try {
         // 并行执行设备信息 + 声音/振动健康度查询
@@ -558,12 +564,14 @@ const loadDeviceDataParallel = async () => {
         // 处理设备信息响应
         if (infoResponse.rc === 0 && infoResponse.ret) {
             const raw: any = infoResponse.ret
+            if (requestId !== currentDeviceInfoRequestId) return
             deviceInfo.value = {
                 ...infoResponse.ret,
                 equipmentId: raw.equipmentId ?? '',
                 equipmentName: raw.equipmentName ?? ''
             } as any
             syncExtraFieldsFromDeviceInfo();
+            isDeviceInfoLoaded.value = true
         } else {
             ElMessage.error('获取设备信息失败');
         }
@@ -600,6 +608,10 @@ const loadDeviceDataParallel = async () => {
         })
     } catch (error) {
         ElMessage.error('获取设备数据失败');
+    } finally {
+        if (requestId === currentDeviceInfoRequestId && !isDeviceInfoLoaded.value) {
+            isDeviceInfoLoaded.value = true
+        }
     }
 }
 

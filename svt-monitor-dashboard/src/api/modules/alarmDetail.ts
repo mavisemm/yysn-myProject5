@@ -29,8 +29,8 @@ export interface ApiRcRet<T> {
 export const apiGetEventById = async (params: { id: string | number }): Promise<ApiRcRet<AlarmEventDetail>> => {
   return request.get('/taicang/event/findById', {
     params: {
-      id: params.id
-    },
+          id: params.id
+        },
     showLoading: true
   })
 }

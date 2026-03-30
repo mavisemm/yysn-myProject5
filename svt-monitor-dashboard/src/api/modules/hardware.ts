@@ -1,4 +1,5 @@
 import request from '../request'
+import { getTenantId } from '../tenant'
 
 // 硬件设备相关 API 接口
 
@@ -254,9 +255,13 @@ export interface TopDeviceResponse {
 }
 
 // 获取设备Top5数据，type可为SOUND, VIBRATION, TEMPERATURE
-export const getTop5Devices = (type: 'SOUND' | 'VIBRATION' | 'TEMPERATURE'): Promise<TopDeviceResponse> => {
+export const getTop5Devices = (
+  type: 'SOUND' | 'VIBRATION' | 'TEMPERATURE',
+  tenantId?: string
+): Promise<TopDeviceResponse> => {
+  const currentTenantId = tenantId ?? getTenantId()
   return request.get('/taicang/hardware/device/vibration/top5', {
-    params: { type },
+    params: { type, tenantId: currentTenantId },
     showLoading: true
   })
 }

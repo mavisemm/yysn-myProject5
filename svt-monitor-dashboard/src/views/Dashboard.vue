@@ -90,10 +90,11 @@ const router = useRouter()
  */
 const fetchTop5Data = async () => {
   try {
+    const tenantId = getTenantId() || undefined
     const [vibrationData, soundData, temperatureData] = await Promise.all([
-      getTop5Devices('VIBRATION'),
-      getTop5Devices('SOUND'),
-      getTop5Devices('TEMPERATURE')
+      getTop5Devices('VIBRATION', tenantId),
+      getTop5Devices('SOUND', tenantId),
+      getTop5Devices('TEMPERATURE', tenantId)
     ]);
 
     if (vibrationData.rc === 0 && vibrationData.ret?.length) {
