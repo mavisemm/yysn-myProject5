@@ -2,7 +2,6 @@ import request from '../request'
 import { getTenantId } from '../tenant'
 import type { VibrationEventPayload } from '@/services/vibrationWs'
 
-/** 事件查询接口返回的单条记录（按项目已有的 /taicang/event/find 约定） */
 export interface EventFindItem {
   deviceId?: string
   time?: number
@@ -22,7 +21,6 @@ export interface EventFindResponse {
   err: string | null
 }
 
-/** 机器振动故障报警查询（/taicang/event/findVibrationAlarm） */
 export interface VibrationAlarmFindItem {
   alarmId?: string
   tenantId?: string
@@ -59,10 +57,6 @@ export interface VibrationAlarmFindResponse {
   err: string | null
 }
 
-/**
- * 预警总览初始化：查询近一段时间的振动事件列表
- * - 不调用 saveVibration（该接口为写入，会导致后端插入并触发 device_id not null）
- */
 export const fetchVibrationEventsForOverview = async (params?: {
   tenantId?: string
   startTime?: number
@@ -74,7 +68,6 @@ export const fetchVibrationEventsForOverview = async (params?: {
 
   const pageSize = params?.pageSize ?? 30
   const res = await request.post<EventFindResponse>(
-    // 兜底：必须直连 8003，避免落到 8006 的路由导致 405
     'http://122.224.196.178:8003/taicang/event/find',
     {
       filterPropertyMap: [
@@ -105,11 +98,6 @@ export const fetchVibrationEventsForOverview = async (params?: {
     .filter((x) => x.deviceId && x.time)
  }
 
-/**
- * 预警总览初始化：机器振动“故障报警”列表（你提供的接口）
- * - 该接口仅返回故障报警，不包含趋势预警
- * - AlarmOverview.vue 内已支持该结构（alarmTime/alarmTypeCode/data/rawDataJson）
- */
 export const fetchVibrationAlarmsForOverview = async (params?: {
   tenantId?: string
   pageIndex?: number

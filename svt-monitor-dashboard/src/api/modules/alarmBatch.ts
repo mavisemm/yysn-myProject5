@@ -85,7 +85,7 @@ export const apiGetPointListNew = (body: any) => {
 }
 
 export const apiConfirmYes = (idList: string[]) => {
-  // 后端期望请求体根为数组（List），不要再包一层 { idList: [...] }
+  
   return request.post<any>('/taicang/event/confirm/yes', idList, { showLoading: true })
 }
 
@@ -98,17 +98,17 @@ export const apiDeleteEvents = (idList: string[]) => {
 }
 
 export const apiConfirmYesAll = (idList?: string[]) => {
-  // 后端期望请求体根为数组（List）；没有 idList 时传空数组
+  
   return request.post<any>('/taicang/event/confirm/yesAll', idList ?? [], { showLoading: true })
 }
 
 export const apiConfirmNotAll = () => {
-  // 后端期望请求体根为数组（List）
+  
   return request.post<any>('/taicang/event/confirm/notAll', [], { showLoading: true })
 }
 
 export const apiDeleteAllValid = () => {
-  // 后端期望请求体根为数组（List）
+  
   return request.post<any>('/taicang/event/deleteAllValid', [], { showLoading: true })
 }
 

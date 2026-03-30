@@ -28,7 +28,6 @@ import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vu
 const waterfallChartRef = ref<HTMLElement>();
 const waterfallChartInstance = shallowRef<echarts.ECharts | null>(null);
 
-/** 已移除灰色/绿色主题：统一使用非灰配色 */
 const backgroundMode = inject<Ref<'image' | 'navy' | 'solid'> | undefined>('backgroundMode');
 const chartAxisColor = computed(() => '#ffffff');
 const chartGridLineColor = computed(() => '#999999');
@@ -36,7 +35,6 @@ const chartGridLineColor = computed(() => '#999999');
 const intervalHours = ref(1);
 const dateRange = ref<[string, string] | null>(null);
 
-/** 按时间范围和间隔生成 y 轴时间点，条数 = floor((结束-开始)/间隔) */
 function generateTimesFromRange(
     startStr: string,
     endStr: string,
@@ -141,7 +139,7 @@ const initChart = () => {
             }
         },
         grid3D: {
-            // 调整3D盒子位置，为右侧图例留出空间
+            
             left: '-10%',
             top: '-2%',
             viewControl: {

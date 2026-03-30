@@ -19,14 +19,14 @@ const routes: RouteRecordRaw[] = [
         redirect: 'dashboard'
       },
       {
-        // 设备详情页：equipmentId 放在 path
+        
         path: 'device-detail/:id',
         name: 'DeviceDetail',
         component: () => import('@/views/DeviceDetail.vue'),
         meta: { title: 'Device Detail' }
       },
       {
-        // 兼容旧地址：/device-detail?equipmentId=xxx
+        
         path: 'device-detail',
         name: 'DeviceDetailQueryLegacy',
         redirect: (to) => {
@@ -39,14 +39,14 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
-        // 声音点位页：receiverId 放在 path
+        
         path: 'sound-point/:receiverId',
         name: 'SoundPoint',
         component: () => import('@/views/SoundPoint.vue'),
         meta: { title: 'Sound Point' }
       },
       {
-        // 振动点位页：receiverId 放在 path
+        
         path: 'vibration-point/:receiverId',
         name: 'VibrationPoint',
         component: () => import('@/views/VibrationPoint.vue'),

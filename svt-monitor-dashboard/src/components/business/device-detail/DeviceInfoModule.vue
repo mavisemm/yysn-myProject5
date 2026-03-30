@@ -6,12 +6,10 @@
             </div>
         </div>
         <div class="device-main">
-            <!-- 设备图片：放在最上方 -->
             <div class="device-image-container">
                 <img v-if="deviceImageSrc" :src="deviceImageSrc" alt="设备图片" class="device-image" />
             </div>
 
-            <!-- 健康度：同时显示（上：声音，下：振动） -->
             <div class="health-gauge-container">
                 <div class="gauge-block">
                     <div class="gauge-block-topbar">
@@ -61,7 +59,6 @@
                 </div>
             </el-dialog>
 
-            <!-- 操作按钮：放在健康度下方、设备信息上方 -->
             <div class="header-actions">
                 <el-button type="primary" size="small" @click="openAddFieldDialog" class="add-field-btn">
                     添加信息
@@ -71,7 +68,6 @@
                 </el-button>
             </div>
 
-            <!-- 设备基本信息：排在最下方 -->
             <div v-if="!hasDeviceInfo" class="device-no-data">暂无数据</div>
             <div v-else class="device-basic-info">
                 <div class="info-row" v-if="!isEditing">
@@ -139,12 +135,10 @@
                 </div>
 
                 <div class="info-row" v-if="!isEditing">
-                    <!-- 左侧固定显示压力 -->
                     <div class="info-item">
                         <span class="info-label  ">压力：</span>
                         <span class="info-value  ">{{ formatValueWithUnit(deviceInfo.pressure, 'MPa') }}</span>
                     </div>
-                    <!-- 右侧：如果有自定义字段，则第一条跟在压力后面，同排展示 -->
                     <div v-if="extraFields.length > 0" class="info-item">
                         <span class="info-label">{{ extraFields[0]?.label }}：</span>
                         <span class="info-value">{{ extraFields[0]?.value }}</span>
@@ -156,11 +150,9 @@
                         <el-input v-model="editForm.pressure" size="small" class="info-input" />
                     </div>
                     <div class="info-item">
-                        <!-- 在线状态已移除 -->
                     </div>
                 </div>
 
-                <!-- 额外自定义字段：压力之后的其余字段，两两一行 -->
                 <div
                     class="info-row"
                     v-for="(row, rowIndex) in extraFieldRows"
@@ -180,7 +172,6 @@
             </div>
         </div>
 
-        <!-- 添加自定义设备信息字段弹窗 -->
         <el-dialog
             v-model="addFieldDialogVisible"
             title="添加设备信息"
@@ -254,11 +245,11 @@ const resolveDeviceImageFromName = (equipmentName: string): string => {
     const rawName = String(equipmentName ?? '').trim()
     if (!rawName) return ''
 
-    // 1) 原始文件名精确匹配（例如：五线一路风机 -> 五线一路风机.png）
+    
     const exact = deviceImageByBaseName.get(rawName)
     if (exact) return exact
 
-    // 2) 规范化后精确匹配（去空格、大小写、括号备注、连字符）
+    
     const normalizedRawName = normalizeDeviceImageKey(rawName)
     if (!normalizedRawName) return ''
     for (const [baseName, url] of deviceImageByBaseName.entries()) {
@@ -267,7 +258,7 @@ const resolveDeviceImageFromName = (equipmentName: string): string => {
         }
     }
 
-    // 3) 包含匹配（兼容“设备名后面带编号/前缀”等场景）
+    
     for (const [baseName, url] of deviceImageByBaseName.entries()) {
         const normalizedBase = normalizeDeviceImageKey(baseName)
         if (!normalizedBase) continue
@@ -288,7 +279,7 @@ const formatValueWithUnit = (value: unknown, unit: string) => {
     return `${raw} ${unit}`
 }
 
-// 定义设备信息类型 - 对应API返回的数据结构
+
 interface DeviceInfo {
     id: number;
     equipmentId: string;
@@ -302,11 +293,11 @@ interface DeviceInfo {
     onlineStatus: number;
     createdTime: string | null;
     updatedTime: string | null;
-    // 后端返回的自定义字段（新结构：数组）
+    
     deviceNewInfo?: Array<{ label: string; value: string }>;
 }
 
-// 设备信息prop
+
 const props = defineProps<{
     deviceId: string
 }>()
@@ -317,7 +308,7 @@ const emit = defineEmits<{
 
 const hasDeviceInfo = ref(true);
 
-// 额外自定义字段（仅前端展示）
+
 interface ExtraField {
     label: string;
     value: string;
@@ -326,10 +317,10 @@ interface ExtraField {
 }
 
 const extraFields = ref<ExtraField[]>([]);
-// 压力之后的自定义字段（不含第一条），两两一行用于展示
+
 const extraFieldRows = computed<ExtraField[][]>(() => {
     const rows: ExtraField[][] = []
-    const list = extraFields.value.slice(1) // 从第二条开始
+    const list = extraFields.value.slice(1) 
     for (let i = 0; i < list.length; i += 2) {
         rows.push(list.slice(i, i + 2))
     }
@@ -348,7 +339,7 @@ const soundStageReport = reactive({
     downloading: false
 })
 
-// 设备信息响应式数据
+
 const deviceInfo = ref<DeviceInfo>({
     id: 0,
     equipmentId: '',
@@ -373,7 +364,7 @@ const deviceImageSrc = computed<string>(() => {
 const isDeviceInfoLoaded = ref(false)
 let currentDeviceInfoRequestId = 0
 
-// 根据后端返回的 deviceNewInfo 解析出 extraFields（按 label1/value1 顺序，还兼容旧的扁平结构）
+
 const syncExtraFieldsFromDeviceInfo = () => {
     const raw = (deviceInfo.value as any).deviceNewInfo
     const parsed: ExtraField[] = []
@@ -382,7 +373,7 @@ const syncExtraFieldsFromDeviceInfo = () => {
         return
     }
 
-    // 新结构：数组 [{label, value}, ...]
+    
     if (Array.isArray(raw)) {
         raw.forEach((it: any) => {
             const label = String(it?.label ?? '').trim()
@@ -393,7 +384,7 @@ const syncExtraFieldsFromDeviceInfo = () => {
         return
     }
 
-    // 兼容旧结构1：{ item1: { label1:'', value1:'' }, item2: {...} }
+    
     let idx = 1
     let foundAny = false
     while (idx <= 50) {
@@ -411,7 +402,7 @@ const syncExtraFieldsFromDeviceInfo = () => {
         idx++
     }
 
-    // 兼容旧结构2：扁平 { label1:'', value1:'', label2:'', value2:'' }
+    
     if (!foundAny) {
         let j = 1
         while (j <= 50) {
@@ -428,7 +419,7 @@ const syncExtraFieldsFromDeviceInfo = () => {
     extraFields.value = parsed
 }
 
-// 打开添加字段弹窗
+
 const openAddFieldDialog = () => {
     newField.value = { label: '', value: '', type: 'input' };
     newFieldType.value = 'input';
@@ -437,7 +428,7 @@ const openAddFieldDialog = () => {
     addFieldDialogVisible.value = true;
 }
 
-// 下拉选项：添加一条
+
 const addOption = () => {
     const v = newOptionInput.value.trim();
     if (!v) {
@@ -452,7 +443,7 @@ const addOption = () => {
     newOptionInput.value = '';
 }
 
-// 下拉选项：删除一条
+
 const removeOption = (index: number) => {
     newFieldOptions.value.splice(index, 1);
 }
@@ -515,7 +506,7 @@ const downloadSoundStageReport = async () => {
     }
 }
 
-// 加载设备信息
+
 const loadDeviceInfo = async () => {
     if (!props.deviceId) return;
 
@@ -539,16 +530,16 @@ const loadDeviceInfo = async () => {
     }
 }
 
-// 并行加载设备信息和健康度（根据用户记忆要求）
+
 const loadDeviceDataParallel = async () => {
     if (!props.deviceId) return;
     const requestId = ++currentDeviceInfoRequestId
     isDeviceInfoLoaded.value = false
-    // 请求返回前先清空名称，避免短暂显示上一个设备图片
+    
     deviceInfo.value.equipmentName = ''
 
     try {
-        // 并行执行设备信息 + 声音/振动健康度查询
+        
         const [infoResponse, soundHealthResponse, vibrationHealthResponse] = await Promise.all([
             getDeviceInfoByEquipmentId(props.deviceId),
             getEquipmentHealth({
@@ -561,7 +552,7 @@ const loadDeviceDataParallel = async () => {
             }),
         ]);
 
-        // 处理设备信息响应
+        
         if (infoResponse.rc === 0 && infoResponse.ret) {
             const raw: any = infoResponse.ret
             if (requestId !== currentDeviceInfoRequestId) return
@@ -576,7 +567,7 @@ const loadDeviceDataParallel = async () => {
             ElMessage.error('获取设备信息失败');
         }
 
-        // 处理声音健康度
+        
         if (soundHealthResponse.rc === 0 && soundHealthResponse.ret) {
             const ret: any = soundHealthResponse.ret
             const score = typeof ret.healthScore === 'number' ? ret.healthScore : null
@@ -590,7 +581,7 @@ const loadDeviceDataParallel = async () => {
             soundHealthGrade.value = ''
         }
 
-        // 处理振动健康度
+        
         if (vibrationHealthResponse.rc === 0 && vibrationHealthResponse.ret) {
             const ret: any = vibrationHealthResponse.ret
             const grade = extractHealthGrade(ret)
@@ -615,19 +606,19 @@ const loadDeviceDataParallel = async () => {
     }
 }
 
-// 监听deviceId变化
+
 watch(() => props.deviceId, (newId) => {
     if (newId) {
         loadDeviceDataParallel();
     }
 }, { immediate: true })
 
-// 编辑状态
+
 const isEditing = ref(false)
 const editForm = ref<DeviceInfo>({ ...deviceInfo.value })
 
-// 将自定义字段序列化为后端需要的数组结构：
-// deviceNewInfo: [{ label: '名称1', value: '值1' }, { label: '名称2', value: '值2' }, ...]
+
+
 const buildDeviceNewInfo = (fields: ExtraField[]): Array<{ label: string; value: string }> => {
     const arr: Array<{ label: string; value: string }> = []
     for (const f of fields) {
@@ -643,7 +634,7 @@ const buildDeviceNewInfo = (fields: ExtraField[]): Array<{ label: string; value:
     return arr
 }
 
-// 确认添加字段：仅更新前端配置列表（等待后端接口接入）
+
 const confirmAddField = () => {
     const label = newField.value.label.trim()
     if (!label) {
@@ -675,14 +666,14 @@ const confirmAddField = () => {
     addFieldDialogVisible.value = false
 }
 
-// 健康度相关：同时展示声音/振动
+
 const soundHealthScore = ref(0)
 const vibrationHealthScore = ref(0)
-// 声音健康度：是否有数据（无数据时显示 '-' 而不是 0）
+
 const hasSoundHealthData = ref(false)
-// 振动健康度：是否有数据（无数据时显示 '-'）
+
 const hasVibrationHealthData = ref(false)
-// 按接口返回的 healthGrade 划分 A/B/C/D 四个等级（兼容大小写）
+
 const soundHealthGrade = ref<'A' | 'B' | 'C' | 'D' | ''>('')
 const vibrationHealthGrade = ref<'A' | 'B' | 'C' | 'D' | ''>('')
 
@@ -691,7 +682,7 @@ const vibrationGaugeRef = ref<HTMLDivElement>()
 let soundGaugeChart: echarts.ECharts | null = null
 let vibrationGaugeChart: echarts.ECharts | null = null
 
-// 响应式字体/距离计算（供初始化与 resize 时按当前容器尺寸重建 option）
+
 const calculateResponsiveFontSize = (baseSize: number, containerWidth: number, containerHeight: number) => {
     const baseDimension = Math.min(containerWidth, containerHeight)
     const scaleRatio = Math.min(baseDimension / 200, 2)
@@ -703,7 +694,7 @@ const calculateResponsiveDistance = (baseDistance: number, containerWidth: numbe
     return Math.max(baseDistance * scaleRatio, baseDistance * 0.5)
 }
 
-// 从接口原始对象里解析健康等级（兼容大小寫和不同字段命名）
+
 const extractHealthGrade = (ret: any): 'A' | 'B' | 'C' | 'D' | '' => {
     if (!ret) return ''
     const raw = ret.healthGrade ?? ret.health_grade ?? ret.grade ?? ''
@@ -715,17 +706,17 @@ const extractHealthGrade = (ret: any): 'A' | 'B' | 'C' | 'D' | '' => {
     return ''
 }
 
-// 将健康等级映射到一个代表分值，用於儀表盤指針位置（振动健康度使用）
+
 const mapGradeToScore = (grade: 'A' | 'B' | 'C' | 'D' | ''): number => {
     switch (grade) {
         case 'A':
-            return 90 // 深綠，高健康
+            return 90 
         case 'B':
-            return 70 // 淡綠
+            return 70 
         case 'C':
-            return 40 // 橙色
+            return 40 
         case 'D':
-            return 15 // 紅色
+            return 15 
         default:
             return 0
     }
@@ -734,19 +725,19 @@ const mapGradeToScore = (grade: 'A' | 'B' | 'C' | 'D' | ''): number => {
 type GaugeMode = 'sound' | 'vibration'
 
 const resolveHealthColor = (score: number, grade: 'A' | 'B' | 'C' | 'D' | '') => {
-    // 根据 grade 映射颜色：A 深绿、B 淡绿、C 橙色、D 红色
+    
     if (grade === 'D') return '#ff5722'
     if (grade === 'C') return '#f2b504'
     if (grade === 'B') return '#85ea8c'
     if (grade === 'A') return '#309735'
-    // 兼容没有 grade 时按分数判断
+    
     if (score >= 80) return '#309735'
     if (score >= 60) return '#85ea8c'
     if (score >= 20) return '#f2b504'
     return '#ff5722'
 }
 
-// 根据当前容器尺寸生成仪表盘 option（resize 时用新尺寸重新调用，实现自适应字体与布局）
+
 const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeight: number) => {
     const isVibration = mode === 'vibration'
     const score = isVibration ? vibrationHealthScore.value : soundHealthScore.value
@@ -759,11 +750,11 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
     const titleFontSize = Math.round(calculateResponsiveFontSize(20, containerWidth, containerHeight))
     const detailFontSize = Math.round(calculateResponsiveFontSize(24, containerWidth, containerHeight))
 
-    // 仪表盘区间按 10, 8, 8, 10 的比例划分为 D/C/B/A 四个区段
+    
     const total = 10 + 8 + 8 + 10
-    const dEnd = 10 / total      // 红色 D 区结尾
-    const cEnd = (10 + 8) / total // 橙色 C 区结尾
-    const bEnd = (10 + 8 + 8) / total // 淡绿 B 区结尾
+    const dEnd = 10 / total      
+    const cEnd = (10 + 8) / total 
+    const bEnd = (10 + 8 + 8) / total 
 
     return {
         series: [{
@@ -778,15 +769,15 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
             progress: { show: false },
             pointer: { show: false },
             axisLine: {
-                roundCap: true,  // 使用 Sausage 形状绘制弧线，两端圆润（lineStyle 的 cap/join 对 gauge 不生效）
+                roundCap: true,  
                 lineStyle: {
                     width: Math.round(12 * Math.min(containerWidth / 300, 2)),
-                    // 按 10,8,8,10 比例划分 D/C/B/A 四个颜色区间
+                    
                     color: [
-                        [dEnd, '#ff5722'],   // D：红色
-                        [cEnd, '#f2b504'],   // C：橙色
-                        [bEnd, '#85ea8c'],   // B：淡绿色
-                        [1, '#309735']       // A：深绿色
+                        [dEnd, '#ff5722'],   
+                        [cEnd, '#f2b504'],   
+                        [bEnd, '#85ea8c'],   
+                        [1, '#309735']       
                     ]
                 }
             },
@@ -794,7 +785,7 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
             splitLine: { show: false },
             axisLabel: {
                 show: true,
-                // 振动健康度的文字再往裡（遠離刻度線）一點，避免與刻度線/色帶重疊
+                
                 distance: calculateResponsiveDistance(
                     isVibration ? -130 : -105,
                     containerWidth,
@@ -803,18 +794,18 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
                 fontSize: axisLabelFontSize,
                 color: '#fff',
                 formatter: function (value: number) {
-                    // 振动健康度：在各自颜色区间中間附近顯示 A/B/C/D（使用實際刻度值 10/40/60/90）
+                    
                     if (isVibration) {
-                        // 根據 10,8,8,10 比例計算每段的中點，再對齊到最接近的 10 刻度
+                        
                         const total = 10 + 8 + 8 + 10
                         const dEnd = 10 / total
                         const cEnd = (10 + 8) / total
                         const bEnd = (10 + 8 + 8) / total
                         const roundToTick = (percent: number) => Math.round(percent / 10) * 10
-                        const dCenter = roundToTick((0 + dEnd * 100) / 2)      // 約 10
-                        const cCenter = roundToTick(((dEnd + cEnd) * 100) / 2) // 約 40
-                        const bCenter = roundToTick(((cEnd + bEnd) * 100) / 2) // 約 60
-                        const aCenter = roundToTick(((bEnd + 1) * 100) / 2)    // 約 90
+                        const dCenter = roundToTick((0 + dEnd * 100) / 2)      
+                        const cCenter = roundToTick(((dEnd + cEnd) * 100) / 2) 
+                        const bCenter = roundToTick(((cEnd + bEnd) * 100) / 2) 
+                        const aCenter = roundToTick(((bEnd + 1) * 100) / 2)    
 
                         if (value === dCenter) return '{gradeD|D\n不允许}'
                         if (value === cCenter) return '{gradeC|C\n注意}'
@@ -822,7 +813,7 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
                         if (value === aCenter) return '{gradeA|A\n良好}'
                         return ''
                     }
-                    // 声音健康度：保留原來的文字刻度
+                    
                     if (value === 0) return '{stop|0}'
                     if (value === 10) return '{stop|停机}'
                     if (value === 20) return '{stop|20}'
@@ -839,7 +830,7 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
                     inspect: { color: '#f2b504', fontSize: axisLabelFontSize },
                     focus: { color: '#85ea8c', fontSize: axisLabelFontSize },
                     health: { color: '#309735', fontSize: axisLabelFontSize },
-                    // 振动健康度 A/B/C/D 標籤：字稍微小一點，兩行顯示（字母在上，中文在下）
+                    
                     gradeD: { color: '#ff5722', fontSize: Math.round(axisLabelFontSize * 0.85), fontWeight: 'bold', lineHeight: axisLabelFontSize },
                     gradeC: { color: '#f2b504', fontSize: Math.round(axisLabelFontSize * 0.85), fontWeight: 'bold', lineHeight: axisLabelFontSize },
                     gradeB: { color: '#85ea8c', fontSize: Math.round(axisLabelFontSize * 0.85), fontWeight: 'bold', lineHeight: axisLabelFontSize },
@@ -859,7 +850,7 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
                 offsetCenter: [0, '-30%'],
                 fontSize: detailFontSize,
                 fontWeight: 'bolder',
-                // 声音顯示分數，振动顯示等級字母
+                
                 formatter: function (value: number) {
                     if (isVibration) return grade || '-'
                     if (!hasSoundHealthData.value) return '-'
@@ -872,12 +863,12 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
     }
 }
 
-// 切换编辑状态
+
 const toggleEdit = async () => {
     if (isEditing.value) {
-        // 保存编辑
+        
         try {
-            // 构造要发送的设备信息对象
+            
             const deviceInfoDto: DeviceInfoDto = {
                 id: deviceInfo.value.id,
                 equipmentId: props.deviceId,
@@ -890,13 +881,13 @@ const toggleEdit = async () => {
                 designFlow: Number(editForm.value.designFlow),
                 onlineStatus: deviceInfo.value.onlineStatus
             };
-            // 把弹窗新增的字段按 label1/value1... 推送给后端
+            
             (deviceInfoDto as any).deviceNewInfo = buildDeviceNewInfo(extraFields.value)
 
             const response = await editEquipmentInfo(props.deviceId, deviceInfoDto);
 
             if (response.rc === 0) {
-                // 更新本地数据
+                
                 Object.assign(deviceInfo.value, editForm.value);
                 ElMessage.success('设备信息更新成功');
                 isEditing.value = false;
@@ -909,7 +900,7 @@ const toggleEdit = async () => {
             ElMessage.error('设备信息更新失败');
         }
     } else {
-        // 进入编辑模式
+        
         Object.assign(editForm.value, deviceInfo.value)
         isEditing.value = true;
         emit('edit-status-change', { isEditing: true, hasChanges: false });
@@ -933,7 +924,7 @@ const initOneGauge = (mode: GaugeMode) => {
     }
 }
 
-// 初始化两个仪表盘
+
 const initGaugeCharts = () => {
     initOneGauge('sound')
     initOneGauge('vibration')
@@ -942,7 +933,7 @@ const initGaugeCharts = () => {
 let resizeObserver: ResizeObserver | null = null
 let parentResizeObserver: ResizeObserver | null = null
 
-// 窗口/容器大小改变时：先 resize 画布，再用当前容器尺寸重新生成 option（字体、刻度距离等自适应）
+
 const resizeGauge = () => {
     setTimeout(() => {
         try {
@@ -965,17 +956,17 @@ const resizeGauge = () => {
     }, 50)
 }
 
-// 存储用于重试的定时器ID
+
 let gaugeRetryTimerId: number | null = null;
 
-// 使用ResizeObserver监听容器变化
+
 const setupGaugeResizeObserver = () => {
     if (soundGaugeRef.value && vibrationGaugeRef.value) {
         resizeObserver = new ResizeObserver(resizeGauge);
         resizeObserver.observe(soundGaugeRef.value);
         resizeObserver.observe(vibrationGaugeRef.value);
     } else {
-        // 如果ref还未绑定，稍后重试
+        
         if (gaugeRetryTimerId) {
             clearTimeout(gaugeRetryTimerId);
         }
@@ -983,7 +974,7 @@ const setupGaugeResizeObserver = () => {
     }
 }
 
-// 使用ResizeObserver监听父容器变化
+
 const setupParentResizeObserver = () => {
     const parentElement = document.querySelector('.device-info-module') as HTMLDivElement;
     if (parentElement) {
@@ -992,7 +983,7 @@ const setupParentResizeObserver = () => {
     }
 }
 
-// 在组件挂载时初始化图表监听
+
 onMounted(async () => {
     nextTick(() => {
         initGaugeCharts()
@@ -1001,7 +992,7 @@ onMounted(async () => {
     })
 })
 
-// 组件卸载时清理资源
+
 onUnmounted(() => {
     if (soundGaugeChart) soundGaugeChart.dispose()
     if (vibrationGaugeChart) vibrationGaugeChart.dispose()
@@ -1016,7 +1007,7 @@ onUnmounted(() => {
         parentResizeObserver = null;
     }
 
-    // 清理重试图表初始化的定时器
+    
     if (gaugeRetryTimerId) {
         clearTimeout(gaugeRetryTimerId);
         gaugeRetryTimerId = null;
@@ -1035,9 +1026,9 @@ onUnmounted(() => {
     flex-direction: column;
     min-height: 0;
     padding-bottom: 20px;
-    /* 允许flex子项收缩 */
+    
     overflow: hidden;
-    /* 保持可见，让内部滚动条正常显示 */
+    
 
 
     .module-header {
@@ -1055,7 +1046,7 @@ onUnmounted(() => {
         }
     }
 
-    /* 顶部健康度与下方设备信息之间的操作按钮区域 */
+    
     .header-actions {
         margin-top: 12px;
         margin-bottom: 4px;
@@ -1108,13 +1099,13 @@ onUnmounted(() => {
                         margin-bottom: 5px;
                         font-weight: 500;
                         white-space: normal;
-                        /* 允许换行 */
+                        
                         overflow: visible;
-                        /* 不隐藏内容 */
+                        
                         text-overflow: clip;
-                        /* 不显示省略号 */
+                        
                         word-wrap: break-word;
-                        /* 长单词自动换行 */
+                        
                     }
 
                     .info-input {
@@ -1122,11 +1113,10 @@ onUnmounted(() => {
 
                         :deep(.el-input__wrapper) {
 
-                            // 确保输入框能适应长内容
                             .el-input__inner {
                                 white-space: normal;
                                 word-wrap: break-word;
-                                // color: #333 !important; // 编辑状态下输入文字颜色为黑色，强制覆盖全局样式
+                                // color: #333 !important;
                             }
                         }
                     }

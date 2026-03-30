@@ -1,16 +1,11 @@
-<!-- 设备详情页面：展示设备信息和数据分析 -->
 <template>
   <div class="device-detail">
-    <!-- 左侧设备信息模块：显示设备基本信息 -->
     <DeviceInfoModule v-if="equipmentId" :device-id="equipmentId" @edit-status-change="handleEditStatusChange" />
 
-    <!-- 右侧内容模块：包含点位列表和图表分析 -->
     <div class="right-content">
-      <!-- 点位列表：显示设备的各个监测点 -->
       <PointListModule ref="pointListModuleRef" :point-list="pointList" :selected-point-id="selectedPointId"
         @point-selected="selectedPointId = $event" />
 
-      <!-- 图表与右下角面板：右下角改为“实时温度” -->
       <ChartsAnalysisModule :point-list="pointList" :selected-point-id="selectedPointId" panel-mode="realtimeTemperature" />
     </div>
   </div>
@@ -34,12 +29,12 @@ const route = useRoute()
 const deviceTreeStore = useDeviceTreeStore()
 
 const equipmentId = computed<string | null>(() => {
-  // 新地址：/device-detail?equipmentId=xxx
+  
   const q = route.query.equipmentId
   const qId = Array.isArray(q) ? q[0] : q
   if (typeof qId === 'string' && qId) return qId
 
-  // 兼容旧地址：/device-detail/:id
+  
   const p = route.params.id
   const pId = Array.isArray(p) ? p[0] : p
   if (typeof pId === 'string' && pId) return pId
@@ -53,7 +48,6 @@ interface PointInfo {
   lastAlarmTime: string,
   alarmType: string,
   alarmValue: string,
-  /** 点位级 deviceId（用于振动接口入参） */
   deviceId?: string,
   hasAlarm: boolean
 }
@@ -62,7 +56,7 @@ const pointList = ref<PointInfo[]>([])
 const pointListModuleRef = ref<ComponentPublicInstance & PointListModuleType>()
 const selectedPointId = ref<string>('')
 
-// 编辑状态跟踪
+
 const isEditing = ref(false)
 const hasUnsavedChanges = ref(false)
 
@@ -118,7 +112,7 @@ const initDeviceData = async () => {
       alarmType: typeStrToDisplay(item.warningType),
       alarmValue: item.warningValue != null && Number(item.warningValue) !== 0 ? String(item.warningValue) : '无',
       deviceId: (item as any).deviceId ?? resolvePointDeviceId(item.receiverId),
-      hasAlarm: item.isAlarm === 0  // 0=有预警(未处理)，1=没预警(已处理)
+      hasAlarm: item.isAlarm === 0  
     }))
     pointList.value = list.sort((a, b) => {
       if (a.lastAlarmTime === '无' && b.lastAlarmTime === '无') return 0
@@ -154,9 +148,6 @@ const initDeviceData = async () => {
   })
 }
 
-/**
- * 仅由设备ID（路由）变化触发点位列表加载，避免重复请求
- */
 watch(
   () => equipmentId.value,
   (id) => {
@@ -189,13 +180,13 @@ const setupPageResizeObserver = () => {
   }
 }
 
-// 监听DeviceInfoModule的编辑状态
+
 const handleEditStatusChange = (status: { isEditing: boolean; hasChanges: boolean }) => {
   isEditing.value = status.isEditing;
   hasUnsavedChanges.value = status.hasChanges;
 }
 
-// 路由离开前的确认对话框
+
 onBeforeRouteLeave(async (to, from, next) => {
   if (hasUnsavedChanges.value) {
     try {
@@ -209,15 +200,15 @@ onBeforeRouteLeave(async (to, from, next) => {
           distinguishCancelAndClose: true
         }
       )
-      // 用户点击保存
-      // 这里可以触发保存操作
+      
+      
       next()
     } catch (action) {
       if (action === 'cancel') {
-        // 用户点击取消，阻止跳转
+        
         next(false)
       } else {
-        // 用户关闭对话框，也阻止跳转
+        
         next(false)
       }
     }

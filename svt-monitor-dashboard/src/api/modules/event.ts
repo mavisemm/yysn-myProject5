@@ -1,8 +1,8 @@
 import request from '../request'
 
-// 事件管理相关 API 接口
 
-// 事件类型定义
+
+
 export interface Event {
   id: string
   eventId: string
@@ -81,7 +81,7 @@ export interface EventStatisticsResponse {
   data: EventStatistics
 }
 
-// 查询事件列表
+
 export const queryEvents = (params?: EventQueryParams): Promise<EventListResponse> => {
   return request.get('/event/list', {
     params,
@@ -89,35 +89,35 @@ export const queryEvents = (params?: EventQueryParams): Promise<EventListRespons
   })
 }
 
-// 获取事件详情
+
 export const getEventDetail = (eventId: string): Promise<EventDetailResponse> => {
   return request.get(`/event/detail/${eventId}`, {
     showLoading: true
   })
 }
 
-// 创建事件
+
 export const createEvent = (data: Omit<Event, 'id' | 'createTime' | 'updateTime'>): Promise<EventOperationResponse> => {
   return request.post('/event/create', data, {
     showLoading: true
   })
 }
 
-// 更新事件
+
 export const updateEvent = (eventId: string, data: Partial<Event>): Promise<EventOperationResponse> => {
   return request.put(`/event/update/${eventId}`, data, {
     showLoading: true
   })
 }
 
-// 删除事件
+
 export const deleteEvent = (eventId: string): Promise<EventOperationResponse> => {
   return request.delete(`/event/delete/${eventId}`, {
     showLoading: true
   })
 }
 
-// 批量操作事件
+
 export const batchOperateEvents = (eventIds: string[], operation: string, data?: any): Promise<EventOperationResponse> => {
   return request.post('/event/batch-operate', {
     eventIds,
@@ -128,7 +128,7 @@ export const batchOperateEvents = (eventIds: string[], operation: string, data?:
   })
 }
 
-// 事件预警处理
+
 export const handleEventAlert = (eventId: string, action: string, remark?: string): Promise<EventOperationResponse> => {
   return request.post(`/event/alert/${eventId}`, {
     action,
@@ -138,7 +138,7 @@ export const handleEventAlert = (eventId: string, action: string, remark?: strin
   })
 }
 
-// 分配事件给处理人
+
 export const assignEvent = (eventId: string, assignee: string): Promise<EventOperationResponse> => {
   return request.post(`/event/assign/${eventId}`, {
     assignee
@@ -147,7 +147,7 @@ export const assignEvent = (eventId: string, assignee: string): Promise<EventOpe
   })
 }
 
-// 获取事件统计数据
+
 export const getEventStatistics = (params?: {
   startTime?: string
   endTime?: string
@@ -158,7 +158,7 @@ export const getEventStatistics = (params?: {
   })
 }
 
-// 获取事件趋势数据
+
 export const getEventTrend = (params?: {
   startTime?: string
   endTime?: string

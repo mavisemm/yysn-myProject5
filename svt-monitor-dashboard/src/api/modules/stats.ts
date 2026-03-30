@@ -2,14 +2,12 @@ import request from '../request'
 
 import { getTenantId } from '../tenant'
 
-// 统计数据接口响应格式
 interface StatsResponse {
   rc: number
   ret: number
   err: string | null
 }
 
-// 获取健康设备数量
 export const getHealthyDeviceCount = (): Promise<StatsResponse> => {
   const tenantId = getTenantId()
   return request.get('/taicang/hardware/device/overview/health/number', {
@@ -18,7 +16,6 @@ export const getHealthyDeviceCount = (): Promise<StatsResponse> => {
   })
 }
 
-// 获取故障报警设备数量（确认数）
 export const getAffirmDeviceCount = (): Promise<StatsResponse> => {
   return request.get('/taicang/hardware/device/overview/affirm/number', {
     params: { userId: '', tenantId: getTenantId(), _t: Date.now() },
@@ -26,7 +23,6 @@ export const getAffirmDeviceCount = (): Promise<StatsResponse> => {
   })
 }
 
-// 获取监控设备数量
 export const getTotalDeviceCount = (): Promise<StatsResponse> => {
   const tenantId = getTenantId()
   return request.get('/taicang/hardware/device/overview/totalnumber', {
@@ -35,7 +31,6 @@ export const getTotalDeviceCount = (): Promise<StatsResponse> => {
   })
 }
 
-// 获取趋势预警设备量
 export const getWarningDeviceCount = (): Promise<StatsResponse> => {
   const tenantId = getTenantId()
   return request.get('/taicang/hardware/device/overview/healthy/number', {
@@ -44,14 +39,12 @@ export const getWarningDeviceCount = (): Promise<StatsResponse> => {
   })
 }
 
-// 趋势预警设备列表项
 export interface TrendWarningDeviceItem {
   id: string
   deviceName: string
   workshopName: string
 }
 
-// 获取趋势预警设备列表（点击「趋势预警设备」弹窗用）
 export const getTrendWarningDeviceList = (): Promise<{ rc: number; ret: TrendWarningDeviceItem[]; err: string | null }> => {
   const tenantId = getTenantId()
   return request.get('/taicang/hardware/device/overview/device/waring/detail', {
@@ -60,7 +53,6 @@ export const getTrendWarningDeviceList = (): Promise<{ rc: number; ret: TrendWar
   })
 }
 
-// 打开弹窗时触发的接口：测点信息（POST，body 传参）
 export const getCheckPointPointMessage = (): Promise<any> => {
   const tenantId = getTenantId()
   return request.post('/taicang/hardware/device/check-point/find/point/message', {
@@ -72,7 +64,6 @@ export const getCheckPointPointMessage = (): Promise<any> => {
   }, { showLoading: false })
 }
 
-// 打开弹窗时触发的接口：设备名称下拉
 export const getDeviceNameDropdownList = (): Promise<any> => {
   const tenantId = getTenantId()
   return request.get('/taicang/hardware/device/name/getDropdownList', {
@@ -81,7 +72,6 @@ export const getDeviceNameDropdownList = (): Promise<any> => {
   })
 }
 
-// 打开弹窗时触发的接口：事件类型下拉
 export const getEventTypeDropdownList = (): Promise<any> => {
   const tenantId = getTenantId()
   return request.get('/taicang/hardware/eventType/getDropdownList', {
@@ -90,10 +80,8 @@ export const getEventTypeDropdownList = (): Promise<any> => {
   })
 }
 
-// 打开弹窗时触发的接口：事件查询（POST，body 传参）
 export const getEventFind = (): Promise<any> => {
   const tenantId = getTenantId()
-  // 直连 8003，避免落到 8006 的路由导致 405
   return request.post('http://122.224.196.178:8003/taicang/event/find', {
     filterPropertyMap: [
       { code: 'statusCode', operate: 'EQ', value: 'VALID' },
@@ -107,7 +95,6 @@ export const getEventFind = (): Promise<any> => {
   })
 }
 
-// 统一获取所有统计信息
 export const getAllStats = async () => {
   try {
     const [healthyCount, alertCount, totalCount, warningCount] = await Promise.all([
@@ -130,7 +117,7 @@ export const getAllStats = async () => {
       healthyDeviceCount: healthyCount.ret,
       alertDeviceCount: alertCount.ret,
       totalDeviceCount: totalCount.ret,
-      totalPointCount: warningCount.ret  // 趋势预警设备
+      totalPointCount: warningCount.ret
     }
   } catch (error) {
     console.error('获取统计数据失败:', error)

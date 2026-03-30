@@ -1,8 +1,6 @@
 <template>
   <header class="main-header">
-    <!-- 左侧按钮组 -->
     <div class="header-left">
-      <!-- 首页按钮 -->
       <div v-if="showHomeButton" class="nav-btn " @click="goHome">
         <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <House />
@@ -10,7 +8,6 @@
         <span>首页</span>
       </div>
 
-      <!-- 返回设备按钮 -->
       <div v-if="showReturnDeviceButton" class="nav-btn " @click="goToDevice">
         <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <Back />
@@ -18,7 +15,6 @@
         <span>返回设备</span>
       </div>
 
-      <!-- 振动按钮 -->
       <div v-if="showVibrationButton" class="nav-btn " @click="goToVibration">
         <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <Lightning />
@@ -26,7 +22,6 @@
         <span>振动</span>
       </div>
 
-      <!-- 声音按钮 -->
       <div v-if="showSoundButton" class="nav-btn " @click="goToSound">
         <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <Microphone />
@@ -39,12 +34,10 @@
       <h1 class="title">鲁西化工声振温综合在线监测平台</h1>
     </div>
 
-    <!-- 右侧：时间组件盒子 -->
     <div class="header-right-clock">
       <HeaderClock />
     </div>
 
-    <!-- 右侧：主题色块（多主题）+ 退出按钮盒子 -->
     <div class="header-right-actions">
       <div
         class="theme-wrapper"
@@ -62,7 +55,6 @@
           @mouseenter="onThemeEnter"
           @mouseleave="onThemeLeave"
         >
-          <!-- 下拉中只展示“非当前”的其他主题 -->
           <div
             v-if="currentBackground !== 'image'"
             class="theme-square theme-square--image"
@@ -140,7 +132,7 @@ const onThemeLeave = () => {
   if (themeCloseTimer.value !== null) {
     window.clearTimeout(themeCloseTimer.value)
   }
-  // 给鼠标跨过 trigger 与 dropdown 的间隙留缓冲
+  
   themeCloseTimer.value = window.setTimeout(() => {
     showThemeDropdown.value = false
     themeCloseTimer.value = null
@@ -179,23 +171,23 @@ onBeforeUnmount(() => {
 })
 
 const goHome = () => {
-  // 重置设备树状态到初始状态
+  
   deviceTreeStore.resetDeviceTreeState()
   router.push('/dashboard')
 }
 
 const goToDevice = () => {
-  // 设备详情：equipmentId 走 path 的 params.id
+  
   if (route.name === 'DeviceDetail') {
     const id = route.params.id
     if (typeof id === 'string' && id) return
   }
 
-  // 点位页跳回设备详情：地址里 query.equipmentId 就是我们要的设备 id
+  
   let equipmentId = (route.query.equipmentId as string) || ''
 
   if (!equipmentId && (route.name === 'SoundPoint' || route.name === 'VibrationPoint')) {
-    // 兜底：如果 query 没带 equipmentId，则用 receiverId 在设备树里反查父设备（equipmentId）
+    
     const receiverIdParam = route.params.receiverId
     const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
     if (typeof receiverId === 'string' && receiverId) {
@@ -247,17 +239,17 @@ const handleLogout = () => {
       customClass: 'logout-confirm-box',
     }
   ).then(() => {
-    // 退出登录：清空 localStorage（切换用户时确保无残留）
+    
     localStorage.clear()
-    // 清空会影响“仅首次预热/实时订阅”的内存状态
+    
     alarmBatchStore.resetPrefetchState()
     alarmOverviewStore.reset()
-    // 清空设备树内存缓存，确保下次登录强制刷新
+    
     deviceTreeStore.clearDeviceTreeData()
     router.push('/login')
     ElMessage.success('已安全退出')
   }).catch(() => {
-    // 用户点击取消或关闭弹窗，不做任何操作
+    
   })
 }
 </script>
@@ -291,7 +283,7 @@ const handleLogout = () => {
       cursor: pointer;
       transition: all 0.3s;
       color: rgba(153, 240, 255, 1);
-      /* 使用 rem，相对根字号自适应 */
+      
       font-size: 1rem;
       font-weight: 500;
       border-radius: 8px;
@@ -336,7 +328,7 @@ const handleLogout = () => {
     }
   }
 
-  /* 右侧：时间盒子（单独一个容器） */
+  
   .header-right-clock {
     position: absolute;
     right: 115px;
@@ -345,7 +337,7 @@ const handleLogout = () => {
     z-index: 1;
   }
 
-  /* 右侧：主题 + 退出盒子（单独一个容器） */
+  
   .header-right-actions {
     position: absolute;
     right: 10px;
@@ -464,7 +456,7 @@ const handleLogout = () => {
     padding: 0 16px;
 
     .header-center .title {
-      /* 小屏标题略小一点 */
+      
       font-size: 1.8rem;
     }
   }
@@ -472,7 +464,7 @@ const handleLogout = () => {
 </style>
 
 <style lang="scss">
-/* 退出登录确认框：取消按钮 #409eff，确定按钮白色（非 scoped，弹窗挂载在 body 下） */
+
 .el-message-box.logout-confirm-box .el-message-box__btns .el-button--default {
   color: #409eff !important;
 }

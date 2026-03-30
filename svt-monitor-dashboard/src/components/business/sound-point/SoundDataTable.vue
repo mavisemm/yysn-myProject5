@@ -16,7 +16,6 @@
         <template #empty>
           <CommonEmptyState text="暂无声音数据" size="small" />
         </template>
-        <!-- 自定义勾选列 -->
         <el-table-column width="10%" align="center">
           <template #header>
             <el-checkbox

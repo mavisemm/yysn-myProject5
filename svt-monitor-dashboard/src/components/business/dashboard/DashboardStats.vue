@@ -1,4 +1,3 @@
-<!-- 统计数据展示区域：显示各类设备统计数据 -->
 <template>
     <div class="stats-area">
         <div class="header-section home-title home-title--device-monitor">
@@ -9,7 +8,7 @@
                 </div>
             </div>
         </div>
-        <div class="stats-grid">
+            <div class="stats-grid">
             <div v-for="(stat, index) in stats" :key="index" class="stat-card"
                 :class="[`stat-card-${index}`, (stat.title === '趋势预警设备' || stat.title === '故障报警设备') ? 'stat-card-trend' : '']"
                 @click="handleCardClick(stat.title)">
@@ -78,8 +77,6 @@ const handleCardClick = (title: string) => {
         emit('clickFaultWarning');
     }
 };
-
-/** 有报警或预警时（数量 > 0）返回 true，用于图标闪烁 */
 function isAlertOrWarning(stat: StatItem) {
     return (stat.title === '故障报警设备' || stat.title === '趋势预警设备') && Number(stat.number ?? 0) > 0;
 }
@@ -182,7 +179,7 @@ function isAlertOrWarning(stat: StatItem) {
                 object-fit: contain;
             }
 
-            /* 有报警/预警时图标闪烁 */
+            
             &.stat-icon-blink .stat-icon-img {
                 animation: stat-icon-blink 1.5s ease-in-out infinite;
             }
@@ -211,7 +208,7 @@ function isAlertOrWarning(stat: StatItem) {
         }
 
         .stat-text {
-            /* 统计标题文字 */
+            
             font-size: 1.05rem;
             white-space: nowrap;
             overflow: hidden;
@@ -225,7 +222,7 @@ function isAlertOrWarning(stat: StatItem) {
         }
 
         .stat-number {
-            /* 数值文字 */
+            
             display: flex;
             flex-direction: row;
             align-items: center;
@@ -237,7 +234,7 @@ function isAlertOrWarning(stat: StatItem) {
             overflow: hidden;
             text-overflow: ellipsis;
 
-            /* 每个数字由 digit-bg 承担尺寸；这里仅控制文字 */
+            
             font-size: 1.8rem;
             line-height: 1;
         }

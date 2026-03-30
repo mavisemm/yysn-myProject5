@@ -1,13 +1,11 @@
 <template>
     <div class="login-page">
         <div class="login-container">
-            <!-- 左侧标题区域 -->
             <div class="left-title">
                 <h1 class="main-title">鲁西化工声振温</h1>
                 <h2 class="sub-title">综合在线监测平台</h2>
             </div>
 
-            <!-- 右侧登录区域 -->
             <div class="right-login">
                 <div class="login-card">
                     <div class="login-subtitle">欢迎登录</div>
@@ -44,26 +42,26 @@ import { useAlarmBatchStore } from '@/stores/alarmBatch'
 import { useAlarmOverviewStore } from '@/stores/alarmOverview'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 
-// 引入路由
+
 const router = useRouter()
 
-// 进入登录页时清空 localStorage，避免残留会话影响下一次登录
+
 onMounted(() => {
     localStorage.clear()
-    // 登录页也同步重置内存态，确保换用户登录后能重新预热/重连
+    
     useAlarmBatchStore().resetPrefetchState()
     useAlarmOverviewStore().reset()
-    // 清理设备树内存缓存，避免“重新登录后 dashboard 不发 tree 请求”
+    
     useDeviceTreeStore().clearDeviceTreeData()
 })
 
-// 表单数据
+
 const loginForm = reactive({
     userName: '',
     password: ''
 })
 
-// 表单验证规则
+
 const loginRules = {
     userName: [
         { required: true, message: '请输入用户名', trigger: 'blur' }
@@ -74,37 +72,34 @@ const loginRules = {
     ]
 }
 
-// 表单引用
+
 const loginFormRef = ref<InstanceType<typeof ElForm>>()
 
-// 加载状态
+
 const loading = ref(false)
 
-// 处理登录
+
 const handleLogin = async () => {
     if (!loginFormRef.value) return
 
-    // 验证表单
+    
     const valid = await loginFormRef.value.validate().catch(() => false)
     if (!valid) return
 
-    // 设置加载状态
+    
     loading.value = true
 
     try {
-        // 先清理旧登录态，避免“上一次残留 tenantId”污染本次会话
+        
         localStorage.removeItem('token')
         localStorage.removeItem('tenantId')
 
-        // 登录接口（与页面同源，由网关反代到声学后端）
+        
         const res = await loginApi({
             userName: loginForm.userName,
             password: loginForm.password
         })
 
-        // 兼容两种返回结构：
-        // - 新结构：{ rc: 0, ret: '<tenantId>', err: null }
-        // - 旧结构（src0 项目）：{ result: 0, data: { tenantId, ... }, msg }
         const isOk =
             (res && typeof res === 'object' && 'rc' in res && (res as any).rc === 0) ||
             (res && typeof res === 'object' && 'result' in res && (res as any).result === 0)
@@ -136,9 +131,9 @@ const handleLogin = async () => {
             return ''
         }
 
-        // 新结构（示例）：
-        // - { rc: 0, ret: { tenantId: 'xxx', token: 'yyy' }, err: null }
-        // - 或 { rc: 0, ret: 'xxx', token: 'yyy', err: null }
+        
+        
+        
         const token =
             normalizeToken((res as any)?.token) ||
             normalizeToken((res as any)?.ret?.token) ||
@@ -162,7 +157,7 @@ const handleLogin = async () => {
         }
         localStorage.setItem('tenantId', tenantId)
 
-        // 显式带上 tenantId，并等待导航完成后再提示成功，避免首页 find 在「地址栏尚未与路由同步」时读到错误租户
+        
         await router.push({ name: 'Dashboard', query: { tenantId } })
 
         ElMessage.success('登录成功')
@@ -174,8 +169,8 @@ const handleLogin = async () => {
     }
 }
 
-// 注意：在实际生产环境中，密码应通过HTTPS传输
-// 并在后端进行哈希处理，前端不应存储或记录密码明文
+
+
 </script>
 
 <style scoped lang="scss">
@@ -190,7 +185,7 @@ const handleLogin = async () => {
 
     .login-container {
         width: 100%;
-        height: 600px; // 固定高度
+        height: 600px;
         display: flex;
         justify-content: space-between;
         padding: 0 10vw;
@@ -259,7 +254,7 @@ const handleLogin = async () => {
                             background: rgba(150, 150, 150, 0.2);
                             border: 1px solid rgba(255, 255, 255, 0.3);
                             backdrop-filter: blur(5px);
-                            /* Element Plus placeholder 变量兜底 */
+                            
                             --el-text-color-placeholder: #fff;
 
                             input {
@@ -276,7 +271,7 @@ const handleLogin = async () => {
                         }
                     }
 
-                    /* 直接命中 el-input 内部输入框 placeholder，防止被全局样式覆盖 */
+                    
                     :deep(.el-input__inner::placeholder) {
                         color: #fff !important;
                         opacity: 1;
@@ -294,7 +289,6 @@ const handleLogin = async () => {
     }
 }
 
-// 响应式设计
 @media (max-width: 768px) {
     .login-page {
         .login-container {

@@ -1,7 +1,5 @@
-<!-- 声音点位监控页面：展示声音数据分析和图表 -->
 <template>
   <div class="sound-point-container">
-    <!-- 曲线图表区域：展示能量曲线和密度曲线 -->
     <SoundPointCharts
       :deviation-list="deviationList"
       :point-list="[]"
@@ -10,13 +8,10 @@
       ref="chartsComponentRef"
     />
 
-    <!-- 下方内容区域 -->
     <div class="bottom-section">
-      <!-- 左侧表格区域 -->
       <SoundDataTable :deviation-list="deviationList" @select-change="handleSelectChange" @view-details="viewDetails"
         @download-file="downloadFile" @play-audio="playAudio" @row-click="handleRowClick" />
 
-      <!-- 右侧信息区域 -->
       <SoundPointInfo :point-name="pointName" :device-name="deviceName" :current-data-time="currentDataTime"
         :audio-path="audioPath" :cluster-name="clusterName" :production-equipment="productionEquipment"
         :sub-component="subComponent" :detection-equipment="detectionEquipment" :microphone="microphone"
@@ -24,7 +19,6 @@
     </div>
   </div>
 
-  <!-- 详情弹窗（查看曲线）：能量一个 echarts，密度一个 echarts -->
   <el-dialog
     v-model="voiceVisible"
     title="详情"
@@ -74,7 +68,7 @@ const receiverId = computed(() => {
   return (typeof resolved === 'string' ? resolved : '') || ''
 });
 
-// 导入新组件
+
 import SoundPointCharts from '@/components/business/sound-point/SoundPointCharts.vue';
 import SoundDataTable from '@/components/business/sound-point/SoundDataTable.vue';
 import SoundPointInfo from '@/components/business/sound-point/SoundPointInfo.vue';
@@ -85,21 +79,19 @@ const modalDensityChartRef = ref<HTMLDivElement>();
 const modalEnergyChartInstance = shallowRef<echarts.ECharts | null>(null);
 const modalDensityChartInstance = shallowRef<echarts.ECharts | null>(null);
 const modalChartLinkGroup = 'sound-point-modal-link-group';
-/** 联动时避免 dataZoom 事件回环 */
 let dataZoomSyncing = false;
-/** 弹窗内图表容器 resize 监听 */
 let modalChartsResizeObserver: ResizeObserver | null = null;
 
 
 const audioPath = ref('');
 const voiceVisible = ref(false);
 
-// 基础信息（由接口返回或路由对应的真实点位填充，不写死）
+
 const pointName = ref('');
 const deviceName = ref('');
 const currentDataTime = ref('');
 
-// 详细信息字段（由接口首条填充，切换点位会随 loadDeviationList 更新）
+
 const clusterName = ref('');
 const productionEquipment = ref('');
 const subComponent = ref('');
@@ -107,7 +99,7 @@ const detectionEquipment = ref('');
 const microphone = ref('');
 const currentDeviationValue = ref('0.00');
 
-// 颜色池
+
 const colors = [
   '#91cc75', '#fac858', '#ee6666', '#3ba272', '#fc8452',
   '#9a60b4', '#ea7ccc', '#d48265', '#91c7ae', '#749f83',
@@ -127,7 +119,6 @@ interface DeviationListItem {
   filePath?: string;
   receiverId?: string;
   sampleSec?: number;
-  /** 用于点击播放时更新右侧详情 */
   deviceName?: string;
   pointName?: string;
   clusterName?: string;
@@ -139,11 +130,10 @@ interface DeviationListItem {
 
 const deviationList = ref<DeviationListItem[]>([]);
 
-/** 让表格色块与图表颜色跟随勾选同步 */
 const syncSelectedColors = () => {
   const selected = deviationList.value.filter(item => item.visible);
   selected.forEach((item, index) => {
-    // 与 SoundPointCharts.vue 的配色逻辑保持一致（黄金角）
+    
     item.color = `hsl(${(index * 137.5) % 360}, 70%, 50%)`;
   });
   deviationList.value.forEach(item => {
@@ -151,7 +141,6 @@ const syncSelectedColors = () => {
   });
 };
 
-/** 从点位详情 store 填充右侧详情（生产设备=productName，子部件=subProductName，检测设备=detectorName，听筒=receiverName，点位名称=pointName） */
 function applyStorePointInfo() {
   const rid = receiverId.value;
   if (!rid) return;
@@ -173,12 +162,12 @@ const handleRowClick = (row: any) => {
   handleSelectChange();
 };
 
-// 处理图表初始化事件
+
 const handleChartInit = (charts: any) => {
-  // 如果需要访问图表实例，可以在这里处理
+  
 };
 
-// 处理选择变更事件
+
 const handleSelectChange = () => {
   syncSelectedColors();
   loadFrequencyData();
@@ -246,14 +235,14 @@ const loadDeviationList = async () => {
       currentDeviationValue.value = firstItem.deviationValue.toFixed(2);
     }
     if (firstRaw && typeof firstRaw === 'object') {
-      // 与另一项目对应；生产设备 = 点位的设备（deviceName）
+      
       pointName.value = firstRaw.pointName ?? '';
       deviceName.value = firstRaw.deviceName ?? '';
       clusterName.value = firstRaw.sceneName ?? firstRaw.titleGroupName ?? '';
       productionEquipment.value = firstRaw.deviceName ?? firstRaw.productName ?? firstRaw.productionFactory ?? '';
       subComponent.value = firstRaw.subProductName ?? '';
       detectionEquipment.value = firstRaw.detectorName ?? firstRaw.deviceName ?? '';
-      // 听筒显示优先 receiverName，无则 pointName 或 receiverId
+      
       microphone.value = firstRaw.receiverName ?? firstRaw.pointName ?? (firstRaw.receiverId != null ? String(firstRaw.receiverId) : '');
       if (firstItem?.id) {
         audioPath.value = getWavByFreqGroupIdUrl(firstItem.id);
@@ -268,7 +257,7 @@ const loadDeviationList = async () => {
       microphone.value = '';
       audioPath.value = '';
     }
-    // 优先使用 check-point/find/point/message 接口缓存的点位详情
+    
     applyStorePointInfo();
 
     await loadFrequencyData();
@@ -356,7 +345,7 @@ const loadFrequencyData = async () => {
   }
 };
 
-// 查看曲线：请求 findLatestFrequencyById 并渲染弹窗图表（与另一项目一致）
+
 const viewDetails = async (row: any) => {
   try {
     const res = await findLatestFrequencyById({ id: row.id, type: 2 });
@@ -394,7 +383,7 @@ const viewDetails = async (row: any) => {
         { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' }
       ];
 
-      // 将 source 图表的 dataZoom 范围同步到 target 图表
+      
       const applyDataZoom = (source: echarts.ECharts, target: echarts.ECharts | null) => {
         if (!target || dataZoomSyncing) return;
         const opt = source.getOption();
@@ -416,7 +405,7 @@ const viewDetails = async (row: any) => {
         }
       };
 
-      // 能量图表
+      
       if (modalEnergyChartRef.value) {
         if (modalEnergyChartInstance.value) {
           modalEnergyChartInstance.value.dispose();
@@ -445,7 +434,7 @@ const viewDetails = async (row: any) => {
         });
       }
 
-      // 密度图表
+      
       if (modalDensityChartRef.value) {
         if (modalDensityChartInstance.value) {
           modalDensityChartInstance.value.dispose();
@@ -484,7 +473,7 @@ const viewDetails = async (row: any) => {
   }
 };
 
-// 下载文件：使用 findWavByFreqGroupId 地址，下载完成后提示
+
 const downloadFile = async (id: string) => {
   const url = getWavByFreqGroupIdUrl(id);
   ElMessage.info('正在下载文件');
@@ -504,7 +493,7 @@ const downloadFile = async (id: string) => {
   }
 };
 
-// 播放：更新右侧详细信息 + 音频地址（freqGroupId），并播放
+
 const playAudio = (row: DeviationListItem) => {
   pointName.value = row.pointName ?? '';
   deviceName.value = row.deviceName ?? '';
@@ -523,7 +512,6 @@ const playAudio = (row: DeviationListItem) => {
   ElMessage.success('正在播放音频');
 };
 
-/** 弹窗打开后：禁止页面滚动，图表 resize，并监听弹窗内容区尺寸变化 */
 const handleModalOpened = () => {
   document.body.style.overflow = 'hidden';
   modalChartsResizeObserver?.disconnect();
@@ -571,7 +559,7 @@ const handleResize = () => {
   }, 0);
 };
 
-// 设备树切换点位时路由 query 会变，需重新拉取数据并更新选中状态
+
 watch(
   () => route.params.receiverId,
   (newId, oldId) => {
@@ -619,7 +607,7 @@ onUnmounted(() => {
   }
 }
 
-/* 弹窗 70vw × 95vh，水平垂直居中，禁止出现滚动条 */
+
 :deep(.voice-detail-dialog) {
   overflow: hidden !important;
   .el-dialog {

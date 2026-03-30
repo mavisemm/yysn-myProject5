@@ -14,9 +14,7 @@
 <script setup lang="ts">
 const props = withDefaults(
     defineProps<{
-        /** 展示文案 */
         text?: string;
-        /** 尺寸：small / medium / large */
         size?: 'small' | 'medium' | 'large';
     }>(),
     {

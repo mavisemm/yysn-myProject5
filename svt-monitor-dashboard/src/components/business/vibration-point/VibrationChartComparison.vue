@@ -60,10 +60,10 @@ const resolvePointDeviceId = (rid: string): string => {
     return '';
 };
 
-// 点位页：接口入参需要点位级 deviceId，但地址只携带 equipmentId/receiverId
+
 const pointDeviceId = computed(() => resolvePointDeviceId(receiverIdFromParams.value));
 
-// 灰色主题已移除：固定使用非灰配色
+
 const chartAxisColor = computed(() => '#fff');
 const chartSplitLineColor = computed(() => 'rgba(255,255,255,0.1)');
 
@@ -75,7 +75,7 @@ const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({ frequen
 const timeDomainData = ref<number[]>([]);
 const totalTime = ref<number>(0);
 
-// 当前 axisPointer 所在的基础频率 f（由图表事件驱动）
+
 const pointerBaseFreq = ref<number | null>(null);
 
 const getSortedFreqChartData = () => {
@@ -120,7 +120,6 @@ const buildHarmonicMarkLineData = (baseFreq: number) => {
         }));
 };
 
-/** 频域图：数据 [freq, value] 按频率升序，y 轴留边距 */
 const freqOption = computed<EChartsOption>(() => {
     if (!freqData.value.frequency.length) return {};
 
@@ -146,7 +145,7 @@ const freqOption = computed<EChartsOption>(() => {
             backgroundColor: 'rgba(50, 50, 50, 0.9)',
             borderColor: 'rgba(50, 50, 50, 0.9)',
             textStyle: { color: '#fff' },
-            // 允许 tooltip 溢出图表容器（避免被强行挤回去遮挡倍频线）
+            
             confine: false,
             position: function (pos: any, _params: any, _el: any, _elRect: any, size: any) {
                 const [mouseX, mouseY] = pos as [number, number];
@@ -155,7 +154,7 @@ const freqOption = computed<EChartsOption>(() => {
                 const gap = 18;
                 const hitMargin = 10;
 
-                // 计算需要避让的竖线（只避让“当前实际会显示”的 1X/2X/3X/4X）
+                
                 const inst = freqChartInstance.value;
                 const base = pointerBaseFreq.value;
                 const avoidPixels: number[] = [];
@@ -169,7 +168,7 @@ const freqOption = computed<EChartsOption>(() => {
                             const px = inst.convertToPixel({ xAxisIndex: 0 }, n) as number;
                             if (typeof px === 'number' && Number.isFinite(px)) avoidPixels.push(px);
                         } catch {
-                            // ignore
+                            
                         }
                     }
                 }
@@ -180,12 +179,12 @@ const freqOption = computed<EChartsOption>(() => {
                     return avoidPixels.reduce((acc, px) => (px >= left - hitMargin && px <= right + hitMargin ? acc + 1 : acc), 0);
                 };
 
-                // 候选位置：右/左/上/下（不做 clamp，允许溢出），选“遮挡最少”的；同分选离鼠标更近的
+                
                 const candidatesRaw = [
-                    { x0: mouseX + gap, y0: mouseY - contentHeight / 2 }, // right
-                    { x0: mouseX - contentWidth - gap, y0: mouseY - contentHeight / 2 }, // left
-                    { x0: mouseX - contentWidth / 2, y0: mouseY - contentHeight - gap }, // top
-                    { x0: mouseX - contentWidth / 2, y0: mouseY + gap } // bottom
+                    { x0: mouseX + gap, y0: mouseY - contentHeight / 2 }, 
+                    { x0: mouseX - contentWidth - gap, y0: mouseY - contentHeight / 2 }, 
+                    { x0: mouseX - contentWidth / 2, y0: mouseY - contentHeight - gap }, 
+                    { x0: mouseX - contentWidth / 2, y0: mouseY + gap } 
                 ];
                 const candidates = candidatesRaw.map(c => {
                     const x = c.x0;
@@ -335,7 +334,7 @@ const onFreqChartReady = (instance: echarts.ECharts) => {
                     { notMerge: false, lazyUpdate: true }
                 );
             } catch {
-                // ignore
+                
             }
         });
     };
@@ -353,7 +352,7 @@ const onFreqChartReady = (instance: echarts.ECharts) => {
 
     instance.on('updateAxisPointer', onUpdateAxisPointer);
     freqChartCleanup = () => {
-        try { instance.off('updateAxisPointer', onUpdateAxisPointer); } catch { /* ignore */ }
+        try { instance.off('updateAxisPointer', onUpdateAxisPointer); } catch {  }
         if (rafId) {
             cancelAnimationFrame(rafId);
             rafId = null;
@@ -361,7 +360,6 @@ const onFreqChartReady = (instance: echarts.ECharts) => {
     };
 };
 
-/** 时域图：按 totalTime 均分 x，y 为采样值 */
 const timeOption = computed<EChartsOption>(() => {
     if (timeDomainData.value.length === 0) return {};
 

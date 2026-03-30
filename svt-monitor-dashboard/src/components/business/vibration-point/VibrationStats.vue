@@ -58,7 +58,7 @@ const receiverIdFromParams = computed(() => {
     return (typeof resolved === 'string' ? resolved : '') || ''
 })
 
-// 点位页：接口入参需要点位级 deviceId，但地址只携带 equipmentId（用于点位级 deviceId 解析）和 receiverId（用于定位点位）
+
 const pointDeviceId = computed(() => resolvePointDeviceId(receiverIdFromParams.value))
 
 const vibrationData = ref<VibrationMetricData>({

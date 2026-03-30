@@ -22,8 +22,8 @@ export interface RealtimeQuery {
   startTime?: string
   endTime?: string
   deviceId?: string
-  // 兼容新地址字段名：设备详情页/点位页 query 使用 equipmentId
-  // 这里语义等同于设备级 deviceId（后端过滤字段仍叫 deviceId）
+  
+  
   equipmentId?: string
   eventTypeCode?: string
 }
@@ -74,8 +74,8 @@ function splitDeviceName(rawName: any): { main: string; sub: string } {
 }
 
 export const useAlarmBatchStore = defineStore('alarmBatch', () => {
-  // 注意：不要用 computed 包一层租户读取。localStorage / location 不是响应式依赖，
-  // computed 会永远缓存首次求值，导致登录后 find 仍带旧租户。
+  
+  
 
   const typeList = ref<DropdownItem[]>([])
   const deviceNameList = ref<DropdownItem[]>([])
@@ -102,8 +102,8 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const historySelectedRowKeys = ref<string[]>([])
   const historyLoading = ref(false)
 
-  // 列表缓存：减少弹窗反复打开/重复触发时的二次请求与重渲染。
-  // key 由「tenantId + 筛选条件 + pageIndex + pageSize」组成。
+  
+  
   const REALTIME_LIST_CACHE_TTL_MS = 60_000
   const HISTORY_LIST_CACHE_TTL_MS = 60_000
   const MAX_LIST_CACHE_ENTRIES = 5
@@ -128,9 +128,9 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     })
 
   const normalizeOneRow = (r: EventRow): EventRow => {
-    // `dataJson` 在部分环境里是一个很大的 JSON 字符串。
-    // 直接对每行都 JSON.parse 会在弹窗打开/翻页时造成明显的主线程卡顿。
-    // 这里改成“按需解析”：只有当我们确实需要从 dataJson 里补字段时才解析。
+    
+    
+    
     const needsDataJson =
       (!r.deviceName && typeof r.dataJson === 'string') ||
       (!r.pointName && typeof r.dataJson === 'string') ||
@@ -143,7 +143,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     const shopName = r.shopName ?? dataJson?.shopName
     return {
       ...r,
-      // 保留原始 dataJson（字符串/对象）避免不必要的深拷贝；如需已解析对象再取上面的 dataJson 变量
+      
       dataJson: dataJson ?? r.dataJson,
       deviceName,
       _deviceMainName: main,
@@ -156,9 +156,9 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
 
   const normalizeRows = (rows: EventRow[]) => rows.map(normalizeOneRow)
 
-  // Light mode: 避免解析 `dataJson`，以减小主线程被 JSON.parse 占用的概率。
-  // 只保留后端已经返回的 pointName/receiverName/deviceName 信息；
-  // 如果缺失，交给 UI 在“单元格首次展示”时做按需解析（并缓存）。
+  
+  
+  
   const normalizeOneRowLight = (r: EventRow): EventRow => {
     const deviceName = r.deviceName
     const shopName = r.shopName
@@ -178,7 +178,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const normalizeRowsLight = (rows: EventRow[]) => rows.map(normalizeOneRowLight)
 
   const normalizeRowsYielding = async (rows: EventRow[], budgetMs = 8) => {
-    // time-slicing：保证在后台解析时不会长时间占用主线程
+    
     const out: EventRow[] = []
     const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now())
     let lastYieldAt = now()
@@ -203,7 +203,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
       try {
         const [types, devices] = await Promise.all([apiGetEventTypeDropdownList(), apiGetDeviceNameDropdownList()])
         if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
+          
           console.log('[alarmBatch] dropdowns raw response:', { types, devices })
         }
         typeList.value = types?.ret ?? []
@@ -219,7 +219,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
 
   const buildCommonFilters = (query: RealtimeQuery): FilterProperty[] => {
     const filters: FilterProperty[] = []
-    // 与 getDropdown 一致：tenantId 仅 localStorage 或地址栏 ?tenantId=（见 readTenantIdFromStorageOrAddressBar）
+    
     const tId = readTenantIdFromStorageOrAddressBar()
     if (tId) filters.push({ code: 'tenantId', operate: 'EQ', value: tId })
     const effectiveDeviceId = query.deviceId ?? query.equipmentId
@@ -429,19 +429,19 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
 
   let didPrefetchDefaultRealtime = false
   let didPrefetchDefaultHistory = false
-  // 用于“退出登录后取消尾部预热”——每次 reset 自增版本号，预热流程完成前检查版本不一致则直接返回。
+  
   let prefetchAuthEpoch = 0
 
   const hasAuthToken = () => Boolean(localStorage.getItem('token'))
 
-  // 预热：在进入“预警总览”页面时先拉一页数据，避免用户点击弹窗后再等待首次渲染。
-  // 只预热默认筛选（Realtime 空条件，History 默认 Accurate-Yes）。
+  
+  
   const prefetchRealtimeListForDefault = async () => {
     if (didPrefetchDefaultRealtime) return
     if (!hasAuthToken()) return
     didPrefetchDefaultRealtime = true
     const epoch = prefetchAuthEpoch
-    // dropdown 逻辑跟随 find 预热：只有当我们要预热列表时才确保下拉数据就绪
+    
     await ensureDropdowns()
     if (epoch !== prefetchAuthEpoch) return
     if (!hasAuthToken()) return
@@ -453,22 +453,18 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     if (!hasAuthToken()) return
     didPrefetchDefaultHistory = true
     const epoch = prefetchAuthEpoch
-    // dropdown 逻辑跟随 find 预热：只有当我们要预热列表时才确保下拉数据就绪
+    
     await ensureDropdowns()
     if (epoch !== prefetchAuthEpoch) return
     if (!hasAuthToken()) return
     await fetchHistoryList(0, false, 'light')
   }
 
-  /**
-   * 退出登录/切换用户时调用：清空“仅首次预热”标记与列表缓存，
-   * 确保新用户登录进入 dashboard 后会重新执行预热。
-   */
   const resetPrefetchState = () => {
     didPrefetchDefaultRealtime = false
     didPrefetchDefaultHistory = false
     prefetchAuthEpoch++
-    // 切用户/退出登录后 dropdown 也应跟随重新预热逻辑再拉取
+    
     typeList.value = []
     deviceNameList.value = []
     dropdownsPromise = null
@@ -477,12 +473,12 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   }
 
   const refreshRealtimeAfterBatch = async () => {
-    // 保持当前页码刷新，避免批量操作后跳回第一页
+    
     await fetchRealtimeList(realtimePageIndex.value, true)
   }
 
   const refreshHistoryAfterBatch = async () => {
-    // 保持当前页码刷新，避免批量操作后跳回第一页
+    
     await fetchHistoryList(historyPageIndex.value, true)
   }
 
@@ -535,12 +531,12 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   }
 
   const fetchAllValidIds = async (): Promise<string[]> => {
-    // 兜底：若后端 yesAll 不接受空 idList，再回退到分页拉取 id。
-    // 这里用小一些的 pageSize，避免一次性返回过大数组导致前端主线程卡顿。
+    
+    
     const pageSize = 1000
     const ids: string[] = []
     let pageIndex = 0
-    // eslint-disable-next-line no-constant-condition
+    
     while (true) {
       const res = await apiFindEvents({
         filterPropertyMap: [
@@ -564,8 +560,8 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   }
 
   const allYesHistory = async () => {
-    // 优先让后端自己处理“全部”，避免前端拉取海量 id。
-    // 若后端不接受空 idList，再回退到拉取 ids 的兜底方案。
+    
+    
     try {
       await apiConfirmYesAll(undefined)
     } catch (e) {

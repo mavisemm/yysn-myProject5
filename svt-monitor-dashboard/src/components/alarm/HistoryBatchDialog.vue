@@ -280,8 +280,8 @@ function splitDeviceName(rawName: any): { main: string; sub: string } {
   return { main, sub }
 }
 
-// 对预热（light mode）没有解析的行，按需在可视单元格首次渲染时解析 dataJson
-// 通过缓存避免同一行反复 JSON.parse。
+
+
 const parsedRowCache = new Map<string, any>()
 function ensureRowParsed(row: any): any {
   if (!row) return undefined
@@ -290,7 +290,7 @@ function ensureRowParsed(row: any): any {
 
   if (parsedRowCache.has(rowId)) return parsedRowCache.get(rowId)
 
-  // 如果后端已带上关键字段，就不需要解析 dataJson
+  
   const needsParse =
     (!row.pointName || !row.receiverName || !row.deviceName) && typeof row.dataJson === 'string'
   if (!needsParse && row.deviceName && row.pointName && row.receiverName) {
@@ -410,7 +410,7 @@ const getReceiverName = (row: any): string => {
 </style>
 
 <style lang="scss">
-/* 垂直居中 + 高度固定 90vh（全局作用，兼容 teleport 到 body 的 el-dialog） */
+
 .alarm-batch-dialog {
   height: 90vh;
   max-height: 90vh;
@@ -482,12 +482,12 @@ const getReceiverName = (row: any): string => {
   overflow: hidden;
 }
 
-/* 表格单元格更紧凑：8px 0 -> 5px 0 */
+
 .alarm-batch-dialog .el-table__cell {
   padding: 5px 0 !important;
 }
 
-/* 查询区表单控件：覆盖全局“白字”规则，和项目其他输入控件风格对齐 */
+
 .alarm-batch-dialog .alarm-filter-control {
   --el-text-color-regular: var(--alarm-dialog-text);
   --el-text-color-placeholder: var(--alarm-dialog-subtle);
@@ -520,7 +520,7 @@ const getReceiverName = (row: any): string => {
   color: var(--alarm-dialog-muted);
 }
 
-/* 弹窗内按钮统一更紧凑的字号/高度（不改全局） */
+
 .alarm-batch-dialog .el-button {
   font-size: var(--alarm-dialog-font);
 }
@@ -529,7 +529,7 @@ const getReceiverName = (row: any): string => {
   font-weight: 500;
 }
 
-/* 下拉面板是 teleport 到 body，单独兜底字体颜色 */
+
 .alarm-batch-popper {
   --el-text-color-regular: #303133;
   --el-text-color-primary: #303133;
@@ -558,7 +558,7 @@ const getReceiverName = (row: any): string => {
   font-weight: 600;
 }
 
-/* 兜底：隐藏 datetime 面板「此刻」按钮（部分版本不支持 show-now） */
+
 .alarm-batch-datetime-popper .el-picker-panel__footer .el-picker-panel__link-btn {
   display: none !important;
 }

@@ -39,7 +39,6 @@
             </div>
         </div>
 
-        <!-- 声音点位页：两个图共用的频率范围输入条（放在两个 ECharts 下面） -->
         <div
             v-if="true"
             class="range-controls-bar"
@@ -106,7 +105,7 @@ const handleTrendAnalysisClick = () => {
     const base = import.meta.env.BASE_URL || '/';
     const normalizedBase = base.endsWith('/') ? base : `${base}/`;
     const tenantId = getTenantId();
-    // trend.html 内用 apiIp 调接口；这里透传 tenantId/ip，避免「全部点位」为空
+    
     const params = new URLSearchParams();
     if (tenantId) params.set('tenantId', tenantId);
     params.set('ip', '122.224.196.178');
@@ -120,16 +119,15 @@ const pointList = computed(() => props.pointList || []);
 const energyChartRef = ref<InstanceType<typeof CommonEcharts>>();
 const densityChartRef = ref<InstanceType<typeof CommonEcharts>>();
 
-// 灰色主题已移除：固定使用非灰配色
+
 const chartAxisColor = computed(() => '#fff');
 const chartSplitLineColor = computed(() => 'rgba(150,150,150, 0.2)');
 
-/** 选中的条目（带颜色） */
 const selectedItemsWithColor = computed(() => {
     const selected = props.deviationList.filter(item => item.visible);
     return selected.map((item, index) => ({
         ...item,
-        // 优先使用父组件同步好的颜色，避免表格/图表颜色不一致
+        
         color: item?.color || `hsl(${(index * 137.5) % 360}, 70%, 50%)`
     }));
 });
@@ -140,12 +138,10 @@ const hasEnergyData = computed(() => {
 const hasDensityData = computed(() => {
     return selectedItemsWithColor.value.some((item: any) => Array.isArray(item?.densityArr) && item.densityArr.length > 0);
 });
-/** 两张曲线都没有返回值时：图表显示暂无数据，范围筛选不可输入但模块保留 */
 const hasAnyChartData = computed(() => hasEnergyData.value || hasDensityData.value);
 const rangeControlsDisabled = computed(() => !hasAnyChartData.value);
 
 const freqsRaw = computed<any[]>(() => selectedItemsWithColor.value[0]?.freqs || []);
-/** 公共配置 */
 const commonOptionBase = computed(() => {
     const c = chartAxisColor.value;
     const s = chartSplitLineColor.value;
@@ -221,7 +217,6 @@ const emptyGraphic = computed(() => {
     }];
 });
 
-/** 能量曲线配置 */
 const energyOption = computed<EChartsOption>(() => {
     const c = chartAxisColor.value;
     const s = chartSplitLineColor.value;
@@ -249,7 +244,6 @@ const energyOption = computed<EChartsOption>(() => {
     } as EChartsOption;
 });
 
-/** 密度曲线配置 */
 const densityOption = computed<EChartsOption>(() => {
     const c = chartAxisColor.value;
     const s = chartSplitLineColor.value;
@@ -293,7 +287,7 @@ const tryEmitChartInit = () => {
         chartInitEmitted = true;
         emit('chart-init', { energyChartInstance: energy, densityChartInstance: density });
 
-        // 监听 dataZoom，同步到底部范围输入框（只监听一张图即可，因已做联动分组）
+        
         if (!energyDataZoomCleanup) {
             const handler = (params: any) => {
                 handleDataZoom(params);
@@ -306,14 +300,13 @@ const tryEmitChartInit = () => {
     }
 };
 
-/** 供父组件调用，使用 CommonEcharts 后由响应式 option 自动更新，保留空实现以兼容 */
 const updateCharts = () => {
-    // option 为 computed，随 deviationList 变化自动更新
+    
 };
 
 defineExpose({ updateCharts });
 
-// 频率范围控制（复用 CommonEcharts 的公共逻辑）
+
 const {
     showResolvedRangeControls,
     rangeMin,
@@ -424,7 +417,7 @@ onUnmounted(() => {
         display: flex;
         flex-direction: column;
         border-radius: 8px;
-        /* 这里不要额外边框，边框交给外层 charts-section */
+        
         border: none !important;
         background: transparent !important;
 

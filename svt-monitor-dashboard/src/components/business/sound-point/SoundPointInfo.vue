@@ -5,7 +5,6 @@
             <div class="info-item">
                 <span class="info-content">
                     <span class="info-label">聚类名称：</span>
-                    <!-- 当前项目无聚类名称对应字段，只保留标签，不展示具体值 -->
                     <span class="info-value"></span>
                 </span>
             </div>
@@ -42,7 +41,6 @@
             <div class="info-item">
                 <span class="info-content">
                     <span class="info-label">偏差值：</span>
-                    <!-- 当前项目暂不展示偏差值，只保留标签 -->
                     <span class="info-value"></span>
                 </span>
             </div>
@@ -72,7 +70,7 @@ const props = defineProps<{
 
 const audioRef = ref<HTMLAudioElement | null>(null);
 
-// 无值就空着，不填占位符（保持每行固定高度由 CSS 控制，下一行不会挤上来）
+
 const productionEquipment = computed(() => props.productionEquipment || props.deviceName || '');
 const clusterName = computed(() => props.clusterName || '');
 const subComponent = computed(() => props.subComponent || '');
@@ -80,7 +78,7 @@ const detectionEquipment = computed(() => props.detectionEquipment || '');
 const microphone = computed(() => props.microphone || '');
 const deviationValue = computed(() => (props.deviationValue !== undefined && props.deviationValue !== '') ? props.deviationValue : '');
 
-// 当音频路径变化时自动播放
+
 watch(() => props.audioPath, (newPath) => {
     if (newPath && audioRef.value) {
         setTimeout(() => {

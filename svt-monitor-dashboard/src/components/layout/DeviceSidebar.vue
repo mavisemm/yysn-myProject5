@@ -1,6 +1,5 @@
 <template>
   <aside class="device-sidebar">
-    <!-- 标题 -->
     <div class="sidebar-header home-title home-title--device-list">
       <div class="sidebar-header__left home-title__left">
         <img class="sidebar-header__icon home-title__icon" src="@/assets/images/background/小图标.png" alt="" />
@@ -10,10 +9,8 @@
       </div>
     </div>
 
-    <!-- 搜索区域 -->
     <div class="search-area">
       <div class="search-row">
-        <!-- 车间搜索 -->
         <div class="search-item">
           <el-input v-model="workshopSearchText" placeholder="搜索车间" size="small" clearable @focus="handleWorkshopFocus"
             @blur="handleWorkshopBlur" @clear="clearWorkshopSearch" class="custom-search-input">
@@ -24,7 +21,6 @@
             </template>
           </el-input>
 
-          <!-- 车间下拉框 -->
           <div v-if="showWorkshopDropdown" class="dropdown-menu workshop-dropdown">
             <div v-for="workshop in filteredWorkshops" :key="workshop.id" class="dropdown-item"
               @click="selectWorkshop(workshop)">
@@ -36,7 +32,6 @@
           </div>
         </div>
 
-        <!-- 设备搜索 -->
         <div class="search-item">
           <el-input v-model="deviceSearchText" placeholder="搜索设备" size="small" clearable
             :disabled="!deviceTreeData.length" @focus="handleDeviceFocus" @blur="handleDeviceBlur"
@@ -48,7 +43,6 @@
             </template>
           </el-input>
 
-          <!-- 设备下拉框 -->
           <div v-if="showDeviceDropdown" class="dropdown-menu device-dropdown">
             <div v-for="device in filteredDevices" :key="device.id" class="dropdown-item device-dropdown-item"
               @click="selectDevice(device)">
@@ -67,7 +61,6 @@
       </div>
     </div>
 
-    <!-- 设备树 -->
         <div class="device-tree-container">
       <el-scrollbar class="tree-scrollbar">
         <div v-if="!deviceTreeStore.loading && displayTreeData.length === 0" class="no-data">
@@ -77,14 +70,12 @@
           :highlight-current="false" :default-expanded-keys="expandedKeys" node-key="id" @node-click="handleNodeClick">
           <template #default="{ node, data }">
             <div class="tree-node" :data-type="data.type" :class="{ 'is-selected': isNodeSelected(data) }">
-              <!-- 自定义展开图标 -->
               <el-icon v-if="node.childNodes && node.childNodes.length > 0" class="expand-icon no-select"
                 @mousedown.prevent @click.stop="handleExpandIconClick(node)">
                 <arrow-down v-if="node.expanded" />
                 <arrow-right v-else />
               </el-icon>
 
-              <!-- 图标 -->
               <div class="node-icon">
                 <el-icon v-if="data.type === 'factory'">
                   <OfficeBuilding />
@@ -100,7 +91,6 @@
                 </el-icon>
               </div>
 
-              <!-- 名称（设备节点后追加客户设备编号） -->
               <span
                 class="node-label"
                 :title="data.type === 'device' && data.customerDeviceId ? `${data.name} (${data.customerDeviceId})` : node.label"
@@ -151,10 +141,10 @@ import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 
 const router = useRouter()
 
-// 选中设备节点
+
 const selectDeviceNode = (deviceId: string) => {
   if (deviceTreeRef.value && deviceTreeRef.value.getNode && deviceTreeRef.value.setCurrentKey) {
-    // 展开所有必要的父节点
+    
     const expandParentNodes = (nodeId: string) => {
       try {
         const node = deviceTreeRef.value.getNode(nodeId)
@@ -167,13 +157,13 @@ const selectDeviceNode = (deviceId: string) => {
       }
     }
 
-    // 查找设备节点并选中
+    
     const findAndSelectNode = (nodes: DeviceNode[]): boolean => {
       for (const node of nodes) {
         if (node.id === deviceId) {
-          // 展开父节点
+          
           expandParentNodes(node.id)
-          // 选中节点
+          
           try {
             deviceTreeRef.value.setCurrentKey(deviceId)
           } catch (e) {
@@ -201,19 +191,12 @@ const selectDeviceNode = (deviceId: string) => {
 
 
 
-// ==================== 类型定义 ====================
+
 import type { DeviceNode, Workshop, Device } from '@/types/device'
 
-// ==================== 状态管理 ====================
 const deviceTreeStore = useDeviceTreeStore()
-
-// 使用状态管理中的设备树数据
 const deviceTreeData = computed(() => deviceTreeStore.deviceTreeData)
-
-// 监听选中设备ID的变化
 const selectedDeviceId = computed(() => deviceTreeStore.selectedDeviceId)
-
-// 监听选中状态变化并更新树组件
 const updateSelection = async (newId: string | null) => {
   await nextTick()
   const tree = deviceTreeRef.value
@@ -225,7 +208,7 @@ const updateSelection = async (newId: string | null) => {
   }
 }
 
-// 监听展开节点变化，更新树组件状态
+
 const updateExpansion = async (newKeys: string[]) => {
   await nextTick()
   const tree = deviceTreeRef.value
@@ -291,7 +274,7 @@ const treeProps = {
   children: 'children'
 }
 
-// ==================== 计算属性 ====================
+
 const allWorkshops = computed<Workshop[]>(() => {
   const workshops: Workshop[] = []
   deviceTreeData.value.forEach(factory => {
@@ -463,7 +446,7 @@ const displayTreeData = computed<DeviceNode[]>(() => {
     })
   })
 
-  // 筛掉没有匹配车间的工厂（如筛选车间A时，只保留包含车间A的 Main Factory，移除 East Branch Factory）
+  
   return resultData.filter((factory: DeviceNode) => factory.children && factory.children.length > 0)
 })
 
@@ -475,7 +458,7 @@ const getFirstWorkshopId = (): string | null => {
     !displayTreeData.value[0].children.length) {
     return null
   }
-  // 确保是workshop类型的节点
+  
   const firstWorkshop = displayTreeData.value[0].children!.find(child => child.type === 'workshop');
   return firstWorkshop?.id || null
 }
@@ -510,7 +493,7 @@ const collectAllFactoryAndWorkshopKeys = (data: DeviceNode[]): string[] => {
 }
 
 
-// ==================== 搜索相关方法 ====================
+
 const handleWorkshopFocus = () => {
   showWorkshopDropdown.value = true
   showDeviceDropdown.value = false
@@ -583,7 +566,7 @@ const updateExpandedKeys = () => {
   const deviceSearch = debouncedDeviceSearch.value
 
   if (!workshopSearch && !deviceSearch && !selectedWorkshop.value && !selectedDevice.value) {
-    // 默认：只展开第一个厂区 + 第一个车间（若存在）
+    
     const firstFactoryId = displayTreeData.value?.[0]?.id
     if (firstFactoryId) keys.push(firstFactoryId)
     const firstWorkshopId = getFirstWorkshopId()
@@ -593,7 +576,7 @@ const updateExpandedKeys = () => {
   }
 
   else if (deviceSearch && !selectedDevice.value) {
-    // 关键字搜索设备时：展开所有包含匹配设备的车间（以及其所属工厂）
+    
     collectAllFactoryAndWorkshopKeys(displayTreeData.value).forEach(k => {
       if (!keys.includes(k)) keys.push(k)
     })
@@ -611,7 +594,7 @@ const updateExpandedKeys = () => {
   }
 
   else if (workshopSearch || selectedWorkshop.value) {
-    // 搜索/选择车间时：展开所有匹配车间（以及其所属工厂）
+    
     collectAllFactoryAndWorkshopKeys(displayTreeData.value).forEach(k => {
       if (!keys.includes(k)) keys.push(k)
     })
@@ -620,18 +603,18 @@ const updateExpandedKeys = () => {
   deviceTreeStore.setExpandedKeys(keys)
 }
 
-// ==================== 树操作函数 ====================
+
 const toggleNode = (node: Node) => {
   if (node.expanded) {
     node.collapse()
   } else {
     node.expand()
   }
-  // 同步更新状态管理中的展开键
+  
   syncExpandedKeys()
 }
 
-// 同步树组件的展开状态到状态管理
+
 const syncExpandedKeys = () => {
   nextTick(() => {
     if (deviceTreeRef.value && deviceTreeRef.value.getExpandedKeys) {
@@ -642,18 +625,18 @@ const syncExpandedKeys = () => {
 }
 
 const handleExpandIconClick = (node: Node) => {
-  // 阻止节点选中，只执行展开/收起操作
+  
   toggleNode(node)
 }
 
 const handleNodeClick = (data: DeviceNode, node: Node) => {
-  // 工厂和车间点击时，手动控制展开/收起
+  
   if (data.type === 'factory' || data.type === 'workshop') {
     toggleNode(node)
     return
   }
 
-  // 设备点击时跳转路由并设置选中状态，但不自动展开
+  
   if (data.type === 'device') {
     deviceTreeStore.setSelectedDeviceId(data.id)
     router.push({
@@ -662,7 +645,7 @@ const handleNodeClick = (data: DeviceNode, node: Node) => {
     })
   }
 
-  // 点位点击时跳转路由并设置选中状态，但不自动展开
+  
   if (data.type === 'point') {
     deviceTreeStore.setSelectedDeviceId(data.id)
     const receiverId = data.receiverId ?? ''
@@ -670,19 +653,19 @@ const handleNodeClick = (data: DeviceNode, node: Node) => {
       ElMessage.warning('该点位缺少 receiverId，无法进入点位页')
       return
     }
-    // 声音/振动点位页地址：不在 query 里携带点位级 deviceId
-    // query.deviceId 改为 query.equipmentId（设备树设备节点 id）
+    
+    
     const equipmentId = node.parent?.data?.id || ''
     router.push({
       name: 'SoundPoint',
-      // query key 插入顺序：equipmentId -> receiverId
+      
       params: { receiverId },
       query: { equipmentId }
     })
   }
 }
 
-// 判断节点是否被选中（只有设备和点位才能被选中）
+
 const isNodeSelected = (data: DeviceNode): boolean => {
   if (data.type !== 'device' && data.type !== 'point') {
     return false
@@ -704,8 +687,8 @@ watch(
 watch(
   () => debouncedDeviceSearch.value,
   (newVal) => {
-    // 当用户手动输入搜索词时，不应继续被上一次“下拉选择的设备”锁定过滤
-    // 否则会出现：下拉能搜到，但设备树仍按旧 selectedDevice 过滤导致不同步/为空
+    
+    
     const keyword = (newVal ?? '').trim()
     if (!keyword) {
       selectedDevice.value = null
@@ -729,7 +712,7 @@ watch(displayTreeData, () => {
 }, { deep: true })
 
 onUnmounted(() => {
-  // 清理所有定时器
+  
   if (timeoutId) {
     clearTimeout(timeoutId);
     timeoutId = null;
@@ -785,7 +768,6 @@ onUnmounted(() => {
             height: 24px;
             border-radius: 4px;
 
-            // 修改输入框内部文字颜色，使其在浅色背景上更易读
             .el-input__inner {
               background: transparent;
               font-size: 12px;
@@ -815,7 +797,7 @@ onUnmounted(() => {
             padding: 8px 12px;
             cursor: pointer;
             transition: background-color 0.2s;
-            /* 响应式字体大小 */
+            
             font-size: 12px;
             line-height: 1.25;
             display: flex;
@@ -827,7 +809,7 @@ onUnmounted(() => {
             }
 
             .workshop-name {
-              /* 响应式字体大小 */
+              
               margin-left: 4px;
               flex-shrink: 0;
             }
@@ -852,7 +834,7 @@ onUnmounted(() => {
           .dropdown-empty {
             padding: 12px;
             text-align: center;
-            /* 响应式字体大小 */
+            
             font-size: 12px;
             line-height: 1.25;
             color: white;
@@ -898,7 +880,6 @@ onUnmounted(() => {
       :deep(.el-tree) {
         background: transparent;
 
-        // 隐藏默认的展开图标
         .el-tree-node__expand-icon {
           display: none;
         }
@@ -921,13 +902,11 @@ onUnmounted(() => {
           }
         }
 
-        // 清除所有节点的默认选中样式（包括focus状态和is-current）
         .el-tree-node.is-current>.el-tree-node__content,
         .el-tree-node:focus>.el-tree-node__content {
           background-color: transparent !important;
         }
 
-        // 自定义选中样式 - 基于 .is-selected 类，完全不依赖 el-tree 的 is-current
         .el-tree-node__content:has(.tree-node.is-selected) {
           background-image: url('@/assets/images/background/设备树选中行背景.png') !important;
           background-repeat: no-repeat !important;
@@ -944,14 +923,14 @@ onUnmounted(() => {
     gap: 8px;
     width: 100%;
     padding: 2px 0;
-    /* 设备树整行文字基础颜色 */
+    
     color: rgba(255, 255, 255, 1);
 
     .expand-icon {
       cursor: pointer;
       transition: transform 0.2s;
-      /* 响应式字体大小，以16px为基准 */
-      /* 展开/收起图标颜色 */
+      
+      
       color: rgba(255, 255, 255, 1) !important;
     }
 
@@ -962,7 +941,6 @@ onUnmounted(() => {
       -ms-user-select: none;
     }
 
-    // 防止展开图标触发选中
     :deep(.el-tree-node__content) {
       .expand-icon {
         pointer-events: auto;
@@ -972,7 +950,7 @@ onUnmounted(() => {
     .node-icon {
       display: flex;
       align-items: center;
-      /* 设备树图标颜色 */
+      
       color: rgba(255, 255, 255, 1) !important;
       flex-shrink: 0;
 
@@ -983,18 +961,18 @@ onUnmounted(() => {
 
     .node-label {
       flex: 1;
-      /* 响应式字体大小，以16px为基准 */
+      
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      /* 节点文字颜色 */
+      
       color: rgba(255, 255, 255, 1);
     }
 
     .node-count {
       margin-left: 8px;
       flex-shrink: 0;
-      /* 统计文字颜色（设备数/点位数），与设备树文字保持一致 */
+      
       color: rgba(255, 255, 255, 1);
     }
   }

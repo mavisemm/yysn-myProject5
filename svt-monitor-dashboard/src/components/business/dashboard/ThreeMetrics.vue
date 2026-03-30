@@ -1,4 +1,3 @@
-<!-- 排名指标展示区域：显示各类设备指标排名 -->
 <template>
     <div class="metrics-area">
         <div v-for="(metric, index) in metrics" :key="index" class="chart-container">
@@ -15,7 +14,6 @@
                     <span class="metric-col metric-col--value">单位：{{ getUnitShort(metric.unit) }}</span>
                 </div>
             </div>
-            <!-- 排名列表：根据可用高度动态显示前 N 条 -->
             <div class="rankings" :ref="(el) => setRankingsEl(el, index)">
                 <div v-if="getRankings(index).length === 0" class="no-data">
                     <CommonEmptyState size="small" />
@@ -89,15 +87,8 @@ const props = defineProps<Props>();
 const router = useRouter()
 const deviceTreeStore = useDeviceTreeStore()
 
-
-/**
- * 设备名称到ID的映射表
- */
 const deviceNameToIdMap: Record<string, string> = {};
 
-/**
- * 遍历设备树以构建设备名称到ID的映射表
- */
 const buildDeviceNameToIdMap = (nodes: DeviceNode[]) => {
     nodes.forEach(node => {
         if (node.type === 'device') {
@@ -113,9 +104,6 @@ const buildDeviceNameToIdMap = (nodes: DeviceNode[]) => {
 buildDeviceNameToIdMap(deviceTreeStore.deviceTreeData);
 
 
-/**
- * 验证设备是否存在
- */
 const isValidDevice = (deviceId: string): boolean => {
     const findDeviceInTree = (nodes: DeviceNode[]): boolean => {
         for (const node of nodes) {
@@ -136,9 +124,6 @@ const isValidDevice = (deviceId: string): boolean => {
 };
 
 
-/**
- * 跳转到设备详情页（Top3 列表与「更多」弹窗内点击设备均会调用）
- */
 const goToDeviceDetail = (rank: RankingItem) => {
     let equipmentId = rank.equipmentId;
     if (!equipmentId) {
@@ -159,22 +144,14 @@ const goToDeviceDetail = (rank: RankingItem) => {
 }
 
 
-/**
- * 排名数据：
- * - 只有在“完全未提供 rankings（undefined）”时，才回退到设备树生成列表
- * - 当 rankings 已传入但为空（例如 top5 接口返回空），严格返回空，显示 Empty 状态
- */
 const rankingData = props.rankings;
 
-/**
- * 获取指定指标的排名数据（完整列表）
- */
 const getRankings = (index: number): RankingItem[] => {
     if (rankingData?.[index]?.length) {
         return rankingData[index];
     }
 
-    // 未提供 rankings（完全不传）时，才用设备树“生成一个列表”兜底
+    
     if (!rankingData) {
         const devices: RankingItem[] = [];
         const traverse = (nodes: DeviceNode[]) => {
@@ -193,7 +170,7 @@ const getRankings = (index: number): RankingItem[] => {
         return devices;
     }
 
-    // rankings 已传入但该 index 为空：不再回退，避免展示“伪排名”
+    
     return [];
 };
 
@@ -240,13 +217,13 @@ const measureAndUpdateVisibleRows = () => {
         const height = el.clientHeight
         const count = Math.floor((height + gap) / (rowHeight + gap))
 
-        // 保底：至少展示 2 行
+        
         visibleRowsByMetric.value[index] = Math.max(2, count)
     }
 };
 
 const scheduleMeasure = () => {
-    // 等待一次布局/字体计算完成，避免读取到旧高度
+    
     window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => measureAndUpdateVisibleRows())
     })
@@ -285,7 +262,7 @@ onMounted(async () => {
     resizeListener = () => measureAndUpdateVisibleRows()
     window.addEventListener('resize', resizeListener)
 
-    // 当容器尺寸因字体/布局变化而变化时，也能重新测算
+    
     if ('ResizeObserver' in window) {
         resizeObserver = new ResizeObserver(() => measureAndUpdateVisibleRows())
         rankingsElRefs.value.forEach(el => {
@@ -326,7 +303,7 @@ watch(
     box-sizing: border-box;
     padding: 10px 20px 0 20px;
 
-    /* 直接作用到三个排名卡片根节点，避免嵌套选择器导致不命中 */
+    
     >.chart-container {
         flex: 1;
         background: url('@/assets/images/background/首页-排名背景.png') no-repeat center center;
@@ -419,8 +396,6 @@ watch(
             }
 
             .metric-col--value {
-                // 表头展示内容为“单位：xx”，文字宽度可能大于 84px
-                // 父容器有 overflow: hidden 时会导致右侧被裁剪，因此适当增大并做省略
                 width: 110px;
                 flex: 0 0 auto;
                 text-align: right;
@@ -543,7 +518,7 @@ watch(
         color: rgba(255, 255, 255, 1);
         margin: 0 !important;
         text-align: left !important;
-        /* 使用 rem，相对根字号自适应 */
+        
         font-size: 1.2rem!important;
         display: block !important;
         width: auto !important;

@@ -1,9 +1,9 @@
 import request from '../request'
 import { getTenantId } from '../tenant'
 
-// 设备相关的 API 接口
 
-// 设备类型定义
+
+
 export interface Device {
   id: string
   name: string
@@ -28,7 +28,7 @@ export interface DeviceListData {
   pageSize: number
 }
 
-// 获取设备列表
+
 export const getDeviceList = (params?: {
   page?: number
   pageSize?: number
@@ -38,22 +38,22 @@ export const getDeviceList = (params?: {
   return request.get('/devices', { params })
 }
 
-// 获取单个设备详情
+
 export const getDeviceDetail = (id: string): Promise<ApiResponse<Device>> => {
   return request.get(`/devices/${id}`)
 }
 
-// 更新设备
+
 export const updateDevice = (id: string, data: Partial<Device>): Promise<ApiResponse<Device>> => {
   return request.put(`/devices/${id}`, data)
 }
 
-// 删除设备
+
 export const deleteDevice = (id: string): Promise<ApiResponse<boolean>> => {
   return request.delete(`/devices/${id}`)
 }
 
-// 批量操作设备
+
 export const batchOperateDevices = (ids: string[], operation: string): Promise<ApiResponse<{success: boolean; affectedCount: number}>> => {
   return request.post('/devices/batch', {
     ids,
@@ -61,14 +61,14 @@ export const batchOperateDevices = (ids: string[], operation: string): Promise<A
   })
 }
 
-// 新的响应格式类型
+
 export interface NewApiResponse<T = unknown> {
   rc: number
   ret: T
   err: string | null
 }
 
-// 振动频域图数据接口
+
 export interface VibrationFrequencyData {
   frequency: string
   freqSpeedData: string
@@ -82,7 +82,7 @@ export const getVibrationFrequencyData = (deviceId: string, receiverId: string):
   })
 }
 
-// 振动基本指标数据接口
+
 export interface VibrationMetricData {
   velocityRms: number
   velocityMax: number
@@ -98,10 +98,10 @@ export const getVibrationMetricData = (deviceId: string, receiverId: string): Pr
   })
 }
 
-// 振动时域图数据接口
+
 export interface VibrationTimeDomainData {
   time: number
-  // 后端历史上返回过逗号分隔字符串；目前为数组。这里做兼容，最终在组件侧统一转成 number[]
+  
   timedomaindata: string | number[] | string[]
 }
 

@@ -9,7 +9,6 @@
     destroy-on-close
   >
     <div class="voiceContainer">
-      <!-- 左上：预警信息 -->
       <div class="voiceContainerItem">
         <div class="panelTitle">预警信息：{{ currentEventTypeName }}</div>
         <div class="panelRow">
@@ -42,7 +41,6 @@
         </div>
       </div>
 
-      <!-- 右上：操作（确认预警/误报 + 智能故障分析） -->
       <div class="voiceContainerItem">
         <div class="panelTitle">操作</div>
         <div class="controlsBox">
@@ -80,14 +78,12 @@
         </div>
       </div>
 
-      <!-- 左下：能量曲线图 -->
       <div class="voiceContainerItem">
         <div class="panelTitle">能量曲线图</div>
         <div ref="energyChartRef" class="chart-dom" />
         <div v-if="!canRenderCharts" class="no-chart no-chart--overlay">暂无能量曲线</div>
       </div>
 
-      <!-- 右下：密度曲线图 -->
       <div class="voiceContainerItem">
         <div class="panelTitle">密度曲线图</div>
         <div ref="densityChartRef" class="chart-dom" />
@@ -95,7 +91,6 @@
       </div>
     </div>
 
-    <!-- 确认误报弹窗 -->
     <el-dialog
       v-model="notVisible"
       title="选择误报类型"
@@ -120,7 +115,6 @@
       </template>
     </el-dialog>
 
-    <!-- 异常预警弹窗（当 resultDtoList 为空时使用） -->
     <el-dialog
       v-model="yesVisible"
       title="异常预警"
@@ -154,7 +148,6 @@
       </template>
     </el-dialog>
 
-    <!-- 智能故障分析弹窗 -->
     <el-dialog
       v-model="aiModalVisible"
       title="智能故障分析"
@@ -240,12 +233,12 @@ const disposeCharts = () => {
   try {
     energyChart.value?.dispose()
   } catch {
-    // ignore
+    
   }
   try {
     densityChart.value?.dispose()
   } catch {
-    // ignore
+    
   }
   energyChart.value = null
   densityChart.value = null
@@ -367,20 +360,20 @@ const currentDeviationValueText = computed(() => {
   const num = Number(raw)
   if (!Number.isFinite(num)) return String(raw)
 
-  // 声音异常预警场景常见保留 4 位小数；为避免 0.0000 这种展示做去零处理
+  
   let s = num.toFixed(4)
   s = s.replace(/\.?0+$/, '')
   return s || '-'
 })
 
 const currentFreqGroupId = computed<string>(() => {
-  // 音频接口前置条件：只取后端明确返回的字段（避免不同租户字段命名不一致导致取错）
+  
   const id = dataParse.value?.frepGroupId
   return id == null || id === '' ? '' : String(id)
 })
 
 const audioSrc = computed(() => {
-  // 音频接口严格依赖 freqGroupId；不要用事件 id 兜底，否则可能把错误的 id 传给后端导致 400
+  
   const freqGroupId = currentFreqGroupId.value
   if (!freqGroupId) return ''
   try {
@@ -391,7 +384,7 @@ const audioSrc = computed(() => {
 })
 
 const receiverId = computed(() => {
-  // 声音频谱曲线接口需要 receiverId（不能用旧字段乱兜底，否则曲线会加载失败）
+  
   return (
     dataParse.value?.receiverId ??
     dataParse.value?.receiverID ??
@@ -403,7 +396,7 @@ const receiverId = computed(() => {
     ''
   )
 })
-// 预警详情里“设备ID”在 8006 侧语义是 equipmentId
+
 const deviceId = computed(() =>
   eventDetail.value?.equipmentId
   ?? dataParse.value?.equipmentId
@@ -424,7 +417,7 @@ const pointId = computed(() =>
 
 const positionText = computed(() => {
   if (position.value == null) return '-'
-  // src0 里 Position 面板是静态背景，这里用简短提示兜底
+  
   return '已获取位置/点位信息'
 })
 
@@ -566,7 +559,7 @@ const loadEvent = async () => {
     if (res?.rc === 0 && res?.ret) {
       eventDetail.value = res.ret
     } else {
-      // 如果详情接口失败，退回使用列表行 dataJson 兜底
+      
       eventDetail.value = props.row
     }
   } catch {
@@ -576,7 +569,7 @@ const loadEvent = async () => {
   const rawDataJson = eventDetail.value?.dataJson ?? props.row?.dataJson
   dataParse.value = safeParseJson(rawDataJson) ?? {}
 
-  // Position 面板：先只做接口请求（避免后续扩展时遗漏），显示文本兜底
+  
   try {
     if (deviceId.value) {
       const posRes = await apiGetDevicePosition({ objectId: deviceId.value })
@@ -586,7 +579,7 @@ const loadEvent = async () => {
     position.value = null
   }
 
-  // 渲染曲线
+  
   const code = currentEventTypeCode.value
   const rid = receiverId.value
   if (rid && code === 'FREQUENCY_SOUND_WARN') {
@@ -600,7 +593,7 @@ const loadEvent = async () => {
     nosceneVoiceRet.value = (r as any)?.ret ?? null
     await renderEnergyDensityChartsFromNoScene((r as any)?.ret ?? {})
   } else {
-    // 其它事件类型：暂不渲染曲线
+    
     disposeCharts()
   }
 }
@@ -635,7 +628,7 @@ const onConfirmYes = async () => {
   if (!id) return
 
   try {
-    // scene 类（NO_SCENE_SOUND_WARN）在 src0 里会区分 resultDtoList 是否为空
+    
     if (currentEventTypeCode.value === 'NO_SCENE_SOUND_WARN' && resultDtoList.value.length === 0) {
       yesVisible.value = true
       return
@@ -774,7 +767,7 @@ const openAIModal = async () => {
   try {
     await fetchNoSceneVoiceRet()
   } catch {
-    // ignore
+    
   }
 }
 

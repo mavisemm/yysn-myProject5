@@ -1,42 +1,29 @@
 import * as echarts from 'echarts';
 
-/** 图表主题颜色（与 CommonEcharts 一致） */
 export type ChartThemeColors = {
     axisColor: string;
     splitLineColor: string;
     isGrayTheme: boolean;
 };
-
-/**
- * 联动多个 ECharts 图表，实现缩放、移动、提示框等同步
- * @param charts 图表实例数组
- */
 export const connectCharts = (charts: any[]) => {
   const validCharts = charts.filter((chart) => !!chart);
   if (validCharts.length > 1) {
     echarts.connect(validCharts);
   }
 };
-
-/**
- * 监听元素尺寸变化并自动重绘图表
- * @param chart 图表实例
- * @param container 容器 DOM 元素
- * @returns 销毁监听的方法
- */
 export const observeResize = (chart: any, container: HTMLElement) => {
   const resizeObserver = new ResizeObserver((entries) => {
-    // 检查是否在主渲染过程中
+    
     if (document.hidden) {
       console.debug('Document hidden, skipping resize');
       return;
     }
     
-    // 使用 setTimeout 将 resize 调用推迟到下一个事件循环，避免在主渲染过程中调用
+    
     setTimeout(() => {
       if (chart && typeof chart.resize === 'function') {
         try {
-          // 再次检查图表状态
+          
           if (chart.isDisposed && chart.isDisposed()) {
             console.debug('Chart already disposed, skipping resize');
             return;
@@ -46,7 +33,7 @@ export const observeResize = (chart: any, container: HTMLElement) => {
           console.debug('ECharts resize completed successfully');
         } catch (error) {
           console.warn('ECharts resize failed:', error);
-          // 如果 resize 失败，可能需要重新初始化
+          
           if (error instanceof Error && error.message.includes('main process')) {
             console.info('Main process resize error detected, will retry');
             setTimeout(() => {
@@ -70,18 +57,13 @@ export const observeResize = (chart: any, container: HTMLElement) => {
   resizeObserver.observe(container);
   return () => resizeObserver.disconnect();
 };
-
-/**
- * 为图表实例添加滚轮缩放功能
- * @param chart 图表实例
- */
 export const enableMouseWheelZoom = (chart: any) => {
   if (!chart) return;
   
-  // 添加滚轮事件监听
+  
   const chartDom = chart.getDom();
   const handleWheel = (e: WheelEvent) => {
-    // 如果滚轮发生在 tooltip 内，优先让 tooltip 自己滚动，不触发图表缩放
+    
     const target = e.target as HTMLElement | null;
     if (target && typeof target.closest === 'function' && target.closest('.echarts-tooltip')) {
       return;
@@ -89,25 +71,25 @@ export const enableMouseWheelZoom = (chart: any) => {
 
     e.preventDefault();
     
-    // 获取当前dataZoom的配置
+    
     const option = chart.getOption();
     const dataZooms = option.dataZoom || [];
     
-    // 找到slider类型的dataZoom
+    
     const sliderZoom = dataZooms.find((dz: any) => dz.type === 'slider');
     
     if (sliderZoom) {
-      // 计算新的起始和结束位置
-      const percent = e.deltaY > 0 ? 0.05 : -0.05; // 滚轮方向控制
+      
+      const percent = e.deltaY > 0 ? 0.05 : -0.05; 
       const start = Math.max(0, sliderZoom.startValue - Math.round(percent * 100));
       const end = Math.min(100, sliderZoom.endValue + Math.round(percent * 100));
       
-      // 确保start和end不会相等或交叉
+      
       if (Math.abs(start - end) < 1) {
-        return; // 防止过度缩放
+        return; 
       }
       
-      // 更新dataZoom
+      
       chart.dispatchAction({
         type: 'dataZoom',
         dataZoomIndex: 0,
@@ -119,17 +101,11 @@ export const enableMouseWheelZoom = (chart: any) => {
   
   chartDom.addEventListener('wheel', handleWheel, { passive: false });
   
-  // 返回销毁方法
+  
   return () => {
     chartDom.removeEventListener('wheel', handleWheel);
   };
 };
-
-/**
- * 批量为多个图表启用滚轮缩放功能
- * @param charts 图表实例数组
- * @returns 销毁所有监听的方法
- */
 export const enableMouseWheelZoomForCharts = (charts: any[]) => {
   const cleanupFunctions: (() => void)[] = [];
   

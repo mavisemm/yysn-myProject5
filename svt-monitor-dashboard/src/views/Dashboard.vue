@@ -1,4 +1,3 @@
-<!-- 首页仪表板：三个盒子纵向排列 -->
 <template>
   <div class="dashboard">
     <div class="dashboard-box dashboard-box-stats">
@@ -42,9 +41,6 @@ import { useAlarmOverviewStore } from '@/stores/alarmOverview'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 
 
-/**
- * 排名项目类型定义
- */
 interface RankingItem {
   equipmentId?: string;
   equipmentName: string;
@@ -61,7 +57,6 @@ const rankings = ref<RankingItem[][]>([
 const showTrendWarningModal = ref(false);
 const showFaultWarningModal = ref(false);
 
-// 统计数据
 const DEFAULT_STATS = [
   { title: '监控总设备', number: 0 },
   { title: '健康设备', number: 0 },
@@ -84,10 +79,6 @@ const trendWarningCount = computed(() => {
 let historyPrefetchTimerId: number | null = null;
 
 const router = useRouter()
-
-/**
- * 获取Top5设备数据
- */
 const fetchTop5Data = async () => {
   try {
     const tenantId = getTenantId() || undefined
@@ -128,9 +119,6 @@ const fetchTop5Data = async () => {
   }
 };
 
-/**
- * 获取统计数据显示
- */
 const fetchStatsData = async () => {
   try {
     const stats = await getAllStats();
@@ -155,23 +143,17 @@ const fetchStatsData = async () => {
 onMounted(() => {
   const hasToken = () => Boolean(localStorage.getItem('token'))
 
-  // 等路由与地址栏 query（含 tenantId）落稳后再发依赖租户的 find，避免登录首屏竞态
   void nextTick(async () => {
     await router.isReady()
-    // 预警总览：初始化 + websocket 订阅（不再依赖 AlarmOverview.vue 的 onMounted）
     const alarmOverviewStore = useAlarmOverviewStore()
     void alarmOverviewStore.start({
       token: localStorage.getItem('token') ?? undefined,
       tenantId: getTenantId() || undefined
     })
 
-    // 设备树：进入 dashboard 后强制拉取一次
-    // 避免“store 初始化时 tenantId 尚未就绪”的时序问题导致首次看不到 tree 请求
-    // tenantId 不变也可能增删设备，因此这里每次进入都刷新
     const deviceTreeStore = useDeviceTreeStore()
     void deviceTreeStore.loadDeviceTreeData()
 
-    // 弹窗列表预热（find），仅默认条件；是否“仅首次”由 alarmBatchStore 内部控制
     const alarmBatchStore = useAlarmBatchStore()
     if (hasToken()) {
       void alarmBatchStore.prefetchRealtimeListForDefault().catch((e) => {
@@ -192,7 +174,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  // 离开 dashboard 时断开 websocket，避免后台持续占用连接
   useAlarmOverviewStore().stop()
   if (historyPrefetchTimerId) {
     clearTimeout(historyPrefetchTimerId)

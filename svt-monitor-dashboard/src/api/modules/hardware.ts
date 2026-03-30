@@ -1,9 +1,6 @@
 import request from '../request'
 import { getTenantId } from '../tenant'
 
-// 硬件设备相关 API 接口
-
-// 硬件设备类型定义
 export interface HardwareDevice {
   id: string
   deviceId: string
@@ -131,7 +128,6 @@ export interface DeviceStatisticsResponse {
   data: DeviceStatistics
 }
 
-// 获取硬件设备列表
 export const getHardwareDeviceList = (params?: HardwareDeviceQueryParams): Promise<HardwareDeviceListResponse> => {
   return request.get('/hardware/device/list', {
     params,
@@ -139,42 +135,36 @@ export const getHardwareDeviceList = (params?: HardwareDeviceQueryParams): Promi
   })
 }
 
-// 获取硬件设备详情
 export const getHardwareDeviceDetail = (deviceId: string): Promise<HardwareDeviceDetailResponse> => {
   return request.get(`/hardware/device/detail/${deviceId}`, {
     showLoading: true
   })
 }
 
-// 创建硬件设备
 export const createHardwareDevice = (data: Omit<HardwareDevice, 'id' | 'lastOnlineTime' | 'lastOfflineTime'>): Promise<any> => {
   return request.post('/hardware/device/create', data, {
     showLoading: true
   })
 }
 
-// 更新硬件设备
 export const updateHardwareDevice = (deviceId: string, data: Partial<HardwareDevice>): Promise<any> => {
   return request.put(`/hardware/device/update/${deviceId}`, data, {
     showLoading: true
   })
 }
 
-// 删除硬件设备
 export const deleteHardwareDevice = (deviceId: string): Promise<any> => {
   return request.delete(`/hardware/device/delete/${deviceId}`, {
     showLoading: true
   })
 }
 
-// 获取设备状态
 export const getDeviceStatus = (deviceId: string): Promise<DeviceStatusResponse> => {
   return request.get(`/hardware/device/status/${deviceId}`, {
     showLoading: false
   })
 }
 
-// 批量获取设备状态
 export const getBatchDeviceStatus = (deviceIds: string[]): Promise<any> => {
   return request.post('/hardware/device/status/batch', {
     deviceIds
@@ -183,7 +173,6 @@ export const getBatchDeviceStatus = (deviceIds: string[]): Promise<any> => {
   })
 }
 
-// 获取设备预警信息
 export const getDeviceWarnings = (params?: {
   deviceId?: string
   warningLevel?: string
@@ -197,21 +186,18 @@ export const getDeviceWarnings = (params?: {
   })
 }
 
-// 获取设备统计数据
 export const getDeviceStatistics = (): Promise<DeviceStatisticsResponse> => {
   return request.get('/hardware/device/statistics', {
     showLoading: true
   })
 }
 
-// 设备重启命令
 export const restartDevice = (deviceId: string): Promise<any> => {
   return request.post(`/hardware/device/command/${deviceId}/restart`, {}, {
     showLoading: true
   })
 }
 
-// 设备固件升级
 export const upgradeDeviceFirmware = (deviceId: string, firmwareVersion: string): Promise<any> => {
   return request.post(`/hardware/device/command/${deviceId}/upgrade`, {
     firmwareVersion
@@ -220,14 +206,12 @@ export const upgradeDeviceFirmware = (deviceId: string, firmwareVersion: string)
   })
 }
 
-// 设备参数配置
 export const configureDevice = (deviceId: string, config: any): Promise<any> => {
   return request.post(`/hardware/device/command/${deviceId}/configure`, config, {
     showLoading: true
   })
 }
 
-// 获取设备健康报告
 export const getDeviceHealthReport = (deviceId: string, params?: {
   startTime?: string
   endTime?: string
@@ -238,13 +222,12 @@ export const getDeviceHealthReport = (deviceId: string, params?: {
   })
 }
 
-// 获取TOP5设备数据
 export interface TopDevice {
   equipmentId: string;
   equipmentName: string;
   workshopId: string;
   workshopName: string;
-  value: number; // 数值，如振动烈度、声音响度或温度
+  value: number;
   latestTime: string;
 }
 
@@ -254,7 +237,6 @@ export interface TopDeviceResponse {
   err: string | null;
 }
 
-// 获取设备Top5数据，type可为SOUND, VIBRATION, TEMPERATURE
 export const getTop5Devices = (
   type: 'SOUND' | 'VIBRATION' | 'TEMPERATURE',
   tenantId?: string
@@ -266,7 +248,6 @@ export const getTop5Devices = (
   })
 }
 
-// 设备详情信息接口返回类型
 export interface DeviceInfoResponse {
   rc: number;
   ret: {
@@ -286,7 +267,6 @@ export interface DeviceInfoResponse {
   err: string | null;
 }
 
-// 根据设备ID获取设备详情信息
 export const getDeviceInfoByEquipmentId = (equipmentId: string): Promise<DeviceInfoResponse> => {
   return request.get(`/taicang/hardware/device/info/vibration/findByDeviceId`, {
     params: { equipmentId },
@@ -294,17 +274,15 @@ export const getDeviceInfoByEquipmentId = (equipmentId: string): Promise<DeviceI
   })
 }
 
-// 点位列表项（selectCheckPointIn 接口返回）
 export interface CheckPointItem {
   receiverId: string
-  /** 点位名称（统一字段，等价于 pointName） */
   receiverName?: string
   deviceId?: string
   pointName: string
   warningTime: string | null
   warningType: string
   warningValue: number
-  isAlarm: number  // 0=有预警(未处理)，1=没预警(已处理)
+  isAlarm: number
 }
 export interface SelectCheckPointInResponse {
   rc: number
@@ -312,7 +290,6 @@ export interface SelectCheckPointInResponse {
   err: string | null
 }
 
-// 根据设备ID(equipmentId)获取点位列表（设备详情页点位列表）
 export const getSelectCheckPointIn = (equipmentId: string): Promise<SelectCheckPointInResponse> => {
   return request.get('/taicang/hardware/device/vibration/selectCheckPointIn', {
     params: { equipmentId },
@@ -330,7 +307,6 @@ export const getSelectCheckPointIn = (equipmentId: string): Promise<SelectCheckP
         ...raw,
         receiverId,
         receiverName,
-        // 兼容旧字段：如果后端没返回 pointName，则用 receiverName 回填
         pointName: raw?.pointName ?? receiverName,
       } as CheckPointItem
     })
@@ -338,7 +314,6 @@ export const getSelectCheckPointIn = (equipmentId: string): Promise<SelectCheckP
   })
 }
 
-// 设备编辑信息类型定义
 export interface DeviceInfoDto {
   id: number;
   equipmentId: string;
@@ -352,14 +327,12 @@ export interface DeviceInfoDto {
   onlineStatus: number;
 }
 
-// 设备编辑响应类型
 export interface DeviceEditResponse {
   rc: number;
   ret: boolean;
   err: string | null;
 }
 
-// 编辑设备信息
 export const editEquipmentInfo = (equipmentId: string, deviceInfo: DeviceInfoDto): Promise<DeviceEditResponse> => {
   return request.post(`/taicang/hardware/device/info/vibration/edit`, {
     equipmentId,
@@ -369,9 +342,8 @@ export const editEquipmentInfo = (equipmentId: string, deviceInfo: DeviceInfoDto
   })
 }
 
-// 温度趋势数据响应类型（接口返回 dateTime + temperature）
 export interface TemperatureTrendItem {
-  dateTime: string; // 如 "2026-02-04 00:55:52"
+  dateTime: string;
   temperature: number;
 }
 export interface TemperatureTrendResponse {
@@ -380,7 +352,6 @@ export interface TemperatureTrendResponse {
   err: string | null;
 }
 
-// 获取温度趋势数据（请求参数：receiverId）
 export const getTemperatureTrend = (params: {
   receiverId: string;
 }): Promise<TemperatureTrendResponse> => {
@@ -390,10 +361,9 @@ export const getTemperatureTrend = (params: {
   })
 }
 
-// 振动趋势数据响应类型（接口返回 time + sumRms）
 export interface VibrationTrendItem {
-  time: string;   // 如 "2026-01-28 20:30:00"
-  sumRms: number;  // 烈度 mm/s
+  time: string;
+  sumRms: number;
 }
 export interface VibrationTrendResponse {
   rc?: number;
@@ -401,8 +371,6 @@ export interface VibrationTrendResponse {
   err?: string | null;
 }
 
-// 获取振动趋势数据（请求参数：receiverId）
-// 后端可能直接返回数组，或 { rc, ret: 数组 }
 export const getVibrationTrend = (params: {
   receiverId: string;
 }): Promise<VibrationTrendResponse | VibrationTrendItem[]> => {
@@ -412,12 +380,11 @@ export const getVibrationTrend = (params: {
   })
 }
 
-// 响度趋势数据响应类型（接口返回 time/dateTime + value，与振动/温度类似）
 export interface SoundTrendItem {
   time?: string;
   dateTime?: string;
   value?: number;
-  soundLevel?: number; // dB
+  soundLevel?: number;
 }
 export interface SoundTrendResponse {
   rc?: number;
@@ -425,7 +392,6 @@ export interface SoundTrendResponse {
   err?: string | null;
 }
 
-// 获取响度趋势数据（请求参数：receiverId）
 export const getSoundTrend = (params: {
   receiverId: string;
 }): Promise<SoundTrendResponse | SoundTrendItem[]> => {
@@ -435,22 +401,18 @@ export const getSoundTrend = (params: {
   })
 }
 
-// 设备健康度数据响应类型
 export interface DeviceHealthResponse {
   rc: number;
   ret: {
     equipmentId: string;
     equipmentName: string;
-    // 声音健康度分數，振动場景可能為 null
     healthScore: number | null;
     type: 'sound' | 'vibration';
-    // 按后端约定增加健康等级（A/B/C/D），用于仪表盘区间与颜色映射
     healthGrade?: 'A' | 'B' | 'C' | 'D' | string;
   };
   err: string | null;
 }
 
-// 获取设备健康度
 export const getEquipmentHealth = (params: {
   equipmentId: string;
   type: 'sound' | 'vibration';
@@ -460,7 +422,6 @@ export const getEquipmentHealth = (params: {
   })
 }
 
-// 点位详情（check-point/find/point/message）请求与响应类型
 export interface PointMessageFilterItem {
   code: string;
   operate: string;
@@ -497,12 +458,10 @@ export interface PointMessageResponse {
   err: string | null;
 }
 
-/** 获取点位详情列表（项目打开时调用，供声音点位页等按 receiverId 查详情） */
 export const getPointMessage = (params: {
   filterPropertyMap: PointMessageFilterItem[];
   pageIndex: number;
   pageSize: number;
 }): Promise<PointMessageResponse> => {
-  // 与页面同源请求，由部署侧 nginx/Vite 代理到声学后端
   return request.post('/taicang/hardware/device/check-point/find/point/message', params, { showLoading: false })
 }

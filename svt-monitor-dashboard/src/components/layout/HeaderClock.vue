@@ -18,9 +18,9 @@ const now = ref<Date | null>(null)
 let timerId: number | null = null
 const route = useRoute()
 
-// 首页展示完整日期+星期，其它页面仅展示时分秒
-// 说明：本项目“首页”实际通常是 /dashboard（route.name === 'Dashboard'），
-// 这里额外兼容 /（父路由）以及 name === 'Home' 的情况，避免不同路由配置导致显示不一致。
+
+
+
 const showFull = computed(() => {
   const name = route.name
   return route.path === '/' ||
@@ -57,7 +57,7 @@ const weekText = computed(() => {
 onMounted(() => {
   now.value = new Date()
   timerId = window.setInterval(() => {
-    // 仅更新本组件内部的时间，不触发全局刷新
+    
     now.value = new Date()
   }, 1000)
 })

@@ -1,7 +1,5 @@
-<!-- 预警总览组件：显示设备告警信息 -->
 <template>
     <div class="alarm-overview">
-        <!-- 顶部区域：标题和搜索栏 -->
         <div class="header-section home-title home-title--device-monitor">
             <div class="header-section__left home-title__left">
                 <img class="header-section__icon home-title__icon" src="@/assets/images/background/小图标.png" alt="" />
@@ -58,7 +56,6 @@
             </div>
         </div>
 
-        <!-- 主内容区域 -->
         <div v-if="filteredAlarms.length === 0" class="alarm-empty">
             <CommonEmptyState />
         </div>
@@ -69,13 +66,11 @@
             <div v-for="(alarm, index) in displayedAlarms" :key="index" class="alarm-card"
                 :class="`alarm-card--${getDeviceDisplayStatus(alarm)}`"
                 @click="goToDeviceDetail(alarm)">
-                <!-- 第一部分：设备名和状态 -->
                 <div class="card-header">
                     <span class="device-name" :title="alarm.deviceName">{{ alarm.deviceName }}</span>
                     <span :class="['status-dot', getDeviceDisplayStatus(alarm)]"></span>
                 </div>
 
-                <!-- 第二部分：厂区名 + 报警时间 -->
                 <div class="alarm-time">
                     <template v-if="getDeviceDisplayStatus(alarm) !== 'healthy' && getDeviceDisplayStatus(alarm) !== 'offline'">
                         {{ alarm.shopName ? alarm.shopName + ' ' : '' }}&nbsp;&nbsp;{{ formatAlarmTime(alarm.time) }}
@@ -85,7 +80,6 @@
                     </template>
                 </div>
 
-                <!-- 第三部分：测点网格 -->
                 <div class="measurement-grid">
                     <div v-for="item in getDisplayPoints(alarm.measurementPoints)" :key="item.pointNum"
                         :class="['point-item', getPointStyleClass(item.point.status, getDeviceDisplayStatus(alarm))]">
@@ -95,7 +89,6 @@
             </div>
         </div>
 
-        <!-- 底部分页 -->
         <div v-if="filteredAlarms.length > 0" class="pagination-wrapper">
             <el-pagination v-model:current-page="currentPage" :page-size="pageSize" :total="filteredAlarms.length"
                 layout="prev, pager, next, jumper" @current-change="handleCurrentChange" />
@@ -135,7 +128,7 @@ const openHistoryBatch = () => {
 const router = useRouter()
 const deviceTreeStore = useDeviceTreeStore();
 
-// 定义类型：报警(alarm)、预警(warning)、健康(healthy) 三种状态
+
 interface MeasurementPoint {
     name: string;
     status: 'healthy' | 'warning' | 'alarm' | 'offline';
@@ -151,15 +144,10 @@ interface AlarmItem {
     time: string;
     measurementPoints: MeasurementPoint[];
 }
-
-/**
- * 预警总览 websocket 新返回结构（你提供的字段）
- * - 不解析 rawDataJson，直接使用同级字段与 data 内字段
- */
 interface AlarmWsPayload {
     alarmId?: string
     tenantId?: string
-    // 新字段：设备级 equipmentId/equipmentName
+    
     equipmentId?: string
     equipmentName?: string
     deviceId?: string
@@ -221,7 +209,7 @@ const currentPage = ref(1);
 const containerWidth = ref(window.innerWidth);
 const containerHeight = ref(window.innerHeight);
 
-// 预警总览：固定一行四个
+
 const responsivePageSize = computed(() => {
     return { pageSize: 4, columns: 4, rows: 1 };
 });
@@ -237,17 +225,11 @@ const sortOrder = ref<'asc' | 'desc'>("desc");
 
 const alarmOverviewStore = useAlarmOverviewStore()
 const { alarms } = storeToRefs(alarmOverviewStore)
-
-/**
- * CommonDateTimePicker 的 value-format/value 采用：YYYY-MM-DD HH:mm:ss
- * 不同运行环境对 `new Date("YYYY-MM-DD HH:mm:ss")` 解析可能不一致，
- * 这里使用手动拆分，确保本地时间语义稳定。
- */
 const parsePickerDateTime = (s: string): Date => {
     const str = (s ?? '').trim()
     if (!str) return new Date(NaN)
 
-    // 兼容意外格式：如果不包含空格，直接退回 Date 解析
+    
     if (!str.includes(' ')) return new Date(str)
 
     const parts = str.split(' ')
@@ -262,7 +244,7 @@ const parsePickerDateTime = (s: string): Date => {
     const d = Number(dateParts[2])
 
     const timeParts = String(timePart).split(':')
-    // 理论上 element-plus 会带 HH:mm:ss，这里兜底 ss
+    
     const hh = Number(timeParts[0])
     const mm = Number(timeParts[1])
     const ss = Number(timeParts[2] ?? '0')
@@ -271,24 +253,18 @@ const parsePickerDateTime = (s: string): Date => {
 
     return new Date(y, m - 1, d, hh, mm, ss, 0)
 }
-
-/**
- * 容错解析报警时间：
- * - 正常情况下 alarm.time 来自 `toISOString()`，会包含年份，可直接 `new Date(time)`。
- * - 但如果后端/数据源只返回 `MM-DD HH:mm[:ss]`（无年份），这里用 fallbackYear 补年份，避免时间筛选失效。
- */
 const parseAlarmTime = (timeStr: string | undefined, fallbackYear: number): Date | null => {
     if (!timeStr) return null
     const raw = String(timeStr).trim()
     if (!raw) return null
 
-    // 如果包含 4 位年份，直接走 Date 解析
+    
     if (/\d{4}/.test(raw)) {
         const d = new Date(raw)
         return isNaN(d.getTime()) ? null : d
     }
 
-    // 例如：01-15 10:32 或 01-15 10:32:09
+    
     const m = raw.match(/^(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
     if (!m) {
         const d = new Date(raw)
@@ -308,13 +284,13 @@ const parseAlarmTime = (timeStr: string | undefined, fallbackYear: number): Date
 watch(
     () => dateRange.value,
     () => {
-        // 时间筛选后重置页码，避免当前页超出新结果范围导致“看起来像失效”
+        
         currentPage.value = 1
     },
     { deep: true }
 )
 
-// 设备树加载完成后，如果当前仍是 MOCK 假数据，就用设备树真实设备重新造假（保证跳转设备详情可用）
+
 function findDeviceInfo(deviceId: string): { deviceName: string; shopName: string } {
     const walk = (nodes: DeviceNode[], currentWorkshopName = ''): { deviceName: string; shopName: string } | null => {
         for (const node of nodes) {
@@ -374,7 +350,7 @@ type OverviewNormalized = {
 }
 
 function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
-    // 新 websocket：按你给的结构
+    
     if (isAlarmWsPayload(input)) {
         const deviceId = String(input.equipmentId ?? '')
         const t = Number(input.alarmTime ?? 0)
@@ -394,7 +370,7 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
         }
     }
 
-    // 旧 vibration 事件：兼容已有初始化接口与 mock
+    
     const evt = input as Partial<VibrationEventPayload>
     if (!evt || typeof evt !== 'object') return null
     const deviceId = String(evt.deviceId ?? '')
@@ -421,7 +397,7 @@ function buildMeasurementPointsFromPoint(point: OverviewNormalized['point']): Me
     const pointStatus = mapLevelToStatus(point?.level)
     const pointName = point?.pointName ? String(point.pointName) : ''
 
-    // 预警总览 UI 目前固定展示「点号」(1..N)，这里用 channelNo 映射到对应点位高亮
+    
     const total = 10
     const list: MeasurementPoint[] = Array.from({ length: total }).map((_, i) => ({
         name: i === 0 && pointName ? pointName : `测点${i + 1}`,
@@ -442,12 +418,12 @@ function upsertAlarmFromEvent(input: any) {
     const evt = normalizeToOverviewEvent(input)
     if (!evt) return
 
-    // 仅展示未处理：VALID
+    
     if (evt.statusCode && String(evt.statusCode).toUpperCase() !== 'VALID') return
 
-    // 你要求：右上角“设备状态圆点”按 alarmTypeCode 判定
-    // - MACHINE_VIBRATION：故障报警（显示报警）
-    // - 趋势预警：后续另一个 websocket 接入后，再扩展映射规则
+    
+    
+    
     const isFaultAlarm = String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
 
     const deviceId = evt.deviceId
@@ -459,7 +435,7 @@ function upsertAlarmFromEvent(input: any) {
     const timeStr = isNaN(d.getTime()) ? '' : d.toISOString()
 
     const measurementPoints = buildMeasurementPointsFromPoint(evt.point)
-    // 当前只接入“故障报警”一类 websocket；趋势预警未接入前，这里不会产生 warning
+    
     const deviceStatus: AlarmItem['status'] = isFaultAlarm ? 'alarm' : 'healthy'
 
     const statusText = deviceStatus === 'alarm' ? '报警' : '健康'
@@ -480,7 +456,7 @@ function upsertAlarmFromEvent(input: any) {
     else alarms.value.unshift(item)
 }
 
-// websocket 已迁移到 alarmOverviewStore，由 Dashboard.vue 负责启动/停止
+
 
 const allDevices = computed(() => {
     return extractDevicesFromTree(deviceTreeStore.deviceTreeData);
@@ -530,18 +506,18 @@ const filteredAlarms = computed(() => {
         let endDate = parsePickerDateTime(dateRange.value[1])
         const fallbackYear = startDate.getFullYear()
 
-        // 解析失败：直接返回未应用时间筛选的结果，避免把列表过滤成空
+        
         if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return result;
 
-        // 以用户选择的起止时间为准；只在用户选择了“未来结束时间”时才裁剪上限。
+        
         const now = new Date();
         if (endDate.getTime() > now.getTime()) {
             endDate = now;
         }
 
         result = result.filter(alarm => {
-            // 健康/离线设备不应参与“报警时间”筛选
-            // （健康设备展示不需要时间，但仍应保持可见）
+            
+            
             if (alarm.status === 'healthy' || alarm.status === 'offline') return true;
             if (!alarm.time) return false;
             const alarmDateTime = parseAlarmTime(alarm.time, fallbackYear)
@@ -550,7 +526,7 @@ const filteredAlarms = computed(() => {
         });
     }
 
-    // 你要求：先按“报警-预警-健康”优先级，再在同组内按时间排序
+    
     const statusOrder: Record<'alarm' | 'warning' | 'healthy' | 'offline', number> = {
         alarm: 0,
         warning: 1,
@@ -570,12 +546,12 @@ const filteredAlarms = computed(() => {
         const aHasTime = !isNaN(timeA);
         const bHasTime = !isNaN(timeB);
 
-        // 有时间的排在前面，无时间的排在后面
+        
         if (aHasTime && !bHasTime) return -1;
         if (!aHasTime && bHasTime) return 1;
         if (!aHasTime && !bHasTime) return 0;
 
-        // 都有时间时，按 sortOrder 升降序
+        
         return sortOrder.value === 'desc' ? (timeB - timeA) : (timeA - timeB);
     });
 
@@ -645,8 +621,8 @@ const updateContainerSize = () => {
     }
 };
 
-// 预警总览初始化与 websocket 订阅已迁移到 alarmOverviewStore（由 Dashboard.vue 启动）。
-// 这里保留 resize 监听与 UI 相关逻辑。
+
+
 onMounted(() => {
     window.addEventListener('resize', updateContainerSize);
 })
@@ -677,12 +653,6 @@ const isValidDevice = (deviceId: string): boolean => {
 
     return findDeviceInTree(deviceTreeStore.deviceTreeData);
 };
-
-/**
- * 设备右侧状态圆点的展示逻辑（当报警与预警同时存在时）：
- * 根据该设备下所有测点取最高等级：报警 > 预警 > 健康。
- * 即：存在任一测点为「报警」则显示报警；否则存在任一测点为「预警」则显示预警；否则显示健康。
- */
 function getDeviceDisplayStatus(alarm: AlarmItem): 'alarm' | 'warning' | 'offline' | 'healthy' {
     if (alarm.status === 'offline') return 'offline';
     const points = alarm.measurementPoints ?? [];
@@ -704,7 +674,6 @@ function getPointStyleClass(
     return 'healthy';
 }
 
-/** 获取用于展示的测点：报警/预警按点号排前（如 8 号报警则 8 号最前），最多 8 个，不足则全部显示 */
 function getDisplayPoints(points: MeasurementPoint[]): { point: MeasurementPoint; pointNum: number }[] {
     const list = points ?? [];
     const withNum = list.map((p, i) => ({ point: p, pointNum: i + 1 }));
@@ -716,8 +685,6 @@ function getDisplayPoints(points: MeasurementPoint[]): { point: MeasurementPoint
     });
     return sorted.slice(0, 8);
 }
-
-/** 报警时间显示「月日 时分」，如 01-15 10:32 */
 function formatAlarmTime(time: string | undefined): string {
     if (!time) return '暂无';
     const d = new Date(time);
@@ -737,7 +704,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         return;
     }
 
-    // 直接按设备ID跳转设备详情页，并同步选中设备
+    
     deviceTreeStore.setSelectedDeviceId(equipmentId);
     router.push({
         name: 'DeviceDetail',
@@ -774,8 +741,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
         h3 {
             margin: 0;
-            /* 标题字号使用 rem，随根字号变化 */
-            // font-size: 1.6rem;
             font-weight: 500;
             white-space: nowrap;
         }
@@ -855,13 +820,12 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         }
     }
 
-    // status-legend 已经挪到了 header-section 外面，这里需要单独定义样式以保证生效
     .status-legend {
         padding: 10px 0 0;
         display: flex;
         align-items: center;
         flex-shrink: 0;
-        align-self: flex-end; // 靠右
+        align-self: flex-end; 
     }
 
     .status-legend__item {
@@ -956,7 +920,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                 background-size: 100% 100%;
 
                 .device-name {
-                    /* 设备名（车间名）文字样式 */
+                    
                     font-weight: 600;
                     letter-spacing: 1px;
                     color: rgba(255, 255, 255, 1);
@@ -980,7 +944,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
                     &.alarm {
                         background-image: url('@/assets/images/background/首页-预警总览-报警.png');
-                        // animation: status-dot-blink 1.5s ease-in-out infinite;
                     }
 
                     &.warning {
@@ -1014,7 +977,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             }
 
             .alarm-time {
-                /* 时间文字样式 */
+                
                 font-size: 0.9rem;
                 font-weight: 400;
                 letter-spacing: 0.78px;
@@ -1107,7 +1070,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         }
     }
 
-    /* 预警总览大盒子始终单行，列数由内联 style 根据宽度控制，此处不再覆盖 */
+    
     @media (max-width: 768px) {
         .header-section {
             flex-direction: column;

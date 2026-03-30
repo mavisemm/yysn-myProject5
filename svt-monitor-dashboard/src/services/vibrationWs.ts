@@ -36,7 +36,7 @@ export class VibrationWsClient {
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
       debug: () => {
-        // 避免在控制台刷屏；需要排查时可临时打开
+        
       }
     })
   }
@@ -56,7 +56,7 @@ export class VibrationWsClient {
     const topic = `/topic/vibration/${tenantId}`
 
     if (!this.client.connected) {
-      // 允许调用方先订阅后连接：等连接后再订阅
+      
       const prevOnConnect = this.client.onConnect
       this.client.onConnect = (frame) => {
         prevOnConnect?.(frame)

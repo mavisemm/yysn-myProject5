@@ -7,7 +7,6 @@ import {
 } from '@/api/modules/hardware'
 import { getTenantId } from '@/api/tenant'
 
-/** 前端使用的点位详情（与接口字段对应，便于声音点位页等展示） */
 export interface PointMessageInfo {
   groupName: string
   productName: string
@@ -23,9 +22,7 @@ export interface PointMessageInfo {
 export const usePointMessageStore = defineStore('pointMessage', () => {
   const loaded = ref(false)
   const loading = ref(false)
-  /** 按 receiverId 索引（设备树点位 id 多为 receiverId） */
   const pointMapByReceiverId = ref<Record<string, PointMessageInfo>>({})
-  /** 按数值 id 索引（兼容设备树传数值 id 的情况） */
   const pointMapById = ref<Record<string, PointMessageInfo>>({})
 
   function flattenItems(items: PointMessageGroupItem[]): PointMessageInfo[] {
@@ -82,7 +79,6 @@ export const usePointMessageStore = defineStore('pointMessage', () => {
     }
   }
 
-  /** 根据点位 id 查详情（设备树传的 receiverId 可能是 receiverId 或数值 id） */
   function getPointByKey(receiverId: string): PointMessageInfo | null {
     if (!receiverId) return null
     const byReceiver = pointMapByReceiverId.value[receiverId]

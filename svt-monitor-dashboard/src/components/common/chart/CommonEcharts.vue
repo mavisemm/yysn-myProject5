@@ -53,93 +53,34 @@ import { enableMouseWheelZoom } from '@/utils/chart';
 import { useRangeControls } from '@/composables/useRangeControls';
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue';
 
-/** 是否使用 echarts-gl（3D 图表，如瀑布图） */
 const props = withDefaults(
     defineProps<{
-        /** ECharts 配置项，支持响应式 */
         option?: EChartsOption | null;
-        /** 是否显示加载状态 */
         loading?: boolean;
-        /** 是否为空数据状态 */
         empty?: boolean;
-        /** 空数据提示文字 */
         emptyText?: string;
-        /**
-         * 自动判空：当未显式传入 empty 时，根据 option 的 series/dataset 自动判断是否显示空态。
-         * 默认开启，如业务需要展示“空坐标系”可传 autoEmpty=false。
-         */
         autoEmpty?: boolean;
-        /** 是否启用 echarts-gl（3D） */
         useGl?: boolean;
-        /** 是否自动注入 dataZoom（默认开启） */
         enableDataZoom?: boolean;
-        /** setOption 的 notMerge，默认 false */
         notMerge?: boolean;
-        /** setOption 的 replaceMerge，如 ['series'] */
         replaceMerge?: string[];
-        /**
-         * 缩放联动分组 ID。
-         * 当多个 CommonEcharts 使用相同的分组且 enableLinkageZoom 为 true 时，将共享缩放范围。
-         */
         linkageGroup?: string;
-        /**
-         * 仅联动缩放（dataZoom），不联动 tooltip/axisPointer。
-         * 适用于“同屏多图”只希望缩放同步的场景。
-         */
         linkageZoomOnly?: boolean;
-        /**
-         * 是否开启缩放联动。
-         * 默认关闭，需要业务组件手动开启。
-         */
         enableLinkageZoom?: boolean;
-        /**
-         * 是否启用鼠标滚轮缩放（基于 dataZoom）。
-         * 默认关闭，如需开启请确保 option 中包含 dataZoom，
-         * 或保持 enableDataZoom=true 使用组件注入的默认 dataZoom。
-         */
         enableWheelZoom?: boolean;
-        /**
-         * Tooltip 是否跟随鼠标并自动避免溢出视口。
-         * 若业务已自定义 tooltip.position，则不会覆盖。
-         */
         tooltipFollowMouse?: boolean;
-        /**
-         * 是否在未显式设置 backgroundColor 时强制使用透明背景。
-         * 适用于有自定义背景图/渐变的页面。
-         */
         transparentBackground?: boolean;
-        /**
-         * 是否显示“范围输入框”（用于控制 X 轴 dataZoom 的 startValue/endValue）。
-         * 目前仅支持：xAxis 为 category 且 xAxis.data 能被全部解析为数字的场景（如频率轴）。
-         */
         showRangeControls?: boolean;
-        /** 范围输入框：标签 */
         rangeControlsLabel?: string;
-        /** 范围输入框：单位（可选） */
         rangeControlsUnit?: string;
-        /** 范围输入框：分隔符文案 */
         rangeControlsSepText?: string;
-        /** 范围输入框：步进 */
         rangeControlsStep?: number;
-        /** 范围输入框：小数精度 */
         rangeControlsPrecision?: number;
-        /** 范围输入框：防抖延时（ms） */
         rangeControlsDebounceMs?: number;
-        /**
-         * 范围输入框：xAxis.data 来源（可选）。
-         * 未传时默认从 option.xAxis[xAxisIndex].data 读取。
-         */
         rangeControlsData?: Array<string | number>;
-        /** 范围输入框：xAxis 索引（当 option.xAxis 为数组时） */
         rangeControlsXAxisIndex?: number;
-        /** 范围输入框：最小值（可选，优先级高于从 data 计算） */
         rangeControlsMin?: number;
-        /** 范围输入框：最大值（可选，优先级高于从 data 计算） */
         rangeControlsMax?: number;
-        /**
-         * option 变化时是否尝试保持当前 dataZoom 范围（默认 false）。
-         * 当 showRangeControls=true 时组件会自动保持，无需额外传。
-         */
         preserveDataZoom?: boolean;
     }>(),
     {
@@ -184,7 +125,7 @@ const chartInstance = shallowRef<echarts.ECharts | null>(null);
 let wheelZoomCleanup: (() => void) | null = null;
 let rangeControlsCleanup: (() => void) | null = null;
 
-// 缩放“仅联动”时使用的分组注册表（避免 echarts.connect 导致 tooltip 联动）
+
 type GroupRegistry = Map<string, Set<echarts.ECharts>>;
 const linkageRegistry: GroupRegistry = (globalThis as any).__COMMON_ECHARTS_LINKAGE_REGISTRY__ ?? new Map();
 (globalThis as any).__COMMON_ECHARTS_LINKAGE_REGISTRY__ = linkageRegistry;
@@ -247,13 +188,13 @@ const isOptionEmpty = (opt: EChartsOption | null | undefined): boolean => {
 
     const anyOpt = opt as any;
 
-    // dataset 判空：source 至少有 1 行数据（常见第一行为表头）
+    
     const ds = anyOpt.dataset;
     const dsArr = Array.isArray(ds) ? ds : (ds ? [ds] : []);
     for (const d of dsArr) {
         const source = d?.source;
         if (Array.isArray(source) && source.length > 0) {
-            // 兼容二维表/对象数组：只要存在一行有效数据就认为非空
+            
             if (source.length > 1) return false;
             if (source.length === 1) {
                 const row = source[0];
@@ -266,13 +207,13 @@ const isOptionEmpty = (opt: EChartsOption | null | undefined): boolean => {
     const seriesArr: SeriesLike[] = Array.isArray(series) ? series : (series ? [series] : []);
     if (seriesArr.length === 0) return true;
 
-    // series 判空：任意一个 series 有有效数据即认为非空
+    
     for (const s of seriesArr) {
         const data = (s as any)?.data;
         if (Array.isArray(data)) {
             if (data.length > 0 && hasNonEmptyDataArray(data)) return false;
         } else if (isValueMeaningful(data)) {
-            // 少数 series 可能不是数组（容错）
+            
             return false;
         }
     }
@@ -286,37 +227,35 @@ const resolvedEmpty = computed(() => {
     return isOptionEmpty(props.option);
 });
 
-/** 灰色主题已移除：统一使用非灰配色 */
 const backgroundMode = inject<Ref<'image' | 'navy' | 'solid'> | undefined>('backgroundMode');
 const isGrayTheme = computed(() => false);
 const chartAxisColor = computed(() => '#fff');
 const chartSplitLineColor = computed(() => 'rgba(255,255,255,0.1)');
 
-/** 根据 props 设置/更新图表联动缩放 */
 const applyLinkageZoom = () => {
     if (!chartInstance.value) return;
 
     const hasGroup = !!props.linkageGroup;
-    // 清理旧的缩放联动
+    
     if (linkageZoomCleanup) {
         linkageZoomCleanup();
         linkageZoomCleanup = null;
     }
 
     if (!(props.enableLinkageZoom && hasGroup)) {
-        // 关闭联动时，仅移除当前实例的 group，避免影响其他图表
+        
         if ((chartInstance.value as any).group) (chartInstance.value as any).group = '';
         return;
     }
 
     if (!props.linkageZoomOnly) {
-        // 默认行为：使用 ECharts 的 group 机制实现联动（会联动 tooltip/axisPointer）
+        
         (chartInstance.value as any).group = props.linkageGroup;
         echarts.connect(props.linkageGroup as string);
         return;
     }
 
-    // 仅联动 dataZoom：不使用 echarts.connect，避免 tooltip 同步
+    
     (chartInstance.value as any).group = '';
     const groupId = props.linkageGroup as string;
     const inst = chartInstance.value;
@@ -329,13 +268,11 @@ const applyLinkageZoom = () => {
         try {
             const others = linkageRegistry.get(groupId);
             if (!others) return;
-            // ECharts 的 datazoom 事件常见结构：{ type:'datazoom', batch:[{start,end,startValue,endValue,dataZoomId,...}] }
-            // dispatchAction({type:'dataZoom', ...}) 需要的是 dataZoom action 参数，而不是原始事件对象
             const batch0 = Array.isArray(params?.batch) ? params.batch[0] : null;
             const payload = batch0 && typeof batch0 === 'object' ? batch0 : params;
             if (!payload || typeof payload !== 'object') return;
 
-            // 仅转发关键字段，避免携带 dataZoomId 等导致另一图表不生效
+            
             const action: Record<string, any> = { type: 'dataZoom' };
             if (typeof (payload as any).startValue !== 'undefined' || typeof (payload as any).endValue !== 'undefined') {
                 if (typeof (payload as any).startValue !== 'undefined') action.startValue = (payload as any).startValue;
@@ -345,10 +282,10 @@ const applyLinkageZoom = () => {
                 if (typeof (payload as any).end !== 'undefined') action.end = (payload as any).end;
             }
 
-            // 如果事件里带了 dataZoomIndex，则一起转发；否则不指定让 echarts 自行应用到对应组件
+            
             if (typeof (payload as any).dataZoomIndex !== 'undefined') action.dataZoomIndex = (payload as any).dataZoomIndex;
 
-            // 没有有效范围则不联动
+            
             if (
                 typeof action.start === 'undefined' &&
                 typeof action.end === 'undefined' &&
@@ -362,7 +299,7 @@ const applyLinkageZoom = () => {
                 try {
                     other.dispatchAction(action as any);
                 } catch {
-                    // ignore
+                    
                 }
             }
         } finally {
@@ -375,7 +312,7 @@ const applyLinkageZoom = () => {
         try {
             inst.off('datazoom', handler);
         } catch {
-            // ignore
+            
         }
         const set = linkageRegistry.get(groupId);
         if (set) {
@@ -385,9 +322,8 @@ const applyLinkageZoom = () => {
     };
 };
 
-/** 根据 props 设置/更新鼠标滚轮缩放 */
 const applyWheelZoom = () => {
-    // 清理旧的滚轮监听
+    
     if (wheelZoomCleanup) {
         wheelZoomCleanup();
         wheelZoomCleanup = null;
@@ -401,7 +337,6 @@ const applyWheelZoom = () => {
     }
 };
 
-/** 初始化图表 */
 const initChart = async () => {
     if (!chartRef.value || !containerRef.value) return;
 
@@ -418,12 +353,11 @@ const initChart = async () => {
     applyLinkageZoom();
     applyWheelZoom();
     applyOption();
-    // 监听 dataZoom 回填输入框
+    
     attachRangeControlsListener();
     emit('chart-ready', chartInstance.value);
 };
 
-/** 应用 option，并注入通用主题变量 */
 const applyOption = () => {
     if (!chartInstance.value || !props.option) return;
 
@@ -434,13 +368,13 @@ const applyOption = () => {
         tooltip?: any;
     };
 
-    // 注入通用 tooltip 样式（若未显式设置），避免污染原始 option
+    
     const rawTooltip = opt.tooltip;
     if (typeof rawTooltip === 'object' && rawTooltip) {
         opt.tooltip = {
             ...rawTooltip,
             className: (rawTooltip as Record<string, unknown>).className ?? 'echarts-tooltip',
-            // 关键：避免被业务容器 overflow/z-index 压住
+            
             appendToBody: (rawTooltip as Record<string, unknown>).appendToBody ?? true,
             backgroundColor: (rawTooltip as Record<string, unknown>).backgroundColor ?? 'rgba(50, 50, 50, 0.9)',
             borderColor: (rawTooltip as Record<string, unknown>).borderColor ?? 'rgba(50, 50, 50, 0.9)',
@@ -458,7 +392,7 @@ const applyOption = () => {
         };
     }
 
-    // Tooltip 跟随鼠标并自动避免溢出视口（不覆盖业务自定义 position）
+    
     if (props.tooltipFollowMouse && opt.tooltip && typeof opt.tooltip === 'object') {
         if (!('position' in opt.tooltip)) {
             opt.tooltip.position = (pos: any, _params: any, _el: any, _elRect: any, size: any) => {
@@ -475,7 +409,7 @@ const applyOption = () => {
         }
     }
 
-    // 默认开启 dataZoom：如果外部未配置 dataZoom，则对第一个 x 轴注入 inside + slider
+    
     if (props.enableDataZoom && !opt.dataZoom) {
         const hasXAxis =
             Array.isArray(opt.xAxis) ? opt.xAxis.length > 0 : typeof opt.xAxis !== 'undefined';
@@ -493,7 +427,7 @@ const applyOption = () => {
         }
     }
 
-    // 透明背景：仅在外部未设置 backgroundColor 时生效
+    
     if (props.transparentBackground && typeof opt.backgroundColor === 'undefined') {
         opt.backgroundColor = 'transparent';
     }
@@ -503,11 +437,10 @@ const applyOption = () => {
         replaceMerge: props.replaceMerge.length > 0 ? props.replaceMerge : undefined
     });
 
-    // option 更新后尽量保持当前缩放范围（避免 notMerge=true 时重置 zoom）
+    
     restoreZoomAfterSetOption();
 };
 
-/** 暴露主题变量供父组件构建 option 时使用 */
 const getThemeColors = () => ({
     axisColor: chartAxisColor.value,
     splitLineColor: chartSplitLineColor.value,
@@ -516,13 +449,13 @@ const getThemeColors = () => ({
 
 const { bindResize } = useChartResize(chartInstance, chartRef);
 
-// 窗口尺寸变化时主动触发一次 resize，避免仅容器 ResizeObserver 不生效的场景（如弹窗、布局切换）
+
 const handleWindowResize = () => {
     if (!chartInstance.value) return;
     try {
         chartInstance.value.resize();
     } catch {
-        // ignore
+        
     }
 };
 
@@ -637,13 +570,9 @@ watch(
 );
 
 defineExpose({
-    /** 图表实例 */
     chartInstance,
-    /** 重新初始化（如容器尺寸从 0 变为有效） */
     initChart,
-    /** 更新配置（内部调用 applyOption） */
     updateOption: applyOption,
-    /** 获取当前主题颜色 */
     getThemeColors
 });
 </script>

@@ -4,7 +4,6 @@
             <h3 class="module-title app-section-title">点位列表</h3>
         </div>
         <div class="point-table-container">
-            <!-- 无数据时直接用统一空态，不走 el-table 自带 empty 逻辑，避免高度难以控制 -->
             <div v-if="!pointList.length" class="point-empty-wrapper">
                 <CommonEmptyState text="暂无数据" size="small" />
             </div>
@@ -59,7 +58,6 @@ import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 
 interface PointInfo {
     id: string
-    /** 点位级 deviceId（用于振动接口入参） */
     deviceId?: string
     name: string
     lastAlarmTime: string
@@ -70,7 +68,7 @@ interface PointInfo {
 
 interface PointListModuleProps {
     pointList: PointInfo[]
-    selectedPointId?: string // 可选，表示父组件控制选中项
+    selectedPointId?: string 
 }
 
 const props = defineProps<PointListModuleProps>()
@@ -79,7 +77,7 @@ const emit = defineEmits<{
     'point-selected': [receiverId: string]
 }>()
 
-// 处理外部传入的选中状态
+
 const currentSelectedId = computed(() => {
     return props.selectedPointId
 })
@@ -93,7 +91,6 @@ const getAlarmTypeTag = (type: string) => {
     }
 }
 
-/** 根据预警类型返回单位：振动 m/s²，温度 ℃，声音 dB */
 const getAlarmValueUnit = (type: string) => {
     switch (type) {
         case '振动': return ''
@@ -111,11 +108,11 @@ const onRowClick = (row: PointInfo) => {
     emit('point-selected', row.id)
 }
 
-// 处理未处理按钮点击事件
-const handleUnprocessedClick = (row: PointInfo) => {
-    if (!row.hasAlarm) return // 如果是已处理状态，不执行跳转
 
-    // SoundPoint/VibrationPoint 页面地址使用 equipmentId（当前 DeviceDetail 的 query）
+const handleUnprocessedClick = (row: PointInfo) => {
+    if (!row.hasAlarm) return 
+
+    
     const equipmentIdFromQuery = route.query.equipmentId
     const equipmentIdFromQueryResolved = Array.isArray(equipmentIdFromQuery)
         ? equipmentIdFromQuery[0]
@@ -130,22 +127,22 @@ const handleUnprocessedClick = (row: PointInfo) => {
 
     switch (row.alarmType) {
         case '声音':
-            // 跳转到声音点位页，同时传递设备ID
+            
             router.push({
                 name: 'SoundPoint',
                 query: {
-                    // query key 插入顺序：equipmentId -> receiverId
+                    
                     equipmentId,
                 },
                 params: { receiverId: row.id }
             })
             break
         case '振动':
-            // 跳转到振动点位页，同时传递设备ID
+            
             router.push({
                 name: 'VibrationPoint',
                 query: {
-                    // query key 插入顺序：equipmentId -> receiverId
+                    
                     equipmentId,
                 },
                 params: { receiverId: row.id }
@@ -153,25 +150,25 @@ const handleUnprocessedClick = (row: PointInfo) => {
             break
         case '温度':
         default:
-            // 温度类型保持在当前页面，只选中该行
+            
             emit('point-selected', row.id)
             break
     }
 }
 
-// 设置默认选中第一行
+
 const setCurrentRow = (rowIndex: number = 0) => {
     if (pointTableRef.value && props.pointList && props.pointList.length > rowIndex) {
         const selectedRow = props.pointList[rowIndex]
         if (selectedRow) {
             pointTableRef.value.setCurrentRow(selectedRow)
-            // 触发选中事件以更新父组件的状态
+            
             emit('point-selected', selectedRow.id)
         }
     }
 }
 
-// 暴露方法给父组件调用
+
 defineExpose({
     setCurrentRow
 })
@@ -204,11 +201,11 @@ defineExpose({
 
     .point-table-container {
         flex: 1;
-        /* 占据剩余空间 */
+        
         overflow: hidden;
         background: none !important;
         min-width: 0;
-        /* 允许flex子项收缩 */
+        
         padding: 10px 20px 20px 20px;
         display: flex;
         align-items: stretch;
@@ -223,7 +220,7 @@ defineExpose({
         min-height: 66px;
     }
 
-    /* 统一空状态高度，让 CommonEmptyState 在表格里和设备树接近 */
+    
     :deep(.el-table__empty-block) {
         height: auto !important;
         min-height: 66px !important;
@@ -314,7 +311,6 @@ defineExpose({
 
         }
 
-        // 表体每行之间的渐变分隔线（整行）
         .el-table__body tbody tr {
             background-image: linear-gradient(
                 90deg,
@@ -327,12 +323,11 @@ defineExpose({
             background-position: bottom left;
         }
 
-        // 最后一行不显示分隔线
         .el-table__body tbody tr:last-child {
             background-image: none;
         }
 
-        /* 为操作列取消ellipsis效果 */
+        
         .el-table__body tr td:last-child {
             overflow: visible !important;
             text-overflow: clip !important;
@@ -348,19 +343,16 @@ defineExpose({
             background-color: rgb(150, 150, 150, 0.2) !important;
         }
 
-        // 表头圆角效果
         .el-table__header-wrapper {
             border-radius: 6px !important;
             overflow: hidden;
         }
 
-        // 表体圆角效果
         .el-table__body-wrapper {
             border-radius: 0 0 6px 6px;
             overflow: hidden;
         }
 
-        // 整行圆角效果
         .el-table__body tr td:first-child {
             border-top-left-radius: 6px;
             border-bottom-left-radius: 6px;
@@ -371,7 +363,6 @@ defineExpose({
             border-bottom-right-radius: 6px;
         }
 
-        // 选中行的圆角效果
         .el-table__body tr.current-row td:first-child {
             border-top-left-radius: 6px;
             border-bottom-left-radius: 6px;

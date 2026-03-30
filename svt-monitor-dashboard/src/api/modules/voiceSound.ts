@@ -2,9 +2,6 @@ import request from '../request'
 
 import { getTenantId } from '../tenant'
 
-// 声音相关 API 接口
-
-// 声音数据类型定义
 export interface SoundData {
   id: string
   deviceId: string
@@ -99,7 +96,6 @@ export interface SoundAnalysisResultResponse {
   data: SoundAnalysisResult
 }
 
-// 最新偏差数据（声音点位表格）
 export interface SoundDeviationItem {
   id: number
   time: string
@@ -133,7 +129,6 @@ export interface SoundDeviationItem {
   detectorName?: string | null
 }
 
-// 获取声音数据
 export const getSoundData = (params?: {
   deviceId?: string
   startTime?: string
@@ -147,21 +142,18 @@ export const getSoundData = (params?: {
   })
 }
 
-// 获取AI声音分析结果
 export const getAISoundAnalysis = (soundId: string): Promise<SoundAnalysisResponse> => {
   return request.get(`/sound/ai-analysis/${soundId}`, {
     showLoading: true
   })
 }
 
-// 执行AI声音分析
 export const analyzeSoundByAI = (soundId: string): Promise<SoundAnalysisResponse> => {
   return request.post(`/sound/ai-analyze/${soundId}`, {}, {
     showLoading: true
   })
 }
 
-// 获取声音测点列表
 export const getSoundPointList = (params?: {
   deviceId?: string
   keyword?: string
@@ -175,7 +167,6 @@ export const getSoundPointList = (params?: {
   })
 }
 
-// 获取频谱数据
 export const getSpectrumData = (params?: {
   deviceId?: string
   startTime?: string
@@ -187,7 +178,6 @@ export const getSpectrumData = (params?: {
   })
 }
 
-// 获取声音趋势数据
 export const getSoundTrend = (deviceId: string, params?: {
   startTime?: string
   endTime?: string
@@ -199,14 +189,12 @@ export const getSoundTrend = (deviceId: string, params?: {
   })
 }
 
-// 获取实时声音监测数据
 export const getRealTimeSoundData = (deviceId: string): Promise<SoundDataResponse> => {
   return request.get(`/sound/realtime/${deviceId}`, {
     showLoading: false
   })
 }
 
-// 获取声音分析报告
 export const getSoundAnalysisReport = (params?: {
   deviceId?: string
   startTime?: string
@@ -219,7 +207,6 @@ export const getSoundAnalysisReport = (params?: {
   })
 }
 
-// 上传声音文件进行分析
 export const uploadSoundForAnalysis = (formData: FormData): Promise<SoundAnalysisResultResponse> => {
   return request.post('/sound/upload-analyze', formData, {
     headers: {
@@ -229,7 +216,6 @@ export const uploadSoundForAnalysis = (formData: FormData): Promise<SoundAnalysi
   })
 }
 
-// 获取历史声音数据
 export const getHistoricalSoundData = (params?: {
   deviceId?: string
   receiverId?: string
@@ -244,7 +230,6 @@ export const getHistoricalSoundData = (params?: {
   })
 }
 
-// 声音频率曲线
 export const getStandardFrequencyList = (payload: {
   recordIdList: (number | string)[]
   type: number
@@ -269,7 +254,6 @@ export const getStandardFrequencyList = (payload: {
   })
 }
 
-// 获取声音点位页最新偏差列表（点位由 receiverId 传入，不传 deviceId）
 export const getLatestDeviationByReceiver = (params?: {
   receiverId?: string
   startTime?: string
@@ -291,7 +275,6 @@ export const getLatestDeviationByReceiver = (params?: {
   })
 }
 
-// 查看曲线：根据 recordId 查询单条频率数据（弹窗用）
 export interface FindLatestFrequencyByIdRet {
   soundFrequencyDtoList?: Array<{ freq1: number; freq2: number; db?: number; density?: number }>
   soundAvgFrequencyDtoList?: Array<{ db?: number; density?: number }>
@@ -309,7 +292,6 @@ export const findLatestFrequencyById = (params: { id: string | number; type: num
   })
 }
 
-// 播放/下载：根据 freqGroupId 获取 wav 文件地址
 const SOUND_WAV_BASE = import.meta.env.VITE_SOUND_WAV_BASE_URL || ''
 
 export const getWavByFreqGroupIdUrl = (freqGroupId: string | number): string => {
@@ -317,8 +299,6 @@ export const getWavByFreqGroupIdUrl = (freqGroupId: string | number): string => 
   const path = `/jiepai/hardware/device/type/das/soundDetector/findWavByFreqGroupId?freqGroupId=${safeFreqGroupId}`
   return SOUND_WAV_BASE ? `${SOUND_WAV_BASE.replace(/\/$/, '')}${path}` : path
 }
-
-// ====== 预警详情中“频谱曲线/无工况基础数据/AI分析”接口（对应 src0 alarmModal 迁移）======
 
 export interface LatestFrequencyBinDto {
   freq1: number
@@ -329,12 +309,10 @@ export interface LatestFrequencyBinDto {
 }
 
 export interface LatestFrequencyByReceiverRet {
-  // 对应 src0：ret.length 循环生成 xAxis + db/density
   ret?: LatestFrequencyBinDto[]
 }
 
 export interface LatestFrequencyNoSceneRet {
-  // 对应 src0：ret.soundFrequencyDtoList / ret.soundAvgFrequencyDtoList
   productName?: string
   subProductName?: string
   deviceModel?: string
@@ -344,9 +322,6 @@ export interface LatestFrequencyNoSceneRet {
   [k: string]: any
 }
 
-/**
- * 频段声音曲线（对应 src0 VoiceSound.freqencySound -> findLatestFrequencyByReceiver）
- */
 export const getLatestFrequencyByReceiver = (payload: {
   receiverId: string
   type: number
@@ -363,9 +338,6 @@ export const getLatestFrequencyByReceiver = (payload: {
   })
 }
 
-/**
- * 无工况基础数据（对应 src0 VoiceSound.nosceneVoice -> findLatestFrequencyByReceiver/no-scene）
- */
 export const getLatestFrequencyByReceiverNoScene = (payload: {
   receiverId: string
   type: number
@@ -382,9 +354,6 @@ export const getLatestFrequencyByReceiverNoScene = (payload: {
   })
 }
 
-/**
- * 智能故障分析（对应 src0 VoiceSound.askAIModel -> qwen/max/analyze）
- */
 export const askAIModel = (payload: any): Promise<{ rc: number; ret?: string; err?: string }> => {
   return request.post('/taicang/device/sound/qwen/max/analyze', payload, {
     showLoading: true

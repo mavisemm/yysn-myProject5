@@ -19,7 +19,6 @@
 
     <div class="page-footer" />
 
-    <!-- 全局预警批量操作弹窗 -->
     <RealtimeBatchDialog @view="handleRealtimeView" />
     <HistoryBatchDialog @view="handleHistoryView" />
     <AlarmBatchViewModal v-model="alarmViewVisible" :row="alarmViewRow" />
@@ -37,7 +36,6 @@ import RealtimeBatchDialog from '@/components/alarm/RealtimeBatchDialog.vue'
 import HistoryBatchDialog from '@/components/alarm/HistoryBatchDialog.vue'
 import AlarmBatchViewModal from '@/components/alarm/AlarmBatchViewModal.vue'
 
-// 默认进入后展示“背景3”(=solid)
 const backgroundMode = ref<'image' | 'navy' | 'solid'>('solid')
 provide('backgroundMode', backgroundMode)
 
@@ -57,8 +55,6 @@ const handleRealtimeView = (row: any) => openAlarmView(row)
 const handleHistoryView = (row: any) => openAlarmView(row)
 
 onMounted(() => {
-  // 仅进入已登录主布局后预拉：避免登录页尚未拿到 token 时先发业务接口
-  // 注意：getDropdown 先不预热，弹窗打开时再按需拉取
   usePointMessageStore().loadPointMessage()
 })
 </script>
@@ -102,7 +98,6 @@ onMounted(() => {
     background-size: 100% 100%;
   }
 
-  /* 默认蓝色背景下的小模块：透明底 + 蓝色边框（替代背景图里的边框） */
   :deep(.alarm-overview),
   :deep(.metrics-area),
   :deep(.device-sidebar),
@@ -120,7 +115,6 @@ onMounted(() => {
     background-image: none !important;
   }
 
-  /* 深蓝主题 */
   &.page-layout--navy {
     background:
       radial-gradient(circle at 15% 0%, rgba(59, 130, 246, 0.3) 0, rgba(15, 23, 42, 0) 45%),
@@ -147,7 +141,6 @@ onMounted(() => {
     }
   }
 
-  /* 纯色深紫蓝主题（上下渐变） */
   &.page-layout--solid {
     background: linear-gradient(to bottom, #104076 0%, #160e53 100%);
     background-size: 100vw 100vh;

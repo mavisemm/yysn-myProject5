@@ -1,8 +1,8 @@
 import request from '../request'
 
-// 中远授权验证相关 API 接口
 
-// 授权信息类型定义
+
+
 export interface AuthInfo {
   authId: string
   clientId: string
@@ -56,7 +56,7 @@ export interface RefreshTokenResponse {
   }
 }
 
-// 授权验证请求
+
 export const authorize = (authRequest: AuthRequest): Promise<AuthResponse> => {
   return request.post('/zy/auth/authorize', authRequest, {
     showLoading: true,
@@ -64,7 +64,7 @@ export const authorize = (authRequest: AuthRequest): Promise<AuthResponse> => {
   })
 }
 
-// 验证授权信息
+
 export const validateAuthorization = (accessToken: string): Promise<ValidateAuthResponse> => {
   return request.post('/zy/auth/validate', {
     accessToken
@@ -74,7 +74,7 @@ export const validateAuthorization = (accessToken: string): Promise<ValidateAuth
   })
 }
 
-// 刷新访问令牌
+
 export const refreshToken = (refreshToken: string, clientId: string): Promise<RefreshTokenResponse> => {
   return request.post('/zy/auth/refresh', {
     refreshToken,
@@ -85,35 +85,35 @@ export const refreshToken = (refreshToken: string, clientId: string): Promise<Re
   })
 }
 
-// 获取授权信息
+
 export const getAuthInfo = (authId: string): Promise<any> => {
   return request.get(`/zy/auth/info/${authId}`, {
     showLoading: true
   })
 }
 
-// 创建新的授权
+
 export const createAuthorization = (authData: Partial<AuthInfo>): Promise<any> => {
   return request.post('/zy/auth/create', authData, {
     showLoading: true
   })
 }
 
-// 更新授权信息
+
 export const updateAuthorization = (authId: string, authData: Partial<AuthInfo>): Promise<any> => {
   return request.put(`/zy/auth/update/${authId}`, authData, {
     showLoading: true
   })
 }
 
-// 撤销授权
+
 export const revokeAuthorization = (authId: string): Promise<any> => {
   return request.post(`/zy/auth/revoke/${authId}`, {}, {
     showLoading: true
   })
 }
 
-// 检查API权限
+
 export const checkApiPermission = (apiPath: string, method: string, accessToken: string): Promise<any> => {
   return request.post('/zy/auth/check-permission', {
     apiPath,
@@ -124,7 +124,7 @@ export const checkApiPermission = (apiPath: string, method: string, accessToken:
   })
 }
 
-// 获取授权列表
+
 export const getAuthList = (params?: {
   page?: number
   pageSize?: number
@@ -137,7 +137,7 @@ export const getAuthList = (params?: {
   })
 }
 
-// 验证中远系统连接状态
+
 export const checkZyConnection = (): Promise<any> => {
   return request.get('/zy/connection/status', {
     showLoading: false

@@ -1,6 +1,6 @@
 import request from '../request'
 
-// 仪表盘相关 API 接口
+
 
 export interface DashboardStats {
   totalDevices: number
@@ -62,21 +62,21 @@ export interface RecentEventsResponse {
   data: RecentEvents[]
 }
 
-// 获取仪表盘统计数据
+
 export const getDashboardStats = (): Promise<DashboardStatsResponse> => {
   return request.get('/dashboard/stats', {
     showLoading: true
   })
 }
 
-// 获取告警概览数据
+
 export const getAlarmOverview = (): Promise<AlarmOverviewResponse> => {
   return request.get('/dashboard/alarm-overview', {
     showLoading: true
   })
 }
 
-// 获取设备健康趋势数据
+
 export const getDeviceHealthTrend = (params?: {
   startTime?: string
   endTime?: string
@@ -88,7 +88,7 @@ export const getDeviceHealthTrend = (params?: {
   })
 }
 
-// 获取最近事件列表
+
 export const getRecentEvents = (params?: {
   page?: number
   pageSize?: number
@@ -100,21 +100,21 @@ export const getRecentEvents = (params?: {
   })
 }
 
-// 获取仪表盘配置
+
 export const getDashboardConfig = (): Promise<any> => {
   return request.get('/dashboard/config', {
     showLoading: false
   })
 }
 
-// 更新仪表盘配置
+
 export const updateDashboardConfig = (config: any): Promise<any> => {
   return request.post('/dashboard/config', config, {
     showLoading: false
   })
 }
 
-// 获取实时监控数据
+
 export const getRealTimeMonitorData = (): Promise<any> => {
   return request.get('/dashboard/realtime', {
     showLoading: true

@@ -1,7 +1,6 @@
 <template>
     <div class="charts-analysis-module">
         <div ref="chartGridRef" class="charts-grid">
-            <!-- 烈度图表 -->
             <div class="chart-item">
                 <div class="chart-header">
                     <span class="chart-title">烈度随时间变化</span>
@@ -20,7 +19,6 @@
                 </div>
             </div>
 
-            <!-- 响度图表 -->
             <div class="chart-item">
                 <div class="chart-header">
                     <span class="chart-title">响度随时间变化</span>
@@ -39,7 +37,6 @@
                 </div>
             </div>
 
-            <!-- 温度图表 -->
             <div class="chart-item chart-item--wide">
                 <div class="chart-header">
                     <span class="chart-title">温度随时间变化</span>
@@ -94,7 +91,7 @@ const props = defineProps<{
     selectedPointId?: string
 }>()
 
-// 三个主图表的数据（null 时使用 fallback）
+
 interface ChartDataPoint {
     timeLabels: string[]
     values: number[]
@@ -105,19 +102,19 @@ const tempChartData = ref<ChartDataPoint | null>(null)
 const vibChartData = ref<ChartDataPoint | null>(null)
 const soundChartData = ref<ChartDataPoint | null>(null)
 
-// “实时温度”面板：目前无接口，先用假数据展示
+
 const realtimeTempMockValue = ref<number>(33)
 
 function mockTemperatureByReceiverId(receiverId: string): number {
-    // 简单稳定 hash：同一 receiverId 始终同一温度，不同点位有差异
+    
     let hash = 0
     for (let i = 0; i < receiverId.length; i++) {
         hash = (hash * 31 + receiverId.charCodeAt(i)) >>> 0
     }
-    // 生成 25.0 ~ 45.0 ℃ 的假温度
+    
     const base = 25
     const span = 20
-    const tenth = hash % (span * 10 + 1) // 0..200
+    const tenth = hash % (span * 10 + 1) 
     return base + tenth / 10
 }
 
@@ -128,7 +125,7 @@ const realtimeTempValueText = computed(() => {
     return `${shown}℃`
 })
 
-// 灰色主题已移除：统一使用非灰配色
+
 const chartAxisColor = computed(() => '#fff')
 const chartSplitLineColor = computed(() => 'rgba(150,150,150, 0.2)')
 const TEMP_COLOR = '#ff4d4f'
@@ -137,7 +134,6 @@ const SOUND_COLOR = '#fadb14'
 
 const HOURS_24 = Array.from({ length: 24 }, (_, i) => `${i}`)
 
-/** 温度图表 option */
 const tempOption = computed<EChartsOption>(() => {
     const c = chartAxisColor.value
     const s = chartSplitLineColor.value
@@ -206,7 +202,6 @@ const tempOption = computed<EChartsOption>(() => {
     } as EChartsOption
 })
 
-/** 烈度图表 option */
 const vibOption = computed<EChartsOption>(() => {
     const c = chartAxisColor.value
     const s = chartSplitLineColor.value
@@ -232,7 +227,7 @@ const vibOption = computed<EChartsOption>(() => {
             type: 'category',
             data: timeLabels,
             axisLabel: { fontSize: 10, color: c },
-            // 保证 x 轴落在 grid 底部，而不是放在 y=0 处（避免看起来跑到中间）
+            
             axisLine: { lineStyle: { color: c }, onZero: false },
             axisTick: { lineStyle: { color: c } }
         },
@@ -263,7 +258,6 @@ const vibOption = computed<EChartsOption>(() => {
     } as EChartsOption
 })
 
-/** 响度图表 option */
 const soundOption = computed<EChartsOption>(() => {
     const c = chartAxisColor.value
     const s = chartSplitLineColor.value
@@ -320,10 +314,10 @@ const soundOption = computed<EChartsOption>(() => {
     } as EChartsOption
 })
 
-//（趋势分析相关功能已移除）
+
 
  
-// 根据数据范围计算 y 轴 min/max（支持负数，取整到合适刻度）
+
 function computeTempYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
     const span = dataMax - dataMin
     const padding = Math.max(span * 0.1, 2)
@@ -336,7 +330,7 @@ function computeTempYAxisRange(dataMin: number, dataMax: number): { min: number;
     return { min, max }
 }
 
-// 加载温度趋势数据
+
 const loadTemperatureData = async (receiverId: string) => {
     if (!receiverId) return
 
@@ -367,7 +361,7 @@ const loadTemperatureData = async (receiverId: string) => {
     }
 }
 
-// 根据数据范围计算 y 轴 min/max（烈度，支持小数与取整刻度）
+
 function computeVibYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
     const span = dataMax - dataMin
     const padding = Math.max(span * 0.1, 0.5)
@@ -381,7 +375,7 @@ function computeVibYAxisRange(dataMin: number, dataMax: number): { min: number; 
     return { min, max }
 }
 
-// 加载振动趋势数据
+
 const loadVibrationData = async (receiverId: string) => {
     if (!receiverId) return
 
@@ -413,7 +407,7 @@ const loadVibrationData = async (receiverId: string) => {
     }
 }
 
-// 根据数据范围计算响度 y 轴 min/max
+
 function computeSoundYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
     const span = Math.max(dataMax - dataMin, 1)
     const padding = Math.max(span * 0.1, 2)
@@ -427,7 +421,7 @@ function computeSoundYAxisRange(dataMin: number, dataMax: number): { min: number
     return { min, max }
 }
 
-// 加载响度趋势数据
+
 const loadSoundData = async (receiverId: string) => {
     if (!receiverId) return
     try {
@@ -458,15 +452,15 @@ const loadSoundData = async (receiverId: string) => {
     }
 }
 
-//（趋势分析相关功能已移除）
 
-// 创建一个ref来引用charts-grid容器
+
+
 const chartGridRef = ref<HTMLDivElement>()
 
-// 图表初始化完成标志
+
 const chartsInitialized = ref(false)
 
-// 监听点位列表变化，自动加载第一个点位的温度/烈度/响度数据
+
 watch(
     () => props.pointList,
     (newList, oldList) => {
@@ -492,7 +486,7 @@ watch(
     { immediate: false, deep: true }
 )
 
-// 监听选中点位变化，加载对应点位数据
+
 watch(
     () => props.selectedPointId,
     (newPointId, oldPointId) => {
@@ -505,7 +499,7 @@ watch(
     { immediate: false }
 )
 
-// 实时温度（假数据）：随选中点位变化而变化；如果未选中则取列表第一个点位
+
 watch(
     [() => props.selectedPointId, () => props.pointList],
     ([selId, list]) => {
@@ -516,7 +510,7 @@ watch(
     { immediate: true, deep: true }
 )
 
-// 组件挂载时标记就绪并加载首个点位数据
+
 onMounted(() => {
     nextTick(() => {
         setTimeout(() => {
@@ -559,9 +553,9 @@ onMounted(() => {
             flex-direction: column;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
             min-height: 0;
-            /* 确保flex子项可以收缩 */
+            
             min-width: 0;
-            /* 确保项目可以在小屏幕上收缩 */
+            
 
             .chart-header {
                 display: flex;
@@ -569,7 +563,7 @@ onMounted(() => {
                 align-items: center;
                 margin-bottom: 10px;
                 flex: 0 0 auto;
-                /* 固定头部高度 */
+                
                 gap: 10px;
 
                 .chart-title {
@@ -616,11 +610,11 @@ onMounted(() => {
             padding: 10px;
             display: flex;
             flex-direction: column;
-            /* 移除 overflow: hidden 以允许下拉框正常显示 */
+            
             min-height: 0;
-            /* 确保flex子项可以收缩 */
+            
             min-width: 0;
-            /* 确保项目可以在小屏幕上收缩 */
+            
 
             .module-header {
                 display: flex;
@@ -658,7 +652,7 @@ onMounted(() => {
                             margin-bottom: 12px;
 
                             :deep(.el-form-item__label) {
-                                /* 默认（非灰色主题）保持白字 */
+                                
                                 color: #fff;
                                 font-size: 0.8rem;
                             }
@@ -739,7 +733,7 @@ onMounted(() => {
     }
 }
 
-/*（趋势分析相关样式已移除）*/
+
 /*
 :global(.page-layout--gray) .charts-analysis-module {
     .analysis-form {
@@ -749,7 +743,7 @@ onMounted(() => {
     }
 }*/
 
-/*（趋势分析弹窗相关样式已移除）*/
+
 :global(.trend-chart-dialog) {
     width: 70vw !important;
     height: 95vh !important;
@@ -805,7 +799,6 @@ onMounted(() => {
 }
 </style>
 
-<!-- 全局样式确保弹窗标题样式生效 -->
 <style lang="scss">
 :root {
     --dialog-title-weight: 500;
@@ -814,7 +807,7 @@ onMounted(() => {
     --dialog-title-size: clamp(22px, 3vw, 26px);
 }
 
-/* 多层选择器确保样式生效 */
+
 .trend-chart-dialog,
 .el-dialog.trend-chart-dialog,
 .el-overlay-dialog .trend-chart-dialog {
@@ -830,7 +823,7 @@ onMounted(() => {
     }
 }
 
-/* 最终兜底样式 */
+
 .el-dialog__title {
     &.trend-chart-title {
         font-weight: 500 !important;
@@ -839,7 +832,7 @@ onMounted(() => {
     }
 }
 
-/* 自定义头部样式 */
+
 .trend-chart-dialog-header {
     .trend-chart-title {
         font-weight: 500 !important;

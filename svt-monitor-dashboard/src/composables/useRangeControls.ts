@@ -2,26 +2,17 @@ import { computed, ref, watch, type ComputedRef } from 'vue';
 import type { EChartsOption } from 'echarts';
 
 export interface UseRangeControlsConfig {
-    /** 当前图表的 option（用于推断 xAxis.data） */
     option: ComputedRef<EChartsOption | null | undefined>;
-    /** 是否显示范围控件（业务层的开关） */
     showRangeControls: ComputedRef<boolean>;
-    /** 可选：显式传入的 x 轴数据源，优先级高于从 option 解析 */
     rangeControlsData: ComputedRef<Array<string | number>>;
-    /** xAxis 索引（当 xAxis 为数组时） */
     rangeControlsXAxisIndex: ComputedRef<number>;
-    /** 人为限制的最小/最大值（可选） */
     rangeControlsMin: ComputedRef<number | undefined>;
     rangeControlsMax: ComputedRef<number | undefined>;
-    /** 步进、小数精度、防抖间隔 */
     rangeControlsStep: ComputedRef<number>;
     rangeControlsPrecision: ComputedRef<number>;
     rangeControlsDebounceMs: ComputedRef<number>;
-    /** 是否在 option 更新后尝试保持当前 dataZoom 范围 */
     preserveDataZoom: ComputedRef<boolean>;
-    /** 实际下发 dataZoom 的方法（单图或多图由调用方实现） */
     doDataZoom: (payload: { startValue: any; endValue: any }) => void;
-    /** 事件回调（可选） */
     onRangeChange?: (payload: { min: number; max: number; startValue: any; endValue: any }) => void;
     onRangeReset?: () => void;
 }
@@ -203,7 +194,6 @@ export function useRangeControls(config: UseRangeControlsConfig) {
         }, 0);
     };
 
-    /** 供 ECharts datazoom 事件回调使用 */
     const handleDataZoom = (params: any) => {
         const raw = rangeAxisRaw.value;
         if (!raw || raw.length === 0) return;
@@ -248,7 +238,7 @@ export function useRangeControls(config: UseRangeControlsConfig) {
                 zoomRange.value = null;
                 return;
             }
-            // 数据切换时重置到全范围（避免旧 startValue/endValue 不存在）
+            
             resetRange();
         },
         { immediate: true }
