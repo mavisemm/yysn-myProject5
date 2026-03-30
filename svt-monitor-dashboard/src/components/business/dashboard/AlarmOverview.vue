@@ -540,8 +540,9 @@ const filteredAlarms = computed(() => {
         }
 
         result = result.filter(alarm => {
-            // 你要求：健康设备不显示“报警时间”，因此日期筛选时不应该把它们排除掉。
-            // （若该健康卡片仍然带 time 字段，也允许保留；展示侧仍按规则不渲染时间栏）
+            // 健康/离线设备不应参与“报警时间”筛选
+            // （健康设备展示不需要时间，但仍应保持可见）
+            if (alarm.status === 'healthy' || alarm.status === 'offline') return true;
             if (!alarm.time) return false;
             const alarmDateTime = parseAlarmTime(alarm.time, fallbackYear)
             if (!alarmDateTime) return false

@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { getTenantId } from '@/api/tenant'
 import { VibrationWsClient, type VibrationEventPayload } from '@/services/vibrationWs'
 import { fetchVibrationAlarmsForOverview } from '@/api/modules/vibrationEvent'
+import { useDeviceTreeStore } from '@/stores/deviceTree'
+import type { DeviceNode } from '@/types/device'
 
 export interface MeasurementPoint {
   name: string
@@ -180,13 +182,77 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
   const connectedTenantId = ref('')
   const connecting = ref(false)
   let wsClient: VibrationWsClient | null = null
+  let treeWatchStopper: (() => void) | null = null
+  let treePrefilled = false
+
+  function collectDeviceNodes(nodes: DeviceNode[]): DeviceNode[] {
+    const result: DeviceNode[] = []
+    const stack: DeviceNode[] = [...nodes]
+    while (stack.length) {
+      const node = stack.pop()
+      if (!node) continue
+      if (node.type === 'device') result.push(node)
+      if (node.children?.length) stack.push(...node.children)
+    }
+    return result
+  }
+
+  function buildHealthyAlarmFromDevice(deviceNode: DeviceNode): AlarmItem {
+    const deviceId = String(deviceNode.equipmentId ?? deviceNode.id ?? '')
+    const deviceName = String(deviceNode.equipmentName ?? deviceNode.name ?? deviceId)
+    const shopName = String(deviceNode.workshopName ?? '')
+
+    // 预警总览点位高亮依赖测点下标；没有推送时默认全部健康
+    const measurementPoints: MeasurementPoint[] = Array.from({ length: 16 }).map((_, i) => makeHealthyPoint(i))
+
+    return {
+      id: deviceId,
+      deviceName,
+      shopName,
+      deviceNameWithShop: `${deviceName}（${shopName || ''}）`,
+      status: 'healthy',
+      statusText: '健康',
+      time: '',
+      measurementPoints
+    }
+  }
+
+  /**
+   * 基于设备树生成“所有设备均为健康”的假数据。
+   * 如果已存在 websocket/http 更新后的设备卡片，则保留它们的真实状态。
+   */
+  function prefillHealthyFromDeviceTree(deviceTreeData: DeviceNode[]) {
+    if (treePrefilled) return
+    if (!deviceTreeData?.length) return
+
+    const deviceNodes = collectDeviceNodes(deviceTreeData)
+    if (!deviceNodes.length) return
+
+    const existingById = new Map(alarms.value.map((a) => [a.id, a] as const))
+    const treeIds = new Set<string>()
+
+    const healthyList: AlarmItem[] = deviceNodes
+      .map((d) => {
+        const id = String(d.equipmentId ?? d.id ?? '')
+        if (!id) return null
+        treeIds.add(id)
+        return existingById.get(id) ?? buildHealthyAlarmFromDevice(d)
+      })
+      .filter((x): x is AlarmItem => Boolean(x))
+
+    // 保留“设备树之外”的已存在报警项（极少见，但避免误丢）
+    const leftovers = alarms.value.filter((a) => !treeIds.has(a.id))
+
+    alarms.value = [...healthyList, ...leftovers]
+    treePrefilled = true
+  }
 
   function upsertAlarmFromEvent(input: any) {
     const evt = normalizeToOverviewEvent(input)
     if (!evt) return
 
-    // 仅展示未处理：VALID
-    if (evt.statusCode && String(evt.statusCode).toUpperCase() !== 'VALID') return
+    // 接口返回的是“未处理告警”，但不同后端/字段命名下 statusCode 不一定恒等于 'VALID'
+    // 预警总览应当直接展示接口返回的记录。
 
     const isFaultAlarm = String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
     const deviceId = evt.deviceId
@@ -287,10 +353,36 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
 
     // 切 tenant：先停掉旧连接
     stop()
+    alarms.value = []
+    treePrefilled = false
 
     connecting.value = true
     connectedTenantId.value = tId
     try {
+      // 设备树：如果接口 findVibrationAlarm 没数据，就先把所有设备卡片置为“健康”
+      const deviceTreeStore = useDeviceTreeStore()
+      const tryPrefill = () => {
+        prefillHealthyFromDeviceTree(deviceTreeStore.deviceTreeData)
+      }
+
+      // 设备树可能还没请求回来，所以用 watch 做一次兜底
+      tryPrefill()
+      if (!treePrefilled) {
+        treeWatchStopper?.()
+        treeWatchStopper = watch(
+          () => deviceTreeStore.deviceTreeData,
+          () => {
+            if (treePrefilled) return
+            prefillHealthyFromDeviceTree(deviceTreeStore.deviceTreeData)
+            if (treePrefilled) {
+              treeWatchStopper?.()
+              treeWatchStopper = null
+            }
+          },
+          { immediate: false, deep: false }
+        )
+      }
+
       try {
         await initOverviewOnceByHttp(tId)
       } catch (e) {
@@ -317,6 +409,10 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       // ignore
     }
     wsClient = null
+
+    treeWatchStopper?.()
+    treeWatchStopper = null
+    treePrefilled = false
   }
 
   function reset() {
