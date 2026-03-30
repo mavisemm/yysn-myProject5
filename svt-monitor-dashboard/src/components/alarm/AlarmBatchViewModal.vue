@@ -159,8 +159,8 @@
       <div class="aiHeader">
         <div class="aiMeta">设备名称：{{ nosceneVoiceRet?.productName ?? '暂无' }}</div>
         <div class="aiMeta">点位名称：{{ nosceneVoiceRet?.subProductName ?? '暂无' }}</div>
-        <div class="aiMeta">设备参数：{{ nosceneVoiceRet?.deviceModel ?? '暂无' }}</div>
-        <div class="aiMeta">生产厂家：{{ nosceneVoiceRet?.productionFactory ?? '暂无' }}</div>
+        <div class="aiMeta">设备参数：{{ getTenantId() === '39ad1946358f48d7a90067761aed48d5' ? '6203-2RZ' : (nosceneVoiceRet?.deviceModel ?? '暂无') }}</div>
+        <div class="aiMeta">生产厂家：{{ getTenantId() === '39ad1946358f48d7a90067761aed48d5' ? '洛阳轴承集团' : (nosceneVoiceRet?.productionFactory ?? '暂无') }}</div>
       </div>
 
       <div class="modalBlock">
