@@ -93,6 +93,7 @@ import { ref, computed, onUnmounted } from 'vue';
 import type { EChartsOption } from 'echarts';
 import { CommonEcharts } from '@/components/common/chart';
 import { useRangeControls } from '@/composables/useRangeControls';
+import { getTenantId } from '@/api/tenant';
 
 const emit = defineEmits(['chart-init']);
 const props = defineProps<{
@@ -104,7 +105,7 @@ const props = defineProps<{
 const handleTrendAnalysisClick = () => {
     const base = import.meta.env.BASE_URL || '/';
     const normalizedBase = base.endsWith('/') ? base : `${base}/`;
-    const tenantId = localStorage.getItem('tenantId') ?? '';
+    const tenantId = getTenantId();
     // trend.html 内用 apiIp 调接口；这里透传 tenantId/ip，避免「全部点位」为空
     const params = new URLSearchParams();
     if (tenantId) params.set('tenantId', tenantId);

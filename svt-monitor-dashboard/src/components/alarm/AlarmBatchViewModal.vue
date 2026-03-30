@@ -213,6 +213,7 @@ import {
   getWavByFreqGroupIdUrl
 } from '@/api/modules/voiceSound'
 
+import { getTenantId } from '@/api/tenant'
 import { enableMouseWheelZoom } from '@/utils/chart'
 
 const props = defineProps<{
@@ -223,11 +224,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', v: boolean): void
 }>()
-
-const tenantId = computed(() => {
-  const fromUrl = new URLSearchParams(window.location.search).get('tenantId')
-  return (fromUrl && fromUrl.trim()) || (localStorage.getItem('tenantId') ?? '')
-})
 
 const visible = computed({
   get: () => props.modelValue,
@@ -685,7 +681,7 @@ const onConfirmNot = async () => {
       type: notType.value,
       name: notName.value.trim(),
       id,
-      tenantId: tenantId.value ?? ''
+      tenantId: getTenantId() || ''
     })
     ElMessage.success('操作成功')
     notVisible.value = false
@@ -709,7 +705,7 @@ const onYesModalOpen = async () => {
   if (!pid) return
 
   try {
-    const tid = tenantId.value ?? ''
+    const tid = getTenantId() || ''
     const payload = {
       filterPropertyMap: [
         { code: 'tenantId', operate: 'EQ', value: tid },
@@ -730,7 +726,7 @@ const onConfirmSoundYes = async () => {
   const id = currentEventId.value
   if (!id) return
 
-  const tid = tenantId.value ?? ''
+  const tid = getTenantId() || ''
 
   if (yesNewName.value.trim() && yesExceptionId.value) {
     ElMessage.error('历史异常库或者新增异常库二选一！')
@@ -816,7 +812,7 @@ const fetchAIModelAnalysis = async (isUpdate: boolean) => {
     aiMarkdownContent.value = ''
     aiHtmlContent.value = ''
 
-    const tid = tenantId.value ?? ''
+    const tid = getTenantId() || ''
     const requestParams = {
       ...base,
       tenantId: tid,

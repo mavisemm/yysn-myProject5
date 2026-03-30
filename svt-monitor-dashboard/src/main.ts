@@ -7,8 +7,17 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
+import { registerTenantRouteReader } from './api/tenant'
 
 import './assets/styles/common.scss'
+
+registerTenantRouteReader(() => {
+  const q = router.currentRoute.value?.query?.tenantId
+  const raw = Array.isArray(q) ? q[0] : q
+  if (raw == null) return ''
+  const s = typeof raw === 'string' ? raw.trim() : String(raw).trim()
+  return s
+})
 
 const app = createApp(App)
 

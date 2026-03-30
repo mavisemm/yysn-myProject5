@@ -162,9 +162,10 @@ const handleLogin = async () => {
         }
         localStorage.setItem('tenantId', tenantId)
 
-        ElMessage.success('登录成功')
+        // 显式带上 tenantId，并等待导航完成后再提示成功，避免首页 find 在「地址栏尚未与路由同步」时读到错误租户
+        await router.push({ name: 'Dashboard', query: { tenantId } })
 
-        router.push('/dashboard')
+        ElMessage.success('登录成功')
     } catch (error) {
         console.error('登录错误:', error)
         ElMessage.error('登录失败，请重试')

@@ -1,5 +1,5 @@
 import request from '../request'
-import { getTenantId } from '../tenant'
+import { readTenantIdFromStorageOrAddressBar } from '../tenant'
 
 export type FilterOperate = 'EQ' | 'GE' | 'LE' | 'LIKE'
 
@@ -65,7 +65,7 @@ export const apiFindEvents = (body: FindBody) => {
 }
 
 export const apiGetDeviceNameDropdownList = () => {
-  const tenantId = getTenantId()
+  const tenantId = readTenantIdFromStorageOrAddressBar()
   return request.get<DropdownResponse>('/taicang/hardware/device/name/getDropdownList', {
     params: { _t: Date.now(), tenantId, userId: '' },
     showLoading: false
@@ -73,7 +73,7 @@ export const apiGetDeviceNameDropdownList = () => {
 }
 
 export const apiGetEventTypeDropdownList = () => {
-  const tenantId = getTenantId()
+  const tenantId = readTenantIdFromStorageOrAddressBar()
   return request.get<DropdownResponse>('/taicang/hardware/eventType/getDropdownList', {
     params: { _t: Date.now(), tenantId, userId: '' },
     showLoading: false

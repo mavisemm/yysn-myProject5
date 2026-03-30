@@ -1,4 +1,5 @@
 import request from '../request'
+import { getTenantId } from '../tenant'
 import type { VibrationEventPayload } from '@/services/vibrationWs'
 
 /** 事件查询接口返回的单条记录（按项目已有的 /taicang/event/find 约定） */
@@ -68,7 +69,7 @@ export const fetchVibrationEventsForOverview = async (params?: {
   endTime?: number
   pageSize?: number
 }): Promise<VibrationEventPayload[]> => {
-  const tenantId = params?.tenantId ?? localStorage.getItem('tenantId') ?? ''
+  const tenantId = params?.tenantId ?? getTenantId()
   if (!tenantId) return []
 
   const pageSize = params?.pageSize ?? 30
@@ -114,7 +115,7 @@ export const fetchVibrationAlarmsForOverview = async (params?: {
   pageIndex?: number
   pageSize?: number
 }): Promise<VibrationAlarmFindItem[]> => {
-  const tenantId = params?.tenantId ?? localStorage.getItem('tenantId') ?? ''
+  const tenantId = params?.tenantId ?? getTenantId()
   if (!tenantId) return []
 
   const pageIndex = params?.pageIndex ?? 0

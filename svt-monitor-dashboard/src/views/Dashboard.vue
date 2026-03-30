@@ -28,11 +28,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, reactive, computed } from 'vue';
+import { onMounted, onUnmounted, ref, reactive, computed, nextTick } from 'vue';
+import { useRouter } from 'vue-router'
 import DashboardStats from '@/components/business/dashboard/DashboardStats.vue';
 import AlarmOverview from '@/components/business/dashboard/AlarmOverview.vue';
 import ThreeMetrics from '@/components/business/dashboard/ThreeMetrics.vue';
 import TrendWarningDeviceModal from '@/components/business/dashboard/TrendWarningDeviceModal.vue';
+import { getTenantId } from '@/api/tenant'
 import { getTop5Devices } from '@/api/modules/hardware';
 import { getAllStats } from '@/api/modules/stats';
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
@@ -80,6 +82,8 @@ const trendWarningCount = computed(() => {
 });
 
 let historyPrefetchTimerId: number | null = null;
+
+const router = useRouter()
 
 /**
  * 获取Top5设备数据
@@ -150,36 +154,40 @@ const fetchStatsData = async () => {
 onMounted(() => {
   const hasToken = () => Boolean(localStorage.getItem('token'))
 
-  // 预警总览：初始化 + websocket 订阅（不再依赖 AlarmOverview.vue 的 onMounted）
-  const alarmOverviewStore = useAlarmOverviewStore()
-  void alarmOverviewStore.start({
-    token: localStorage.getItem('token') ?? undefined,
-    tenantId: localStorage.getItem('tenantId') ?? undefined
+  // 等路由与地址栏 query（含 tenantId）落稳后再发依赖租户的 find，避免登录首屏竞态
+  void nextTick(async () => {
+    await router.isReady()
+    // 预警总览：初始化 + websocket 订阅（不再依赖 AlarmOverview.vue 的 onMounted）
+    const alarmOverviewStore = useAlarmOverviewStore()
+    void alarmOverviewStore.start({
+      token: localStorage.getItem('token') ?? undefined,
+      tenantId: getTenantId() || undefined
+    })
+
+    // 设备树：进入 dashboard 后强制拉取一次
+    // 避免“store 初始化时 tenantId 尚未就绪”的时序问题导致首次看不到 tree 请求
+    // tenantId 不变也可能增删设备，因此这里每次进入都刷新
+    const deviceTreeStore = useDeviceTreeStore()
+    void deviceTreeStore.loadDeviceTreeData()
+
+    // 弹窗列表预热（find），仅默认条件；是否“仅首次”由 alarmBatchStore 内部控制
+    const alarmBatchStore = useAlarmBatchStore()
+    if (hasToken()) {
+      void alarmBatchStore.prefetchRealtimeListForDefault().catch((e) => {
+        console.error('预热实时列表失败:', e)
+      })
+    }
+
+    historyPrefetchTimerId = window.setTimeout(() => {
+      if (!hasToken()) return
+      void alarmBatchStore.prefetchHistoryListForDefault().catch((e) => {
+        console.error('预热历史列表失败:', e)
+      })
+    }, 3500)
+
+    fetchTop5Data();
+    fetchStatsData();
   })
-
-  // 设备树：进入 dashboard 后强制拉取一次
-  // 避免“store 初始化时 tenantId 尚未就绪”的时序问题导致首次看不到 tree 请求
-  // tenantId 不变也可能增删设备，因此这里每次进入都刷新
-  const deviceTreeStore = useDeviceTreeStore()
-  void deviceTreeStore.loadDeviceTreeData()
-
-  // 弹窗列表预热（find），仅默认条件；是否“仅首次”由 alarmBatchStore 内部控制
-  const alarmBatchStore = useAlarmBatchStore()
-  if (hasToken()) {
-    void alarmBatchStore.prefetchRealtimeListForDefault().catch((e) => {
-      console.error('预热实时列表失败:', e)
-    })
-  }
-
-  historyPrefetchTimerId = window.setTimeout(() => {
-    if (!hasToken()) return
-    void alarmBatchStore.prefetchHistoryListForDefault().catch((e) => {
-      console.error('预热历史列表失败:', e)
-    })
-  }, 3500)
-
-  fetchTop5Data();
-  fetchStatsData();
 });
 
 onUnmounted(() => {

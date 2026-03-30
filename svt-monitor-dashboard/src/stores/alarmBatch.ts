@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
+import { readTenantIdFromStorageOrAddressBar } from '@/api/tenant'
 import {
   apiConfirmNot,
   apiConfirmNotAll,
@@ -73,11 +74,8 @@ function splitDeviceName(rawName: any): { main: string; sub: string } {
 }
 
 export const useAlarmBatchStore = defineStore('alarmBatch', () => {
-  const tenantId = computed(() => {
-    // 优先用地址栏 tenantId（与路由守卫行为一致），fallback 到 localStorage
-    const fromUrl = new URLSearchParams(window.location.search).get('tenantId')
-    return (fromUrl && fromUrl.trim()) || (localStorage.getItem('tenantId') ?? '')
-  })
+  // 注意：不要用 computed 包一层租户读取。localStorage / location 不是响应式依赖，
+  // computed 会永远缓存首次求值，导致登录后 find 仍带旧租户。
 
   const typeList = ref<DropdownItem[]>([])
   const deviceNameList = ref<DropdownItem[]>([])
@@ -221,7 +219,8 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
 
   const buildCommonFilters = (query: RealtimeQuery): FilterProperty[] => {
     const filters: FilterProperty[] = []
-    const tId = tenantId.value
+    // 与 getDropdown 一致：tenantId 仅 localStorage 或地址栏 ?tenantId=（见 readTenantIdFromStorageOrAddressBar）
+    const tId = readTenantIdFromStorageOrAddressBar()
     if (tId) filters.push({ code: 'tenantId', operate: 'EQ', value: tId })
     const effectiveDeviceId = query.deviceId ?? query.equipmentId
     if (effectiveDeviceId) filters.push({ code: 'deviceId', operate: 'EQ', value: effectiveDeviceId })
@@ -240,7 +239,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     const q = realtimeQuery.value ?? {}
     const effectiveDeviceId = q.deviceId ?? q.equipmentId
     return JSON.stringify({
-      tenantId: tenantId.value,
+      tenantId: readTenantIdFromStorageOrAddressBar(),
       pageIndex,
       pageSize: realtimePageSize.value,
       startTime: q.startTime ?? '',
@@ -316,7 +315,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     const q = historyQuery.value ?? { alarmCode: 'ACCURATE_YES' as AlarmCode }
     const effectiveDeviceId = q.deviceId ?? q.equipmentId
     return JSON.stringify({
-      tenantId: tenantId.value,
+      tenantId: readTenantIdFromStorageOrAddressBar(),
       pageIndex,
       pageSize: historyPageSize.value,
       alarmCode: q.alarmCode ?? 'ACCURATE_YES',
@@ -355,10 +354,13 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     const promise = (async () => {
       try {
         const res = await apiFindEvents({
-          filterPropertyMap: [...buildCommonFilters(historyQuery.value)],
+          filterPropertyMap: [
+            { code: 'alarmType', operate: 'EQ', value: 'NORMAL' },
+            ...buildCommonFilters(historyQuery.value)
+          ],
           pageIndex,
           pageSize: historyPageSize.value,
-          sortValueMap: [{ code: 'time', sort: 'desc' }]
+          sortValueMap: [{ code: 'createTime', sort: 'desc' }]
         })
         if (token !== historyFetchToken) return
         const items = res?.ret?.items ?? []
@@ -543,7 +545,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
       const res = await apiFindEvents({
         filterPropertyMap: [
           { code: 'statusCode', operate: 'EQ', value: 'VALID' },
-          { code: 'tenantId', operate: 'EQ', value: tenantId.value }
+          { code: 'tenantId', operate: 'EQ', value: readTenantIdFromStorageOrAddressBar() }
         ],
         pageIndex,
         pageSize,

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
+import { getTenantId } from '@/api/tenant'
 import { VibrationWsClient, type VibrationEventPayload } from '@/services/vibrationWs'
 import { fetchVibrationAlarmsForOverview } from '@/api/modules/vibrationEvent'
 
@@ -176,11 +177,6 @@ function buildMeasurementPointsFromPoint(point: OverviewNormalized['point']): Me
 export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
   const alarms = ref<AlarmItem[]>([])
 
-  const tenantId = computed(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get('tenantId')
-    return (fromUrl && fromUrl.trim()) || (localStorage.getItem('tenantId') ?? '')
-  })
-
   const connectedTenantId = ref('')
   const connecting = ref(false)
   let wsClient: VibrationWsClient | null = null
@@ -283,7 +279,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
   }
 
   async function start(params?: { token?: string; tenantId?: string }) {
-    const tId = (params?.tenantId ?? tenantId.value ?? '').trim()
+    const tId = (params?.tenantId ?? getTenantId() ?? '').trim()
     if (!tId) return
 
     // 已经在同 tenantId 下启动过，则不重复启动
@@ -330,7 +326,6 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
 
   return {
     alarms,
-    tenantId,
     connecting,
     connectedTenantId,
     start,
