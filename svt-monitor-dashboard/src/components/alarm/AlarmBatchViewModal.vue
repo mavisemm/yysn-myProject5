@@ -373,23 +373,10 @@ const currentDeviationValueText = computed(() => {
   return s || '-'
 })
 
-const currentFreqGroupId = computed(() => {
-  // 音频接口需要 freqGroupId；不同事件来源字段名可能不一致，做多字段兜底
-  return (
-    dataParse.value?.frepGroupId ??
-    dataParse.value?.freqGroupId ??
-    dataParse.value?.freq_group_id ??
-    dataParse.value?.freqGroupID ??
-    eventDetail.value?.frepGroupId ??
-    eventDetail.value?.freqGroupId ??
-    eventDetail.value?.freq_group_id ??
-    eventDetail.value?.freqGroupID ??
-    props.row?.frepGroupId ??
-    props.row?.freqGroupId ??
-    props.row?.freq_group_id ??
-    props.row?.freqGroupID ??
-    ''
-  )
+const currentFreqGroupId = computed<string>(() => {
+  // 音频接口前置条件：只取后端明确返回的字段（避免不同租户字段命名不一致导致取错）
+  const id = dataParse.value?.frepGroupId
+  return id == null || id === '' ? '' : String(id)
 })
 
 const audioSrc = computed(() => {
