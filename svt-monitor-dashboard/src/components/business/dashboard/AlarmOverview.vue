@@ -63,7 +63,7 @@
             'grid-template-columns': `repeat(${responsivePageSize.columns}, 1fr)`,
             'grid-template-rows': `repeat(${responsivePageSize.rows}, 1fr)`
         }">
-            <div v-for="(alarm, index) in displayedAlarms" :key="index" class="alarm-card"
+            <div v-for="alarm in displayedAlarms" :key="alarm.id" class="alarm-card"
                 :class="`alarm-card--${getDeviceDisplayStatus(alarm)}`"
                 @click="goToDeviceDetail(alarm)">
                 <div class="card-header">
@@ -258,6 +258,12 @@ const parseAlarmTime = (timeStr: string | undefined, fallbackYear: number): Date
     const raw = String(timeStr).trim()
     if (!raw) return null
 
+    const ts = Number(raw)
+    if (Number.isFinite(ts) && ts > 0) {
+        const d = new Date(ts)
+        return isNaN(d.getTime()) ? null : d
+    }
+
     
     if (/\d{4}/.test(raw)) {
         const d = new Date(raw)
@@ -332,7 +338,9 @@ function safeParseJson(input: any): any {
 }
 
 function isAlarmWsPayload(x: any): x is AlarmWsPayload {
-    return !!x && typeof x === 'object' && ('alarmTypeCode' in x || 'alarmTime' in x || 'alarmId' in x) && 'data' in x
+    // 只要具备告警时间/告警类型等关键信息，就按告警载荷处理
+    // 避免因 payload 是否带 `data` 字段不同，导致时间字段走了不同分支
+    return !!x && typeof x === 'object' && ('alarmTypeCode' in x || 'alarmTime' in x || 'alarmId' in x)
 }
 
 type OverviewNormalized = {
@@ -352,7 +360,7 @@ type OverviewNormalized = {
 function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
     
     if (isAlarmWsPayload(input)) {
-        const deviceId = String(input.equipmentId ?? '')
+        const deviceId = String(input.equipmentId ?? input.deviceId ?? '')
         const t = Number(input.alarmTime ?? 0)
         if (!deviceId || !Number.isFinite(t) || t <= 0) return null
         return {
@@ -431,8 +439,8 @@ function upsertAlarmFromEvent(input: any) {
     const deviceName = evt.deviceName || fromTree.deviceName
     const shopName = (evt.shopName && evt.shopName !== '未知车间') ? evt.shopName : fromTree.shopName
 
-    const d = new Date(evt.time)
-    const timeStr = isNaN(d.getTime()) ? '' : d.toISOString()
+    const t = Number(evt.time)
+    const timeStr = Number.isFinite(t) && t > 0 ? String(t) : ''
 
     const measurementPoints = buildMeasurementPointsFromPoint(evt.point)
     
@@ -687,7 +695,9 @@ function getDisplayPoints(points: MeasurementPoint[]): { point: MeasurementPoint
 }
 function formatAlarmTime(time: string | undefined): string {
     if (!time) return '暂无';
-    const d = new Date(time);
+    const raw = String(time).trim();
+    const ts = Number(raw);
+    const d = Number.isFinite(ts) && ts > 0 ? new Date(ts) : new Date(raw);
     if (isNaN(d.getTime())) return '暂无';
     const month = d.getMonth() + 1;
     const day = d.getDate();

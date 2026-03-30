@@ -134,6 +134,9 @@ const goToDeviceDetail = (rank: RankingItem) => {
         deviceTreeStore.setSelectedDeviceId(equipmentId);
         router.push({
             name: 'DeviceDetail',
+            params: {
+                id: equipmentId
+            },
             query: {
                 equipmentId: equipmentId,
                 equipmentName: rank.equipmentName,
