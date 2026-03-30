@@ -313,7 +313,8 @@ export const findLatestFrequencyById = (params: { id: string | number; type: num
 const SOUND_WAV_BASE = import.meta.env.VITE_SOUND_WAV_BASE_URL || ''
 
 export const getWavByFreqGroupIdUrl = (freqGroupId: string | number): string => {
-  const path = `/jiepai/hardware/device/type/das/soundDetector/findWavByFreqGroupId?freqGroupId=${freqGroupId}`
+  const safeFreqGroupId = encodeURIComponent(String(freqGroupId))
+  const path = `/jiepai/hardware/device/type/das/soundDetector/findWavByFreqGroupId?freqGroupId=${safeFreqGroupId}`
   return SOUND_WAV_BASE ? `${SOUND_WAV_BASE.replace(/\/$/, '')}${path}` : path
 }
 

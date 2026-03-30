@@ -393,7 +393,8 @@ const currentFreqGroupId = computed(() => {
 })
 
 const audioSrc = computed(() => {
-  const freqGroupId = currentFreqGroupId.value || currentEventId.value
+  // 音频接口严格依赖 freqGroupId；不要用事件 id 兜底，否则可能把错误的 id 传给后端导致 400
+  const freqGroupId = currentFreqGroupId.value
   if (!freqGroupId) return ''
   try {
     return getWavByFreqGroupIdUrl(freqGroupId)
