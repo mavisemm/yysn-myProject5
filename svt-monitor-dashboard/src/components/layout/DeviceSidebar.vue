@@ -226,6 +226,7 @@ onMounted(async () => {
 
   const expandDefaultNodes = () => {
     timeoutId = window.setTimeout(() => {
+      if ((deviceTreeStore.expandedKeys ?? []).length > 0) return
       const firstFactoryId = displayTreeData.value?.[0]?.id
       const firstWorkshopId = getFirstWorkshopId()
       const keys: string[] = []
@@ -491,6 +492,20 @@ const collectAllFactoryAndWorkshopKeys = (data: DeviceNode[]): string[] => {
   return keys
 }
 
+const collectAllNodeKeys = (data: DeviceNode[]): Set<string> => {
+  const keys = new Set<string>()
+  const walk = (nodes: DeviceNode[]) => {
+    for (const node of nodes) {
+      keys.add(node.id)
+      if (node.children?.length) {
+        walk(node.children)
+      }
+    }
+  }
+  walk(data)
+  return keys
+}
+
 
 
 const handleWorkshopFocus = () => {
@@ -565,6 +580,14 @@ const updateExpandedKeys = () => {
   const deviceSearch = debouncedDeviceSearch.value
 
   if (!workshopSearch && !deviceSearch && !selectedWorkshop.value && !selectedDevice.value) {
+    const validNodeKeys = collectAllNodeKeys(displayTreeData.value)
+    const currentExpandedKeys = deviceTreeStore.expandedKeys ?? []
+    const persistedKeys = currentExpandedKeys.filter((k) => validNodeKeys.has(k))
+
+    if (persistedKeys.length > 0) {
+      deviceTreeStore.setExpandedKeys(persistedKeys)
+      return
+    }
 
     const firstFactoryId = displayTreeData.value?.[0]?.id
     if (firstFactoryId) keys.push(firstFactoryId)

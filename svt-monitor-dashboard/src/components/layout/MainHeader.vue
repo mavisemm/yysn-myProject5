@@ -147,8 +147,6 @@ onBeforeUnmount(() => {
 })
 
 const goHome = () => {
-
-  deviceTreeStore.resetDeviceTreeState()
   router.push('/dashboard')
 }
 

@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { DeviceNode } from '@/types/device'
-import { getDeviceTreeData, transformDeviceTreeData, type DeviceTreeResponse } from '@/api/modules/deviceTree'
+import { getDeviceTreeData, transformDeviceTreeData } from '@/api/modules/deviceTree'
 import { getTenantId } from '@/api/tenant'
 
 export const useDeviceTreeStore = defineStore('deviceTree', () => {
@@ -10,6 +10,16 @@ export const useDeviceTreeStore = defineStore('deviceTree', () => {
   
   
   const loading = ref(false)
+
+  const isSameTreeData = (nextData: DeviceNode[], prevData: DeviceNode[]) => {
+    if (nextData === prevData) return true
+    if (nextData.length !== prevData.length) return false
+    try {
+      return JSON.stringify(nextData) === JSON.stringify(prevData)
+    } catch {
+      return false
+    }
+  }
   
   
   const loadDeviceTreeData = async () => {
@@ -17,7 +27,9 @@ export const useDeviceTreeStore = defineStore('deviceTree', () => {
       loading.value = true;
       const response = await getDeviceTreeData();
       const transformedData = transformDeviceTreeData(response);
-      deviceTreeData.value = transformedData;
+      if (!isSameTreeData(transformedData, deviceTreeData.value)) {
+        deviceTreeData.value = transformedData;
+      }
     } catch (error) {
       
     } finally {
