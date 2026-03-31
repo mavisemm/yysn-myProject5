@@ -291,31 +291,6 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       if (t !== prev) {
         if (source === 'ws') lastWsLoggedTsByDeviceId.set(deviceId, t)
         if (source === 'http') lastHttpLoggedTsByDeviceId.set(deviceId, t)
-        // eslint-disable-next-line no-console
-        if (source === 'ws') {
-          console.log('[alarmOverview page time check ws]', {
-            deviceId,
-            wsAlarmTimeTs: t,
-            wsLocalTime: tsToLocalTimeStr(t),
-            httpAlarmTimeTs: httpLatestAlarmTimeByDeviceId.get(deviceId) ?? null,
-            httpLocalTime:
-              httpLatestAlarmTimeByDeviceId.get(deviceId) != null
-                ? tsToLocalTimeStr(httpLatestAlarmTimeByDeviceId.get(deviceId) as number)
-                : null,
-            writtenTimeStr: timeStr,
-            rawAlarmTime: (input as any)?.alarmTime,
-            rawTime: (input as any)?.time
-          })
-        } else {
-          console.log('[alarmOverview page time check http]', {
-            deviceId,
-            httpAlarmTimeTs: t,
-            httpLocalTime: tsToLocalTimeStr(t),
-            writtenTimeStr: timeStr,
-            rawAlarmTime: (input as any)?.alarmTime,
-            rawTime: (input as any)?.time
-          })
-        }
       }
     }
 
@@ -394,13 +369,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     // 关键：写入完再读取一次，确认 store 里最终值是否仍是写入值
     if ((source === 'ws' || source === 'http') && Number.isFinite(t) && t > 0) {
       const actualAfterWrite = alarms.value.find((a) => a.id === deviceId)?.time ?? null
-      // eslint-disable-next-line no-console
-      console.log('[alarmOverview actualAfterWrite]', {
-        source,
-        deviceId,
-        writtenTimeStr: timeStr,
-        actualAfterWrite
-      })
+      void actualAfterWrite
     }
   }
 

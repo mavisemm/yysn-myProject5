@@ -202,10 +202,6 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     dropdownsPromise = (async () => {
       try {
         const [types, devices] = await Promise.all([apiGetEventTypeDropdownList(), apiGetDeviceNameDropdownList()])
-        if (import.meta.env.DEV) {
-          
-          console.log('[alarmBatch] dropdowns raw response:', { types, devices })
-        }
         typeList.value = types?.ret ?? []
         deviceNameList.value = devices?.ret ?? []
       } finally {

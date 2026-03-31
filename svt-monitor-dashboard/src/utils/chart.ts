@@ -30,7 +30,6 @@ export const observeResize = (chart: any, container: HTMLElement) => {
           }
           
           chart.resize();
-          console.debug('ECharts resize completed successfully');
         } catch (error) {
           console.warn('ECharts resize failed:', error);
           

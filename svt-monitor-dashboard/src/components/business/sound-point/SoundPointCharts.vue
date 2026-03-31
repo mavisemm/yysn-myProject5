@@ -288,8 +288,17 @@ const {
         const energyInstance = energyChartRef.value?.chartInstance;
         const densityInstance = densityChartRef.value?.chartInstance;
         const payload: any = { type: 'dataZoom', startValue, endValue };
-        energyInstance?.dispatchAction(payload);
-        densityInstance?.dispatchAction(payload);
+        const safeDispatch = (instance: any) => {
+            if (!instance) return;
+            try {
+                if (typeof instance.isDisposed === 'function' && instance.isDisposed()) return;
+                instance.dispatchAction(payload);
+            } catch (e) {
+                console.warn('[SoundPointCharts] dataZoom dispatch failed:', e);
+            }
+        };
+        safeDispatch(energyInstance);
+        safeDispatch(densityInstance);
     }
 });
 

@@ -216,10 +216,6 @@ async function main() {
   const filePath = path.join(outputDir, '云音声脑声振温在线监测平台-使用说明书.docx');
   const buffer = await Packer.toBuffer(doc);
   fs.writeFileSync(filePath, buffer);
-
-  // 控制台提示
-   
-  console.log(`使用说明书已生成：${filePath}`);
 }
 
 main().catch((err) => {

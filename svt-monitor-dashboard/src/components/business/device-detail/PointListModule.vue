@@ -29,7 +29,7 @@
                 <el-table-column label="操作" width="18%" align="center">
                     <template #default="{ row }">
                         <el-button :type="row.hasAlarm ? 'danger' : 'primary'" size="small"
-                            style="min-width: auto; width: fit-content; padding-left: 10px; padding-right: 10px; white-space: nowrap; overflow: visible;"
+                            style="min-width: auto; width: fit-c ontent; padding-left: 10px; padding-right: 10px; white-space: nowrap; overflow: visible;"
                             @click.stop="handleUnprocessedClick(row)">
                             {{ row.hasAlarm ? '未处理' : '已处理' }}
                         </el-button>
@@ -39,7 +39,7 @@
         </div>
     </div>
 </template>
-
+ 
 <script setup lang="ts">
 import { ElTable, ElTableColumn, ElButton } from 'element-plus'
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
