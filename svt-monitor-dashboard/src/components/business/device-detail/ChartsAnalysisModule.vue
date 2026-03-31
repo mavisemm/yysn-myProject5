@@ -7,15 +7,9 @@
                     <span class="chart-unit special-font-color">（单位：mm/s）</span>
                 </div>
                 <div class="chart">
-                    <CommonEcharts
-                        :option="vibOption"
-                        :enable-data-zoom="false"
-                        :not-merge="true"
-                        :tooltip-follow-mouse="true"
-                        linkage-group="device-detail-charts"
-                        :enable-linkage-zoom="true"
-                        :enable-wheel-zoom="true"
-                    />
+                    <CommonEcharts :option="vibOption" :enable-data-zoom="false" :not-merge="true"
+                        :tooltip-follow-mouse="true" linkage-group="device-detail-charts" :enable-linkage-zoom="true"
+                        :enable-wheel-zoom="true" />
                 </div>
             </div>
 
@@ -25,15 +19,9 @@
                     <span class="chart-unit special-font-color">（单位：dB）</span>
                 </div>
                 <div class="chart">
-                    <CommonEcharts
-                        :option="soundOption"
-                        :enable-data-zoom="false"
-                        :not-merge="true"
-                        :tooltip-follow-mouse="true"
-                        linkage-group="device-detail-charts"
-                        :enable-linkage-zoom="true"
-                        :enable-wheel-zoom="true"
-                    />
+                    <CommonEcharts :option="soundOption" :enable-data-zoom="false" :not-merge="true"
+                        :tooltip-follow-mouse="true" linkage-group="device-detail-charts" :enable-linkage-zoom="true"
+                        :enable-wheel-zoom="true" />
                 </div>
             </div>
 
@@ -48,15 +36,9 @@
                     </div>
                 </div>
                 <div class="chart">
-                    <CommonEcharts
-                        :option="tempOption"
-                        :enable-data-zoom="false"
-                        :not-merge="true"
-                        :tooltip-follow-mouse="true"
-                        linkage-group="device-detail-charts"
-                        :enable-linkage-zoom="true"
-                        :enable-wheel-zoom="true"
-                    />
+                    <CommonEcharts :option="tempOption" :enable-data-zoom="false" :not-merge="true"
+                        :tooltip-follow-mouse="true" linkage-group="device-detail-charts" :enable-linkage-zoom="true"
+                        :enable-wheel-zoom="true" />
                 </div>
             </div>
         </div>
@@ -106,15 +88,15 @@ const soundChartData = ref<ChartDataPoint | null>(null)
 const realtimeTempMockValue = ref<number>(33)
 
 function mockTemperatureByReceiverId(receiverId: string): number {
-    
+
     let hash = 0
     for (let i = 0; i < receiverId.length; i++) {
         hash = (hash * 31 + receiverId.charCodeAt(i)) >>> 0
     }
-    
+
     const base = 25
     const span = 20
-    const tenth = hash % (span * 10 + 1) 
+    const tenth = hash % (span * 10 + 1)
     return base + tenth / 10
 }
 
@@ -227,7 +209,7 @@ const vibOption = computed<EChartsOption>(() => {
             type: 'category',
             data: timeLabels,
             axisLabel: { fontSize: 10, color: c },
-            
+
             axisLine: { lineStyle: { color: c }, onZero: false },
             axisTick: { lineStyle: { color: c } }
         },
@@ -316,7 +298,7 @@ const soundOption = computed<EChartsOption>(() => {
 
 
 
- 
+
 
 function computeTempYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
     const span = dataMax - dataMin
@@ -553,9 +535,9 @@ onMounted(() => {
             flex-direction: column;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
             min-height: 0;
-            
+
             min-width: 0;
-            
+
 
             .chart-header {
                 display: flex;
@@ -563,7 +545,7 @@ onMounted(() => {
                 align-items: center;
                 margin-bottom: 10px;
                 flex: 0 0 auto;
-                
+
                 gap: 10px;
 
                 .chart-title {
@@ -610,11 +592,11 @@ onMounted(() => {
             padding: 10px;
             display: flex;
             flex-direction: column;
-            
+
             min-height: 0;
-            
+
             min-width: 0;
-            
+
 
             .module-header {
                 display: flex;
@@ -652,7 +634,7 @@ onMounted(() => {
                             margin-bottom: 12px;
 
                             :deep(.el-form-item__label) {
-                                
+
                                 color: #fff;
                                 font-size: 0.8rem;
                             }
@@ -704,7 +686,7 @@ onMounted(() => {
                     flex-shrink: 0;
 
                     .chart-title {
-                        font-size: 1rem!important;
+                        font-size: 1rem !important;
                         text-align: center;
                         font-weight: 500;
                         color: #fff;

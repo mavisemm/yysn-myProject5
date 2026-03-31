@@ -6,7 +6,8 @@
       <PointListModule ref="pointListModuleRef" :point-list="pointList" :selected-point-id="selectedPointId"
         @point-selected="selectedPointId = $event" />
 
-      <ChartsAnalysisModule :point-list="pointList" :selected-point-id="selectedPointId" panel-mode="realtimeTemperature" />
+      <ChartsAnalysisModule :point-list="pointList" :selected-point-id="selectedPointId"
+        panel-mode="realtimeTemperature" />
     </div>
   </div>
 </template>
@@ -29,12 +30,12 @@ const route = useRoute()
 const deviceTreeStore = useDeviceTreeStore()
 
 const equipmentId = computed<string | null>(() => {
-  
+
   const q = route.query.equipmentId
   const qId = Array.isArray(q) ? q[0] : q
   if (typeof qId === 'string' && qId) return qId
 
-  
+
   const p = route.params.id
   const pId = Array.isArray(p) ? p[0] : p
   if (typeof pId === 'string' && pId) return pId
@@ -112,7 +113,7 @@ const initDeviceData = async () => {
       alarmType: typeStrToDisplay(item.warningType),
       alarmValue: item.warningValue != null && Number(item.warningValue) !== 0 ? String(item.warningValue) : '无',
       deviceId: (item as any).deviceId ?? resolvePointDeviceId(item.receiverId),
-      hasAlarm: item.isAlarm === 0  
+      hasAlarm: item.isAlarm === 0
     }))
     pointList.value = list.sort((a, b) => {
       if (a.lastAlarmTime === '无' && b.lastAlarmTime === '无') return 0
@@ -200,15 +201,15 @@ onBeforeRouteLeave(async (to, from, next) => {
           distinguishCancelAndClose: true
         }
       )
-      
-      
+
+
       next()
     } catch (action) {
       if (action === 'cancel') {
-        
+
         next(false)
       } else {
-        
+
         next(false)
       }
     }

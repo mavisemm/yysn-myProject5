@@ -15,8 +15,9 @@
                 </el-table-column>
                 <el-table-column prop="receiverName" label="点位名称" min-width="120">
                     <template #default="{ row }">
-                        <span v-if="row.receiverId && row.pointDeviceId" class="link-cell" @click.stop="goToSoundPoint(row)">{{
-                            row.receiverName }}</span>
+                        <span v-if="row.receiverId && row.pointDeviceId" class="link-cell"
+                            @click.stop="goToSoundPoint(row)">{{
+                                row.receiverName }}</span>
                         <span v-else>{{ row.receiverName }}</span>
                     </template>
                 </el-table-column>
@@ -77,7 +78,7 @@ function getOneRowPerDevice(nodes: DeviceNode[]): TableRow[] {
                 const equipmentName = device.name || device.equipmentName || '—';
                 const points = (device.children ?? []).filter(p => p.type === 'point');
                 const targetPointName = 'JXA29F6104'
-                
+
                 const specifiedPoint =
                     String(equipmentName).includes('五线一路')
                         ? points.find(p => (p.name || (p as any).pointName) === targetPointName)
@@ -104,16 +105,16 @@ function getOneRowPerDevice(nodes: DeviceNode[]): TableRow[] {
 }
 
 const tableData = computed(() => {
-    
-    
-    
+
+
+
     const baseRows = getOneRowPerDevice(deviceTreeStore.deviceTreeData);
 
-    
+
     const fromTree = baseRows.map((row, index) => {
         const idx = index + 1;
-        const trendValue = 10 + idx * 1.3;   
-        const faultValue = 80 + idx * 2.1;   
+        const trendValue = 10 + idx * 1.3;
+        const faultValue = 80 + idx * 2.1;
         const value = props.mode === 'trend'
             ? Number(trendValue.toFixed(1))
             : Number(faultValue.toFixed(1));
@@ -178,7 +179,7 @@ watch(visible, (val) => {
         overflow-y: auto;
     }
 
-    
+
     :deep(.el-dialog__header .el-dialog__title) {
         color: #606266 !important;
     }
@@ -205,7 +206,7 @@ watch(visible, (val) => {
         }
     }
 
-    
+
     :deep(.el-table__header th) {
         color: #606266 !important;
     }

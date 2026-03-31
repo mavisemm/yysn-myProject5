@@ -1,12 +1,7 @@
 <template>
   <div class="sound-point-container">
-    <SoundPointCharts
-      :deviation-list="deviationList"
-      :point-list="[]"
-      :selected-point-id="receiverId"
-      @chart-init="handleChartInit"
-      ref="chartsComponentRef"
-    />
+    <SoundPointCharts :deviation-list="deviationList" :point-list="[]" :selected-point-id="receiverId"
+      @chart-init="handleChartInit" ref="chartsComponentRef" />
 
     <div class="bottom-section">
       <SoundDataTable :deviation-list="deviationList" @select-change="handleSelectChange" @view-details="viewDetails"
@@ -19,18 +14,9 @@
     </div>
   </div>
 
-  <el-dialog
-    v-model="voiceVisible"
-    title="详情"
-    width="70vw"
-    align-center
-    class="voice-detail-dialog"
-    destroy-on-close
-    :z-index="3000"
-    :teleported="true"
-    :append-to-body="true"
-    :modal-append-to-body="true"
-    @opened="handleModalOpened" @closed="handleModalClosed">
+  <el-dialog v-model="voiceVisible" title="详情" width="70vw" align-center class="voice-detail-dialog" destroy-on-close
+    :z-index="3000" :teleported="true" :append-to-body="true" :modal-append-to-body="true" @opened="handleModalOpened"
+    @closed="handleModalClosed">
     <div class="modal-charts">
       <div class="modal-chart-item">
         <div ref="modalEnergyChartRef" class="modal-chart-dom"></div>
@@ -133,7 +119,7 @@ const deviationList = ref<DeviationListItem[]>([]);
 const syncSelectedColors = () => {
   const selected = deviationList.value.filter(item => item.visible);
   selected.forEach((item, index) => {
-    
+
     item.color = `hsl(${(index * 137.5) % 360}, 70%, 50%)`;
   });
   deviationList.value.forEach(item => {
@@ -164,7 +150,7 @@ const handleRowClick = (row: any) => {
 
 
 const handleChartInit = (charts: any) => {
-  
+
 };
 
 
@@ -235,14 +221,14 @@ const loadDeviationList = async () => {
       currentDeviationValue.value = firstItem.deviationValue.toFixed(2);
     }
     if (firstRaw && typeof firstRaw === 'object') {
-      
+
       pointName.value = firstRaw.pointName ?? '';
       deviceName.value = firstRaw.deviceName ?? '';
       clusterName.value = firstRaw.sceneName ?? firstRaw.titleGroupName ?? '';
       productionEquipment.value = firstRaw.deviceName ?? firstRaw.productName ?? firstRaw.productionFactory ?? '';
       subComponent.value = firstRaw.subProductName ?? '';
       detectionEquipment.value = firstRaw.detectorName ?? firstRaw.deviceName ?? '';
-      
+
       microphone.value = firstRaw.receiverName ?? firstRaw.pointName ?? (firstRaw.receiverId != null ? String(firstRaw.receiverId) : '');
       if (firstItem?.id) {
         audioPath.value = getWavByFreqGroupIdUrl(firstItem.id);
@@ -257,7 +243,7 @@ const loadDeviationList = async () => {
       microphone.value = '';
       audioPath.value = '';
     }
-    
+
     applyStorePointInfo();
 
     await loadFrequencyData();
@@ -383,7 +369,7 @@ const viewDetails = async (row: any) => {
         { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' }
       ];
 
-      
+
       const applyDataZoom = (source: echarts.ECharts, target: echarts.ECharts | null) => {
         if (!target || dataZoomSyncing) return;
         const opt = source.getOption();
@@ -405,7 +391,7 @@ const viewDetails = async (row: any) => {
         }
       };
 
-      
+
       if (modalEnergyChartRef.value) {
         if (modalEnergyChartInstance.value) {
           modalEnergyChartInstance.value.dispose();
@@ -434,7 +420,7 @@ const viewDetails = async (row: any) => {
         });
       }
 
-      
+
       if (modalDensityChartRef.value) {
         if (modalDensityChartInstance.value) {
           modalDensityChartInstance.value.dispose();
@@ -610,6 +596,7 @@ onUnmounted(() => {
 
 :deep(.voice-detail-dialog) {
   overflow: hidden !important;
+
   .el-dialog {
     height: 95vh;
     max-height: 95vh;
@@ -618,9 +605,11 @@ onUnmounted(() => {
     flex-direction: column;
     overflow: hidden;
   }
+
   .el-dialog__header {
     flex-shrink: 0;
   }
+
   .el-dialog__body {
     flex: 1;
     min-height: 0;

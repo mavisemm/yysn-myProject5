@@ -6,17 +6,9 @@
                     <div class="chart-title app-section-title">能量曲线</div>
                 </div>
                 <div class="chart-container">
-                    <CommonEcharts
-                        ref="energyChartRef"
-                        :option="energyOption"
-                        linkage-group="sound-point-charts"
-                        :enable-linkage-zoom="true"
-                        :enable-wheel-zoom="true"
-                        :tooltip-follow-mouse="true"
-                        :not-merge="true"
-                        :enable-data-zoom="false"
-                        @chart-ready="onEnergyChartReady"
-                    />
+                    <CommonEcharts ref="energyChartRef" :option="energyOption" linkage-group="sound-point-charts"
+                        :enable-linkage-zoom="true" :enable-wheel-zoom="true" :tooltip-follow-mouse="true"
+                        :not-merge="true" :enable-data-zoom="false" @chart-ready="onEnergyChartReady" />
                 </div>
             </div>
             <div class="chart-item">
@@ -24,63 +16,27 @@
                     <div class="chart-title app-section-title">密度曲线</div>
                 </div>
                 <div class="chart-container">
-                    <CommonEcharts
-                        ref="densityChartRef"
-                        :option="densityOption"
-                        linkage-group="sound-point-charts"
-                        :enable-linkage-zoom="true"
-                        :enable-wheel-zoom="true"
-                        :tooltip-follow-mouse="true"
-                        :not-merge="true"
-                        :enable-data-zoom="false"
-                        @chart-ready="onDensityChartReady"
-                    />
+                    <CommonEcharts ref="densityChartRef" :option="densityOption" linkage-group="sound-point-charts"
+                        :enable-linkage-zoom="true" :enable-wheel-zoom="true" :tooltip-follow-mouse="true"
+                        :not-merge="true" :enable-data-zoom="false" @chart-ready="onDensityChartReady" />
                 </div>
             </div>
         </div>
 
-        <div
-            v-if="true"
-            class="range-controls-bar"
-            @mousedown.stop
-            @wheel.stop
-        >
+        <div v-if="true" class="range-controls-bar" @mousedown.stop @wheel.stop>
             <span class="controls-label">频率范围：</span>
-            <el-input-number
-                v-model="rangeMin"
-                class="range-input"
-                size="small"
-                :min="safeRangeDataMin"
-                :max="safeRangeDataMax"
-                :step="0.1"
-                :precision="1"
-                controls-position="right"
-                :disabled="rangeControlsDisabled"
-                @change="applyRangeIfEnabled"
-            />
+            <el-input-number v-model="rangeMin" class="range-input" size="small" :min="safeRangeDataMin"
+                :max="safeRangeDataMax" :step="0.1" :precision="1" controls-position="right"
+                :disabled="rangeControlsDisabled" @change="applyRangeIfEnabled" />
             <span class="controls-sep">~</span>
-            <el-input-number
-                v-model="rangeMax"
-                class="range-input"
-                size="small"
-                :min="safeRangeDataMin"
-                :max="safeRangeDataMax"
-                :step="0.1"
-                :precision="1"
-                controls-position="right"
-                :disabled="rangeControlsDisabled"
-                @change="applyRangeIfEnabled"
-            />
+            <el-input-number v-model="rangeMax" class="range-input" size="small" :min="safeRangeDataMin"
+                :max="safeRangeDataMax" :step="0.1" :precision="1" controls-position="right"
+                :disabled="rangeControlsDisabled" @change="applyRangeIfEnabled" />
             <span class="controls-unit">Hz</span>
-            <el-button size="small" class="reset-btn" :disabled="rangeControlsDisabled" @click="resetRangeIfEnabled">重置</el-button>
-            <el-button
-                type="primary"
-                size="small"
-                class="trend-analysis-btn"
-                @mousedown.stop
-                @wheel.stop
-                @click="handleTrendAnalysisClick"
-            >
+            <el-button size="small" class="reset-btn" :disabled="rangeControlsDisabled"
+                @click="resetRangeIfEnabled">重置</el-button>
+            <el-button type="primary" size="small" class="trend-analysis-btn" @mousedown.stop @wheel.stop
+                @click="handleTrendAnalysisClick">
                 点位数据趋势分析
             </el-button>
         </div>
@@ -105,7 +61,7 @@ const handleTrendAnalysisClick = () => {
     const base = import.meta.env.BASE_URL || '/';
     const normalizedBase = base.endsWith('/') ? base : `${base}/`;
     const tenantId = getTenantId();
-    
+
     const params = new URLSearchParams();
     if (tenantId) params.set('tenantId', tenantId);
     params.set('ip', '122.224.196.178');
@@ -127,7 +83,7 @@ const selectedItemsWithColor = computed(() => {
     const selected = props.deviationList.filter(item => item.visible);
     return selected.map((item, index) => ({
         ...item,
-        
+
         color: item?.color || `hsl(${(index * 137.5) % 360}, 70%, 50%)`
     }));
 });
@@ -287,7 +243,7 @@ const tryEmitChartInit = () => {
         chartInitEmitted = true;
         emit('chart-init', { energyChartInstance: energy, densityChartInstance: density });
 
-        
+
         if (!energyDataZoomCleanup) {
             const handler = (params: any) => {
                 handleDataZoom(params);
@@ -301,7 +257,7 @@ const tryEmitChartInit = () => {
 };
 
 const updateCharts = () => {
-    
+
 };
 
 defineExpose({ updateCharts });
@@ -417,7 +373,7 @@ onUnmounted(() => {
         display: flex;
         flex-direction: column;
         border-radius: 8px;
-        
+
         border: none !important;
         background: transparent !important;
 

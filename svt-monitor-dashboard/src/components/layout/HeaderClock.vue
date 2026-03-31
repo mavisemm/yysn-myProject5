@@ -57,7 +57,7 @@ const weekText = computed(() => {
 onMounted(() => {
   now.value = new Date()
   timerId = window.setInterval(() => {
-    
+
     now.value = new Date()
   }, 1000)
 })

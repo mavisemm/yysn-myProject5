@@ -19,10 +19,8 @@
       </ThreeMetrics>
     </div>
 
-    <TrendWarningDeviceModal v-model="showTrendWarningModal" title="趋势预警设备详情" mode="trend"
-      :count="trendWarningCount" />
-    <TrendWarningDeviceModal v-model="showFaultWarningModal" title="故障报警设备详情" mode="fault"
-      :count="faultAlertCount" />
+    <TrendWarningDeviceModal v-model="showTrendWarningModal" title="趋势预警设备详情" mode="trend" :count="trendWarningCount" />
+    <TrendWarningDeviceModal v-model="showFaultWarningModal" title="故障报警设备详情" mode="fault" :count="faultAlertCount" />
   </div>
 </template>
 
@@ -201,7 +199,7 @@ onUnmounted(() => {
   .dashboard-box-alarm {
     min-height: 290px !important;
   }
-  
+
   .dashboard-box-stats {
     height: calc((100% - 20px) * 0.25);
   }

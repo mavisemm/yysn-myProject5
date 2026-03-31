@@ -4,15 +4,15 @@
             <div class="header-section__left home-title__left">
                 <img class="header-section__icon home-title__icon" src="@/assets/images/background/小图标.png" alt="" />
                 <div class="title-with-legend">
-                <h3 class="app-section-title">预警总览</h3>
-                <div class="batch-actions">
-                    <el-button size="small" class="batch-btn" @click="openRealtimeBatch">
-                        实时预警
-                    </el-button>
-                    <el-button size="small" class="batch-btn" @click="openHistoryBatch">
-                        历史预警
-                    </el-button>
-                </div>
+                    <h3 class="app-section-title">预警总览</h3>
+                    <div class="batch-actions">
+                        <el-button size="small" class="batch-btn" @click="openRealtimeBatch">
+                            实时预警
+                        </el-button>
+                        <el-button size="small" class="batch-btn" @click="openHistoryBatch">
+                            历史预警
+                        </el-button>
+                    </div>
                 </div>
             </div>
             <div class="search-section">
@@ -64,15 +64,15 @@
             'grid-template-rows': `repeat(${responsivePageSize.rows}, 1fr)`
         }">
             <div v-for="alarm in displayedAlarms" :key="alarm.id" class="alarm-card"
-                :class="`alarm-card--${getDeviceDisplayStatus(alarm)}`"
-                @click="goToDeviceDetail(alarm)">
+                :class="`alarm-card--${getDeviceDisplayStatus(alarm)}`" @click="goToDeviceDetail(alarm)">
                 <div class="card-header">
                     <span class="device-name" :title="alarm.deviceName">{{ alarm.deviceName }}</span>
                     <span :class="['status-dot', getDeviceDisplayStatus(alarm)]"></span>
                 </div>
 
                 <div class="alarm-time">
-                    <template v-if="getDeviceDisplayStatus(alarm) !== 'healthy' && getDeviceDisplayStatus(alarm) !== 'offline'">
+                    <template
+                        v-if="getDeviceDisplayStatus(alarm) !== 'healthy' && getDeviceDisplayStatus(alarm) !== 'offline'">
                         {{ alarm.shopName ? alarm.shopName + ' ' : '' }}&nbsp;&nbsp;{{ formatAlarmTime(alarm.time) }}
                     </template>
                     <template v-else>
@@ -147,7 +147,7 @@ interface AlarmItem {
 interface AlarmWsPayload {
     alarmId?: string
     tenantId?: string
-    
+
     equipmentId?: string
     equipmentName?: string
     deviceId?: string
@@ -175,7 +175,7 @@ interface AlarmWsPayload {
 
 interface DeviceItem {
     id: string | number;
-    name: string; 
+    name: string;
     deviceName: string;
     workshopName: string;
 }
@@ -229,7 +229,7 @@ const parsePickerDateTime = (s: string): Date => {
     const str = (s ?? '').trim()
     if (!str) return new Date(NaN)
 
-    
+
     if (!str.includes(' ')) return new Date(str)
 
     const parts = str.split(' ')
@@ -244,7 +244,7 @@ const parsePickerDateTime = (s: string): Date => {
     const d = Number(dateParts[2])
 
     const timeParts = String(timePart).split(':')
-    
+
     const hh = Number(timeParts[0])
     const mm = Number(timeParts[1])
     const ss = Number(timeParts[2] ?? '0')
@@ -264,13 +264,13 @@ const parseAlarmTime = (timeStr: string | undefined, fallbackYear: number): Date
         return isNaN(d.getTime()) ? null : d
     }
 
-    
+
     if (/\d{4}/.test(raw)) {
         const d = new Date(raw)
         return isNaN(d.getTime()) ? null : d
     }
 
-    
+
     const m = raw.match(/^(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
     if (!m) {
         const d = new Date(raw)
@@ -290,7 +290,7 @@ const parseAlarmTime = (timeStr: string | undefined, fallbackYear: number): Date
 watch(
     () => dateRange.value,
     () => {
-        
+
         currentPage.value = 1
     },
     { deep: true }
@@ -358,7 +358,7 @@ type OverviewNormalized = {
 }
 
 function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
-    
+
     if (isAlarmWsPayload(input)) {
         const deviceId = String(input.equipmentId ?? input.deviceId ?? '')
         const t = Number(input.alarmTime ?? 0)
@@ -378,7 +378,7 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
         }
     }
 
-    
+
     const evt = input as Partial<VibrationEventPayload>
     if (!evt || typeof evt !== 'object') return null
     const deviceId = String(evt.deviceId ?? '')
@@ -405,7 +405,7 @@ function buildMeasurementPointsFromPoint(point: OverviewNormalized['point']): Me
     const pointStatus = mapLevelToStatus(point?.level)
     const pointName = point?.pointName ? String(point.pointName) : ''
 
-    
+
     const total = 10
     const list: MeasurementPoint[] = Array.from({ length: total }).map((_, i) => ({
         name: i === 0 && pointName ? pointName : `测点${i + 1}`,
@@ -426,12 +426,12 @@ function upsertAlarmFromEvent(input: any) {
     const evt = normalizeToOverviewEvent(input)
     if (!evt) return
 
-    
+
     if (evt.statusCode && String(evt.statusCode).toUpperCase() !== 'VALID') return
 
-    
-    
-    
+
+
+
     const isFaultAlarm = String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
 
     const deviceId = evt.deviceId
@@ -443,7 +443,7 @@ function upsertAlarmFromEvent(input: any) {
     const timeStr = Number.isFinite(t) && t > 0 ? String(t) : ''
 
     const measurementPoints = buildMeasurementPointsFromPoint(evt.point)
-    
+
     const deviceStatus: AlarmItem['status'] = isFaultAlarm ? 'alarm' : 'healthy'
 
     const statusText = deviceStatus === 'alarm' ? '报警' : '健康'
@@ -514,18 +514,18 @@ const filteredAlarms = computed(() => {
         let endDate = parsePickerDateTime(dateRange.value[1])
         const fallbackYear = startDate.getFullYear()
 
-        
+
         if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return result;
 
-        
+
         const now = new Date();
         if (endDate.getTime() > now.getTime()) {
             endDate = now;
         }
 
         result = result.filter(alarm => {
-            
-            
+
+
             if (alarm.status === 'healthy' || alarm.status === 'offline') return true;
             if (!alarm.time) return false;
             const alarmDateTime = parseAlarmTime(alarm.time, fallbackYear)
@@ -534,7 +534,7 @@ const filteredAlarms = computed(() => {
         });
     }
 
-    
+
     const statusOrder: Record<'alarm' | 'warning' | 'healthy' | 'offline', number> = {
         alarm: 0,
         warning: 1,
@@ -554,12 +554,12 @@ const filteredAlarms = computed(() => {
         const aHasTime = !isNaN(timeA);
         const bHasTime = !isNaN(timeB);
 
-        
+
         if (aHasTime && !bHasTime) return -1;
         if (!aHasTime && bHasTime) return 1;
         if (!aHasTime && !bHasTime) return 0;
 
-        
+
         return sortOrder.value === 'desc' ? (timeB - timeA) : (timeA - timeB);
     });
 
@@ -714,7 +714,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         return;
     }
 
-    
+
     deviceTreeStore.setSelectedDeviceId(equipmentId);
     router.push({
         name: 'DeviceDetail',
@@ -773,7 +773,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                 font-size: 0.8rem;
                 background: rgba(255, 255, 255, 0.08);
                 border: 1px solid rgba(255, 255, 255, 0.18);
-                color: rgba(255, 255, 255)!important;
+                color: rgba(255, 255, 255) !important;
             }
         }
 
@@ -835,7 +835,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         display: flex;
         align-items: center;
         flex-shrink: 0;
-        align-self: flex-end; 
+        align-self: flex-end;
     }
 
     .status-legend__item {
@@ -919,7 +919,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             }
 
-                .card-header {
+            .card-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
@@ -930,7 +930,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                 background-size: 100% 100%;
 
                 .device-name {
-                    
+
                     font-weight: 600;
                     letter-spacing: 1px;
                     color: rgba(255, 255, 255, 1);
@@ -987,7 +987,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
             }
 
             .alarm-time {
-                
+
                 font-size: 0.9rem;
                 font-weight: 400;
                 letter-spacing: 0.78px;
@@ -997,13 +997,13 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
                 text-align: left;
             }
 
-                .measurement-grid {
+            .measurement-grid {
                 display: grid;
                 grid-template-columns: repeat(4, 1fr);
                 gap: 5px;
                 flex: 1;
                 min-height: 0;
-                
+
                 .point-item {
                     width: 3.3vw;
                     height: 3.5vh;
@@ -1080,7 +1080,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
         }
     }
 
-    
+
     @media (max-width: 768px) {
         .header-section {
             flex-direction: column;

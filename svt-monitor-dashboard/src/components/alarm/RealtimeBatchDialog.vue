@@ -1,73 +1,29 @@
 <template>
-  <el-dialog
-    v-model="store.realtimeVisible"
-    title="实时预警批量操作"
-    width="1100px"
-    align-center
-    class="alarm-batch-dialog"
-    @close="store.closeRealtime"
-  >
+  <el-dialog v-model="store.realtimeVisible" title="实时预警批量操作" width="1100px" align-center class="alarm-batch-dialog"
+    @close="store.closeRealtime">
     <div class="filter-bar">
       <el-form :inline="true" label-width="80px" class="filter-form">
         <el-form-item label="开始时间：">
-          <el-date-picker
-            v-model="store.realtimeQuery.startTime"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="开始时间"
-            clearable
-            size="small"
-            class="alarm-filter-control"
-            :show-now="false"
-            popper-class="alarm-batch-datetime-popper"
-          />
+          <el-date-picker v-model="store.realtimeQuery.startTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="开始时间" clearable size="small" class="alarm-filter-control" :show-now="false"
+            popper-class="alarm-batch-datetime-popper" />
         </el-form-item>
         <el-form-item label="结束时间：">
-          <el-date-picker
-            v-model="store.realtimeQuery.endTime"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="结束时间"
-            clearable
-            size="small"
-            class="alarm-filter-control"
-            :show-now="false"
-            popper-class="alarm-batch-datetime-popper"
-          />
+          <el-date-picker v-model="store.realtimeQuery.endTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="结束时间" clearable size="small" class="alarm-filter-control" :show-now="false"
+            popper-class="alarm-batch-datetime-popper" />
         </el-form-item>
         <el-form-item label="设备名称：">
-          <el-select-v2
-            v-model="store.realtimeQuery.deviceId"
-            :options="deviceOptions"
-            filterable
-            clearable
-            size="small"
-            class="alarm-filter-control"
-            popper-class="alarm-batch-popper"
-            :popper-options="sameWidthPopperOptions"
-            :loading="store.dropdownsLoading"
-            :item-height="28"
-            :height="280"
-            style="width: 220px"
-            placeholder="请选择"
-          />
+          <el-select-v2 v-model="store.realtimeQuery.deviceId" :options="deviceOptions" filterable clearable
+            size="small" class="alarm-filter-control" popper-class="alarm-batch-popper"
+            :popper-options="sameWidthPopperOptions" :loading="store.dropdownsLoading" :item-height="28" :height="280"
+            style="width: 220px" placeholder="请选择" />
         </el-form-item>
         <el-form-item label="预警类型：">
-          <el-select-v2
-            v-model="store.realtimeQuery.eventTypeCode"
-            :options="typeOptions"
-            filterable
-            clearable
-            size="small"
-            class="alarm-filter-control"
-            popper-class="alarm-batch-popper"
-            :popper-options="sameWidthPopperOptions"
-            :loading="store.dropdownsLoading"
-            :item-height="28"
-            :height="280"
-            style="width: 220px"
-            placeholder="请选择"
-          />
+          <el-select-v2 v-model="store.realtimeQuery.eventTypeCode" :options="typeOptions" filterable clearable
+            size="small" class="alarm-filter-control" popper-class="alarm-batch-popper"
+            :popper-options="sameWidthPopperOptions" :loading="store.dropdownsLoading" :item-height="28" :height="280"
+            style="width: 220px" placeholder="请选择" />
         </el-form-item>
 
         <el-form-item>
@@ -78,42 +34,23 @@
     </div>
 
     <div class="actions-bar">
-      <el-button
-        type="success"
-        size="small"
-        :disabled="!store.realtimeSelectedRowKeys.length"
-        @click="confirmBatch('yes')"
-      >
+      <el-button type="success" size="small" :disabled="!store.realtimeSelectedRowKeys.length"
+        @click="confirmBatch('yes')">
         批量确认警报
       </el-button>
-      <el-button
-        type="warning"
-        size="small"
-        :disabled="!store.realtimeSelectedRowKeys.length"
-        @click="confirmBatch('not')"
-      >
+      <el-button type="warning" size="small" :disabled="!store.realtimeSelectedRowKeys.length"
+        @click="confirmBatch('not')">
         批量确认误报
       </el-button>
-      <el-button
-        type="danger"
-        size="small"
-        :disabled="!store.realtimeSelectedRowKeys.length"
-        @click="confirmBatch('delete')"
-      >
+      <el-button type="danger" size="small" :disabled="!store.realtimeSelectedRowKeys.length"
+        @click="confirmBatch('delete')">
         批量确认删除
       </el-button>
     </div>
 
     <div class="table-wrapper" v-loading="store.realtimeLoading">
-      <el-table
-        :data="store.realtimeRows"
-        row-key="id"
-        border
-        height="100%"
-        virtualized
-        :row-height="32"
-        @selection-change="onSelectionChange"
-      >
+      <el-table :data="store.realtimeRows" row-key="id" border height="100%" virtualized :row-height="32"
+        @selection-change="onSelectionChange">
         <el-table-column type="selection" width="50" />
         <el-table-column label="设备名称" min-width="180">
           <template #default="{ row }">
@@ -139,12 +76,7 @@
         <el-table-column label="操作" width="90" fixed="right">
           <template #default="{ row }">
             <div class="operation-cell">
-              <el-button
-                link
-                type="primary"
-                class="operation-link"
-                @click="$emit('view', row)"
-              >
+              <el-button link type="primary" class="operation-link" @click="$emit('view', row)">
                 查看
               </el-button>
             </div>
@@ -154,13 +86,8 @@
     </div>
 
     <div class="pager">
-      <el-pagination
-        v-model:current-page="pageForUi"
-        :page-size="store.realtimePageSize"
-        layout="total, prev, pager, next"
-        :total="store.realtimeTotal"
-        @current-change="onPageChange"
-      />
+      <el-pagination v-model:current-page="pageForUi" :page-size="store.realtimePageSize"
+        layout="total, prev, pager, next" :total="store.realtimeTotal" @current-change="onPageChange" />
     </div>
   </el-dialog>
 </template>
@@ -192,7 +119,7 @@ watch(
   () => store.realtimeVisible,
   (visible) => {
     if (!visible) return
-    
+
     nextTick(() => {
       void store.ensureDropdowns()
       void store.fetchRealtimeList(0)
@@ -282,7 +209,7 @@ function ensureRowParsed(row: any): any {
     return cached
   }
 
-  
+
   const needsParse =
     (!row.pointName || !row.receiverName || !row.deviceName) && typeof row.dataJson === 'string'
   if (!needsParse && row.deviceName && row.pointName && row.receiverName) {
@@ -370,14 +297,17 @@ const getReceiverName = (row: any): string => {
   align-items: center;
   flex-wrap: wrap;
 }
+
 .device-cell {
   display: flex;
   flex-direction: column;
   line-height: 1.2;
 }
+
 .device-sub {
   opacity: 0.75;
 }
+
 .pager {
   margin-top: 10px;
   display: flex;
@@ -392,11 +322,9 @@ const getReceiverName = (row: any): string => {
 .operation-cell :deep(.operation-link) {
   font-size: var(--alarm-dialog-font);
 }
-
 </style>
 
 <style lang="scss">
-
 .alarm-batch-dialog {
   height: 90vh;
   max-height: 90vh;
@@ -435,9 +363,9 @@ const getReceiverName = (row: any): string => {
 }
 
 .alarm-batch-dialog .el-table__body-wrapper td .el-button.is-link,
-.alarm-batch-dialog .el-table__body-wrapper td .el-button.is-link > span,
+.alarm-batch-dialog .el-table__body-wrapper td .el-button.is-link>span,
 .alarm-batch-dialog .el-table__body-wrapper td .operation-link,
-.alarm-batch-dialog .el-table__body-wrapper td .operation-link > span {
+.alarm-batch-dialog .el-table__body-wrapper td .operation-link>span {
   color: var(--el-color-primary) !important;
 }
 
@@ -548,4 +476,3 @@ const getReceiverName = (row: any): string => {
   display: none !important;
 }
 </style>
-

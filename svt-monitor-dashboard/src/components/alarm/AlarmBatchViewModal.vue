@@ -1,13 +1,6 @@
 <template>
-  <el-dialog
-    v-model="visible"
-    title="预警详情"
-    width="1100px"
-    height="90vh"
-    align-center
-    class="alarm-batch-view-dialog"
-    destroy-on-close
-  >
+  <el-dialog v-model="visible" title="预警详情" width="1100px" height="90vh" align-center class="alarm-batch-view-dialog"
+    destroy-on-close>
     <div class="voiceContainer">
       <div class="voiceContainerItem">
         <div class="panelTitle">预警信息：{{ currentEventTypeName }}</div>
@@ -45,33 +38,18 @@
         <div class="panelTitle">操作</div>
         <div class="controlsBox">
           <div class="controlsRow">
-            <el-button
-              type="success"
-              size="large"
-              :disabled="!currentEventId"
-              class="controlBtnLarge"
-              @click="onConfirmYes"
-            >
+            <el-button type="success" size="large" :disabled="!currentEventId" class="controlBtnLarge"
+              @click="onConfirmYes">
               确认预警
             </el-button>
-            <el-button
-              type="warning"
-              size="large"
-              :disabled="!currentEventId"
-              class="controlBtnLarge"
-              @click="notVisible = true"
-            >
+            <el-button type="warning" size="large" :disabled="!currentEventId" class="controlBtnLarge"
+              @click="notVisible = true">
               确认误报
             </el-button>
           </div>
           <div class="controlsRow controlsRow--ai">
-            <el-button
-              type="primary"
-              size="large"
-              :disabled="!currentEventId"
-              class="controlBtnLarge"
-              @click="openAIModal"
-            >
+            <el-button type="primary" size="large" :disabled="!currentEventId" class="controlBtnLarge"
+              @click="openAIModal">
               智能故障分析
             </el-button>
           </div>
@@ -91,14 +69,8 @@
       </div>
     </div>
 
-    <el-dialog
-      v-model="notVisible"
-      title="选择误报类型"
-      width="520px"
-      destroy-on-close
-      :close-on-click-modal="false"
-      @closed="resetNotModal"
-    >
+    <el-dialog v-model="notVisible" title="选择误报类型" width="520px" destroy-on-close :close-on-click-modal="false"
+      @closed="resetNotModal">
       <div class="modalBlock">
         <div class="modalLabel">选择误报类型</div>
         <el-select v-model="notType" placeholder="请选择" style="width: 100%" size="small">
@@ -115,24 +87,11 @@
       </template>
     </el-dialog>
 
-    <el-dialog
-      v-model="yesVisible"
-      title="异常预警"
-      width="620px"
-      destroy-on-close
-      :close-on-click-modal="false"
-      @open="onYesModalOpen"
-      @closed="resetYesModal"
-    >
+    <el-dialog v-model="yesVisible" title="异常预警" width="620px" destroy-on-close :close-on-click-modal="false"
+      @open="onYesModalOpen" @closed="resetYesModal">
       <div class="modalBlock">
-        <el-select
-          v-model="yesExceptionId"
-          placeholder="历史异常库"
-          style="width: 100%"
-          size="small"
-          class="historySelect"
-          popper-class="historySelectPopper"
-        >
+        <el-select v-model="yesExceptionId" placeholder="历史异常库" style="width: 100%" size="small" class="historySelect"
+          popper-class="historySelectPopper">
           <el-option label="重置" value="" />
           <el-option v-for="it in abnormalList" :key="it.id" :label="it.name" :value="it.id" />
         </el-select>
@@ -148,19 +107,15 @@
       </template>
     </el-dialog>
 
-    <el-dialog
-      v-model="aiModalVisible"
-      title="智能故障分析"
-      width="760px"
-      destroy-on-close
-      :close-on-click-modal="false"
-      @closed="resetAiModal"
-    >
+    <el-dialog v-model="aiModalVisible" title="智能故障分析" width="760px" destroy-on-close :close-on-click-modal="false"
+      @closed="resetAiModal">
       <div class="aiHeader">
         <div class="aiMeta">设备名称：{{ nosceneVoiceRet?.productName ?? '暂无' }}</div>
         <div class="aiMeta">点位名称：{{ nosceneVoiceRet?.subProductName ?? '暂无' }}</div>
-        <div class="aiMeta">设备参数：{{ getTenantId() === '39ad1946358f48d7a90067761aed48d5' ? '6203-2RZ' : (nosceneVoiceRet?.deviceModel ?? '暂无') }}</div>
-        <div class="aiMeta">生产厂家：{{ getTenantId() === '39ad1946358f48d7a90067761aed48d5' ? '洛阳轴承集团' : (nosceneVoiceRet?.productionFactory ?? '暂无') }}</div>
+        <div class="aiMeta">设备参数：{{ getTenantId() === '39ad1946358f48d7a90067761aed48d5' ? '6203-2RZ' :
+          (nosceneVoiceRet?.deviceModel ?? '暂无') }}</div>
+        <div class="aiMeta">生产厂家：{{ getTenantId() === '39ad1946358f48d7a90067761aed48d5' ? '洛阳轴承集团' :
+          (nosceneVoiceRet?.productionFactory ?? '暂无') }}</div>
       </div>
 
       <div class="modalBlock">
@@ -233,12 +188,12 @@ const disposeCharts = () => {
   try {
     energyChart.value?.dispose()
   } catch {
-    
+
   }
   try {
     densityChart.value?.dispose()
   } catch {
-    
+
   }
   energyChart.value = null
   densityChart.value = null
@@ -360,20 +315,20 @@ const currentDeviationValueText = computed(() => {
   const num = Number(raw)
   if (!Number.isFinite(num)) return String(raw)
 
-  
+
   let s = num.toFixed(4)
   s = s.replace(/\.?0+$/, '')
   return s || '-'
 })
 
 const currentFreqGroupId = computed<string>(() => {
-  
+
   const id = dataParse.value?.frepGroupId
   return id == null || id === '' ? '' : String(id)
 })
 
 const audioSrc = computed(() => {
-  
+
   const freqGroupId = currentFreqGroupId.value
   if (!freqGroupId) return ''
   try {
@@ -384,7 +339,7 @@ const audioSrc = computed(() => {
 })
 
 const receiverId = computed(() => {
-  
+
   return (
     dataParse.value?.receiverId ??
     dataParse.value?.receiverID ??
@@ -417,7 +372,7 @@ const pointId = computed(() =>
 
 const positionText = computed(() => {
   if (position.value == null) return '-'
-  
+
   return '已获取位置/点位信息'
 })
 
@@ -559,7 +514,7 @@ const loadEvent = async () => {
     if (res?.rc === 0 && res?.ret) {
       eventDetail.value = res.ret
     } else {
-      
+
       eventDetail.value = props.row
     }
   } catch {
@@ -569,7 +524,7 @@ const loadEvent = async () => {
   const rawDataJson = eventDetail.value?.dataJson ?? props.row?.dataJson
   dataParse.value = safeParseJson(rawDataJson) ?? {}
 
-  
+
   try {
     if (deviceId.value) {
       const posRes = await apiGetDevicePosition({ objectId: deviceId.value })
@@ -579,7 +534,7 @@ const loadEvent = async () => {
     position.value = null
   }
 
-  
+
   const code = currentEventTypeCode.value
   const rid = receiverId.value
   if (rid && code === 'FREQUENCY_SOUND_WARN') {
@@ -593,7 +548,7 @@ const loadEvent = async () => {
     nosceneVoiceRet.value = (r as any)?.ret ?? null
     await renderEnergyDensityChartsFromNoScene((r as any)?.ret ?? {})
   } else {
-    
+
     disposeCharts()
   }
 }
@@ -628,7 +583,7 @@ const onConfirmYes = async () => {
   if (!id) return
 
   try {
-    
+
     if (currentEventTypeCode.value === 'NO_SCENE_SOUND_WARN' && resultDtoList.value.length === 0) {
       yesVisible.value = true
       return
@@ -767,7 +722,7 @@ const openAIModal = async () => {
   try {
     await fetchNoSceneVoiceRet()
   } catch {
-    
+
   }
 }
 
@@ -1058,4 +1013,3 @@ onBeforeUnmount(() => {
   font-size: 12px !important;
 }
 </style>
-

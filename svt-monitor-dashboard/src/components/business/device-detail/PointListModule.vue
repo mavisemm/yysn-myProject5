@@ -7,17 +7,10 @@
             <div v-if="!pointList.length" class="point-empty-wrapper">
                 <CommonEmptyState text="暂无数据" size="small" />
             </div>
-            <el-table
-                v-else
-                ref="pointTableRef"
-                :data="pointList"
-                height="100%"
-                :fit="true"
+            <el-table v-else ref="pointTableRef" :data="pointList" height="100%" :fit="true"
                 :header-cell-style="{ background: 'transparent', color: 'var(--special-font-color)', 'text-align': 'center' }"
                 :cell-style="{ background: 'transparent', color: '#fff', 'text-align': 'center' }"
-                @row-click="onRowClick"
-                highlight-current-row
-            >
+                @row-click="onRowClick" highlight-current-row>
                 <el-table-column prop="id" label="点位编号" width="15%" />
                 <el-table-column prop="name" label="点位名称" width="20%" />
                 <el-table-column prop="lastAlarmTime" label="预警时间" width="20%" />
@@ -35,12 +28,9 @@
                 </el-table-column>
                 <el-table-column label="操作" width="18%" align="center">
                     <template #default="{ row }">
-                        <el-button
-                            :type="row.hasAlarm ? 'danger' : 'primary'"
-                            size="small"
+                        <el-button :type="row.hasAlarm ? 'danger' : 'primary'" size="small"
                             style="min-width: auto; width: fit-content; padding-left: 10px; padding-right: 10px; white-space: nowrap; overflow: visible;"
-                            @click.stop="handleUnprocessedClick(row)"
-                        >
+                            @click.stop="handleUnprocessedClick(row)">
                             {{ row.hasAlarm ? '未处理' : '已处理' }}
                         </el-button>
                     </template>
@@ -68,7 +58,7 @@ interface PointInfo {
 
 interface PointListModuleProps {
     pointList: PointInfo[]
-    selectedPointId?: string 
+    selectedPointId?: string
 }
 
 const props = defineProps<PointListModuleProps>()
@@ -110,9 +100,9 @@ const onRowClick = (row: PointInfo) => {
 
 
 const handleUnprocessedClick = (row: PointInfo) => {
-    if (!row.hasAlarm) return 
+    if (!row.hasAlarm) return
 
-    
+
     const equipmentIdFromQuery = route.query.equipmentId
     const equipmentIdFromQueryResolved = Array.isArray(equipmentIdFromQuery)
         ? equipmentIdFromQuery[0]
@@ -127,22 +117,22 @@ const handleUnprocessedClick = (row: PointInfo) => {
 
     switch (row.alarmType) {
         case '声音':
-            
+
             router.push({
                 name: 'SoundPoint',
                 query: {
-                    
+
                     equipmentId,
                 },
                 params: { receiverId: row.id }
             })
             break
         case '振动':
-            
+
             router.push({
                 name: 'VibrationPoint',
                 query: {
-                    
+
                     equipmentId,
                 },
                 params: { receiverId: row.id }
@@ -150,7 +140,7 @@ const handleUnprocessedClick = (row: PointInfo) => {
             break
         case '温度':
         default:
-            
+
             emit('point-selected', row.id)
             break
     }
@@ -162,7 +152,7 @@ const setCurrentRow = (rowIndex: number = 0) => {
         const selectedRow = props.pointList[rowIndex]
         if (selectedRow) {
             pointTableRef.value.setCurrentRow(selectedRow)
-            
+
             emit('point-selected', selectedRow.id)
         }
     }
@@ -201,11 +191,11 @@ defineExpose({
 
     .point-table-container {
         flex: 1;
-        
+
         overflow: hidden;
         background: none !important;
         min-width: 0;
-        
+
         padding: 10px 20px 20px 20px;
         display: flex;
         align-items: stretch;
@@ -220,7 +210,7 @@ defineExpose({
         min-height: 66px;
     }
 
-    
+
     :deep(.el-table__empty-block) {
         height: auto !important;
         min-height: 66px !important;
@@ -312,12 +302,10 @@ defineExpose({
         }
 
         .el-table__body tbody tr {
-            background-image: linear-gradient(
-                90deg,
-                rgba(255, 255, 255, 0) 0%,
-                rgba(255, 255, 255, 0.25) 50%,
-                rgba(255, 255, 255, 0) 100%
-            );
+            background-image: linear-gradient(90deg,
+                    rgba(255, 255, 255, 0) 0%,
+                    rgba(255, 255, 255, 0.25) 50%,
+                    rgba(255, 255, 255, 0) 100%);
             background-repeat: no-repeat;
             background-size: 100% 1px;
             background-position: bottom left;
@@ -327,7 +315,7 @@ defineExpose({
             background-image: none;
         }
 
-        
+
         .el-table__body tr td:last-child {
             overflow: visible !important;
             text-overflow: clip !important;

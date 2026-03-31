@@ -1,73 +1,28 @@
 <template>
-  <el-dialog
-    v-model="store.historyVisible"
-    title="历史预警批量操作"
-    width="1100px"
-    align-center
-    class="alarm-batch-dialog"
-    @close="store.closeHistory"
-  >
+  <el-dialog v-model="store.historyVisible" title="历史预警批量操作" width="1100px" align-center class="alarm-batch-dialog"
+    @close="store.closeHistory">
     <div class="filter-bar">
       <el-form :inline="true" label-width="80px" class="filter-form">
         <el-form-item label="开始时间">
-          <el-date-picker
-            v-model="store.historyQuery.startTime"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="开始时间"
-            clearable
-            size="small"
-            class="alarm-filter-control"
-            :show-now="false"
-            popper-class="alarm-batch-datetime-popper"
-          />
+          <el-date-picker v-model="store.historyQuery.startTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="开始时间" clearable size="small" class="alarm-filter-control" :show-now="false"
+            popper-class="alarm-batch-datetime-popper" />
         </el-form-item>
         <el-form-item label="结束时间">
-          <el-date-picker
-            v-model="store.historyQuery.endTime"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="结束时间"
-            clearable
-            size="small"
-            class="alarm-filter-control"
-            :show-now="false"
-            popper-class="alarm-batch-datetime-popper"
-          />
+          <el-date-picker v-model="store.historyQuery.endTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="结束时间" clearable size="small" class="alarm-filter-control" :show-now="false"
+            popper-class="alarm-batch-datetime-popper" />
         </el-form-item>
         <el-form-item label="设备名称">
-          <el-select-v2
-            v-model="store.historyQuery.deviceId"
-            :options="deviceOptions"
-            filterable
-            clearable
-            size="small"
-            class="alarm-filter-control"
-            popper-class="alarm-batch-popper"
-            :popper-options="sameWidthPopperOptions"
-            :loading="store.dropdownsLoading"
-            :item-height="28"
-            :height="280"
-            style="width: 220px"
-            placeholder="请选择"
-          />
+          <el-select-v2 v-model="store.historyQuery.deviceId" :options="deviceOptions" filterable clearable size="small"
+            class="alarm-filter-control" popper-class="alarm-batch-popper" :popper-options="sameWidthPopperOptions"
+            :loading="store.dropdownsLoading" :item-height="28" :height="280" style="width: 220px" placeholder="请选择" />
         </el-form-item>
         <el-form-item label="预警类型">
-          <el-select-v2
-            v-model="store.historyQuery.eventTypeCode"
-            :options="typeOptions"
-            filterable
-            clearable
-            size="small"
-            class="alarm-filter-control"
-            popper-class="alarm-batch-popper"
-            :popper-options="sameWidthPopperOptions"
-            :loading="store.dropdownsLoading"
-            :item-height="28"
-            :height="280"
-            style="width: 220px"
-            placeholder="请选择"
-          />
+          <el-select-v2 v-model="store.historyQuery.eventTypeCode" :options="typeOptions" filterable clearable
+            size="small" class="alarm-filter-control" popper-class="alarm-batch-popper"
+            :popper-options="sameWidthPopperOptions" :loading="store.dropdownsLoading" :item-height="28" :height="280"
+            style="width: 220px" placeholder="请选择" />
         </el-form-item>
 
         <el-form-item>
@@ -82,43 +37,24 @@
         <el-button type="success" size="small" @click="confirmAll('yes')">全部确认警报</el-button>
         <el-button type="warning" size="small" @click="confirmAll('not')">全部确认误报</el-button>
         <el-button type="danger" size="small" @click="confirmAll('delete')">全部删除</el-button>
-        <el-button
-          type="success"
-          size="small"
-          :disabled="!store.historySelectedRowKeys.length"
-          @click="confirmBatch('yes')"
-        >
+        <el-button type="success" size="small" :disabled="!store.historySelectedRowKeys.length"
+          @click="confirmBatch('yes')">
           批量确认警报
         </el-button>
-        <el-button
-          type="warning"
-          size="small"
-          :disabled="!store.historySelectedRowKeys.length"
-          @click="confirmBatch('not')"
-        >
+        <el-button type="warning" size="small" :disabled="!store.historySelectedRowKeys.length"
+          @click="confirmBatch('not')">
           批量确认误报
         </el-button>
-        <el-button
-          type="danger"
-          size="small"
-          :disabled="!store.historySelectedRowKeys.length"
-          @click="confirmBatch('delete')"
-        >
+        <el-button type="danger" size="small" :disabled="!store.historySelectedRowKeys.length"
+          @click="confirmBatch('delete')">
           批量确认删除
         </el-button>
       </div>
     </div>
 
     <div class="table-wrapper" v-loading="store.historyLoading">
-      <el-table
-        :data="store.historyRows"
-        row-key="id"
-        border
-        height="100%"
-        virtualized
-        :row-height="32"
-        @selection-change="onSelectionChange"
-      >
+      <el-table :data="store.historyRows" row-key="id" border height="100%" virtualized :row-height="32"
+        @selection-change="onSelectionChange">
         <el-table-column type="selection" width="50" />
         <el-table-column label="设备名称" min-width="180">
           <template #default="{ row }">
@@ -144,12 +80,7 @@
         <el-table-column label="操作" width="90" fixed="right">
           <template #default="{ row }">
             <div class="operation-cell">
-              <el-button
-                link
-                type="primary"
-                class="operation-link"
-                @click="$emit('view', row)"
-              >
+              <el-button link type="primary" class="operation-link" @click="$emit('view', row)">
                 查看
               </el-button>
             </div>
@@ -159,13 +90,8 @@
     </div>
 
     <div class="pager">
-      <el-pagination
-        v-model:current-page="pageForUi"
-        :page-size="store.historyPageSize"
-        layout="total, prev, pager, next"
-        :total="store.historyTotal"
-        @current-change="onPageChange"
-      />
+      <el-pagination v-model:current-page="pageForUi" :page-size="store.historyPageSize"
+        layout="total, prev, pager, next" :total="store.historyTotal" @current-change="onPageChange" />
     </div>
   </el-dialog>
 </template>
@@ -290,7 +216,7 @@ function ensureRowParsed(row: any): any {
 
   if (parsedRowCache.has(rowId)) return parsedRowCache.get(rowId)
 
-  
+
   const needsParse =
     (!row.pointName || !row.receiverName || !row.deviceName) && typeof row.dataJson === 'string'
   if (!needsParse && row.deviceName && row.pointName && row.receiverName) {
@@ -379,19 +305,23 @@ const getReceiverName = (row: any): string => {
   row-gap: 10px;
   align-items: center;
 }
+
 .all-actions {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
 }
+
 .device-cell {
   display: flex;
   flex-direction: column;
   line-height: 1.2;
 }
+
 .device-sub {
   opacity: 0.75;
 }
+
 .pager {
   margin-top: 10px;
   display: flex;
@@ -406,11 +336,9 @@ const getReceiverName = (row: any): string => {
 .operation-cell :deep(.operation-link) {
   font-size: var(--alarm-dialog-font);
 }
-
 </style>
 
 <style lang="scss">
-
 .alarm-batch-dialog {
   height: 90vh;
   max-height: 90vh;
@@ -449,9 +377,9 @@ const getReceiverName = (row: any): string => {
 }
 
 .alarm-batch-dialog .el-table__body-wrapper td .el-button.is-link,
-.alarm-batch-dialog .el-table__body-wrapper td .el-button.is-link > span,
+.alarm-batch-dialog .el-table__body-wrapper td .el-button.is-link>span,
 .alarm-batch-dialog .el-table__body-wrapper td .operation-link,
-.alarm-batch-dialog .el-table__body-wrapper td .operation-link > span {
+.alarm-batch-dialog .el-table__body-wrapper td .operation-link>span {
   color: var(--el-color-primary) !important;
 }
 
@@ -563,4 +491,3 @@ const getReceiverName = (row: any): string => {
   display: none !important;
 }
 </style>
-

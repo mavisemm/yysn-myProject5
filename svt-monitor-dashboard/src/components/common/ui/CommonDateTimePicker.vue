@@ -16,10 +16,10 @@ import { disabledFutureDate, formatDateTime, isToday, initializeDateRange } from
 const props = withDefaults(defineProps<{
     modelValue: [string, string] | null
     width?: string
-    enableDefaultTime?: boolean  
+    enableDefaultTime?: boolean
 }>(), {
     width: '320px',
-    enableDefaultTime: true  
+    enableDefaultTime: true
 })
 
 
@@ -46,8 +46,8 @@ const handleChange = (val: [Date, Date] | null) => {
 
     const [startDate, endDate] = val
 
-    
-    
+
+
     const shouldApplyDefaultTime = props.enableDefaultTime && isTimeAllZero(startDate) && isTimeAllZero(endDate)
     const processedDates: [Date, Date] = shouldApplyDefaultTime
         ? applyDefaultTimeLogic(startDate, endDate)
@@ -74,20 +74,20 @@ const applyDefaultTimeLogic = (startDate: Date, endDate: Date): [Date, Date] => 
 watch(
     () => props.modelValue,
     (newVal) => {
-        
+
         if (lastUpdateFromUser.value) {
             lastUpdateFromUser.value = false
             localDateRange.value = newVal
             return
         }
-        
+
         if (props.enableDefaultTime && newVal && newVal.length === 2) {
             const [startStr, endStr] = newVal
             if (startStr && endStr) {
                 const startDate = new Date(startStr)
                 const endDate = new Date(endStr)
 
-                
+
                 const endDateTime = new Date(endStr)
                 if (endDateTime.getHours() === 0 && endDateTime.getMinutes() === 0 && endDateTime.getSeconds() === 0) {
                     const processedDates = applyDefaultTimeLogic(startDate, endDate)
@@ -125,29 +125,29 @@ const handleVisibleChange = (visible: boolean) => {
 
 
 const adjustTimePanelPosition = () => {
-    
+
     const timePanels = document.querySelectorAll('.custom-datepicker-popper .el-time-panel')
 
     timePanels.forEach((panel, index) => {
         const panelElement = panel as HTMLElement
         if (panelElement) {
-            
+
             const rect = panelElement.getBoundingClientRect()
             const viewportWidth = window.innerWidth
 
-            
+
             if (index === 1) {
-                
+
                 panelElement.style.left = 'auto'
                 panelElement.style.right = '0'
                 panelElement.style.transform = 'translateX(-30px)'
             }
 
-            
+
             if (rect.right > viewportWidth) {
                 const overflow = rect.right - viewportWidth
                 if (index === 1) {
-                    
+
                     panelElement.style.transform = `translateX(-${30 + overflow + 15}px)`
                 } else {
                     panelElement.style.left = `calc(100% - ${overflow + 10}px)`

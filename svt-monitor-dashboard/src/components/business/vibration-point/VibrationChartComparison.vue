@@ -5,13 +5,8 @@
                 <div class="card-title app-section-title">振动频域图</div>
             </div>
             <div class="chart-container">
-                <CommonEcharts
-                    ref="freqChartRef"
-                    :option="freqOption"
-                    :enable-data-zoom="false"
-                    :not-merge="true"
-                    @chart-ready="onFreqChartReady"
-                />
+                <CommonEcharts ref="freqChartRef" :option="freqOption" :enable-data-zoom="false" :not-merge="true"
+                    @chart-ready="onFreqChartReady" />
             </div>
         </div>
         <div class="card-item time-card">
@@ -19,11 +14,7 @@
                 <div class="card-title app-section-title">振动时域图</div>
             </div>
             <div class="chart-container">
-                <CommonEcharts
-                    :option="timeOption"
-                    :enable-data-zoom="false"
-                    :not-merge="true"
-                />
+                <CommonEcharts :option="timeOption" :enable-data-zoom="false" :not-merge="true" />
             </div>
         </div>
     </div>
@@ -145,7 +136,7 @@ const freqOption = computed<EChartsOption>(() => {
             backgroundColor: 'rgba(50, 50, 50, 0.9)',
             borderColor: 'rgba(50, 50, 50, 0.9)',
             textStyle: { color: '#fff' },
-            
+
             confine: false,
             position: function (pos: any, _params: any, _el: any, _elRect: any, size: any) {
                 const [mouseX, mouseY] = pos as [number, number];
@@ -154,7 +145,7 @@ const freqOption = computed<EChartsOption>(() => {
                 const gap = 18;
                 const hitMargin = 10;
 
-                
+
                 const inst = freqChartInstance.value;
                 const base = pointerBaseFreq.value;
                 const avoidPixels: number[] = [];
@@ -168,7 +159,7 @@ const freqOption = computed<EChartsOption>(() => {
                             const px = inst.convertToPixel({ xAxisIndex: 0 }, n) as number;
                             if (typeof px === 'number' && Number.isFinite(px)) avoidPixels.push(px);
                         } catch {
-                            
+
                         }
                     }
                 }
@@ -179,12 +170,12 @@ const freqOption = computed<EChartsOption>(() => {
                     return avoidPixels.reduce((acc, px) => (px >= left - hitMargin && px <= right + hitMargin ? acc + 1 : acc), 0);
                 };
 
-                
+
                 const candidatesRaw = [
-                    { x0: mouseX + gap, y0: mouseY - contentHeight / 2 }, 
-                    { x0: mouseX - contentWidth - gap, y0: mouseY - contentHeight / 2 }, 
-                    { x0: mouseX - contentWidth / 2, y0: mouseY - contentHeight - gap }, 
-                    { x0: mouseX - contentWidth / 2, y0: mouseY + gap } 
+                    { x0: mouseX + gap, y0: mouseY - contentHeight / 2 },
+                    { x0: mouseX - contentWidth - gap, y0: mouseY - contentHeight / 2 },
+                    { x0: mouseX - contentWidth / 2, y0: mouseY - contentHeight - gap },
+                    { x0: mouseX - contentWidth / 2, y0: mouseY + gap }
                 ];
                 const candidates = candidatesRaw.map(c => {
                     const x = c.x0;
@@ -334,7 +325,7 @@ const onFreqChartReady = (instance: echarts.ECharts) => {
                     { notMerge: false, lazyUpdate: true }
                 );
             } catch {
-                
+
             }
         });
     };
@@ -352,7 +343,7 @@ const onFreqChartReady = (instance: echarts.ECharts) => {
 
     instance.on('updateAxisPointer', onUpdateAxisPointer);
     freqChartCleanup = () => {
-        try { instance.off('updateAxisPointer', onUpdateAxisPointer); } catch {  }
+        try { instance.off('updateAxisPointer', onUpdateAxisPointer); } catch { }
         if (rafId) {
             cancelAnimationFrame(rafId);
             rafId = null;
@@ -463,12 +454,12 @@ const loadVibrationChartsData = async () => {
                 const raw = (timeResponse.ret as any).timedomaindata;
                 const timeDomainArray: number[] = Array.isArray(raw)
                     ? raw
-                          .map((v: any) => (typeof v === 'number' ? v : parseFloat(String(v).trim())))
-                          .filter((n: number) => Number.isFinite(n))
+                        .map((v: any) => (typeof v === 'number' ? v : parseFloat(String(v).trim())))
+                        .filter((n: number) => Number.isFinite(n))
                     : String(raw ?? '')
-                          .split(',')
-                          .map((s) => parseFloat(s.trim()))
-                          .filter((n) => Number.isFinite(n));
+                        .split(',')
+                        .map((s) => parseFloat(s.trim()))
+                        .filter((n) => Number.isFinite(n));
                 if (Array.isArray(timeDomainArray) && timeDomainArray.length > 0 &&
                     typeof timeResponse.ret.time === 'number' && timeResponse.ret.time > 0) {
                     timeDomainData.value = timeDomainArray;

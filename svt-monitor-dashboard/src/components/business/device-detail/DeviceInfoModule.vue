@@ -13,12 +13,8 @@
             <div class="health-gauge-container">
                 <div class="gauge-block">
                     <div class="gauge-block-topbar">
-                        <el-button
-                            class="stage-report-btn"
-                            type="primary"
-                            size="small"
-                            @click="openSoundStageReportDialog"
-                        >
+                        <el-button class="stage-report-btn" type="primary" size="small"
+                            @click="openSoundStageReportDialog">
                             阶段性报告
                         </el-button>
                     </div>
@@ -35,25 +31,12 @@
                 </div>
             </div>
 
-            <el-dialog
-                v-model="soundStageReport.dialogVisible"
-                title="阶段性报告"
-                width="530px"
-                :close-on-click-modal="true"
-                destroy-on-close
-                :teleported="true"
-                :append-to-body="true"
-                :modal-append-to-body="true"
-            >
+            <el-dialog v-model="soundStageReport.dialogVisible" title="阶段性报告" width="530px" :close-on-click-modal="true"
+                destroy-on-close :teleported="true" :append-to-body="true" :modal-append-to-body="true">
                 <div class="sound-stage-report-row">
                     <CommonDateTimePicker v-model="soundStageReport.dateRange" width="100%" />
-                    <el-button
-                        class="sound-stage-report-download"
-                        size="small"
-                        type="primary"
-                        :loading="soundStageReport.downloading"
-                        @click="downloadSoundStageReport"
-                    >
+                    <el-button class="sound-stage-report-download" size="small" type="primary"
+                        :loading="soundStageReport.downloading" @click="downloadSoundStageReport">
                         下载
                     </el-button>
                 </div>
@@ -153,17 +136,9 @@
                     </div>
                 </div>
 
-                <div
-                    class="info-row"
-                    v-for="(row, rowIndex) in extraFieldRows"
-                    :key="'extra-row-' + rowIndex"
-                    v-if="!isEditing"
-                >
-                    <div
-                        v-for="(field, index) in row"
-                        :key="'extra-' + rowIndex + '-' + index"
-                        class="info-item"
-                    >
+                <div class="info-row" v-for="(row, rowIndex) in extraFieldRows" :key="'extra-row-' + rowIndex"
+                    v-if="!isEditing">
+                    <div v-for="(field, index) in row" :key="'extra-' + rowIndex + '-' + index" class="info-item">
                         <span class="info-label">{{ field.label }}：</span>
                         <span class="info-value">{{ field.value }}</span>
                     </div>
@@ -172,31 +147,16 @@
             </div>
         </div>
 
-        <el-dialog
-            v-model="addFieldDialogVisible"
-            title="添加设备信息"
-            width="360px"
-            :close-on-click-modal="false"
-            :teleported="true"
-            :append-to-body="true"
-            :modal-append-to-body="true"
-        >
+        <el-dialog v-model="addFieldDialogVisible" title="添加设备信息" width="360px" :close-on-click-modal="false"
+            :teleported="true" :append-to-body="true" :modal-append-to-body="true">
             <div class="add-field-form">
                 <div class="form-row">
                     <span class="form-label">名称：</span>
-                    <el-input
-                        v-model="newField.label"
-                        size="small"
-                        placeholder="例如：维护周期"
-                    />
+                    <el-input v-model="newField.label" size="small" placeholder="例如：维护周期" />
                 </div>
                 <div class="form-row">
                     <span class="form-label">值：</span>
-                    <el-input
-                        v-model="newField.value"
-                        size="small"
-                        placeholder="例如：每3个月"
-                    />
+                    <el-input v-model="newField.value" size="small" placeholder="例如：每3个月" />
                 </div>
             </div>
             <template #footer>
@@ -245,11 +205,11 @@ const resolveDeviceImageFromName = (equipmentName: string): string => {
     const rawName = String(equipmentName ?? '').trim()
     if (!rawName) return ''
 
-    
+
     const exact = deviceImageByBaseName.get(rawName)
     if (exact) return exact
 
-    
+
     const normalizedRawName = normalizeDeviceImageKey(rawName)
     if (!normalizedRawName) return ''
     for (const [baseName, url] of deviceImageByBaseName.entries()) {
@@ -258,7 +218,7 @@ const resolveDeviceImageFromName = (equipmentName: string): string => {
         }
     }
 
-    
+
     for (const [baseName, url] of deviceImageByBaseName.entries()) {
         const normalizedBase = normalizeDeviceImageKey(baseName)
         if (!normalizedBase) continue
@@ -293,7 +253,7 @@ interface DeviceInfo {
     onlineStatus: number;
     createdTime: string | null;
     updatedTime: string | null;
-    
+
     deviceNewInfo?: Array<{ label: string; value: string }>;
 }
 
@@ -320,7 +280,7 @@ const extraFields = ref<ExtraField[]>([]);
 
 const extraFieldRows = computed<ExtraField[][]>(() => {
     const rows: ExtraField[][] = []
-    const list = extraFields.value.slice(1) 
+    const list = extraFields.value.slice(1)
     for (let i = 0; i < list.length; i += 2) {
         rows.push(list.slice(i, i + 2))
     }
@@ -373,7 +333,7 @@ const syncExtraFieldsFromDeviceInfo = () => {
         return
     }
 
-    
+
     if (Array.isArray(raw)) {
         raw.forEach((it: any) => {
             const label = String(it?.label ?? '').trim()
@@ -384,7 +344,7 @@ const syncExtraFieldsFromDeviceInfo = () => {
         return
     }
 
-    
+
     let idx = 1
     let foundAny = false
     while (idx <= 50) {
@@ -402,7 +362,7 @@ const syncExtraFieldsFromDeviceInfo = () => {
         idx++
     }
 
-    
+
     if (!foundAny) {
         let j = 1
         while (j <= 50) {
@@ -535,11 +495,11 @@ const loadDeviceDataParallel = async () => {
     if (!props.deviceId) return;
     const requestId = ++currentDeviceInfoRequestId
     isDeviceInfoLoaded.value = false
-    
+
     deviceInfo.value.equipmentName = ''
 
     try {
-        
+
         const [infoResponse, soundHealthResponse, vibrationHealthResponse] = await Promise.all([
             getDeviceInfoByEquipmentId(props.deviceId),
             getEquipmentHealth({
@@ -552,7 +512,7 @@ const loadDeviceDataParallel = async () => {
             }),
         ]);
 
-        
+
         if (infoResponse.rc === 0 && infoResponse.ret) {
             const raw: any = infoResponse.ret
             if (requestId !== currentDeviceInfoRequestId) return
@@ -567,7 +527,7 @@ const loadDeviceDataParallel = async () => {
             ElMessage.error('获取设备信息失败');
         }
 
-        
+
         if (soundHealthResponse.rc === 0 && soundHealthResponse.ret) {
             const ret: any = soundHealthResponse.ret
             const score = typeof ret.healthScore === 'number' ? ret.healthScore : null
@@ -581,7 +541,7 @@ const loadDeviceDataParallel = async () => {
             soundHealthGrade.value = ''
         }
 
-        
+
         if (vibrationHealthResponse.rc === 0 && vibrationHealthResponse.ret) {
             const ret: any = vibrationHealthResponse.ret
             const grade = extractHealthGrade(ret)
@@ -710,13 +670,13 @@ const extractHealthGrade = (ret: any): 'A' | 'B' | 'C' | 'D' | '' => {
 const mapGradeToScore = (grade: 'A' | 'B' | 'C' | 'D' | ''): number => {
     switch (grade) {
         case 'A':
-            return 90 
+            return 90
         case 'B':
-            return 70 
+            return 70
         case 'C':
-            return 40 
+            return 40
         case 'D':
-            return 15 
+            return 15
         default:
             return 0
     }
@@ -725,12 +685,12 @@ const mapGradeToScore = (grade: 'A' | 'B' | 'C' | 'D' | ''): number => {
 type GaugeMode = 'sound' | 'vibration'
 
 const resolveHealthColor = (score: number, grade: 'A' | 'B' | 'C' | 'D' | '') => {
-    
+
     if (grade === 'D') return '#ff5722'
     if (grade === 'C') return '#f2b504'
     if (grade === 'B') return '#85ea8c'
     if (grade === 'A') return '#309735'
-    
+
     if (score >= 80) return '#309735'
     if (score >= 60) return '#85ea8c'
     if (score >= 20) return '#f2b504'
@@ -750,11 +710,11 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
     const titleFontSize = Math.round(calculateResponsiveFontSize(20, containerWidth, containerHeight))
     const detailFontSize = Math.round(calculateResponsiveFontSize(24, containerWidth, containerHeight))
 
-    
+
     const total = 10 + 8 + 8 + 10
-    const dEnd = 10 / total      
-    const cEnd = (10 + 8) / total 
-    const bEnd = (10 + 8 + 8) / total 
+    const dEnd = 10 / total
+    const cEnd = (10 + 8) / total
+    const bEnd = (10 + 8 + 8) / total
 
     return {
         series: [{
@@ -769,15 +729,15 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
             progress: { show: false },
             pointer: { show: false },
             axisLine: {
-                roundCap: true,  
+                roundCap: true,
                 lineStyle: {
                     width: Math.round(12 * Math.min(containerWidth / 300, 2)),
-                    
+
                     color: [
-                        [dEnd, '#ff5722'],   
-                        [cEnd, '#f2b504'],   
-                        [bEnd, '#85ea8c'],   
-                        [1, '#309735']       
+                        [dEnd, '#ff5722'],
+                        [cEnd, '#f2b504'],
+                        [bEnd, '#85ea8c'],
+                        [1, '#309735']
                     ]
                 }
             },
@@ -785,7 +745,7 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
             splitLine: { show: false },
             axisLabel: {
                 show: true,
-                
+
                 distance: calculateResponsiveDistance(
                     isVibration ? -130 : -105,
                     containerWidth,
@@ -794,18 +754,18 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
                 fontSize: axisLabelFontSize,
                 color: '#fff',
                 formatter: function (value: number) {
-                    
+
                     if (isVibration) {
-                        
+
                         const total = 10 + 8 + 8 + 10
                         const dEnd = 10 / total
                         const cEnd = (10 + 8) / total
                         const bEnd = (10 + 8 + 8) / total
                         const roundToTick = (percent: number) => Math.round(percent / 10) * 10
-                        const dCenter = roundToTick((0 + dEnd * 100) / 2)      
-                        const cCenter = roundToTick(((dEnd + cEnd) * 100) / 2) 
-                        const bCenter = roundToTick(((cEnd + bEnd) * 100) / 2) 
-                        const aCenter = roundToTick(((bEnd + 1) * 100) / 2)    
+                        const dCenter = roundToTick((0 + dEnd * 100) / 2)
+                        const cCenter = roundToTick(((dEnd + cEnd) * 100) / 2)
+                        const bCenter = roundToTick(((cEnd + bEnd) * 100) / 2)
+                        const aCenter = roundToTick(((bEnd + 1) * 100) / 2)
 
                         if (value === dCenter) return '{gradeD|D\n不允许}'
                         if (value === cCenter) return '{gradeC|C\n注意}'
@@ -813,7 +773,7 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
                         if (value === aCenter) return '{gradeA|A\n良好}'
                         return ''
                     }
-                    
+
                     if (value === 0) return '{stop|0}'
                     if (value === 10) return '{stop|停机}'
                     if (value === 20) return '{stop|20}'
@@ -830,7 +790,7 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
                     inspect: { color: '#f2b504', fontSize: axisLabelFontSize },
                     focus: { color: '#85ea8c', fontSize: axisLabelFontSize },
                     health: { color: '#309735', fontSize: axisLabelFontSize },
-                    
+
                     gradeD: { color: '#ff5722', fontSize: Math.round(axisLabelFontSize * 0.85), fontWeight: 'bold', lineHeight: axisLabelFontSize },
                     gradeC: { color: '#f2b504', fontSize: Math.round(axisLabelFontSize * 0.85), fontWeight: 'bold', lineHeight: axisLabelFontSize },
                     gradeB: { color: '#85ea8c', fontSize: Math.round(axisLabelFontSize * 0.85), fontWeight: 'bold', lineHeight: axisLabelFontSize },
@@ -850,7 +810,7 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
                 offsetCenter: [0, '-30%'],
                 fontSize: detailFontSize,
                 fontWeight: 'bolder',
-                
+
                 formatter: function (value: number) {
                     if (isVibration) return grade || '-'
                     if (!hasSoundHealthData.value) return '-'
@@ -866,9 +826,9 @@ const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeig
 
 const toggleEdit = async () => {
     if (isEditing.value) {
-        
+
         try {
-            
+
             const deviceInfoDto: DeviceInfoDto = {
                 id: deviceInfo.value.id,
                 equipmentId: props.deviceId,
@@ -881,13 +841,13 @@ const toggleEdit = async () => {
                 designFlow: Number(editForm.value.designFlow),
                 onlineStatus: deviceInfo.value.onlineStatus
             };
-            
+
             (deviceInfoDto as any).deviceNewInfo = buildDeviceNewInfo(extraFields.value)
 
             const response = await editEquipmentInfo(props.deviceId, deviceInfoDto);
 
             if (response.rc === 0) {
-                
+
                 Object.assign(deviceInfo.value, editForm.value);
                 ElMessage.success('设备信息更新成功');
                 isEditing.value = false;
@@ -900,7 +860,7 @@ const toggleEdit = async () => {
             ElMessage.error('设备信息更新失败');
         }
     } else {
-        
+
         Object.assign(editForm.value, deviceInfo.value)
         isEditing.value = true;
         emit('edit-status-change', { isEditing: true, hasChanges: false });
@@ -966,7 +926,7 @@ const setupGaugeResizeObserver = () => {
         resizeObserver.observe(soundGaugeRef.value);
         resizeObserver.observe(vibrationGaugeRef.value);
     } else {
-        
+
         if (gaugeRetryTimerId) {
             clearTimeout(gaugeRetryTimerId);
         }
@@ -1007,7 +967,7 @@ onUnmounted(() => {
         parentResizeObserver = null;
     }
 
-    
+
     if (gaugeRetryTimerId) {
         clearTimeout(gaugeRetryTimerId);
         gaugeRetryTimerId = null;
@@ -1026,9 +986,9 @@ onUnmounted(() => {
     flex-direction: column;
     min-height: 0;
     padding-bottom: 20px;
-    
+
     overflow: hidden;
-    
+
 
 
     .module-header {
@@ -1046,7 +1006,7 @@ onUnmounted(() => {
         }
     }
 
-    
+
     .header-actions {
         margin-top: 12px;
         margin-bottom: 4px;
@@ -1099,13 +1059,13 @@ onUnmounted(() => {
                         margin-bottom: 5px;
                         font-weight: 500;
                         white-space: normal;
-                        
+
                         overflow: visible;
-                        
+
                         text-overflow: clip;
-                        
+
                         word-wrap: break-word;
-                        
+
                     }
 
                     .info-input {

@@ -1,15 +1,9 @@
 <template>
-  <div
-    class="page-layout"
-    :class="{
-      'page-layout--navy': backgroundMode === 'navy',
-      'page-layout--solid': backgroundMode === 'solid'
-    }"
-  >
-    <MainHeader
-      :current-background="backgroundMode"
-      @change-background="handleChangeBackground"
-    />
+  <div class="page-layout" :class="{
+    'page-layout--navy': backgroundMode === 'navy',
+    'page-layout--solid': backgroundMode === 'solid'
+  }">
+    <MainHeader :current-background="backgroundMode" @change-background="handleChangeBackground" />
     <div class="main-content">
       <DeviceSidebar />
       <div class="content-wrapper">
@@ -178,6 +172,7 @@ onMounted(() => {
       display: flex;
       flex-direction: column;
       height: 100%;
+      min-width: 0;
 
 
       &::-webkit-scrollbar {

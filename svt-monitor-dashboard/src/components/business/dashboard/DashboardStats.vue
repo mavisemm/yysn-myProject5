@@ -8,7 +8,7 @@
                 </div>
             </div>
         </div>
-            <div class="stats-grid">
+        <div class="stats-grid">
             <div v-for="(stat, index) in stats" :key="index" class="stat-card"
                 :class="[`stat-card-${index}`, (stat.title === '趋势预警设备' || stat.title === '故障报警设备') ? 'stat-card-trend' : '']"
                 @click="handleCardClick(stat.title)">
@@ -16,17 +16,19 @@
                     <div class="stat-icon" :class="{ 'stat-icon-blink': isAlertOrWarning(stat) }">
                         <img v-if="getIconSrc(stat.title)" :src="getIconSrc(stat.title)" :alt="stat.title"
                             class="stat-icon-img" />
-                        <el-icon v-else><Monitor /></el-icon>
+                        <el-icon v-else>
+                            <Monitor />
+                        </el-icon>
                     </div>
                     <div class="stat-text-wrap">
-                            <div class="stat-number">
-                                <template v-for="(ch, i) in splitNumberChars(stat.number)" :key="i">
-                                    <span v-if="isSingleDigit(ch)" class="digit-bg">
-                                        <span class="digit-text">{{ ch }}</span>
-                                    </span>
-                                    <span v-else class="digit-text digit-text-plain">{{ ch }}</span>
-                                </template>
-                            </div>
+                        <div class="stat-number">
+                            <template v-for="(ch, i) in splitNumberChars(stat.number)" :key="i">
+                                <span v-if="isSingleDigit(ch)" class="digit-bg">
+                                    <span class="digit-text">{{ ch }}</span>
+                                </span>
+                                <span v-else class="digit-text digit-text-plain">{{ ch }}</span>
+                            </template>
+                        </div>
                         <div class="stat-text">{{ stat.title }}</div>
                     </div>
                 </div>
@@ -179,7 +181,7 @@ function isAlertOrWarning(stat: StatItem) {
                 object-fit: contain;
             }
 
-            
+
             &.stat-icon-blink .stat-icon-img {
                 animation: stat-icon-blink 1.5s ease-in-out infinite;
             }
@@ -208,7 +210,7 @@ function isAlertOrWarning(stat: StatItem) {
         }
 
         .stat-text {
-            
+
             font-size: 1.05rem;
             white-space: nowrap;
             overflow: hidden;
@@ -222,7 +224,7 @@ function isAlertOrWarning(stat: StatItem) {
         }
 
         .stat-number {
-            
+
             display: flex;
             flex-direction: row;
             align-items: center;
@@ -234,7 +236,7 @@ function isAlertOrWarning(stat: StatItem) {
             overflow: hidden;
             text-overflow: ellipsis;
 
-            
+
             font-size: 1.8rem;
             line-height: 1;
         }

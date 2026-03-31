@@ -48,10 +48,10 @@ const router = useRouter()
 
 onMounted(() => {
     localStorage.clear()
-    
+
     useAlarmBatchStore().resetPrefetchState()
     useAlarmOverviewStore().reset()
-    
+
     useDeviceTreeStore().clearDeviceTreeData()
 })
 
@@ -82,19 +82,19 @@ const loading = ref(false)
 const handleLogin = async () => {
     if (!loginFormRef.value) return
 
-    
+
     const valid = await loginFormRef.value.validate().catch(() => false)
     if (!valid) return
 
-    
+
     loading.value = true
 
     try {
-        
+
         localStorage.removeItem('token')
         localStorage.removeItem('tenantId')
 
-        
+
         const res = await loginApi({
             userName: loginForm.userName,
             password: loginForm.password
@@ -131,9 +131,9 @@ const handleLogin = async () => {
             return ''
         }
 
-        
-        
-        
+
+
+
         const token =
             normalizeToken((res as any)?.token) ||
             normalizeToken((res as any)?.ret?.token) ||
@@ -157,7 +157,7 @@ const handleLogin = async () => {
         }
         localStorage.setItem('tenantId', tenantId)
 
-        
+
         await router.push({ name: 'Dashboard', query: { tenantId } })
 
         ElMessage.success('登录成功')
@@ -254,7 +254,7 @@ const handleLogin = async () => {
                             background: rgba(150, 150, 150, 0.2);
                             border: 1px solid rgba(255, 255, 255, 0.3);
                             backdrop-filter: blur(5px);
-                            
+
                             --el-text-color-placeholder: #fff;
 
                             input {
@@ -271,7 +271,7 @@ const handleLogin = async () => {
                         }
                     }
 
-                    
+
                     :deep(.el-input__inner::placeholder) {
                         color: #fff !important;
                         opacity: 1;

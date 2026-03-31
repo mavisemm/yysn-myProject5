@@ -139,7 +139,7 @@ const initChart = () => {
             }
         },
         grid3D: {
-            
+
             left: '-10%',
             top: '-2%',
             viewControl: {

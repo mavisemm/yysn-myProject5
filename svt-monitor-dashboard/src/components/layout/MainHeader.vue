@@ -40,40 +40,15 @@
     </div>
 
     <div class="header-right-actions">
-      <div
-        class="theme-wrapper"
-        @mouseenter="onThemeEnter"
-        @mouseleave="onThemeLeave"
-      >
-        <div
-          class="theme-trigger"
-          :class="`theme-trigger--${currentBackground}`"
-          title="切换背景"
-        />
-        <div
-          v-show="showThemeDropdown"
-          class="theme-dropdown"
-          @mouseenter="onThemeEnter"
-          @mouseleave="onThemeLeave"
-        >
-          <div
-            v-if="currentBackground !== 'image'"
-            class="theme-square theme-square--image"
-            title="背景1"
-            @click="selectBackground('image')"
-          />
-          <div
-            v-if="currentBackground !== 'navy'"
-            class="theme-square theme-square--navy"
-            title="背景2"
-            @click="selectBackground('navy')"
-          />
-          <div
-            v-if="currentBackground !== 'solid'"
-            class="theme-square theme-square--solid"
-            title="默认背景"
-            @click="selectBackground('solid')"
-          />
+      <div class="theme-wrapper" @mouseenter="onThemeEnter" @mouseleave="onThemeLeave">
+        <div class="theme-trigger" :class="`theme-trigger--${currentBackground}`" title="切换背景" />
+        <div v-show="showThemeDropdown" class="theme-dropdown" @mouseenter="onThemeEnter" @mouseleave="onThemeLeave">
+          <div v-if="currentBackground !== 'image'" class="theme-square theme-square--image" title="背景1"
+            @click="selectBackground('image')" />
+          <div v-if="currentBackground !== 'navy'" class="theme-square theme-square--navy" title="背景2"
+            @click="selectBackground('navy')" />
+          <div v-if="currentBackground !== 'solid'" class="theme-square theme-square--solid" title="默认背景"
+            @click="selectBackground('solid')" />
         </div>
       </div>
       <div class="nav-btn logout-btn" @click="handleLogout">
@@ -133,7 +108,7 @@ const onThemeLeave = () => {
   if (themeCloseTimer.value !== null) {
     window.clearTimeout(themeCloseTimer.value)
   }
-  
+
   themeCloseTimer.value = window.setTimeout(() => {
     showThemeDropdown.value = false
     themeCloseTimer.value = null
@@ -172,23 +147,23 @@ onBeforeUnmount(() => {
 })
 
 const goHome = () => {
-  
+
   deviceTreeStore.resetDeviceTreeState()
   router.push('/dashboard')
 }
 
 const goToDevice = () => {
-  
+
   if (route.name === 'DeviceDetail') {
     const id = route.params.id
     if (typeof id === 'string' && id) return
   }
 
-  
+
   let equipmentId = (route.query.equipmentId as string) || ''
 
   if (!equipmentId && (route.name === 'SoundPoint' || route.name === 'VibrationPoint')) {
-    
+
     const receiverIdParam = route.params.receiverId
     const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
     if (typeof receiverId === 'string' && receiverId) {
@@ -240,17 +215,17 @@ const handleLogout = () => {
       customClass: 'logout-confirm-box',
     }
   ).then(() => {
-    
+
     localStorage.clear()
-    
+
     alarmBatchStore.resetPrefetchState()
     alarmOverviewStore.reset()
-    
+
     deviceTreeStore.clearDeviceTreeData()
     router.push('/login')
     ElMessage.success('已安全退出')
   }).catch(() => {
-    
+
   })
 }
 </script>
@@ -284,7 +259,7 @@ const handleLogout = () => {
       cursor: pointer;
       transition: all 0.3s;
       color: rgba(153, 240, 255, 1);
-      
+
       font-size: 1rem;
       font-weight: 500;
       border-radius: 8px;
@@ -329,7 +304,7 @@ const handleLogout = () => {
     }
   }
 
-  
+
   .header-right-clock {
     position: absolute;
     right: 115px;
@@ -338,7 +313,7 @@ const handleLogout = () => {
     z-index: 1;
   }
 
-  
+
   .header-right-actions {
     position: absolute;
     right: 10px;
@@ -457,7 +432,7 @@ const handleLogout = () => {
     padding: 0 16px;
 
     .header-center .title {
-      
+
       font-size: 1.8rem;
     }
   }
@@ -465,7 +440,6 @@ const handleLogout = () => {
 </style>
 
 <style lang="scss">
-
 .el-message-box.logout-confirm-box .el-message-box__btns .el-button--default {
   color: #409eff !important;
 }

@@ -61,7 +61,7 @@
       </div>
     </div>
 
-        <div class="device-tree-container">
+    <div class="device-tree-container">
       <el-scrollbar class="tree-scrollbar">
         <div v-if="!deviceTreeStore.loading && displayTreeData.length === 0" class="no-data">
           <CommonEmptyState size="small" />
@@ -91,11 +91,10 @@
                 </el-icon>
               </div>
 
-              <span
-                class="node-label"
-                :title="data.type === 'device' && data.customerDeviceId ? `${data.name} (${data.customerDeviceId})` : node.label"
-              >
-                {{ data.type === 'device' && data.customerDeviceId ? `${data.name} (${data.customerDeviceId})` : node.label }}
+              <span class="node-label"
+                :title="data.type === 'device' && data.customerDeviceId ? `${data.name} (${data.customerDeviceId})` : node.label">
+                {{ data.type === 'device' && data.customerDeviceId ? `${data.name} (${data.customerDeviceId})` :
+                  node.label }}
               </span>
 
               <!-- <span v-if="(data.type === 'factory' || data.type === 'workshop') && data.deviceCount" class="node-count">
@@ -144,7 +143,7 @@ const router = useRouter()
 
 const selectDeviceNode = (deviceId: string) => {
   if (deviceTreeRef.value && deviceTreeRef.value.getNode && deviceTreeRef.value.setCurrentKey) {
-    
+
     const expandParentNodes = (nodeId: string) => {
       try {
         const node = deviceTreeRef.value.getNode(nodeId)
@@ -157,13 +156,13 @@ const selectDeviceNode = (deviceId: string) => {
       }
     }
 
-    
+
     const findAndSelectNode = (nodes: DeviceNode[]): boolean => {
       for (const node of nodes) {
         if (node.id === deviceId) {
-          
+
           expandParentNodes(node.id)
-          
+
           try {
             deviceTreeRef.value.setCurrentKey(deviceId)
           } catch (e) {
@@ -446,7 +445,7 @@ const displayTreeData = computed<DeviceNode[]>(() => {
     })
   })
 
-  
+
   return resultData.filter((factory: DeviceNode) => factory.children && factory.children.length > 0)
 })
 
@@ -458,7 +457,7 @@ const getFirstWorkshopId = (): string | null => {
     !displayTreeData.value[0].children.length) {
     return null
   }
-  
+
   const firstWorkshop = displayTreeData.value[0].children!.find(child => child.type === 'workshop');
   return firstWorkshop?.id || null
 }
@@ -566,7 +565,7 @@ const updateExpandedKeys = () => {
   const deviceSearch = debouncedDeviceSearch.value
 
   if (!workshopSearch && !deviceSearch && !selectedWorkshop.value && !selectedDevice.value) {
-    
+
     const firstFactoryId = displayTreeData.value?.[0]?.id
     if (firstFactoryId) keys.push(firstFactoryId)
     const firstWorkshopId = getFirstWorkshopId()
@@ -576,7 +575,7 @@ const updateExpandedKeys = () => {
   }
 
   else if (deviceSearch && !selectedDevice.value) {
-    
+
     collectAllFactoryAndWorkshopKeys(displayTreeData.value).forEach(k => {
       if (!keys.includes(k)) keys.push(k)
     })
@@ -594,7 +593,7 @@ const updateExpandedKeys = () => {
   }
 
   else if (workshopSearch || selectedWorkshop.value) {
-    
+
     collectAllFactoryAndWorkshopKeys(displayTreeData.value).forEach(k => {
       if (!keys.includes(k)) keys.push(k)
     })
@@ -610,7 +609,7 @@ const toggleNode = (node: Node) => {
   } else {
     node.expand()
   }
-  
+
   syncExpandedKeys()
 }
 
@@ -625,18 +624,18 @@ const syncExpandedKeys = () => {
 }
 
 const handleExpandIconClick = (node: Node) => {
-  
+
   toggleNode(node)
 }
 
 const handleNodeClick = (data: DeviceNode, node: Node) => {
-  
+
   if (data.type === 'factory' || data.type === 'workshop') {
     toggleNode(node)
     return
   }
 
-  
+
   if (data.type === 'device') {
     deviceTreeStore.setSelectedDeviceId(data.id)
     router.push({
@@ -645,7 +644,7 @@ const handleNodeClick = (data: DeviceNode, node: Node) => {
     })
   }
 
-  
+
   if (data.type === 'point') {
     deviceTreeStore.setSelectedDeviceId(data.id)
     const receiverId = data.receiverId ?? ''
@@ -653,12 +652,12 @@ const handleNodeClick = (data: DeviceNode, node: Node) => {
       ElMessage.warning('该点位缺少 receiverId，无法进入点位页')
       return
     }
-    
-    
+
+
     const equipmentId = node.parent?.data?.id || ''
     router.push({
       name: 'SoundPoint',
-      
+
       params: { receiverId },
       query: { equipmentId }
     })
@@ -687,8 +686,8 @@ watch(
 watch(
   () => debouncedDeviceSearch.value,
   (newVal) => {
-    
-    
+
+
     const keyword = (newVal ?? '').trim()
     if (!keyword) {
       selectedDevice.value = null
@@ -712,7 +711,7 @@ watch(displayTreeData, () => {
 }, { deep: true })
 
 onUnmounted(() => {
-  
+
   if (timeoutId) {
     clearTimeout(timeoutId);
     timeoutId = null;
@@ -797,7 +796,7 @@ onUnmounted(() => {
             padding: 8px 12px;
             cursor: pointer;
             transition: background-color 0.2s;
-            
+
             font-size: 12px;
             line-height: 1.25;
             display: flex;
@@ -809,7 +808,7 @@ onUnmounted(() => {
             }
 
             .workshop-name {
-              
+
               margin-left: 4px;
               flex-shrink: 0;
             }
@@ -834,7 +833,7 @@ onUnmounted(() => {
           .dropdown-empty {
             padding: 12px;
             text-align: center;
-            
+
             font-size: 12px;
             line-height: 1.25;
             color: white;
@@ -854,7 +853,7 @@ onUnmounted(() => {
     min-height: 0;
     overflow: hidden;
 
-    .node-label{
+    .node-label {
       font-size: 0.9rem;
     }
 
@@ -923,14 +922,14 @@ onUnmounted(() => {
     gap: 8px;
     width: 100%;
     padding: 2px 0;
-    
+
     color: rgba(255, 255, 255, 1);
 
     .expand-icon {
       cursor: pointer;
       transition: transform 0.2s;
-      
-      
+
+
       color: rgba(255, 255, 255, 1) !important;
     }
 
@@ -950,7 +949,7 @@ onUnmounted(() => {
     .node-icon {
       display: flex;
       align-items: center;
-      
+
       color: rgba(255, 255, 255, 1) !important;
       flex-shrink: 0;
 
@@ -961,18 +960,18 @@ onUnmounted(() => {
 
     .node-label {
       flex: 1;
-      
+
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      
+
       color: rgba(255, 255, 255, 1);
     }
 
     .node-count {
       margin-left: 8px;
       flex-shrink: 0;
-      
+
       color: rgba(255, 255, 255, 1);
     }
   }

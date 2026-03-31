@@ -1,36 +1,16 @@
 <template>
     <div ref="containerRef" class="common-echarts-wrapper">
         <div ref="chartRef" class="common-echarts-inner" />
-        <div
-            v-if="showResolvedRangeControls && !loading && !resolvedEmpty"
-            class="common-echarts-range-controls"
-            @mousedown.stop
-            @wheel.stop
-        >
+        <div v-if="showResolvedRangeControls && !loading && !resolvedEmpty" class="common-echarts-range-controls"
+            @mousedown.stop @wheel.stop>
             <span class="controls-label">{{ rangeControlsLabel }}</span>
-            <el-input-number
-                v-model="rangeMin"
-                class="range-input"
-                size="small"
-                :min="rangeDataMin"
-                :max="rangeDataMax"
-                :step="rangeControlsStep"
-                :precision="rangeControlsPrecision"
-                :controls="false"
-                controls-position="right"
-            />
+            <el-input-number v-model="rangeMin" class="range-input" size="small" :min="rangeDataMin" :max="rangeDataMax"
+                :step="rangeControlsStep" :precision="rangeControlsPrecision" :controls="false"
+                controls-position="right" />
             <span class="controls-sep">{{ rangeControlsSepText }}</span>
-            <el-input-number
-                v-model="rangeMax"
-                class="range-input"
-                size="small"
-                :min="rangeDataMin"
-                :max="rangeDataMax"
-                :step="rangeControlsStep"
-                :precision="rangeControlsPrecision"
-                :controls="false"
-                controls-position="right"
-            />
+            <el-input-number v-model="rangeMax" class="range-input" size="small" :min="rangeDataMin" :max="rangeDataMax"
+                :step="rangeControlsStep" :precision="rangeControlsPrecision" :controls="false"
+                controls-position="right" />
             <span v-if="rangeControlsUnit" class="controls-unit">{{ rangeControlsUnit }}</span>
             <el-button size="small" @click="resetRange">重置</el-button>
         </div>
@@ -188,13 +168,13 @@ const isOptionEmpty = (opt: EChartsOption | null | undefined): boolean => {
 
     const anyOpt = opt as any;
 
-    
+
     const ds = anyOpt.dataset;
     const dsArr = Array.isArray(ds) ? ds : (ds ? [ds] : []);
     for (const d of dsArr) {
         const source = d?.source;
         if (Array.isArray(source) && source.length > 0) {
-            
+
             if (source.length > 1) return false;
             if (source.length === 1) {
                 const row = source[0];
@@ -207,13 +187,13 @@ const isOptionEmpty = (opt: EChartsOption | null | undefined): boolean => {
     const seriesArr: SeriesLike[] = Array.isArray(series) ? series : (series ? [series] : []);
     if (seriesArr.length === 0) return true;
 
-    
+
     for (const s of seriesArr) {
         const data = (s as any)?.data;
         if (Array.isArray(data)) {
             if (data.length > 0 && hasNonEmptyDataArray(data)) return false;
         } else if (isValueMeaningful(data)) {
-            
+
             return false;
         }
     }
@@ -236,26 +216,26 @@ const applyLinkageZoom = () => {
     if (!chartInstance.value) return;
 
     const hasGroup = !!props.linkageGroup;
-    
+
     if (linkageZoomCleanup) {
         linkageZoomCleanup();
         linkageZoomCleanup = null;
     }
 
     if (!(props.enableLinkageZoom && hasGroup)) {
-        
+
         if ((chartInstance.value as any).group) (chartInstance.value as any).group = '';
         return;
     }
 
     if (!props.linkageZoomOnly) {
-        
+
         (chartInstance.value as any).group = props.linkageGroup;
         echarts.connect(props.linkageGroup as string);
         return;
     }
 
-    
+
     (chartInstance.value as any).group = '';
     const groupId = props.linkageGroup as string;
     const inst = chartInstance.value;
@@ -272,7 +252,7 @@ const applyLinkageZoom = () => {
             const payload = batch0 && typeof batch0 === 'object' ? batch0 : params;
             if (!payload || typeof payload !== 'object') return;
 
-            
+
             const action: Record<string, any> = { type: 'dataZoom' };
             if (typeof (payload as any).startValue !== 'undefined' || typeof (payload as any).endValue !== 'undefined') {
                 if (typeof (payload as any).startValue !== 'undefined') action.startValue = (payload as any).startValue;
@@ -282,10 +262,10 @@ const applyLinkageZoom = () => {
                 if (typeof (payload as any).end !== 'undefined') action.end = (payload as any).end;
             }
 
-            
+
             if (typeof (payload as any).dataZoomIndex !== 'undefined') action.dataZoomIndex = (payload as any).dataZoomIndex;
 
-            
+
             if (
                 typeof action.start === 'undefined' &&
                 typeof action.end === 'undefined' &&
@@ -299,7 +279,7 @@ const applyLinkageZoom = () => {
                 try {
                     other.dispatchAction(action as any);
                 } catch {
-                    
+
                 }
             }
         } finally {
@@ -312,7 +292,7 @@ const applyLinkageZoom = () => {
         try {
             inst.off('datazoom', handler);
         } catch {
-            
+
         }
         const set = linkageRegistry.get(groupId);
         if (set) {
@@ -323,7 +303,7 @@ const applyLinkageZoom = () => {
 };
 
 const applyWheelZoom = () => {
-    
+
     if (wheelZoomCleanup) {
         wheelZoomCleanup();
         wheelZoomCleanup = null;
@@ -353,7 +333,7 @@ const initChart = async () => {
     applyLinkageZoom();
     applyWheelZoom();
     applyOption();
-    
+
     attachRangeControlsListener();
     emit('chart-ready', chartInstance.value);
 };
@@ -368,13 +348,13 @@ const applyOption = () => {
         tooltip?: any;
     };
 
-    
+
     const rawTooltip = opt.tooltip;
     if (typeof rawTooltip === 'object' && rawTooltip) {
         opt.tooltip = {
             ...rawTooltip,
             className: (rawTooltip as Record<string, unknown>).className ?? 'echarts-tooltip',
-            
+
             appendToBody: (rawTooltip as Record<string, unknown>).appendToBody ?? true,
             backgroundColor: (rawTooltip as Record<string, unknown>).backgroundColor ?? 'rgba(50, 50, 50, 0.9)',
             borderColor: (rawTooltip as Record<string, unknown>).borderColor ?? 'rgba(50, 50, 50, 0.9)',
@@ -392,7 +372,7 @@ const applyOption = () => {
         };
     }
 
-    
+
     if (props.tooltipFollowMouse && opt.tooltip && typeof opt.tooltip === 'object') {
         if (!('position' in opt.tooltip)) {
             opt.tooltip.position = (pos: any, _params: any, _el: any, _elRect: any, size: any) => {
@@ -409,7 +389,7 @@ const applyOption = () => {
         }
     }
 
-    
+
     if (props.enableDataZoom && !opt.dataZoom) {
         const hasXAxis =
             Array.isArray(opt.xAxis) ? opt.xAxis.length > 0 : typeof opt.xAxis !== 'undefined';
@@ -427,7 +407,7 @@ const applyOption = () => {
         }
     }
 
-    
+
     if (props.transparentBackground && typeof opt.backgroundColor === 'undefined') {
         opt.backgroundColor = 'transparent';
     }
@@ -437,7 +417,7 @@ const applyOption = () => {
         replaceMerge: props.replaceMerge.length > 0 ? props.replaceMerge : undefined
     });
 
-    
+
     restoreZoomAfterSetOption();
 };
 
@@ -455,7 +435,7 @@ const handleWindowResize = () => {
     try {
         chartInstance.value.resize();
     } catch {
-        
+
     }
 };
 

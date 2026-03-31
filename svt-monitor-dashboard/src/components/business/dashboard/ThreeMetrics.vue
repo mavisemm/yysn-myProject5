@@ -3,7 +3,8 @@
         <div v-for="(metric, index) in metrics" :key="index" class="chart-container">
             <div class="metric-header">
                 <div class="metric-title-row home-title home-title--ranking">
-                    <img class="metric-title-row__icon home-title__icon" src="@/assets/images/background/小图标.png" alt="" />
+                    <img class="metric-title-row__icon home-title__icon" src="@/assets/images/background/小图标.png"
+                        alt="" />
                     <h3 class="metric-title app-section-title">{{ metric.title }}</h3>
                     <span v-if="getRankings(index).length > 0" class="more-btn" @click="openRankDialog(index)">更多</span>
                 </div>
@@ -19,27 +20,26 @@
                     <CommonEmptyState size="small" />
                 </div>
                 <template v-else>
-                    <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex"
-                        class="ranking-item" :class="{ 'ranking-item--with-bg': rankIndex % 2 === 0 }"
-                        @click="goToDeviceDetail(rank)" style="cursor: pointer;">
+                    <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex" class="ranking-item"
+                        :class="{ 'ranking-item--with-bg': rankIndex % 2 === 0 }" @click="goToDeviceDetail(rank)"
+                        style="cursor: pointer;">
                         <span class="col-seq">
-                            <img class="seq-icon" src="@/assets/images/background/首页-排名序标.png"
-                                alt="" />
+                            <img class="seq-icon" src="@/assets/images/background/首页-排名序标.png" alt="" />
                             <span class="seq-num">{{ rankIndex + 1 }}</span>
                         </span>
                         <span class="col-device special-font-color" :title="getRankDeviceTooltip(rank)">
                             {{ rank.equipmentName }}
                             <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
                         </span>
-                        <span v-if="rank.value !== undefined" class="col-value special-font-color">{{ rank.value }}</span>
+                        <span v-if="rank.value !== undefined" class="col-value special-font-color">{{ rank.value
+                            }}</span>
                     </div>
                 </template>
             </div>
             <slot :name="'metric-' + index"></slot>
         </div>
 
-        <el-dialog v-model="rankDialogVisible" width="480px" class="rank-dialog" destroy-on-close
-            append-to-body
+        <el-dialog v-model="rankDialogVisible" width="480px" class="rank-dialog" destroy-on-close append-to-body
             @close="rankDialogMetricIndex = -1">
             <template #header>
                 <span class="dialog-header-inner">
@@ -154,7 +154,7 @@ const getRankings = (index: number): RankingItem[] => {
         return rankingData[index];
     }
 
-    
+
     if (!rankingData) {
         const devices: RankingItem[] = [];
         const traverse = (nodes: DeviceNode[]) => {
@@ -173,7 +173,7 @@ const getRankings = (index: number): RankingItem[] => {
         return devices;
     }
 
-    
+
     return [];
 };
 
@@ -220,13 +220,13 @@ const measureAndUpdateVisibleRows = () => {
         const height = el.clientHeight
         const count = Math.floor((height + gap) / (rowHeight + gap))
 
-        
+
         visibleRowsByMetric.value[index] = Math.max(2, count)
     }
 };
 
 const scheduleMeasure = () => {
-    
+
     window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => measureAndUpdateVisibleRows())
     })
@@ -265,7 +265,7 @@ onMounted(async () => {
     resizeListener = () => measureAndUpdateVisibleRows()
     window.addEventListener('resize', resizeListener)
 
-    
+
     if ('ResizeObserver' in window) {
         resizeObserver = new ResizeObserver(() => measureAndUpdateVisibleRows())
         rankingsElRefs.value.forEach(el => {
@@ -306,7 +306,7 @@ watch(
     box-sizing: border-box;
     padding: 10px 20px 0 20px;
 
-    
+
     >.chart-container {
         flex: 1;
         background: url('@/assets/images/background/首页-排名背景.png') no-repeat center center;
@@ -486,7 +486,7 @@ watch(
                     overflow: hidden;
                     text-overflow: ellipsis;
                     white-space: nowrap;
-                padding-right: 6px;
+                    padding-right: 6px;
                     color: #ffffff;
                 }
 
@@ -505,6 +505,7 @@ watch(
         @media (max-width: 768px) {
             .rankings {
                 --ranking-row-height: 26px;
+
                 .ranking-item {
                     font-size: 0.8rem;
                     padding: 0 10px;
@@ -521,13 +522,13 @@ watch(
         color: rgba(255, 255, 255, 1);
         margin: 0 !important;
         text-align: left !important;
-        
-        font-size: 1.2rem!important;
+
+        font-size: 1.2rem !important;
         display: block !important;
         width: auto !important;
     }
 
-        
+
 }
 
 .rank-dialog :deep(.el-dialog__header) {
