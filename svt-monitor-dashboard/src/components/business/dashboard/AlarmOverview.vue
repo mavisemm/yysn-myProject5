@@ -81,7 +81,8 @@
                 </div>
 
                 <div class="measurement-grid">
-                    <div v-for="item in getDisplayPoints(alarm.measurementPoints)" :key="item.pointNum"
+                    <div v-for="item in getDisplayPoints(alarm.measurementPoints, alarm.latestPointNum)"
+                        :key="item.pointNum"
                         :class="['point-item', getPointStyleClass(item.point.status, getDeviceDisplayStatus(alarm))]">
                         {{ item.pointNum }}
                     </div>
@@ -132,6 +133,7 @@ const deviceTreeStore = useDeviceTreeStore();
 interface MeasurementPoint {
     name: string;
     status: 'healthy' | 'warning' | 'alarm' | 'offline';
+    lastAlarmTime?: number;
 }
 
 interface AlarmItem {
@@ -143,6 +145,7 @@ interface AlarmItem {
     statusText: string;
     time: string;
     measurementPoints: MeasurementPoint[];
+    latestPointNum?: number;
 }
 interface AlarmWsPayload {
     alarmId?: string
@@ -682,11 +685,14 @@ function getPointStyleClass(
     return 'healthy';
 }
 
-function getDisplayPoints(points: MeasurementPoint[]): { point: MeasurementPoint; pointNum: number }[] {
+function getDisplayPoints(points: MeasurementPoint[], latestPointNum?: number): { point: MeasurementPoint; pointNum: number }[] {
     const list = points ?? [];
     const withNum = list.map((p, i) => ({ point: p, pointNum: i + 1 }));
     const order = { alarm: 0, warning: 1, healthy: 2, offline: 3 };
     const sorted = withNum.sort((a, b) => {
+        const aTime = a.point.lastAlarmTime ?? 0;
+        const bTime = b.point.lastAlarmTime ?? 0;
+        if (aTime !== bTime) return bTime - aTime; // 最近的时间排前面
         const statusDiff = order[a.point.status] - order[b.point.status];
         if (statusDiff !== 0) return statusDiff;
         return a.pointNum - b.pointNum;

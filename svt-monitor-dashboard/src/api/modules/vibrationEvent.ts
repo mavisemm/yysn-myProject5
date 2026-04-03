@@ -107,7 +107,7 @@ export const fetchVibrationAlarmsForOverview = async (params?: {
   if (!tenantId) return []
 
   const pageIndex = params?.pageIndex ?? 0
-  const pageSize = params?.pageSize ?? 50
+  const pageSize = params?.pageSize ?? 5000
 
   const res = await request.post<VibrationAlarmFindResponse>(
     '/taicang/event/findVibrationAlarm',

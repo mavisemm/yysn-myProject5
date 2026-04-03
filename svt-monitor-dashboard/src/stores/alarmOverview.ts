@@ -9,6 +9,7 @@ import type { DeviceNode } from '@/types/device'
 export interface MeasurementPoint {
   name: string
   status: 'healthy' | 'warning' | 'alarm' | 'offline'
+  lastAlarmTime?: number
 }
 
 export interface AlarmItem {
@@ -20,6 +21,7 @@ export interface AlarmItem {
   statusText: string
   time: string
   measurementPoints: MeasurementPoint[]
+  latestPointNum?: number
 }
 
 function makeHealthyPoint(i: number): MeasurementPoint {
@@ -161,7 +163,8 @@ function buildMeasurementPointsFromPoint(point: OverviewNormalized['point']): Me
   const total = Math.max(BASE_TOTAL, pointNum ?? 0)
   const list: MeasurementPoint[] = Array.from({ length: total }).map((_, i) => ({
     name: `测点${i + 1}`,
-    status: 'healthy'
+    status: 'healthy',
+    lastAlarmTime: undefined
   }))
 
   if (pointNum != null && pointNum >= 1 && pointNum <= list.length) {
@@ -273,25 +276,20 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     const prev = idx >= 0 ? alarms.value[idx] : undefined
     const prevTs = prev?.time ? Number(prev.time) : NaN
     // HTTP 初始化返回的 items 不保证按时间倒序。
-    // 如果后续遍历到的记录更旧，直接覆盖会导致页面展示“不是最新 alarmTime”。
-    // 因此仅当新时间更大时才覆盖卡片上的 time。
-    if (
+    // 如果后续遍历到的记录更旧，只“不覆盖卡片上的 time”，但仍需要合并测点状态，
+    // 否则同一设备不同测点的告警会被整条忽略（你遇到的现象）。
+    const isOlderOrSameTime =
       Number.isFinite(prevTs) &&
       Number.isFinite(t) &&
       t > 0 &&
       t <= prevTs
-    ) {
-      return
-    }
 
     if ((source === 'ws' || source === 'http') && Number.isFinite(t) && t > 0) {
       const prevLogged = lastWsLoggedTsByDeviceId.get(deviceId) ?? 0
       const prevHttpLogged = lastHttpLoggedTsByDeviceId.get(deviceId) ?? 0
-      const prev = source === 'ws' ? prevLogged : prevHttpLogged
-      if (t !== prev) {
-        if (source === 'ws') lastWsLoggedTsByDeviceId.set(deviceId, t)
-        if (source === 'http') lastHttpLoggedTsByDeviceId.set(deviceId, t)
-      }
+      // 只记录更“新”的时间，避免乱序时把 last* 写回旧值。
+      if (source === 'ws' && t > prevLogged) lastWsLoggedTsByDeviceId.set(deviceId, t)
+      if (source === 'http' && t > prevHttpLogged) lastHttpLoggedTsByDeviceId.set(deviceId, t)
     }
 
     
@@ -318,6 +316,8 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     const prevPoints = prev?.measurementPoints ?? []
     const total = Math.max(BASE_TOTAL, prevPoints.length, pointNum ?? 0)
 
+    const prevLatestPointNum = prev?.latestPointNum
+
     const measurementPoints: MeasurementPoint[] = (() => {
       if (!prevPoints.length) {
         
@@ -329,9 +329,17 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
         
         if (pointNum != null && built.length < pointNum) {
           const expanded = Array.from({ length: total }).map((_, i) => built[i] ?? makeHealthyPoint(i))
-          return expanded.map((p, i) => (i === (pointNum - 1) ? { ...p, name: pointName || p.name, status: derivedPointStatus } : p))
+          return expanded.map((p, i) =>
+            i === pointNum - 1
+              ? { ...p, name: pointName || p.name, status: derivedPointStatus, lastAlarmTime: Number.isFinite(t) && t > 0 ? t : p.lastAlarmTime }
+              : p
+          )
         }
-        return built.map((p, i) => (pointNum != null && i === (pointNum - 1) ? { ...p, name: pointName || p.name, status: derivedPointStatus } : p))
+        return built.map((p, i) =>
+          pointNum != null && i === pointNum - 1
+            ? { ...p, name: pointName || p.name, status: derivedPointStatus, lastAlarmTime: Number.isFinite(t) && t > 0 ? t : p.lastAlarmTime }
+            : p
+        )
       }
 
       
@@ -340,14 +348,21 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       })
 
       if (pointNum != null && pointNum >= 1 && pointNum <= next.length) {
+        const prevPoint = next[pointNum - 1]
         next[pointNum - 1] = {
-          name: pointName || next[pointNum - 1]?.name || `测点${pointNum}`,
-          status: derivedPointStatus
+          name: pointName || prevPoint?.name || `测点${pointNum}`,
+          status: derivedPointStatus,
+          lastAlarmTime: Number.isFinite(t) && t > 0 ? t : prevPoint?.lastAlarmTime
         }
       }
 
       return next
     })()
+
+    const latestPointNum =
+      !isOlderOrSameTime && pointNum != null
+        ? pointNum
+        : prevLatestPointNum ?? (pointNum ?? undefined)
 
     const deviceStatus: AlarmItem['status'] = isFaultAlarm ? 'alarm' : 'healthy'
     const statusText = deviceStatus === 'alarm' ? '报警' : '健康'
@@ -359,8 +374,10 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       deviceNameWithShop: `${deviceName}（${shopName || ''}）`,
       status: deviceStatus,
       statusText,
-      time: timeStr,
-      measurementPoints
+      // 旧告警也要合并测点，但卡片展示时间保持“最新”。
+      time: isOlderOrSameTime && prev?.time ? prev.time : timeStr,
+      measurementPoints,
+      latestPointNum
     }
 
     if (idx >= 0) alarms.value.splice(idx, 1, item)
@@ -375,7 +392,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
 
   async function initOverviewOnceByHttp(tId: string) {
     
-    const items = await fetchVibrationAlarmsForOverview({ tenantId: tId, pageIndex: 0, pageSize: 50 })
+    const items = await fetchVibrationAlarmsForOverview({ tenantId: tId, pageIndex: 0, pageSize: 5000 })
     httpLatestAlarmTimeByDeviceId.clear()
     for (const it of items) {
       const deviceId = String((it as any).equipmentId ?? (it as any).deviceId ?? '')
