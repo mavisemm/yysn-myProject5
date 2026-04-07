@@ -38,7 +38,7 @@
         <div class="panelTitle">操作</div>
         <div class="controlsBox">
           <div class="controlsRow">
-            <el-button type="success" size="large" :disabled="!currentEventId" class="controlBtnLarge"
+            <el-button type="danger" size="large" :disabled="!currentEventId" class="controlBtnLarge"
               @click="onConfirmYes">
               确认预警
             </el-button>
@@ -83,7 +83,7 @@
       </div>
       <template #footer>
         <el-button size="small" @click="notVisible = false">取消</el-button>
-        <el-button size="small" type="warning" @click="onConfirmNot">确认</el-button>
+        <el-button size="small" type="primary" @click="onConfirmNot">确认</el-button>
       </template>
     </el-dialog>
 
@@ -103,7 +103,7 @@
       <div class="modalHint">提示：历史异常库或新增异常库 二选一。</div>
       <template #footer>
         <el-button size="small" @click="yesVisible = false">取消</el-button>
-        <el-button size="small" type="success" @click="onConfirmSoundYes">确认</el-button>
+        <el-button size="small" type="primary" @click="onConfirmSoundYes">确认</el-button>
       </template>
     </el-dialog>
 

@@ -2,7 +2,7 @@
   <el-dialog v-model="store.realtimeVisible" title="实时预警批量操作" width="1100px" align-center class="alarm-batch-dialog"
     @close="store.closeRealtime">
     <div class="filter-bar">
-      <el-form :inline="true" label-width="80px" class="filter-form">
+      <el-form :inline="true" label-width="90px" class="filter-form">
         <el-form-item label="开始时间：">
           <el-date-picker v-model="store.realtimeQuery.startTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
             placeholder="开始时间" clearable size="small" class="alarm-filter-control" :show-now="false"
@@ -13,7 +13,7 @@
             placeholder="结束时间" clearable size="small" class="alarm-filter-control" :show-now="false"
             popper-class="alarm-batch-datetime-popper" />
         </el-form-item>
-        <el-form-item label="设备名称：">
+        <el-form-item label="听音器名称：">
           <el-select-v2 v-model="store.realtimeQuery.deviceId" :options="deviceOptions" filterable clearable
             size="small" class="alarm-filter-control" popper-class="alarm-batch-popper"
             :popper-options="sameWidthPopperOptions" :loading="store.dropdownsLoading" :item-height="28" :height="280"
@@ -261,6 +261,7 @@ const getReceiverName = (row: any): string => {
 :deep(.el-form-item__label) {
   color: var(--alarm-dialog-muted);
   font-size: var(--alarm-dialog-font);
+  white-space: nowrap;
 }
 
 :deep(.el-table) {

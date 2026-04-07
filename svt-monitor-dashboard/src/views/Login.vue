@@ -2,7 +2,7 @@
     <div class="login-page">
         <div class="login-container">
             <div class="left-title">
-                <h1 class="main-title">云音声脑</h1>
+                <h1 class="main-title">鲁西化工</h1>
                 <h2 class="sub-title">声振温在线监测平台</h2>
             </div>
 

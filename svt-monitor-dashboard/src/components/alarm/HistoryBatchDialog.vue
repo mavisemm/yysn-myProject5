@@ -2,23 +2,23 @@
   <el-dialog v-model="store.historyVisible" title="历史预警批量操作" width="1100px" align-center class="alarm-batch-dialog"
     @close="store.closeHistory">
     <div class="filter-bar">
-      <el-form :inline="true" label-width="80px" class="filter-form">
-        <el-form-item label="开始时间">
+      <el-form :inline="true" label-width="90px" class="filter-form">
+        <el-form-item label="开始时间：">
           <el-date-picker v-model="store.historyQuery.startTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
             placeholder="开始时间" clearable size="small" class="alarm-filter-control" :show-now="false"
             popper-class="alarm-batch-datetime-popper" />
         </el-form-item>
-        <el-form-item label="结束时间">
+        <el-form-item label="结束时间：">
           <el-date-picker v-model="store.historyQuery.endTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
             placeholder="结束时间" clearable size="small" class="alarm-filter-control" :show-now="false"
             popper-class="alarm-batch-datetime-popper" />
         </el-form-item>
-        <el-form-item label="设备名称">
+        <el-form-item label="听音器名称：">
           <el-select-v2 v-model="store.historyQuery.deviceId" :options="deviceOptions" filterable clearable size="small"
             class="alarm-filter-control" popper-class="alarm-batch-popper" :popper-options="sameWidthPopperOptions"
             :loading="store.dropdownsLoading" :item-height="28" :height="280" style="width: 220px" placeholder="请选择" />
         </el-form-item>
-        <el-form-item label="预警类型">
+        <el-form-item label="预警类型：">
           <el-select-v2 v-model="store.historyQuery.eventTypeCode" :options="typeOptions" filterable clearable
             size="small" class="alarm-filter-control" popper-class="alarm-batch-popper"
             :popper-options="sameWidthPopperOptions" :loading="store.dropdownsLoading" :item-height="28" :height="280"

@@ -42,9 +42,9 @@
  
 <script setup lang="ts">
 import { ElTable, ElTableColumn, ElButton } from 'element-plus'
-import { onMounted, ref, computed, watch, nextTick } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref } from 'vue'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
+import { useAlarmBatchStore } from '@/stores/alarmBatch'
 
 interface PointInfo {
     id: string
@@ -67,11 +67,6 @@ const emit = defineEmits<{
     'point-selected': [receiverId: string]
 }>()
 
-
-const currentSelectedId = computed(() => {
-    return props.selectedPointId
-})
-
 const getAlarmTypeTag = (type: string) => {
     switch (type) {
         case '温度': return 'danger'
@@ -91,8 +86,7 @@ const getAlarmValueUnit = (type: string) => {
 }
 
 const pointTableRef = ref<any>(null)
-const router = useRouter()
-const route = useRoute()
+const alarmBatchStore = useAlarmBatchStore()
 
 const onRowClick = (row: PointInfo) => {
     emit('point-selected', row.id)
@@ -102,48 +96,10 @@ const onRowClick = (row: PointInfo) => {
 const handleUnprocessedClick = (row: PointInfo) => {
     if (!row.hasAlarm) return
 
-
-    const equipmentIdFromQuery = route.query.equipmentId
-    const equipmentIdFromQueryResolved = Array.isArray(equipmentIdFromQuery)
-        ? equipmentIdFromQuery[0]
-        : equipmentIdFromQuery
-
-    const equipmentIdFromLegacy = route.params.id
-    const equipmentIdFromLegacyResolved = Array.isArray(equipmentIdFromLegacy)
-        ? equipmentIdFromLegacy[0]
-        : equipmentIdFromLegacy
-
-    const equipmentId = (equipmentIdFromQueryResolved as string | undefined) || (equipmentIdFromLegacyResolved as string | undefined) || ''
-
-    switch (row.alarmType) {
-        case '声音':
-
-            router.push({
-                name: 'SoundPoint',
-                query: {
-
-                    equipmentId,
-                },
-                params: { receiverId: row.id }
-            })
-            break
-        case '振动':
-
-            router.push({
-                name: 'VibrationPoint',
-                query: {
-
-                    equipmentId,
-                },
-                params: { receiverId: row.id }
-            })
-            break
-        case '温度':
-        default:
-
-            emit('point-selected', row.id)
-            break
-    }
+    const deviceId = row.deviceId ? String(row.deviceId) : ''
+    alarmBatchStore.resetRealtime()
+    if (deviceId) alarmBatchStore.realtimeQuery.deviceId = deviceId
+    void alarmBatchStore.openRealtime()
 }
 
 

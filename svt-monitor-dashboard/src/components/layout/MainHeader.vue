@@ -32,7 +32,7 @@
 
     <div class="header-center">
       <h1 class="title">
-        云音声脑声振温在线监测平台</h1>
+        鲁西化工声振温在线监测平台</h1>
     </div>
 
     <div class="header-right-clock">
