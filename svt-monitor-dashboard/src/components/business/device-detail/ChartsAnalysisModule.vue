@@ -103,6 +103,13 @@ const TEMP_COLOR = '#ff4d4f'
 const VIB_COLOR = '#1890ff'
 const SOUND_COLOR = '#fadb14'
 
+// y 轴刻度最多保留小数点后两位（同时去掉无意义的尾随 0）
+const formatYAxisTick = (v: number | string) => {
+    const n = Number(v)
+    if (!Number.isFinite(n)) return ''
+    return String(Number(n.toFixed(2)))
+}
+
 const HOURS_24 = Array.from({ length: 24 }, (_, i) => `${i}`)
 
 const activeReceiverId = computed(() => props.selectedPointId || props.pointList?.[0]?.id || '')
@@ -147,7 +154,7 @@ const tempOption = computed<EChartsOption>(() => {
             borderColor: 'rgba(50,50,50,0.8)',
             textStyle: { color: '#fff' }
         },
-        grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+        grid: { left: '3%', right: '6%', bottom: '15%', top: '10%', containLabel: true },
         dataZoom: [
             { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
             { type: 'slider', xAxisIndex: [0], bottom: '5%', height: '10%', fillerColor: 'rgba(255, 77, 79, 0.3)', borderColor: 'rgba(255, 77, 79, 0.5)', handleStyle: { color: TEMP_COLOR }, filterMode: 'none' }
@@ -155,16 +162,22 @@ const tempOption = computed<EChartsOption>(() => {
         xAxis: {
             type: 'category',
             data: timeLabels,
-            axisLabel: { fontSize: 10, color: c },
+            axisLabel: {
+                fontSize: 10,
+                color: c,
+                margin: 8,
+                showMaxLabel: true,
+                hideOverlap: true
+            },
             axisLine: { lineStyle: { color: c }, onZero: false },
-            axisTick: { lineStyle: { color: c } }
+            axisTick: { lineStyle: { color: c }, alignWithLabel: true }
         },
         yAxis: {
             type: 'value',
             name: '℃',
             scale: true,
             ...(yMin != null && yMax != null ? { min: yMin, max: yMax } : { min: 'dataMin', max: 'dataMax' }),
-            axisLabel: { fontSize: 10, color: c, formatter: (v: number) => String(Math.round(Number(v))) },
+            axisLabel: { fontSize: 10, color: c, formatter: formatYAxisTick },
             axisLine: { lineStyle: { color: c } },
             axisTick: { lineStyle: { color: c } },
             splitLine: { lineStyle: { color: s } },
@@ -215,7 +228,7 @@ const vibOption = computed<EChartsOption>(() => {
             borderColor: 'rgba(50,50,50,0.8)',
             textStyle: { color: '#fff' }
         },
-        grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+        grid: { left: '3%', right: '6%', bottom: '15%', top: '10%', containLabel: true },
         dataZoom: [
             { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
             { type: 'slider', xAxisIndex: [0], bottom: '5%', height: '10%', fillerColor: 'rgba(24, 144, 255, 0.3)', borderColor: 'rgba(24, 144, 255, 0.5)', handleStyle: { color: VIB_COLOR }, filterMode: 'none' }
@@ -223,16 +236,21 @@ const vibOption = computed<EChartsOption>(() => {
         xAxis: {
             type: 'category',
             data: timeLabels,
-            axisLabel: { fontSize: 10, color: c },
-
+            axisLabel: {
+                fontSize: 10,
+                color: c,
+                margin: 8,
+                showMaxLabel: true,
+                hideOverlap: true
+            },
             axisLine: { lineStyle: { color: c }, onZero: false },
-            axisTick: { lineStyle: { color: c } }
+            axisTick: { lineStyle: { color: c }, alignWithLabel: true }
         },
         yAxis: {
             type: 'value',
             name: 'mm/s',
             ...(yMin != null && yMax != null ? { min: yMin, max: yMax } : {}),
-            axisLabel: { fontSize: 10, color: c },
+            axisLabel: { fontSize: 10, color: c, formatter: formatYAxisTick },
             axisLine: { lineStyle: { color: c } },
             axisTick: { lineStyle: { color: c } },
             splitLine: { lineStyle: { color: s } },
@@ -271,7 +289,7 @@ const soundOption = computed<EChartsOption>(() => {
             borderColor: 'rgba(50,50,50,0.8)',
             textStyle: { color: '#fff' }
         },
-        grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+        grid: { left: '3%', right: '6%', bottom: '15%', top: '10%', containLabel: true },
         dataZoom: [
             { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
             { type: 'slider', xAxisIndex: [0], bottom: '5%', height: '10%', fillerColor: 'rgba(250, 219, 20, 0.3)', borderColor: 'rgba(250, 219, 20, 0.5)', handleStyle: { color: SOUND_COLOR }, filterMode: 'none' }
@@ -279,16 +297,22 @@ const soundOption = computed<EChartsOption>(() => {
         xAxis: {
             type: 'category',
             data: timeLabels,
-            axisLabel: { fontSize: 10, color: c },
+            axisLabel: {
+                fontSize: 10,
+                color: c,
+                margin: 8,
+                showMaxLabel: true,
+                hideOverlap: true
+            },
             axisLine: { lineStyle: { color: c }, onZero: false },
-            axisTick: { lineStyle: { color: c } }
+            axisTick: { lineStyle: { color: c }, alignWithLabel: true }
         },
         yAxis: {
             type: 'value',
             name: 'dB',
             scale: true,
             ...(yMin != null && yMax != null ? { min: yMin, max: yMax } : {}),
-            axisLabel: { fontSize: 10, color: c },
+            axisLabel: { fontSize: 10, color: c, formatter: formatYAxisTick },
             axisLine: { lineStyle: { color: c } },
             axisTick: { lineStyle: { color: c } },
             splitLine: { lineStyle: { color: s } },

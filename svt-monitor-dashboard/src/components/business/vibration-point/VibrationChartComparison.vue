@@ -3,9 +3,11 @@
         <div class="card-item freq-card">
             <div class="card-header">
                 <div class="card-title app-section-title">振动频域图</div>
+                <el-button class="freq-fullscreen-btn" text circle :icon="FullScreen" @click="openFreqFullscreen" />
             </div>
             <div class="chart-container">
                 <CommonEcharts ref="freqChartRef" :option="freqOption" :enable-data-zoom="false" :not-merge="true"
+                    enable-fullscreen fullscreen-title="振动频域图" fullscreen-background="#142060"
                     @chart-ready="onFreqChartReady" />
             </div>
         </div>
@@ -28,6 +30,7 @@ import type { EChartsOption } from 'echarts';
 import { CommonEcharts } from '@/components/common/chart';
 import { getVibrationFrequencyData, getVibrationTimeDomainData } from '@/api/modules/device';
 import { useDeviceTreeStore } from '@/stores/deviceTree';
+import { FullScreen } from '@element-plus/icons-vue';
 
 const route = useRoute();
 const receiverIdFromParams = computed(() => {
@@ -62,12 +65,29 @@ const freqChartRef = ref<InstanceType<typeof CommonEcharts>>();
 const freqChartInstance = shallowRef<echarts.ECharts | null>(null);
 let freqChartCleanup: (() => void) | null = null;
 
+const openFreqFullscreen = () => {
+    (freqChartRef.value as any)?.openFullscreen?.();
+};
+
 const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({ frequency: [], freqSpeedData: [] });
 const timeDomainData = ref<number[]>([]);
 const totalTime = ref<number>(0);
 
 
 const pointerBaseFreq = ref<number | null>(null);
+
+// y 轴刻度：最多保留小数点后两位（并去掉无意义的尾随 0）
+const formatYAxisTick = (v: number | string) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '';
+    return String(Number(n.toFixed(2)));
+};
+// 频域图 y 轴刻度：固定显示到小数点后 5 位
+const formatFreqYAxisTick = (v: number | string) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '';
+    return n.toFixed(5);
+};
 
 const getSortedFreqChartData = () => {
     const chartData = freqData.value.frequency
@@ -229,14 +249,19 @@ const freqOption = computed<EChartsOption>(() => {
                 return tooltipContent;
             }
         },
-        grid: { top: 30, left: 40, right: 40, bottom: 50 },
+        grid: { top: 30, left: 40, right: 50, bottom: 35, containLabel: true },
         xAxis: {
             type: 'value',
             name: 'Hz',
             min: 0,
             max: xMax,
             nameTextStyle: { color: c },
-            axisLabel: { color: c },
+            axisLabel: {
+                color: c,
+                margin: 8,
+                showMaxLabel: true,
+                hideOverlap: true
+            },
             axisLine: { lineStyle: { color: c } },
             splitLine: { show: false }
         },
@@ -248,7 +273,7 @@ const freqOption = computed<EChartsOption>(() => {
             nameTextStyle: { color: c },
             axisLabel: {
                 color: c,
-                formatter: (value: number) => value.toFixed(2)
+                formatter: formatFreqYAxisTick
             },
             axisLine: { lineStyle: { color: c } },
             splitLine: { lineStyle: { color: s } }
@@ -373,14 +398,19 @@ const timeOption = computed<EChartsOption>(() => {
             borderColor: 'rgba(50, 50, 50, 0.9)',
             textStyle: { color: '#fff' }
         },
-        grid: { top: 30, left: 40, right: 40, bottom: 50 },
+        grid: { top: 30, left: 40, right: 50, bottom: 35, containLabel: true },
         xAxis: {
             type: 'value',
             name: 's',
             min: 0,
             max: totalTime.value,
             nameTextStyle: { color: c },
-            axisLabel: { color: c },
+            axisLabel: {
+                color: c,
+                margin: 8,
+                showMaxLabel: true,
+                hideOverlap: true
+            },
             axisLine: { lineStyle: { color: c } },
             splitLine: { show: false }
         },
@@ -388,7 +418,10 @@ const timeOption = computed<EChartsOption>(() => {
             type: 'value',
             name: 'mm/s',
             nameTextStyle: { color: c },
-            axisLabel: { color: c },
+            axisLabel: {
+                color: c,
+                formatter: formatYAxisTick
+            },
             axisLine: { lineStyle: { color: c } },
             splitLine: { lineStyle: { color: s } }
         },
@@ -514,6 +547,22 @@ onUnmounted(() => {
         .card-title {
             color: #fff;
         }
+
+        :deep(.freq-fullscreen-btn) {
+            color: #fff !important;
+        }
+        :deep(.freq-fullscreen-btn:hover),
+        :deep(.freq-fullscreen-btn:focus),
+        :deep(.freq-fullscreen-btn:active) {
+            background-color: transparent !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+        }
+        :deep(.freq-fullscreen-btn .el-icon) {
+            color: #fff !important;
+        }
+
+        
     }
 
     .chart-container {
@@ -523,6 +572,46 @@ onUnmounted(() => {
         padding: 10px 20px 20px;
         position: relative;
     }
+}
+
+
+
+:global(.freq-fullscreen-modal .el-dialog) {
+    background: #142060 !important;
+}
+:global(.freq-fullscreen-modal .el-dialog__header) {
+    background: #142060 !important;
+    margin-right: 0;
+}
+:global(.freq-fullscreen-modal .el-dialog__title) {
+    color: rgba(255, 255, 255, 0.92) !important;
+}
+:global(.freq-fullscreen-modal .el-dialog__body) {
+    background: #142060 !important;
+}
+:global(.freq-fullscreen-modal .el-dialog__headerbtn .el-dialog__close) {
+    color: rgba(255, 255, 255, 0.92) !important;
+}
+
+:deep(.freq-fullscreen-dialog .el-dialog) {
+    background: #142060;
+}
+
+:deep(.freq-fullscreen-dialog .el-dialog__header) {
+    background: #142060;
+    margin-right: 0;
+}
+
+:deep(.freq-fullscreen-dialog .el-dialog__title) {
+    color: rgba(255, 255, 255, 0.92);
+}
+
+:deep(.freq-fullscreen-dialog .el-dialog__body) {
+    background: #142060;
+}
+
+:deep(.freq-fullscreen-dialog .el-dialog__headerbtn .el-dialog__close) {
+    color: rgba(255, 255, 255, 0.92);
 }
 
 .freq-card,

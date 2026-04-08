@@ -21,10 +21,20 @@
             <CommonEmptyState :text="emptyText" size="small" />
         </div>
     </div>
+
+    <el-dialog v-if="enableFullscreenButton" v-model="fullscreenVisible" :title="fullscreenTitleResolved"
+        :fullscreen="true" destroy-on-close :append-to-body="true" :modal-append-to-body="true"
+        class="common-echarts-fullscreen-dialog" modal-class="common-echarts-fullscreen-modal"
+        :style="{ '--ce-fullscreen-bg': fullscreenBackgroundResolved }" @opened="handleFullscreenOpened"
+        @closed="handleFullscreenClosed">
+        <div class="common-echarts-fullscreen-wrap">
+            <div ref="fullscreenChartRef" class="common-echarts-fullscreen-inner" />
+        </div>
+    </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, shallowRef, inject, computed } from 'vue';
+import { ref, onMounted, onUnmounted, watch, shallowRef, inject, computed, nextTick } from 'vue';
 import type { Ref } from 'vue';
 import * as echarts from 'echarts';
 import type { EChartsOption } from 'echarts';
@@ -65,6 +75,10 @@ const props = withDefaults(
         rangeControlsMin?: number;
         rangeControlsMax?: number;
         preserveDataZoom?: boolean;
+
+        enableFullscreen?: boolean;
+        fullscreenTitle?: string;
+        fullscreenBackground?: string;
     }>(),
     {
         option: () => ({}),
@@ -94,7 +108,11 @@ const props = withDefaults(
         rangeControlsDebounceMs: 600,
         rangeControlsData: () => [],
         rangeControlsXAxisIndex: 0,
-        preserveDataZoom: false
+        preserveDataZoom: false,
+
+        enableFullscreen: false,
+        fullscreenTitle: '',
+        fullscreenBackground: '#142060'
     }
 );
 
@@ -108,6 +126,9 @@ const emit = defineEmits<{
 const containerRef = ref<HTMLElement>();
 const chartRef = ref<HTMLElement>();
 const chartInstance = shallowRef<echarts.ECharts | null>(null);
+const fullscreenVisible = ref(false);
+const fullscreenChartRef = ref<HTMLElement>();
+const fullscreenChartInstance = shallowRef<echarts.ECharts | null>(null);
 let wheelZoomCleanup: (() => void) | null = null;
 let rangeControlsCleanup: (() => void) | null = null;
 let autoYAxisCleanup: (() => void) | null = null;
@@ -627,7 +648,17 @@ const initChart = async () => {
 const applyOption = () => {
     if (!chartInstance.value || !props.option) return;
 
-    const opt = { ...props.option } as EChartsOption & {
+    const opt = buildResolvedOption();
+    chartInstance.value.setOption(opt, {
+        notMerge: props.notMerge,
+        replaceMerge: props.replaceMerge.length > 0 ? props.replaceMerge : undefined
+    });
+
+    restoreZoomAfterSetOption();
+};
+
+const buildResolvedOption = () => {
+    const opt = { ...(props.option as any) } as EChartsOption & {
         dataZoom?: any;
         xAxis?: any;
         backgroundColor?: any;
@@ -698,13 +729,21 @@ const applyOption = () => {
         opt.backgroundColor = 'transparent';
     }
 
-    chartInstance.value.setOption(opt, {
-        notMerge: props.notMerge,
-        replaceMerge: props.replaceMerge.length > 0 ? props.replaceMerge : undefined
-    });
+    return opt as EChartsOption;
+};
 
-
-    restoreZoomAfterSetOption();
+const applyFullscreenOption = () => {
+    if (!fullscreenChartInstance.value) return;
+    if (!props.option) return;
+    const opt = buildResolvedOption();
+    try {
+        fullscreenChartInstance.value.setOption(opt, {
+            notMerge: props.notMerge,
+            replaceMerge: props.replaceMerge.length > 0 ? props.replaceMerge : undefined
+        });
+    } catch {
+        // ignore
+    }
 };
 
 const getThemeColors = () => ({
@@ -730,6 +769,9 @@ watch(
     () => {
         if (chartInstance.value && !props.loading && !resolvedEmpty.value) {
             applyOption();
+        }
+        if (fullscreenVisible.value && fullscreenChartInstance.value && !props.loading && !resolvedEmpty.value) {
+            applyFullscreenOption();
         }
     },
     { deep: true }
@@ -805,11 +847,44 @@ onMounted(() => {
     }
 });
 
+const enableFullscreenButton = computed(() => !!props.enableFullscreen);
+const fullscreenTitleResolved = computed(() => props.fullscreenTitle || (props.option as any)?.title?.text || '图表');
+const fullscreenBackgroundResolved = computed(() => props.fullscreenBackground || '#142060');
+
+const openFullscreen = () => {
+    fullscreenVisible.value = true;
+};
+const handleFullscreenOpened = async () => {
+    await nextTick();
+    if (!fullscreenChartRef.value) return;
+    if (fullscreenChartInstance.value) {
+        try { fullscreenChartInstance.value.dispose(); } catch { }
+        fullscreenChartInstance.value = null;
+    }
+    try {
+        fullscreenChartInstance.value = echarts.init(fullscreenChartRef.value);
+        applyFullscreenOption();
+        fullscreenChartInstance.value.resize();
+    } catch {
+        // ignore
+    }
+};
+const handleFullscreenClosed = () => {
+    if (fullscreenChartInstance.value) {
+        try { fullscreenChartInstance.value.dispose(); } catch { }
+        fullscreenChartInstance.value = null;
+    }
+};
+
 onUnmounted(() => {
     if (chartInstance.value) {
         chartInstance.value.dispose();
         chartInstance.value = null;
         emit('chart-disposed');
+    }
+    if (fullscreenChartInstance.value) {
+        try { fullscreenChartInstance.value.dispose(); } catch { }
+        fullscreenChartInstance.value = null;
     }
 
     if (linkageZoomCleanup) {
@@ -854,7 +929,8 @@ defineExpose({
     chartInstance,
     initChart,
     updateOption: applyOption,
-    getThemeColors
+    getThemeColors,
+    openFullscreen
 });
 </script>
 
@@ -920,5 +996,41 @@ defineExpose({
         color: rgba(255, 255, 255, 0.8);
         font-weight: 500;
     }
+}
+
+/* 全屏触发按钮由业务侧放置（如标题栏），公共组件仅提供 openFullscreen 能力 */
+
+.common-echarts-fullscreen-wrap {
+    height: calc(100vh - 120px);
+    min-height: 300px;
+    padding-top: 20px;
+}
+
+.common-echarts-fullscreen-inner {
+    width: 100%;
+    height: 100%;
+}
+
+/* append-to-body 下用 modal-class + :global 保证能命中 */
+:global(.common-echarts-fullscreen-modal .el-dialog) {
+    background: var(--ce-fullscreen-bg, #142060) !important;
+}
+
+:global(.common-echarts-fullscreen-modal .el-dialog__header) {
+    background: var(--ce-fullscreen-bg, #142060) !important;
+    margin-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+:global(.common-echarts-fullscreen-modal .el-dialog__title) {
+    color: rgba(255, 255, 255, 0.92) !important;
+}
+
+:global(.common-echarts-fullscreen-modal .el-dialog__body) {
+    background: var(--ce-fullscreen-bg, #142060) !important;
+}
+
+:global(.common-echarts-fullscreen-modal .el-dialog__headerbtn .el-dialog__close) {
+    color: rgba(255, 255, 255, 0.92) !important;
 }
 </style>
