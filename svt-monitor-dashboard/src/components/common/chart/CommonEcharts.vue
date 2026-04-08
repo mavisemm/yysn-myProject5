@@ -48,6 +48,9 @@ const props = withDefaults(
         linkageZoomOnly?: boolean;
         enableLinkageZoom?: boolean;
         enableWheelZoom?: boolean;
+        autoYAxisOnZoom?: boolean;
+        autoYAxisOnZoomDebounceMs?: number;
+        autoYAxisOnZoomPaddingRatio?: number;
         tooltipFollowMouse?: boolean;
         transparentBackground?: boolean;
         showRangeControls?: boolean;
@@ -77,6 +80,9 @@ const props = withDefaults(
         linkageZoomOnly: false,
         enableLinkageZoom: false,
         enableWheelZoom: false,
+        autoYAxisOnZoom: true,
+        autoYAxisOnZoomDebounceMs: 120,
+        autoYAxisOnZoomPaddingRatio: 0.05,
         tooltipFollowMouse: false,
         transparentBackground: true,
         showRangeControls: false,
@@ -104,6 +110,8 @@ const chartRef = ref<HTMLElement>();
 const chartInstance = shallowRef<echarts.ECharts | null>(null);
 let wheelZoomCleanup: (() => void) | null = null;
 let rangeControlsCleanup: (() => void) | null = null;
+let autoYAxisCleanup: (() => void) | null = null;
+let autoYAxisTimer: number | null = null;
 
 
 type GroupRegistry = Map<string, Set<echarts.ECharts>>;
@@ -157,6 +165,283 @@ const attachRangeControlsListener = () => {
     chartInstance.value.on('datazoom', handler);
     rangeControlsCleanup = () => {
         chartInstance.value?.off('datazoom', handler);
+    };
+};
+
+type DataZoomRange = { startIndex: number; endIndex: number };
+type DataZoomValueRange = { startValue: number; endValue: number };
+const clampInt = (v: number, min: number, max: number) => Math.min(max, Math.max(min, Math.trunc(v)));
+const pickArray = (v: any): any[] => (Array.isArray(v) ? v : (typeof v !== 'undefined' && v !== null ? [v] : []));
+const clampNum = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+const asFiniteNumber = (v: any): number | null => {
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) ? n : null;
+};
+const getDataZoomForXAxis = (opt: any, xAxisIndex: number): any | null => {
+    const dzList = pickArray(opt?.dataZoom);
+    if (!dzList.length) return null;
+    return (
+        dzList.find((d: any) => {
+            const idx = d?.xAxisIndex;
+            if (Array.isArray(idx)) return idx.includes(xAxisIndex);
+            if (typeof idx === 'number') return idx === xAxisIndex;
+            return typeof idx === 'undefined' && xAxisIndex === 0;
+        }) ?? dzList[0] ?? null
+    );
+};
+const getXAxis = (opt: any, xAxisIndex: number): any | null => {
+    const xAxes = pickArray(opt?.xAxis);
+    return (xAxes[xAxisIndex] ?? xAxes[0] ?? null) as any;
+};
+const getXAxisType = (opt: any, xAxisIndex: number): 'category' | 'value' | 'time' | 'log' | string => {
+    const xAxis = getXAxis(opt, xAxisIndex);
+    return (xAxis?.type ?? (xAxis?.data ? 'category' : 'value')) as any;
+};
+
+const extractXFromDatum = (datum: any): number | null => {
+    if (datum == null) return null;
+    if (Array.isArray(datum)) {
+        const first = datum[0];
+        const n = Number(first);
+        return Number.isFinite(n) ? n : null;
+    }
+    if (typeof datum === 'object') {
+        const v = (datum as any).value;
+        if (Array.isArray(v)) {
+            const first = v[0];
+            const n = Number(first);
+            return Number.isFinite(n) ? n : null;
+        }
+    }
+    return null;
+};
+
+const inferXDomainFromSeries = (opt: any): { min: number; max: number } | null => {
+    const seriesList = pickArray(opt?.series) as any[];
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    let found = false;
+    for (const s of seriesList) {
+        const data = s?.data;
+        if (!Array.isArray(data) || data.length === 0) continue;
+        for (const d of data) {
+            const x = extractXFromDatum(d);
+            if (x == null) continue;
+            found = true;
+            if (x < min) min = x;
+            if (x > max) max = x;
+        }
+    }
+    if (!found || !Number.isFinite(min) || !Number.isFinite(max)) return null;
+    return { min, max };
+};
+
+const getCategoryAxisLength = (opt: any, xAxisIndex: number): number => {
+    const xAxis = getXAxis(opt, xAxisIndex);
+    const data = xAxis?.data;
+    return Array.isArray(data) ? data.length : 0;
+};
+const parseDataZoomRange = (opt: any, xAxisIndex: number): DataZoomRange | null => {
+    const axisLen = getCategoryAxisLength(opt, xAxisIndex);
+    if (!axisLen) return null;
+    const dz = getDataZoomForXAxis(opt, xAxisIndex);
+    if (!dz) return { startIndex: 0, endIndex: axisLen - 1 };
+
+    const hasValueRange = typeof dz.startValue !== 'undefined' || typeof dz.endValue !== 'undefined';
+    if (hasValueRange) {
+        const s = typeof dz.startValue === 'number' ? dz.startValue : 0;
+        const e = typeof dz.endValue === 'number' ? dz.endValue : axisLen - 1;
+        const startIndex = clampInt(s, 0, axisLen - 1);
+        const endIndex = clampInt(e, 0, axisLen - 1);
+        return startIndex <= endIndex ? { startIndex, endIndex } : { startIndex: endIndex, endIndex: startIndex };
+    }
+
+    const startPct = typeof dz.start === 'number' ? dz.start : 0;
+    const endPct = typeof dz.end === 'number' ? dz.end : 100;
+    const startIndex = clampInt(Math.round((startPct / 100) * (axisLen - 1)), 0, axisLen - 1);
+    const endIndex = clampInt(Math.round((endPct / 100) * (axisLen - 1)), 0, axisLen - 1);
+    return startIndex <= endIndex ? { startIndex, endIndex } : { startIndex: endIndex, endIndex: startIndex };
+};
+
+const parseDataZoomValueRange = (opt: any, xAxisIndex: number): DataZoomValueRange | null => {
+    const dz = getDataZoomForXAxis(opt, xAxisIndex);
+    const xAxis = getXAxis(opt, xAxisIndex);
+
+    const axisMin = asFiniteNumber(xAxis?.min);
+    const axisMax = asFiniteNumber(xAxis?.max);
+    const inferred = inferXDomainFromSeries(opt);
+    const dataMin = axisMin ?? inferred?.min;
+    const dataMax = axisMax ?? inferred?.max;
+    if (dataMin == null || dataMax == null) return null;
+
+    if (!dz) return { startValue: dataMin, endValue: dataMax };
+
+    const sv = asFiniteNumber(dz.startValue);
+    const ev = asFiniteNumber(dz.endValue);
+    if (sv != null || ev != null) {
+        const s0 = sv ?? dataMin;
+        const e0 = ev ?? dataMax;
+        const startValue = Math.min(s0, e0);
+        const endValue = Math.max(s0, e0);
+        return { startValue, endValue };
+    }
+
+    const startPct = asFiniteNumber(dz.start) ?? 0;
+    const endPct = asFiniteNumber(dz.end) ?? 100;
+    const sPct = clampNum(startPct, 0, 100);
+    const ePct = clampNum(endPct, 0, 100);
+    const loPct = Math.min(sPct, ePct);
+    const hiPct = Math.max(sPct, ePct);
+    const startValue = dataMin + (loPct / 100) * (dataMax - dataMin);
+    const endValue = dataMin + (hiPct / 100) * (dataMax - dataMin);
+    return { startValue, endValue };
+};
+
+const extractYFromDatum = (datum: any): number | null => {
+    if (datum == null) return null;
+    if (typeof datum === 'number') return Number.isFinite(datum) ? datum : null;
+    if (typeof datum === 'string') {
+        const n = Number(datum);
+        return Number.isFinite(n) ? n : null;
+    }
+    if (Array.isArray(datum)) {
+        const last = datum[datum.length - 1];
+        const n = Number(last);
+        return Number.isFinite(n) ? n : null;
+    }
+    if (typeof datum === 'object') {
+        const v = (datum as any).value;
+        if (Array.isArray(v)) {
+            const last = v[v.length - 1];
+            const n = Number(last);
+            return Number.isFinite(n) ? n : null;
+        }
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+    }
+    return null;
+};
+
+const computeVisibleYRangeByIndex = (opt: any, range: DataZoomRange): { min: number; max: number } | null => {
+    const seriesList = pickArray(opt?.series) as any[];
+    if (!seriesList.length) return null;
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    let found = false;
+
+    for (const s of seriesList) {
+        const data = s?.data;
+        if (!Array.isArray(data) || data.length === 0) continue;
+        const start = clampInt(range.startIndex, 0, data.length - 1);
+        const end = clampInt(range.endIndex, 0, data.length - 1);
+        for (let i = start; i <= end; i++) {
+            const y = extractYFromDatum(data[i]);
+            if (y == null) continue;
+            found = true;
+            if (y < min) min = y;
+            if (y > max) max = y;
+        }
+    }
+    if (!found || !Number.isFinite(min) || !Number.isFinite(max)) return null;
+    return { min, max };
+};
+
+const computeVisibleYRangeByXValue = (opt: any, xRange: DataZoomValueRange): { min: number; max: number } | null => {
+    const seriesList = pickArray(opt?.series) as any[];
+    if (!seriesList.length) return null;
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    let found = false;
+    const lo = Math.min(xRange.startValue, xRange.endValue);
+    const hi = Math.max(xRange.startValue, xRange.endValue);
+
+    for (const s of seriesList) {
+        const data = s?.data;
+        if (!Array.isArray(data) || data.length === 0) continue;
+        for (const d of data) {
+            const x = extractXFromDatum(d);
+            if (x == null) continue;
+            if (x < lo || x > hi) continue;
+            const y = extractYFromDatum(d);
+            if (y == null) continue;
+            found = true;
+            if (y < min) min = y;
+            if (y > max) max = y;
+        }
+    }
+
+    if (!found || !Number.isFinite(min) || !Number.isFinite(max)) return null;
+    return { min, max };
+};
+
+const applyAutoYAxisRange = () => {
+    if (!chartInstance.value) return;
+    if (!props.autoYAxisOnZoom) return;
+    if (!props.option) return;
+
+    const opt = chartInstance.value.getOption?.() as any;
+    const xAxisIndex = (props.rangeControlsXAxisIndex ?? 0) as number;
+    const xType = getXAxisType(opt, xAxisIndex);
+
+    let y: { min: number; max: number } | null = null;
+    if (xType === 'value' || xType === 'time' || xType === 'log') {
+        const xRange = parseDataZoomValueRange(opt, xAxisIndex);
+        if (!xRange) return;
+        y = computeVisibleYRangeByXValue(opt, xRange);
+    } else {
+        const range = parseDataZoomRange(opt, xAxisIndex);
+        if (!range) return;
+        y = computeVisibleYRangeByIndex(opt, range);
+    }
+    if (!y) return;
+
+    const paddingRatio = Math.max(0, Number(props.autoYAxisOnZoomPaddingRatio ?? 0.05));
+    const span = y.max - y.min;
+    const padding = span === 0 ? (Math.abs(y.max) || 1) * paddingRatio : span * paddingRatio;
+    let min = y.min - padding;
+    let max = y.max + padding;
+    if (min === max) {
+        max = min + 1;
+    }
+
+    try {
+        chartInstance.value.setOption(
+            { yAxis: { min, max } } as any,
+            { notMerge: false, lazyUpdate: true }
+        );
+    } catch {
+        // ignore
+    }
+};
+
+const attachAutoYAxisListener = () => {
+    if (autoYAxisCleanup) {
+        autoYAxisCleanup();
+        autoYAxisCleanup = null;
+    }
+    if (autoYAxisTimer != null) {
+        window.clearTimeout(autoYAxisTimer);
+        autoYAxisTimer = null;
+    }
+    if (!chartInstance.value) return;
+    if (!props.autoYAxisOnZoom) return;
+
+    const handler = () => {
+        const delay = Math.max(0, Number(props.autoYAxisOnZoomDebounceMs ?? 120));
+        if (autoYAxisTimer != null) window.clearTimeout(autoYAxisTimer);
+        autoYAxisTimer = window.setTimeout(() => {
+            autoYAxisTimer = null;
+            applyAutoYAxisRange();
+        }, delay);
+    };
+
+    chartInstance.value.on('datazoom', handler);
+    autoYAxisCleanup = () => {
+        chartInstance.value?.off('datazoom', handler);
+        if (autoYAxisTimer != null) {
+            window.clearTimeout(autoYAxisTimer);
+            autoYAxisTimer = null;
+        }
     };
 };
 
@@ -335,6 +620,7 @@ const initChart = async () => {
     applyOption();
 
     attachRangeControlsListener();
+    attachAutoYAxisListener();
     emit('chart-ready', chartInstance.value);
 };
 
@@ -490,6 +776,16 @@ watch(
 );
 
 watch(
+    () => [props.autoYAxisOnZoom, props.autoYAxisOnZoomDebounceMs, props.autoYAxisOnZoomPaddingRatio, props.rangeControlsXAxisIndex],
+    () => {
+        if (chartInstance.value) {
+            attachAutoYAxisListener();
+        }
+    },
+    { deep: true }
+);
+
+watch(
     () => backgroundMode?.value,
     () => {
         if (chartInstance.value && props.option) {
@@ -529,6 +825,11 @@ onUnmounted(() => {
     if (rangeControlsCleanup) {
         rangeControlsCleanup();
         rangeControlsCleanup = null;
+    }
+
+    if (autoYAxisCleanup) {
+        autoYAxisCleanup();
+        autoYAxisCleanup = null;
     }
 
     disposeRangeControls();

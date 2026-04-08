@@ -22,6 +22,8 @@ export interface AlarmItem {
   time: string
   measurementPoints: MeasurementPoint[]
   latestPointNum?: number
+  // HTTP 数组顺序：越大越新（items[0] 最大）
+  latestOrderKey?: number
 }
 
 function makeHealthyPoint(i: number): MeasurementPoint {
@@ -76,6 +78,16 @@ function mapLevelToStatus(level: string | undefined): MeasurementPoint['status']
   if (v === 'ALARM') return 'alarm'
   if (v === 'WARNING' || v === 'WARN') return 'warning'
   return 'healthy'
+}
+
+function maxPointStatus(a: MeasurementPoint['status'], b: MeasurementPoint['status']): MeasurementPoint['status'] {
+  const order: Record<MeasurementPoint['status'], number> = {
+    alarm: 3,
+    warning: 2,
+    healthy: 1,
+    offline: 0
+  }
+  return (order[a] ?? 0) >= (order[b] ?? 0) ? a : b
 }
 
 type OverviewNormalized = {
@@ -256,7 +268,11 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     treePrefilled = true
   }
 
-  function upsertAlarmFromEvent(input: any, source: 'http' | 'ws' = 'ws') {
+  function upsertAlarmFromEvent(
+    input: any,
+    source: 'http' | 'ws' = 'ws',
+    opts?: { keepPrevAsLatest?: boolean; orderKey?: number }
+  ) {
     const evt = normalizeToOverviewEvent(input)
     if (!evt) return
 
@@ -278,11 +294,13 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     // HTTP 初始化返回的 items 不保证按时间倒序。
     // 如果后续遍历到的记录更旧，只“不覆盖卡片上的 time”，但仍需要合并测点状态，
     // 否则同一设备不同测点的告警会被整条忽略（你遇到的现象）。
+    const keepPrevAsLatest = Boolean(opts?.keepPrevAsLatest)
     const isOlderOrSameTime =
-      Number.isFinite(prevTs) &&
-      Number.isFinite(t) &&
-      t > 0 &&
-      t <= prevTs
+      keepPrevAsLatest ||
+      (Number.isFinite(prevTs) &&
+        Number.isFinite(t) &&
+        t > 0 &&
+        t <= prevTs)
 
     if ((source === 'ws' || source === 'http') && Number.isFinite(t) && t > 0) {
       const prevLogged = lastWsLoggedTsByDeviceId.get(deviceId) ?? 0
@@ -317,6 +335,22 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     const total = Math.max(BASE_TOTAL, prevPoints.length, pointNum ?? 0)
 
     const prevLatestPointNum = prev?.latestPointNum
+    const prevLatestOrderKey = prev?.latestOrderKey
+    const orderOrTime = (() => {
+      const ok = Number(opts?.orderKey)
+      return Number.isFinite(ok) && ok > 0 ? ok : (Number.isFinite(t) && t > 0 ? t : 0)
+    })()
+    const keepMax = (prevValue: unknown, nextValue: number): number => {
+      const prevNum = Number(prevValue ?? 0)
+      const prevOk = Number.isFinite(prevNum) && prevNum > 0 ? prevNum : 0
+      return nextValue > prevOk ? nextValue : prevOk
+    }
+    const shouldOverwritePoint = (prevValue: unknown, nextValue: number): boolean => {
+      const prevNum = Number(prevValue ?? 0)
+      const prevOk = Number.isFinite(prevNum) && prevNum > 0 ? prevNum : 0
+      // orderKey 越大越新：只有“更大”(更靠前) 才允许覆盖
+      return nextValue > prevOk
+    }
 
     const measurementPoints: MeasurementPoint[] = (() => {
       if (!prevPoints.length) {
@@ -331,13 +365,23 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
           const expanded = Array.from({ length: total }).map((_, i) => built[i] ?? makeHealthyPoint(i))
           return expanded.map((p, i) =>
             i === pointNum - 1
-              ? { ...p, name: pointName || p.name, status: derivedPointStatus, lastAlarmTime: Number.isFinite(t) && t > 0 ? t : p.lastAlarmTime }
+              ? {
+                ...p,
+                name: pointName || p.name,
+                status: maxPointStatus(p.status, derivedPointStatus),
+                lastAlarmTime: keepMax(p.lastAlarmTime, orderOrTime)
+              }
               : p
           )
         }
         return built.map((p, i) =>
           pointNum != null && i === pointNum - 1
-            ? { ...p, name: pointName || p.name, status: derivedPointStatus, lastAlarmTime: Number.isFinite(t) && t > 0 ? t : p.lastAlarmTime }
+            ? {
+              ...p,
+              name: pointName || p.name,
+              status: maxPointStatus(p.status, derivedPointStatus),
+              lastAlarmTime: keepMax(p.lastAlarmTime, orderOrTime)
+            }
             : p
         )
       }
@@ -349,10 +393,15 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
 
       if (pointNum != null && pointNum >= 1 && pointNum <= next.length) {
         const prevPoint = next[pointNum - 1]
+        const prevKey = prevPoint?.lastAlarmTime
+        const overwrite = shouldOverwritePoint(prevKey, orderOrTime)
         next[pointNum - 1] = {
-          name: pointName || prevPoint?.name || `测点${pointNum}`,
-          status: derivedPointStatus,
-          lastAlarmTime: Number.isFinite(t) && t > 0 ? t : prevPoint?.lastAlarmTime
+          // 严格按数组顺序：更旧的记录不允许覆盖更新的点位名称/排序键
+          name: overwrite ? (pointName || prevPoint?.name || `测点${pointNum}`) : (prevPoint?.name || pointName || `测点${pointNum}`),
+          // 不允许旧记录“降级”点位状态
+          status: maxPointStatus(prevPoint?.status ?? 'healthy', derivedPointStatus),
+          // 用 orderKey(或时间) 作为点位排序 key：只保留更“新”(更大) 的值
+          lastAlarmTime: keepMax(prevKey, orderOrTime)
         }
       }
 
@@ -363,6 +412,10 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       !isOlderOrSameTime && pointNum != null
         ? pointNum
         : prevLatestPointNum ?? (pointNum ?? undefined)
+    const latestOrderKey =
+      !isOlderOrSameTime && Number.isFinite(orderOrTime) && orderOrTime > 0
+        ? orderOrTime
+        : prevLatestOrderKey
 
     const deviceStatus: AlarmItem['status'] = isFaultAlarm ? 'alarm' : 'healthy'
     const statusText = deviceStatus === 'alarm' ? '报警' : '健康'
@@ -377,7 +430,8 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       // 旧告警也要合并测点，但卡片展示时间保持“最新”。
       time: isOlderOrSameTime && prev?.time ? prev.time : timeStr,
       measurementPoints,
-      latestPointNum
+      latestPointNum,
+      latestOrderKey
     }
 
     if (idx >= 0) alarms.value.splice(idx, 1, item)
@@ -393,6 +447,41 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
   async function initOverviewOnceByHttp(tId: string) {
     
     const items = await fetchVibrationAlarmsForOverview({ tenantId: tId, pageIndex: 0, pageSize: 5000 })
+
+    // 调试：输出 9/2/4 号点位第一次出现的数组顺序（idx）
+    try {
+      const preview = items.slice(0, 5000).map((it, idx) => {
+        const pointName = String((it as any)?.data?.pointName ?? (it as any)?.pointName ?? '')
+        const m = pointName.match(/(\d+)/)
+        const pointNum = m ? Number(m[1]) : NaN
+        return {
+          idx,
+          equipmentId: String((it as any)?.equipmentId ?? ''),
+          equipmentName: String((it as any)?.equipmentName ?? ''),
+          alarmTime: Number((it as any)?.alarmTime ?? 0),
+          pointName,
+          pointNum: Number.isFinite(pointNum) ? pointNum : null
+        }
+      })
+
+      const firstIdxByPointNum: Record<number, number | null> = { 9: null, 2: null, 4: null }
+      for (const row of preview) {
+        const pn = row.pointNum
+        if (pn == null) continue
+        if ((pn === 9 || pn === 2 || pn === 4) && firstIdxByPointNum[pn] == null) {
+          firstIdxByPointNum[pn] = row.idx
+        }
+        if (firstIdxByPointNum[9] != null && firstIdxByPointNum[2] != null && firstIdxByPointNum[4] != null) break
+      }
+
+      console.groupCollapsed('[AlarmOverview][HTTP] items preview (up to 5000)')
+      console.table(preview)
+      console.log('[AlarmOverview][HTTP] first idx by pointNum (9/2/4):', firstIdxByPointNum)
+      console.groupEnd()
+    } catch {
+      // ignore debug failures
+    }
+
     httpLatestAlarmTimeByDeviceId.clear()
     for (const it of items) {
       const deviceId = String((it as any).equipmentId ?? (it as any).deviceId ?? '')
@@ -403,7 +492,18 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       const prev = httpLatestAlarmTimeByDeviceId.get(deviceId) ?? 0
       if (ts > prev) httpLatestAlarmTimeByDeviceId.set(deviceId, ts)
     }
-    for (const it of items) upsertAlarmFromEvent(it, 'http')
+    // 约定：HTTP 接口返回 items 已按“最新在前”排序。
+    // 因此：同一设备第一次出现视为“最新”，后续只合并测点状态，不覆盖最新点位号/时间。
+    const seenLatestByDeviceId = new Set<string>()
+    for (let idx = 0; idx < items.length; idx++) {
+      const it = items[idx]
+      const deviceId = String((it as any).equipmentId ?? (it as any).deviceId ?? '')
+      const isOlder = deviceId ? seenLatestByDeviceId.has(deviceId) : false
+      // 用“数组顺序”生成一个可比较的排序键：越靠前越大（越新）
+      const orderKey = items.length - idx
+      upsertAlarmFromEvent(it, 'http', { keepPrevAsLatest: isOlder, orderKey })
+      if (deviceId) seenLatestByDeviceId.add(deviceId)
+    }
   }
 
   async function start(params?: { token?: string; tenantId?: string }) {

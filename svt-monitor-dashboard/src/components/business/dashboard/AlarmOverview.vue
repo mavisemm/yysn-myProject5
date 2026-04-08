@@ -146,6 +146,7 @@ interface AlarmItem {
     time: string;
     measurementPoints: MeasurementPoint[];
     latestPointNum?: number;
+    latestOrderKey?: number;
 }
 interface AlarmWsPayload {
     alarmId?: string
@@ -551,6 +552,17 @@ const filteredAlarms = computed(() => {
         const statusDiff = statusOrder[aStatus] - statusOrder[bStatus];
         if (statusDiff !== 0) return statusDiff;
 
+        // 关键：如果 store 提供了“HTTP 数组顺序 key”，优先按它排序（越大越新）
+        const aKey = Number(a.latestOrderKey ?? 0);
+        const bKey = Number(b.latestOrderKey ?? 0);
+        const aHasKey = Number.isFinite(aKey) && aKey > 0;
+        const bHasKey = Number.isFinite(bKey) && bKey > 0;
+        if (aHasKey || bHasKey) {
+            if (aHasKey && !bHasKey) return -1;
+            if (!aHasKey && bHasKey) return 1;
+            if (aHasKey && bHasKey && aKey !== bKey) return bKey - aKey;
+        }
+
         const timeA = a.time ? (parseAlarmTime(a.time, sortFallbackYear)?.getTime() ?? NaN) : NaN;
         const timeB = b.time ? (parseAlarmTime(b.time, sortFallbackYear)?.getTime() ?? NaN) : NaN;
 
@@ -690,6 +702,12 @@ function getDisplayPoints(points: MeasurementPoint[], latestPointNum?: number): 
     const withNum = list.map((p, i) => ({ point: p, pointNum: i + 1 }));
     const order = { alarm: 0, warning: 1, healthy: 2, offline: 3 };
     const sorted = withNum.sort((a, b) => {
+        // 约定：latestPointNum 对应“最新点位”，强制置顶（即使其它点位的 lastAlarmTime 更大）
+        if (latestPointNum != null) {
+            const aIsLatest = a.pointNum === latestPointNum;
+            const bIsLatest = b.pointNum === latestPointNum;
+            if (aIsLatest !== bIsLatest) return aIsLatest ? -1 : 1;
+        }
         const aTime = a.point.lastAlarmTime ?? 0;
         const bTime = b.point.lastAlarmTime ?? 0;
         if (aTime !== bTime) return bTime - aTime; // 最近的时间排前面

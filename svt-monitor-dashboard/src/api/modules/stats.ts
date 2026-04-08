@@ -45,7 +45,26 @@ export interface TrendWarningDeviceItem {
   workshopName: string
 }
 
-export const getTrendWarningDeviceList = (): Promise<{ rc: number; ret: TrendWarningDeviceItem[]; err: string | null }> => {
+export interface DeviceWaringDetailItem {
+  equipmentId: string
+  equipmentName: string
+  receiverId: string
+  pointName: string
+  warningSource?: string
+  eventTypeCode?: string
+  eventTypeName?: string
+  metricLabel?: string
+  metricValue?: number
+  triggerValue?: number
+  alarmTime?: number
+}
+
+export interface DeviceWaringDetailRet {
+  sound: DeviceWaringDetailItem[]
+  vibration: DeviceWaringDetailItem[]
+}
+
+export const getDeviceWaringDetail = (): Promise<{ rc: number; ret: DeviceWaringDetailRet; err: string | null }> => {
   const tenantId = getTenantId()
   return request.get('/taicang/hardware/device/overview/device/waring/detail', {
     params: { userId: '', tenantId, _t: Date.now() },

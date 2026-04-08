@@ -8,7 +8,8 @@
                 <div class="chart-container">
                     <CommonEcharts ref="energyChartRef" :option="energyOption" linkage-group="sound-point-charts"
                         :enable-linkage-zoom="true" :enable-wheel-zoom="true" :tooltip-follow-mouse="true"
-                        :not-merge="true" :enable-data-zoom="false" @chart-ready="onEnergyChartReady" />
+                        :not-merge="true" :enable-data-zoom="false" :auto-y-axis-on-zoom="true"
+                        @chart-ready="onEnergyChartReady" />
                 </div>
             </div>
             <div class="chart-item">
@@ -18,7 +19,8 @@
                 <div class="chart-container">
                     <CommonEcharts ref="densityChartRef" :option="densityOption" linkage-group="sound-point-charts"
                         :enable-linkage-zoom="true" :enable-wheel-zoom="true" :tooltip-follow-mouse="true"
-                        :not-merge="true" :enable-data-zoom="false" @chart-ready="onDensityChartReady" />
+                        :not-merge="true" :enable-data-zoom="false" :auto-y-axis-on-zoom="true"
+                        @chart-ready="onDensityChartReady" />
                 </div>
             </div>
         </div>

@@ -73,7 +73,8 @@
       @closed="resetNotModal">
       <div class="modalBlock">
         <div class="modalLabel">选择误报类型</div>
-        <el-select v-model="notType" placeholder="请选择" style="width: 100%" size="small">
+        <el-select v-model="notType" placeholder="请选择" style="width: 100%" size="small" class="notTypeSelect"
+          popper-class="notTypeSelectPopper">
           <el-option v-for="it in notTypeList" :key="it.key" :label="it.text" :value="it.key" />
         </el-select>
       </div>
@@ -91,8 +92,8 @@
       @open="onYesModalOpen" @closed="resetYesModal">
       <div class="modalBlock">
         <el-select v-model="yesExceptionId" placeholder="历史异常库" style="width: 100%" size="small" class="historySelect"
-          popper-class="historySelectPopper">
-          <el-option label="重置" value="" />
+          popper-class="historySelectPopper" @change="onYesExceptionChange">
+          <el-option label="重置" :value="YES_RESET_VALUE" />
           <el-option v-for="it in abnormalList" :key="it.id" :label="it.name" :value="it.id" />
         </el-select>
       </div>
@@ -226,6 +227,13 @@ const yesVisible = ref(false)
 const abnormalList = ref<Array<{ id: string; name: string }>>([])
 const yesExceptionId = ref<string | undefined>(undefined)
 const yesNewName = ref('')
+
+const YES_RESET_VALUE = '__RESET__'
+const onYesExceptionChange = (v: any) => {
+  if (v === YES_RESET_VALUE) {
+    yesExceptionId.value = undefined
+  }
+}
 
 const aiModalVisible = ref(false)
 const aiLoading = ref(false)
@@ -1008,8 +1016,39 @@ onBeforeUnmount(() => {
   font-size: 12px !important;
 }
 
+.notTypeSelect :deep(.el-input__inner) {
+  font-size: 12px !important;
+}
+
 :deep(.historySelectPopper .el-select-dropdown__item),
 :deep(.historySelectPopper .el-select-dropdown__item span) {
   font-size: 12px !important;
+}
+
+:deep(.historySelectPopper .el-select-dropdown__item) {
+  height: 28px;
+  line-height: 28px;
+}
+</style>
+
+<style lang="scss">
+.historySelectPopper .el-select-dropdown__item,
+.historySelectPopper .el-select-dropdown__item span {
+  font-size: 12px !important;
+}
+
+.historySelectPopper .el-select-dropdown__item {
+  height: 28px;
+  line-height: 28px;
+}
+
+.notTypeSelectPopper .el-select-dropdown__item,
+.notTypeSelectPopper .el-select-dropdown__item span {
+  font-size: 12px !important;
+}
+
+.notTypeSelectPopper .el-select-dropdown__item {
+  height: 28px;
+  line-height: 28px;
 }
 </style>

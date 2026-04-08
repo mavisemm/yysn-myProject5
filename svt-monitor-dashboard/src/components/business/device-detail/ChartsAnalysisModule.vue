@@ -9,7 +9,7 @@
                 <div class="chart">
                     <CommonEcharts :option="vibOption" :enable-data-zoom="false" :not-merge="true"
                         :tooltip-follow-mouse="true" linkage-group="device-detail-charts" :enable-linkage-zoom="true"
-                        :enable-wheel-zoom="true" />
+                        :enable-wheel-zoom="true" :auto-y-axis-on-zoom="true" />
                 </div>
             </div>
 
@@ -21,7 +21,7 @@
                 <div class="chart">
                     <CommonEcharts :option="soundOption" :enable-data-zoom="false" :not-merge="true"
                         :tooltip-follow-mouse="true" linkage-group="device-detail-charts" :enable-linkage-zoom="true"
-                        :enable-wheel-zoom="true" />
+                        :enable-wheel-zoom="true" :auto-y-axis-on-zoom="true" />
                 </div>
             </div>
 
@@ -38,7 +38,7 @@
                 <div class="chart">
                     <CommonEcharts :option="tempOption" :enable-data-zoom="false" :not-merge="true"
                         :tooltip-follow-mouse="true" linkage-group="device-detail-charts" :enable-linkage-zoom="true"
-                        :enable-wheel-zoom="true" />
+                        :enable-wheel-zoom="true" :auto-y-axis-on-zoom="true" />
                 </div>
             </div>
         </div>
