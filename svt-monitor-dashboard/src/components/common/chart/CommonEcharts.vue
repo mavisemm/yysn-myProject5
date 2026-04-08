@@ -129,6 +129,8 @@ const chartInstance = shallowRef<echarts.ECharts | null>(null);
 const fullscreenVisible = ref(false);
 const fullscreenChartRef = ref<HTMLElement>();
 const fullscreenChartInstance = shallowRef<echarts.ECharts | null>(null);
+let fullscreenAutoYAxisCleanup: (() => void) | null = null;
+let fullscreenAutoYAxisTimer: number | null = null;
 let wheelZoomCleanup: (() => void) | null = null;
 let rangeControlsCleanup: (() => void) | null = null;
 let autoYAxisCleanup: (() => void) | null = null;
@@ -462,6 +464,77 @@ const attachAutoYAxisListener = () => {
         if (autoYAxisTimer != null) {
             window.clearTimeout(autoYAxisTimer);
             autoYAxisTimer = null;
+        }
+    };
+};
+
+const applyAutoYAxisRangeFor = (inst: echarts.ECharts) => {
+    if (!props.autoYAxisOnZoom) return;
+    if (!props.option) return;
+
+    const opt = inst.getOption?.() as any;
+    const xAxisIndex = (props.rangeControlsXAxisIndex ?? 0) as number;
+    const xType = getXAxisType(opt, xAxisIndex);
+
+    let y: { min: number; max: number } | null = null;
+    if (xType === 'value' || xType === 'time' || xType === 'log') {
+        const xRange = parseDataZoomValueRange(opt, xAxisIndex);
+        if (!xRange) return;
+        y = computeVisibleYRangeByXValue(opt, xRange);
+    } else {
+        const range = parseDataZoomRange(opt, xAxisIndex);
+        if (!range) return;
+        y = computeVisibleYRangeByIndex(opt, range);
+    }
+    if (!y) return;
+
+    const paddingRatio = Math.max(0, Number(props.autoYAxisOnZoomPaddingRatio ?? 0.05));
+    const span = y.max - y.min;
+    const padding = span === 0 ? (Math.abs(y.max) || 1) * paddingRatio : span * paddingRatio;
+    let min = y.min - padding;
+    let max = y.max + padding;
+    if (min === max) {
+        max = min + 1;
+    }
+
+    try {
+        inst.setOption(
+            { yAxis: { min, max } } as any,
+            { notMerge: false, lazyUpdate: true }
+        );
+    } catch {
+        // ignore
+    }
+};
+
+const attachAutoYAxisListenerForFullscreen = () => {
+    if (fullscreenAutoYAxisCleanup) {
+        fullscreenAutoYAxisCleanup();
+        fullscreenAutoYAxisCleanup = null;
+    }
+    if (fullscreenAutoYAxisTimer != null) {
+        window.clearTimeout(fullscreenAutoYAxisTimer);
+        fullscreenAutoYAxisTimer = null;
+    }
+    if (!fullscreenChartInstance.value) return;
+    if (!props.autoYAxisOnZoom) return;
+
+    const inst = fullscreenChartInstance.value;
+    const handler = () => {
+        const delay = Math.max(0, Number(props.autoYAxisOnZoomDebounceMs ?? 120));
+        if (fullscreenAutoYAxisTimer != null) window.clearTimeout(fullscreenAutoYAxisTimer);
+        fullscreenAutoYAxisTimer = window.setTimeout(() => {
+            fullscreenAutoYAxisTimer = null;
+            applyAutoYAxisRangeFor(inst);
+        }, delay);
+    };
+
+    inst.on('datazoom', handler);
+    fullscreenAutoYAxisCleanup = () => {
+        try { inst.off('datazoom', handler); } catch { }
+        if (fullscreenAutoYAxisTimer != null) {
+            window.clearTimeout(fullscreenAutoYAxisTimer);
+            fullscreenAutoYAxisTimer = null;
         }
     };
 };
@@ -864,12 +937,21 @@ const handleFullscreenOpened = async () => {
     try {
         fullscreenChartInstance.value = echarts.init(fullscreenChartRef.value);
         applyFullscreenOption();
+        attachAutoYAxisListenerForFullscreen();
         fullscreenChartInstance.value.resize();
     } catch {
         // ignore
     }
 };
 const handleFullscreenClosed = () => {
+    if (fullscreenAutoYAxisCleanup) {
+        fullscreenAutoYAxisCleanup();
+        fullscreenAutoYAxisCleanup = null;
+    }
+    if (fullscreenAutoYAxisTimer != null) {
+        window.clearTimeout(fullscreenAutoYAxisTimer);
+        fullscreenAutoYAxisTimer = null;
+    }
     if (fullscreenChartInstance.value) {
         try { fullscreenChartInstance.value.dispose(); } catch { }
         fullscreenChartInstance.value = null;
@@ -885,6 +967,14 @@ onUnmounted(() => {
     if (fullscreenChartInstance.value) {
         try { fullscreenChartInstance.value.dispose(); } catch { }
         fullscreenChartInstance.value = null;
+    }
+    if (fullscreenAutoYAxisCleanup) {
+        fullscreenAutoYAxisCleanup();
+        fullscreenAutoYAxisCleanup = null;
+    }
+    if (fullscreenAutoYAxisTimer != null) {
+        window.clearTimeout(fullscreenAutoYAxisTimer);
+        fullscreenAutoYAxisTimer = null;
     }
 
     if (linkageZoomCleanup) {

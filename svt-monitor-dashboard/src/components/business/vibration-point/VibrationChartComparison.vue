@@ -3,7 +3,8 @@
         <div class="card-item freq-card">
             <div class="card-header">
                 <div class="card-title app-section-title">振动频域图</div>
-                <el-button class="freq-fullscreen-btn" text circle :icon="FullScreen" @click="openFreqFullscreen" />
+                <el-button class="freq-fullscreen-btn" text circle size="large" :icon="FullScreen" title="全屏查看"
+                    @click="openFreqFullscreen" />
             </div>
             <div class="chart-container">
                 <CommonEcharts ref="freqChartRef" :option="freqOption" :enable-data-zoom="false" :not-merge="true"
@@ -14,9 +15,12 @@
         <div class="card-item time-card">
             <div class="card-header">
                 <div class="card-title app-section-title">振动时域图</div>
+                <el-button class="time-fullscreen-btn" text circle size="large" :icon="FullScreen" title="全屏查看"
+                    @click="openTimeFullscreen" />
             </div>
             <div class="chart-container">
-                <CommonEcharts :option="timeOption" :enable-data-zoom="false" :not-merge="true" />
+                <CommonEcharts ref="timeChartRef" :option="timeOption" :enable-data-zoom="false" :not-merge="true"
+                    enable-fullscreen fullscreen-title="振动时域图" fullscreen-background="#142060" />
             </div>
         </div>
     </div>
@@ -62,11 +66,15 @@ const chartAxisColor = computed(() => '#fff');
 const chartSplitLineColor = computed(() => 'rgba(255,255,255,0.1)');
 
 const freqChartRef = ref<InstanceType<typeof CommonEcharts>>();
+const timeChartRef = ref<InstanceType<typeof CommonEcharts>>();
 const freqChartInstance = shallowRef<echarts.ECharts | null>(null);
 let freqChartCleanup: (() => void) | null = null;
 
 const openFreqFullscreen = () => {
     (freqChartRef.value as any)?.openFullscreen?.();
+};
+const openTimeFullscreen = () => {
+    (timeChartRef.value as any)?.openFullscreen?.();
 };
 
 const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({ frequency: [], freqSpeedData: [] });
@@ -551,18 +559,31 @@ onUnmounted(() => {
         :deep(.freq-fullscreen-btn) {
             color: #fff !important;
         }
+
+        :deep(.time-fullscreen-btn) {
+            color: #fff !important;
+        }
+
         :deep(.freq-fullscreen-btn:hover),
         :deep(.freq-fullscreen-btn:focus),
-        :deep(.freq-fullscreen-btn:active) {
+        :deep(.freq-fullscreen-btn:active),
+        :deep(.time-fullscreen-btn:hover),
+        :deep(.time-fullscreen-btn:focus),
+        :deep(.time-fullscreen-btn:active) {
             background-color: transparent !important;
             border-color: transparent !important;
             box-shadow: none !important;
         }
+
         :deep(.freq-fullscreen-btn .el-icon) {
             color: #fff !important;
         }
 
-        
+        :deep(.time-fullscreen-btn .el-icon) {
+            color: #fff !important;
+        }
+
+
     }
 
     .chart-container {
@@ -579,16 +600,20 @@ onUnmounted(() => {
 :global(.freq-fullscreen-modal .el-dialog) {
     background: #142060 !important;
 }
+
 :global(.freq-fullscreen-modal .el-dialog__header) {
     background: #142060 !important;
     margin-right: 0;
 }
+
 :global(.freq-fullscreen-modal .el-dialog__title) {
     color: rgba(255, 255, 255, 0.92) !important;
 }
+
 :global(.freq-fullscreen-modal .el-dialog__body) {
     background: #142060 !important;
 }
+
 :global(.freq-fullscreen-modal .el-dialog__headerbtn .el-dialog__close) {
     color: rgba(255, 255, 255, 0.92) !important;
 }
