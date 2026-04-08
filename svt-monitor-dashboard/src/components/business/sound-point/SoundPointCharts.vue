@@ -81,6 +81,13 @@ const densityChartRef = ref<InstanceType<typeof CommonEcharts>>();
 const chartAxisColor = computed(() => '#fff');
 const chartSplitLineColor = computed(() => 'rgba(150,150,150, 0.2)');
 
+// y 轴刻度最多保留小数点后两位（并去掉无意义的尾随 0）
+const formatYAxisTick = (v: unknown) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '';
+    return String(Number(n.toFixed(2)));
+};
+
 const selectedItemsWithColor = computed(() => {
     const selected = props.deviationList.filter(item => item.visible);
     return selected.map((item, index) => ({
@@ -135,7 +142,7 @@ const commonOptionBase = computed(() => {
                 color: c
             }
         },
-        grid: { left: 30, right: 20, top: 40, bottom: 50 },
+        grid: { left: 30, right: 30, top: 40, bottom: 50, containLabel: true },
         legend: { show: false },
         dataZoom: [
             { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
@@ -154,7 +161,14 @@ const commonOptionBase = computed(() => {
             data: freqs,
             boundaryGap: false,
             axisLine: { lineStyle: { color: c } },
-            axisLabel: { color: c }
+            axisLabel: {
+                color: c,
+                fontSize: 12,
+                margin: 8,
+                showMaxLabel: true,
+                hideOverlap: true
+            },
+            axisTick: { alignWithLabel: true }
         }
     };
 });
@@ -193,7 +207,7 @@ const energyOption = computed<EChartsOption>(() => {
         yAxis: {
             type: 'value',
             axisLine: { lineStyle: { color: c } },
-            axisLabel: { color: c },
+            axisLabel: { color: c, formatter: formatYAxisTick },
             nameTextStyle: { color: c },
             splitLine: { lineStyle: { color: s } }
         },
@@ -220,7 +234,7 @@ const densityOption = computed<EChartsOption>(() => {
         yAxis: {
             type: 'value',
             axisLine: { lineStyle: { color: c } },
-            axisLabel: { color: c },
+            axisLabel: { color: c, formatter: formatYAxisTick },
             nameTextStyle: { color: c },
             splitLine: { lineStyle: { color: s } }
         },

@@ -93,6 +93,13 @@ const colors = [
   '#fb7293', '#e7bcf3', '#ffdb5c', '#9fe6b8', '#ff9e7d'
 ];
 
+// y 轴刻度最多保留小数点后两位（并去掉无意义的尾随 0）
+const formatYAxisTick = (v: unknown) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '';
+  return String(Number(n.toFixed(2)));
+};
+
 interface DeviationListItem {
   id: string;
   time: string;
@@ -363,7 +370,7 @@ const viewDetails = async (row: any) => {
 
     voiceVisible.value = true;
     nextTick(() => {
-      const baseGrid = { left: 40, right: 20, top: 30, bottom: 50 };
+      const baseGrid = { left: 40, right: 30, top: 30, bottom: 50, containLabel: true };
       const dataZoom = [
         { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
         { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' }
@@ -404,8 +411,13 @@ const viewDetails = async (row: any) => {
           axisPointer: { link: [{ xAxisIndex: 'all' }] },
           grid: baseGrid,
           legend: { show: false },
-          xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],
-          yAxis: [{ type: 'value', name: '能量' }],
+          xAxis: [{
+            type: 'category',
+            data: XARR,
+            boundaryGap: false,
+            axisLabel: { fontSize: 12, margin: 8, showMaxLabel: true, hideOverlap: true }
+          }],
+          yAxis: [{ type: 'value', name: '能量', axisLabel: { formatter: formatYAxisTick } }],
           dataZoom: [...dataZoom],
           series: [
             { name: '能量', type: 'line', data: nowdbArr, symbolSize: 1 },
@@ -433,8 +445,13 @@ const viewDetails = async (row: any) => {
           axisPointer: { link: [{ xAxisIndex: 'all' }] },
           grid: baseGrid,
           legend: { show: false },
-          xAxis: [{ type: 'category', data: XARR, boundaryGap: false }],
-          yAxis: [{ type: 'value', name: '密度' }],
+          xAxis: [{
+            type: 'category',
+            data: XARR,
+            boundaryGap: false,
+            axisLabel: { fontSize: 10, margin: 8, showMaxLabel: true, hideOverlap: true }
+          }],
+          yAxis: [{ type: 'value', name: '密度', axisLabel: { formatter: formatYAxisTick } }],
           dataZoom: [...dataZoom],
           series: [
             { name: '密度', type: 'line', data: nowdensityArr, symbolSize: 1 },

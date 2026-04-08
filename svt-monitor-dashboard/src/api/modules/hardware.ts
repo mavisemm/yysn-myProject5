@@ -361,6 +361,21 @@ export const getTemperatureTrend = (params: {
   })
 }
 
+export interface TemperatureRealTimeResponse {
+  rc: number;
+  ret: number | { temperature?: number } | null;
+  err: string | null;
+}
+
+export const getTemperatureRealTime = (params: {
+  receiverId: string;
+}): Promise<TemperatureRealTimeResponse> => {
+  return request.get('/taicang/hardware/device/info/vibration/temperature/realtime', {
+    params,
+    showLoading: false
+  })
+}
+
 export interface VibrationTrendItem {
   time: string;
   sumRms: number;

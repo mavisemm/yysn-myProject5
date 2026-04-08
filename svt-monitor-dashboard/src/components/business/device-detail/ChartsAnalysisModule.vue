@@ -29,9 +29,9 @@
                 <div class="chart-header">
                     <span class="chart-title">温度随时间变化</span>
                     <div class="chart-header-right">
-                        <!-- <span class="realtime-temp-inline">
+                        <span class="realtime-temp-inline">
                             实时温度：<span class="special-font-color">{{ realtimeTempValueText }}</span>
-                        </span> -->
+                        </span>
                         <span class="chart-unit special-font-color">（单位：℃）</span>
                     </div>
                 </div>
@@ -48,7 +48,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import type { Ref } from 'vue'
-import { getTemperatureTrend, getVibrationTrend, getSoundTrend } from '@/api/modules/hardware'
+import { getTemperatureRealTime, getTemperatureTrend, getVibrationTrend, getSoundTrend } from '@/api/modules/hardware'
 import { CommonEcharts } from '@/components/common/chart'
 import type { EChartsOption } from 'echarts'
 
@@ -84,27 +84,16 @@ const tempChartData = ref<ChartDataPoint | null>(null)
 const vibChartData = ref<ChartDataPoint | null>(null)
 const soundChartData = ref<ChartDataPoint | null>(null)
 
-
-const realtimeTempMockValue = ref<number>(33)
-
-function mockTemperatureByReceiverId(receiverId: string): number {
-
-    let hash = 0
-    for (let i = 0; i < receiverId.length; i++) {
-        hash = (hash * 31 + receiverId.charCodeAt(i)) >>> 0
-    }
-
-    const base = 25
-    const span = 20
-    const tenth = hash % (span * 10 + 1)
-    return base + tenth / 10
-}
+const realtimeTempValue = ref<number | null>(null)
+const realtimeTempReqSeq = ref(0)
+const lastRealtimeReceiverId = ref<string>('')
 
 const realtimeTempValueText = computed(() => {
-    const num = Number(realtimeTempMockValue.value)
+    if (realtimeTempValue.value == null) return '—'
+    const num = Number(realtimeTempValue.value)
     if (Number.isNaN(num)) return '—'
-    const shown = Number.isInteger(num) ? String(num) : num.toFixed(1)
-    return `${shown}℃`
+    // 直接使用接口返回值，不再对小数点后位数做截断/四舍五入
+    return String(num)
 })
 
 
@@ -115,6 +104,32 @@ const VIB_COLOR = '#1890ff'
 const SOUND_COLOR = '#fadb14'
 
 const HOURS_24 = Array.from({ length: 24 }, (_, i) => `${i}`)
+
+const activeReceiverId = computed(() => props.selectedPointId || props.pointList?.[0]?.id || '')
+
+const loadTemperatureRealTime = async (receiverId: string) => {
+    if (!receiverId) {
+        realtimeTempValue.value = null
+        return
+    }
+
+    const seq = ++realtimeTempReqSeq.value
+    try {
+        const res = await getTemperatureRealTime({ receiverId })
+        if (seq !== realtimeTempReqSeq.value) return
+
+        if (res?.rc === 0) {
+            const raw: any = res.ret
+            const value = typeof raw === 'number' ? raw : Number(raw?.temperature)
+            realtimeTempValue.value = Number.isFinite(value) ? value : null
+        } else {
+            realtimeTempValue.value = null
+        }
+    } catch (e) {
+        if (seq !== realtimeTempReqSeq.value) return
+        realtimeTempValue.value = null
+    }
+}
 
 const tempOption = computed<EChartsOption>(() => {
     const c = chartAxisColor.value
@@ -483,13 +498,14 @@ watch(
 
 
 watch(
-    [() => props.selectedPointId, () => props.pointList],
-    ([selId, list]) => {
-        const receiverId = selId || list?.[0]?.id || ''
+    () => activeReceiverId.value,
+    (receiverId) => {
         if (!receiverId) return
-        realtimeTempMockValue.value = mockTemperatureByReceiverId(receiverId)
+        if (receiverId === lastRealtimeReceiverId.value) return
+        lastRealtimeReceiverId.value = receiverId
+        loadTemperatureRealTime(receiverId)
     },
-    { immediate: true, deep: true }
+    { immediate: true }
 )
 
 
