@@ -14,13 +14,13 @@
                 <el-table-column prop="id" label="点位编号" width="30%" />
                 <el-table-column prop="name" label="点位名称" width="25%" />
                 <el-table-column label="声音偏差值阈值" width="25%">
-                    <template #default>
-                        -
+                    <template #default="{ row }">
+                        {{ row.matchMesureValue ?? '-' }}
                     </template>
                 </el-table-column>
                 <el-table-column label="振动阈值" width="20%">
-                    <template #default>
-                        -
+                    <template #default="{ row }">
+                        {{ row.thresholdValue ?? '-' }}
                     </template>
                 </el-table-column>
             </el-table>
@@ -40,6 +40,8 @@ interface PointInfo {
     lastAlarmTime: string
     alarmType: string
     alarmValue: string
+    matchMesureValue?: string | number
+    thresholdValue?: string | number
     hasAlarm: boolean
 }
 

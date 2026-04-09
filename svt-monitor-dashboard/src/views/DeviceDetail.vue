@@ -49,6 +49,8 @@ interface PointInfo {
   lastAlarmTime: string,
   alarmType: string,
   alarmValue: string,
+  matchMesureValue?: string | number,
+  thresholdValue?: string | number,
   deviceId?: string,
   hasAlarm: boolean
 }
@@ -112,6 +114,8 @@ const initDeviceData = async () => {
       lastAlarmTime: item.warningTime != null && item.warningTime !== '' ? item.warningTime : '无',
       alarmType: typeStrToDisplay(item.warningType),
       alarmValue: item.warningValue != null && Number(item.warningValue) !== 0 ? String(item.warningValue) : '无',
+      matchMesureValue: (item as any).matchMesureValue,
+      thresholdValue: (item as any).thresholdValue,
       deviceId: (item as any).deviceId ?? resolvePointDeviceId(item.receiverId),
       hasAlarm: item.isAlarm === 0
     }))
