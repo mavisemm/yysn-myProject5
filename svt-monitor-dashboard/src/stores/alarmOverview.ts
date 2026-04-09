@@ -97,6 +97,7 @@ type OverviewNormalized = {
   time: number
   alarmTypeCode?: string
   statusCode?: string
+  receiverId?: string
   point: {
     channelNo?: string | number
     level?: string
@@ -104,14 +105,47 @@ type OverviewNormalized = {
   }
 }
 
+type DeviceResolvedByPoint = {
+  deviceId: string
+  deviceName?: string
+  shopName?: string
+}
+
+function statusRank(status: MeasurementPoint['status']): number {
+  const order: Record<MeasurementPoint['status'], number> = {
+    alarm: 3,
+    warning: 2,
+    healthy: 1,
+    offline: 0
+  }
+  return order[status] ?? 0
+}
+
+function parsePointStatus(level: string | undefined): MeasurementPoint['status'] | null {
+  const v = String(level ?? '').toUpperCase()
+  if (v === 'ALARM') return 'alarm'
+  if (v === 'WARNING' || v === 'WARN') return 'warning'
+  return null
+}
+
+function derivePointStatus(alarmTypeCode: string | undefined, level: string | undefined): MeasurementPoint['status'] {
+  const byLevel = parsePointStatus(level)
+  if (byLevel) return byLevel
+  const code = String(alarmTypeCode ?? '').toUpperCase()
+  if (!code) return 'healthy'
+  if (code === 'MACHINE_VIBRATION') return 'alarm'
+  return 'warning'
+}
+
 function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
   if (isAlarmWsPayload(input)) {
-    const deviceId = String(input.equipmentId ?? input.deviceId ?? '')
-    const t = Number(input.alarmTime ?? 0)
-    if (!deviceId || !Number.isFinite(t) || t <= 0) return null
-
-    
+    const parsedFromData = safeParseJson((input as any).dataJson)
     const parsedFromRaw = safeParseJson((input as any).rawDataJson)
+    const deviceId = String(input.equipmentId ?? input.deviceId ?? '')
+    const receiverIdRaw = (input as any).receiverId ?? parsedFromData?.receiverId ?? parsedFromRaw?.receiverId
+    const t = Number(input.alarmTime ?? input.time ?? 0)
+    if ((!deviceId && !receiverIdRaw) || !Number.isFinite(t) || t <= 0) return null
+
     return {
       deviceId,
       deviceName: input.equipmentName ? String(input.equipmentName) : undefined,
@@ -119,10 +153,15 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
       time: t,
       alarmTypeCode: input.alarmTypeCode ? String(input.alarmTypeCode) : undefined,
       statusCode: input.statusCode ? String(input.statusCode) : undefined,
+      receiverId: receiverIdRaw ? String(receiverIdRaw) : undefined,
       point: {
-        channelNo: input.data?.channelNo ?? parsedFromRaw?.channelNo,
-        level: (input.data?.level ?? parsedFromRaw?.level) ? String(input.data?.level ?? parsedFromRaw?.level) : undefined,
-        pointName: (input.data?.pointName ?? parsedFromRaw?.pointName) ? String(input.data?.pointName ?? parsedFromRaw?.pointName) : undefined
+        channelNo: input.data?.channelNo ?? parsedFromData?.channelNo ?? parsedFromRaw?.channelNo,
+        level: (input.data?.level ?? parsedFromData?.level ?? parsedFromRaw?.level)
+          ? String(input.data?.level ?? parsedFromData?.level ?? parsedFromRaw?.level)
+          : undefined,
+        pointName: (input.data?.pointName ?? parsedFromData?.pointName ?? parsedFromRaw?.pointName)
+          ? String(input.data?.pointName ?? parsedFromData?.pointName ?? parsedFromRaw?.pointName)
+          : undefined
       }
     }
   }
@@ -140,6 +179,7 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
     time: t,
     alarmTypeCode: evt.eventTypeCode ? String(evt.eventTypeCode) : undefined,
     statusCode: evt.statusCode ? String(evt.statusCode) : undefined,
+    receiverId: parsed?.receiverId ? String(parsed.receiverId) : undefined,
     shopName: parsed?.shopName ? String(parsed.shopName) : undefined,
     point: {
       channelNo: parsed?.channelNo,
@@ -222,6 +262,75 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     return result
   }
 
+  function resolveDeviceByPoint(receiverId?: string, pointName?: string): DeviceResolvedByPoint | null {
+    const rid = String(receiverId ?? '').trim()
+    const pName = String(pointName ?? '').trim()
+    if (!rid && !pName) return null
+    const candidates: DeviceResolvedByPoint[] = []
+    const stack: Array<{ node: DeviceNode; parent?: DeviceNode; workshopName?: string }> = []
+    for (const n of useDeviceTreeStore().deviceTreeData ?? []) {
+      stack.push({ node: n, parent: undefined, workshopName: '' })
+    }
+
+    while (stack.length) {
+      const cur = stack.pop()
+      if (!cur) continue
+      const node = cur.node
+      const workshopName = node.type === 'workshop' ? node.name : (cur.workshopName ?? '')
+
+      if (node.type === 'point') {
+        const nodeReceiverId = String(node.receiverId ?? node.id ?? '').trim()
+        const nodePointName = String(node.pointName ?? node.name ?? '').trim()
+        const hitByReceiver = !!rid && nodeReceiverId === rid
+        const hitByPointName = !!pName && nodePointName === pName
+        if (hitByReceiver || hitByPointName) {
+          const parentDevice = cur.parent && cur.parent.type === 'device' ? cur.parent : undefined
+          if (parentDevice) {
+            const deviceId = String(parentDevice.equipmentId ?? parentDevice.id ?? '').trim()
+            if (deviceId) {
+              candidates.push({
+                deviceId,
+                deviceName: String(parentDevice.equipmentName ?? parentDevice.name ?? deviceId),
+                shopName: String(parentDevice.workshopName ?? workshopName ?? '')
+              })
+            }
+          }
+        }
+      }
+
+      for (const child of node.children ?? []) {
+        stack.push({ node: child, parent: node, workshopName })
+      }
+    }
+
+    if (!candidates.length) return null
+    if (rid) {
+      const exact = candidates[0]
+      if (exact) return exact
+    }
+    return candidates.length === 1 ? (candidates[0] ?? null) : null
+  }
+
+  function pickLeadingPoint(points: MeasurementPoint[]): { status: MeasurementPoint['status']; timeKey: number; pointNum?: number } {
+    let bestStatus: MeasurementPoint['status'] = 'healthy'
+    let bestTime = 0
+    let bestPointNum: number | undefined = undefined
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i]
+      if (!p) continue
+      const t = Number(p.lastAlarmTime ?? 0)
+      const r = statusRank(p.status)
+      const br = statusRank(bestStatus)
+      const pointNum = i + 1
+      if (r > br || (r === br && t > bestTime) || (r === br && t === bestTime && bestPointNum == null)) {
+        bestStatus = p.status
+        bestTime = Number.isFinite(t) && t > 0 ? t : 0
+        bestPointNum = pointNum
+      }
+    }
+    return { status: bestStatus, timeKey: bestTime, pointNum: bestPointNum }
+  }
+
   function buildHealthyAlarmFromDevice(deviceNode: DeviceNode): AlarmItem {
     const deviceId = String(deviceNode.equipmentId ?? deviceNode.id ?? '')
     const deviceName = String(deviceNode.equipmentName ?? deviceNode.name ?? deviceId)
@@ -280,11 +389,30 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     
 
     const isFaultAlarm = String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
-    const deviceId = evt.deviceId
+    const resolvedByPoint = resolveDeviceByPoint(evt.receiverId, evt.point.pointName)
+    const rawDeviceId = String(evt.deviceId ?? '').trim()
+    const resolvedDeviceId = String(resolvedByPoint?.deviceId ?? '').trim()
+    // 声音等点位级事件可能携带的是“测点/子对象ID”而非设备ID。
+    // 只要带 receiverId 且能反查到父设备，就优先用父设备ID做卡片合并键，避免拆成新卡片。
+    const useResolvedDeviceId =
+      !!resolvedDeviceId &&
+      (!rawDeviceId || (!!evt.receiverId && rawDeviceId !== resolvedDeviceId))
+    const deviceId = useResolvedDeviceId
+      ? resolvedDeviceId
+      : (rawDeviceId || resolvedDeviceId)
+    if (!deviceId) return
     const idx = alarms.value.findIndex((a) => a.id === deviceId)
 
-    const deviceName = evt.deviceName ? String(evt.deviceName) : deviceId
-    const shopName = evt.shopName ? String(evt.shopName) : ''
+    const deviceName = useResolvedDeviceId
+      ? String(resolvedByPoint?.deviceName ?? deviceId)
+      : (evt.deviceName
+          ? String(evt.deviceName)
+          : (resolvedByPoint?.deviceName ? String(resolvedByPoint.deviceName) : deviceId))
+    const shopName = useResolvedDeviceId
+      ? String(resolvedByPoint?.shopName ?? '')
+      : (evt.shopName
+          ? String(evt.shopName)
+          : (resolvedByPoint?.shopName ? String(resolvedByPoint.shopName) : ''))
 
     const t = Number(evt.time)
     const timeStr = Number.isFinite(t) && t > 0 ? String(t) : ''
@@ -311,7 +439,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     }
 
     
-    const derivedPointStatus: MeasurementPoint['status'] = isFaultAlarm ? 'alarm' : mapLevelToStatus(evt.point.level)
+    const derivedPointStatus: MeasurementPoint['status'] = derivePointStatus(evt.alarmTypeCode, evt.point.level)
 
     
     const pointName = evt.point.pointName ? String(evt.point.pointName) : ''
@@ -336,10 +464,11 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
 
     const prevLatestPointNum = prev?.latestPointNum
     const prevLatestOrderKey = prev?.latestOrderKey
-    const orderOrTime = (() => {
+    const mergeOrderKey = (() => {
       const ok = Number(opts?.orderKey)
       return Number.isFinite(ok) && ok > 0 ? ok : (Number.isFinite(t) && t > 0 ? t : 0)
     })()
+    const eventTimeKey = Number.isFinite(t) && t > 0 ? t : 0
     const keepMax = (prevValue: unknown, nextValue: number): number => {
       const prevNum = Number(prevValue ?? 0)
       const prevOk = Number.isFinite(prevNum) && prevNum > 0 ? prevNum : 0
@@ -369,7 +498,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
                 ...p,
                 name: pointName || p.name,
                 status: maxPointStatus(p.status, derivedPointStatus),
-                lastAlarmTime: keepMax(p.lastAlarmTime, orderOrTime)
+                lastAlarmTime: keepMax(p.lastAlarmTime, eventTimeKey)
               }
               : p
           )
@@ -380,7 +509,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
               ...p,
               name: pointName || p.name,
               status: maxPointStatus(p.status, derivedPointStatus),
-              lastAlarmTime: keepMax(p.lastAlarmTime, orderOrTime)
+                lastAlarmTime: keepMax(p.lastAlarmTime, eventTimeKey)
             }
             : p
         )
@@ -394,31 +523,47 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       if (pointNum != null && pointNum >= 1 && pointNum <= next.length) {
         const prevPoint = next[pointNum - 1]
         const prevKey = prevPoint?.lastAlarmTime
-        const overwrite = shouldOverwritePoint(prevKey, orderOrTime)
+        const overwrite = shouldOverwritePoint(prevKey, mergeOrderKey)
+        const prevStatus = prevPoint?.status ?? 'healthy'
+        const prevRank = statusRank(prevStatus)
+        const nextRank = statusRank(derivedPointStatus)
+        const useNewAsPrimary =
+          nextRank > prevRank || (nextRank === prevRank && overwrite)
+        const nextPrimaryStatus = useNewAsPrimary ? derivedPointStatus : prevStatus
+        const nextPrimaryTime = useNewAsPrimary
+          ? (Number.isFinite(eventTimeKey) && eventTimeKey > 0 ? eventTimeKey : Number(prevKey ?? 0))
+          : Number(prevKey ?? 0)
         next[pointNum - 1] = {
           // 严格按数组顺序：更旧的记录不允许覆盖更新的点位名称/排序键
           name: overwrite ? (pointName || prevPoint?.name || `测点${pointNum}`) : (prevPoint?.name || pointName || `测点${pointNum}`),
-          // 不允许旧记录“降级”点位状态
-          status: maxPointStatus(prevPoint?.status ?? 'healthy', derivedPointStatus),
-          // 用 orderKey(或时间) 作为点位排序 key：只保留更“新”(更大) 的值
-          lastAlarmTime: keepMax(prevKey, orderOrTime)
+          // 点位状态和时间必须来自同一条“主事件”
+          status: nextPrimaryStatus,
+          lastAlarmTime: Number.isFinite(nextPrimaryTime) && nextPrimaryTime > 0 ? nextPrimaryTime : keepMax(prevKey, eventTimeKey)
         }
       }
 
       return next
     })()
 
-    const latestPointNum =
-      !isOlderOrSameTime && pointNum != null
-        ? pointNum
-        : prevLatestPointNum ?? (pointNum ?? undefined)
+    const leading = pickLeadingPoint(measurementPoints)
+    const latestPointNum = leading.pointNum ?? prevLatestPointNum ?? (pointNum ?? undefined)
     const latestOrderKey =
-      !isOlderOrSameTime && Number.isFinite(orderOrTime) && orderOrTime > 0
-        ? orderOrTime
+      Number.isFinite(mergeOrderKey) && mergeOrderKey > 0
+        ? mergeOrderKey
         : prevLatestOrderKey
 
-    const deviceStatus: AlarmItem['status'] = isFaultAlarm ? 'alarm' : 'healthy'
-    const statusText = deviceStatus === 'alarm' ? '报警' : '健康'
+    const deviceStatus: AlarmItem['status'] =
+      leading.status === 'alarm'
+        ? 'alarm'
+        : leading.status === 'warning'
+          ? 'warning'
+          : (isFaultAlarm ? 'alarm' : 'healthy')
+    const statusText =
+      deviceStatus === 'alarm'
+        ? '报警'
+        : deviceStatus === 'warning'
+          ? '预警'
+          : '健康'
 
     const item: AlarmItem = {
       id: deviceId,
@@ -427,8 +572,10 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       deviceNameWithShop: `${deviceName}（${shopName || ''}）`,
       status: deviceStatus,
       statusText,
-      // 旧告警也要合并测点，但卡片展示时间保持“最新”。
-      time: isOlderOrSameTime && prev?.time ? prev.time : timeStr,
+      // 卡片时间与展示状态保持一致：来自“主事件”对应的点位时间。
+      time: (leading.status === 'alarm' || leading.status === 'warning') && Number.isFinite(leading.timeKey) && leading.timeKey > 0
+        ? String(leading.timeKey)
+        : '',
       measurementPoints,
       latestPointNum,
       latestOrderKey

@@ -15,7 +15,7 @@
 
             <div class="chart-item">
                 <div class="chart-header">
-                    <span class="chart-title">响度随时间变化</span>
+                    <span class="chart-title">偏差值随时间变化</span>
                     <span class="chart-unit special-font-color">（单位：dB）</span>
                 </div>
                 <div class="chart">

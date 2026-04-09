@@ -9,7 +9,8 @@
             <div class="chart-container">
                 <CommonEcharts ref="freqChartRef" :option="freqOption" :enable-data-zoom="false" :not-merge="true"
                     enable-fullscreen fullscreen-title="振动频域图" fullscreen-background="#142060"
-                    @chart-ready="onFreqChartReady" />
+                    @chart-ready="onFreqChartReady" @fullscreen-chart-ready="onFreqFullscreenChartReady"
+                    @fullscreen-closed="onFreqFullscreenClosed" />
             </div>
         </div>
         <div class="card-item time-card">
@@ -69,6 +70,9 @@ const freqChartRef = ref<InstanceType<typeof CommonEcharts>>();
 const timeChartRef = ref<InstanceType<typeof CommonEcharts>>();
 const freqChartInstance = shallowRef<echarts.ECharts | null>(null);
 let freqChartCleanup: (() => void) | null = null;
+let fullscreenFreqPointerCleanup: (() => void) | null = null;
+let markLineRafId: number | null = null;
+let lastHarmonicBaseFreq: number | null = null;
 
 const openFreqFullscreen = () => {
     (freqChartRef.value as any)?.openFullscreen?.();
@@ -234,7 +238,7 @@ const freqOption = computed<EChartsOption>(() => {
                 if (doubleFreq <= maxX) {
                     const doublePoint = chartData.find(item => Math.abs(item[0] - doubleFreq) < 1);
                     if (doublePoint) {
-                        tooltipContent += `<br/>双倍频：${doubleFreq.toFixed(0)}hZ：${doublePoint[1].toFixed(10)}`;
+                        tooltipContent += `<br/>二倍频：${doubleFreq.toFixed(0)}hZ：${doublePoint[1].toFixed(10)}`;
                     }
                 }
 
@@ -327,6 +331,38 @@ const freqOption = computed<EChartsOption>(() => {
     } as EChartsOption;
 });
 
+const scheduleHarmonicMarkLines = (baseFreq: number) => {
+    if (markLineRafId) cancelAnimationFrame(markLineRafId);
+    markLineRafId = requestAnimationFrame(() => {
+        markLineRafId = null;
+        if (lastHarmonicBaseFreq !== null && Math.abs(lastHarmonicBaseFreq - baseFreq) < 1e-6) return;
+        lastHarmonicBaseFreq = baseFreq;
+        const data = buildHarmonicMarkLineData(baseFreq);
+        try {
+            if (freqChartInstance.value) {
+                freqChartInstance.value.setOption(
+                    { series: [{ id: 'freq-series', markLine: { data } }] } as any,
+                    { notMerge: false, lazyUpdate: true }
+                );
+            }
+            freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', data);
+        } catch {
+
+        }
+    });
+};
+
+const onUpdateAxisPointer = (params: any) => {
+    const axesInfo = Array.isArray(params?.axesInfo) ? params.axesInfo : [];
+    const info0 = axesInfo[0];
+    const v = info0?.value;
+    const n = typeof v === 'number' ? v : Number(v);
+    if (Number.isFinite(n)) {
+        pointerBaseFreq.value = n;
+        scheduleHarmonicMarkLines(n);
+    }
+};
+
 const onFreqChartReady = (instance: echarts.ECharts) => {
     freqChartInstance.value = instance;
     if (freqChartCleanup) {
@@ -334,54 +370,42 @@ const onFreqChartReady = (instance: echarts.ECharts) => {
         freqChartCleanup = null;
     }
 
-    let rafId: number | null = null;
-    let lastAppliedBaseFreq: number | null = null;
-    const scheduleApplyMarkLines = (baseFreq: number) => {
-        if (!freqChartInstance.value) return;
-        if (rafId) cancelAnimationFrame(rafId);
-        rafId = requestAnimationFrame(() => {
-            rafId = null;
-            if (!freqChartInstance.value) return;
-            if (lastAppliedBaseFreq !== null && Math.abs(lastAppliedBaseFreq - baseFreq) < 1e-6) return;
-            lastAppliedBaseFreq = baseFreq;
-            const data = buildHarmonicMarkLineData(baseFreq);
-            try {
-                freqChartInstance.value.setOption(
-                    {
-                        series: [
-                            {
-                                id: 'freq-series',
-                                markLine: { data }
-                            }
-                        ]
-                    } as any,
-                    { notMerge: false, lazyUpdate: true }
-                );
-            } catch {
-
-            }
-        });
-    };
-
-    const onUpdateAxisPointer = (params: any) => {
-        const axesInfo = Array.isArray(params?.axesInfo) ? params.axesInfo : [];
-        const info0 = axesInfo[0];
-        const v = info0?.value;
-        const n = typeof v === 'number' ? v : Number(v);
-        if (Number.isFinite(n)) {
-            pointerBaseFreq.value = n;
-            scheduleApplyMarkLines(n);
-        }
-    };
-
     instance.on('updateAxisPointer', onUpdateAxisPointer);
     freqChartCleanup = () => {
         try { instance.off('updateAxisPointer', onUpdateAxisPointer); } catch { }
-        if (rafId) {
-            cancelAnimationFrame(rafId);
-            rafId = null;
+        if (markLineRafId) {
+            cancelAnimationFrame(markLineRafId);
+            markLineRafId = null;
         }
     };
+};
+
+const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
+    if (fullscreenFreqPointerCleanup) {
+        fullscreenFreqPointerCleanup();
+        fullscreenFreqPointerCleanup = null;
+    }
+    inst.on('updateAxisPointer', onUpdateAxisPointer);
+    fullscreenFreqPointerCleanup = () => {
+        try { inst.off('updateAxisPointer', onUpdateAxisPointer); } catch { }
+    };
+
+    const base = pointerBaseFreq.value;
+    if (typeof base === 'number' && Number.isFinite(base) && base > 0) {
+        const data = buildHarmonicMarkLineData(base);
+        try {
+            freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', data);
+        } catch {
+
+        }
+    }
+};
+
+const onFreqFullscreenClosed = () => {
+    if (fullscreenFreqPointerCleanup) {
+        fullscreenFreqPointerCleanup();
+        fullscreenFreqPointerCleanup = null;
+    }
 };
 
 const timeOption = computed<EChartsOption>(() => {
@@ -528,6 +552,10 @@ onUnmounted(() => {
     if (freqChartCleanup) {
         freqChartCleanup();
         freqChartCleanup = null;
+    }
+    if (fullscreenFreqPointerCleanup) {
+        fullscreenFreqPointerCleanup();
+        fullscreenFreqPointerCleanup = null;
     }
 });
 </script>

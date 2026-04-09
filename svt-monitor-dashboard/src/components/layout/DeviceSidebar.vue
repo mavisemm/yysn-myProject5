@@ -196,12 +196,30 @@ import type { DeviceNode, Workshop, Device } from '@/types/device'
 const deviceTreeStore = useDeviceTreeStore()
 const deviceTreeData = computed(() => deviceTreeStore.deviceTreeData)
 const selectedDeviceId = computed(() => deviceTreeStore.selectedDeviceId)
+const scrollSelectedNodeIntoView = () => {
+  const tree = deviceTreeRef.value
+  const treeEl = tree?.$el as HTMLElement | undefined
+  if (!treeEl) return
+
+  const selectedNode = treeEl.querySelector('.tree-node.is-selected')
+  const contentEl = (selectedNode?.closest('.el-tree-node__content') ?? selectedNode) as HTMLElement | null
+  if (!contentEl) return
+
+  contentEl.scrollIntoView({
+    block: 'nearest',
+    inline: 'nearest'
+  })
+}
+
 const updateSelection = async (newId: string | null) => {
   await nextTick()
   const tree = deviceTreeRef.value
   if (!tree || typeof tree.setCurrentKey !== 'function') return
   try {
     tree.setCurrentKey(newId || null)
+    requestAnimationFrame(() => {
+      scrollSelectedNodeIntoView()
+    })
   } catch (e) {
     console.warn('更新设备树选中状态失败:', e)
   }
@@ -214,6 +232,9 @@ const updateExpansion = async (newKeys: string[]) => {
   if (!newKeys || !tree || typeof tree.setExpandedKeys !== 'function') return
   try {
     tree.setExpandedKeys(newKeys)
+    requestAnimationFrame(() => {
+      scrollSelectedNodeIntoView()
+    })
   } catch (e) {
     console.warn('更新设备树展开状态失败:', e)
   }
@@ -731,6 +752,10 @@ watch(
 
 watch(displayTreeData, () => {
   updateExpandedKeys()
+  if (selectedDeviceId.value) {
+    // 刷新后设备树异步回填时，补一次选中与滚动，确保目标节点进入可视区
+    void updateSelection(selectedDeviceId.value)
+  }
 }, { deep: true })
 
 onUnmounted(() => {

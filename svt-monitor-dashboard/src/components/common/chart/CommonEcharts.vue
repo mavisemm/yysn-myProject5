@@ -121,6 +121,8 @@ const emit = defineEmits<{
     (e: 'chart-disposed'): void;
     (e: 'range-change', payload: { min: number; max: number; startValue: any; endValue: any }): void;
     (e: 'range-reset'): void;
+    (e: 'fullscreen-chart-ready', instance: echarts.ECharts): void;
+    (e: 'fullscreen-closed'): void;
 }>();
 
 const containerRef = ref<HTMLElement>();
@@ -421,7 +423,7 @@ const applyAutoYAxisRange = () => {
     const paddingRatio = Math.max(0, Number(props.autoYAxisOnZoomPaddingRatio ?? 0.05));
     const span = y.max - y.min;
     const padding = span === 0 ? (Math.abs(y.max) || 1) * paddingRatio : span * paddingRatio;
-    let min = y.min - padding;
+    const min = y.min - padding;
     let max = y.max + padding;
     if (min === max) {
         max = min + 1;
@@ -491,7 +493,7 @@ const applyAutoYAxisRangeFor = (inst: echarts.ECharts) => {
     const paddingRatio = Math.max(0, Number(props.autoYAxisOnZoomPaddingRatio ?? 0.05));
     const span = y.max - y.min;
     const padding = span === 0 ? (Math.abs(y.max) || 1) * paddingRatio : span * paddingRatio;
-    let min = y.min - padding;
+    const min = y.min - padding;
     let max = y.max + padding;
     if (min === max) {
         max = min + 1;
@@ -927,6 +929,18 @@ const fullscreenBackgroundResolved = computed(() => props.fullscreenBackground |
 const openFullscreen = () => {
     fullscreenVisible.value = true;
 };
+const patchFullscreenSeriesMarkLine = (seriesId: string, data: unknown[]) => {
+    if (!fullscreenChartInstance.value) return;
+    try {
+        fullscreenChartInstance.value.setOption(
+            { series: [{ id: seriesId, markLine: { data } }] } as EChartsOption,
+            { notMerge: false, lazyUpdate: true }
+        );
+    } catch {
+        // ignore
+    }
+};
+
 const handleFullscreenOpened = async () => {
     await nextTick();
     if (!fullscreenChartRef.value) return;
@@ -939,11 +953,13 @@ const handleFullscreenOpened = async () => {
         applyFullscreenOption();
         attachAutoYAxisListenerForFullscreen();
         fullscreenChartInstance.value.resize();
+        emit('fullscreen-chart-ready', fullscreenChartInstance.value);
     } catch {
         // ignore
     }
 };
 const handleFullscreenClosed = () => {
+    emit('fullscreen-closed');
     if (fullscreenAutoYAxisCleanup) {
         fullscreenAutoYAxisCleanup();
         fullscreenAutoYAxisCleanup = null;
@@ -1020,7 +1036,8 @@ defineExpose({
     initChart,
     updateOption: applyOption,
     getThemeColors,
-    openFullscreen
+    openFullscreen,
+    patchFullscreenSeriesMarkLine
 });
 </script>
 

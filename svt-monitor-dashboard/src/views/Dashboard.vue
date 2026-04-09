@@ -13,7 +13,7 @@
     <div class="dashboard-box dashboard-box-metrics">
       <ThreeMetrics :metrics="[
         { title: '振动烈度排名', unit: '（单位：mm/s）' },
-        { title: '声音响度排名', unit: '（单位：%）' },
+        { title: '声音偏差值排名' },
         { title: '温度排名', unit: '（单位：%）' }
       ]" :rankings="rankings">
       </ThreeMetrics>
@@ -43,7 +43,8 @@ import { useDeviceWaringDetailStore } from '@/stores/deviceWaringDetail'
 interface RankingItem {
   equipmentId?: string;
   equipmentName: string;
-  workshopName: string;
+  pointName: string;
+  receiverId?: string;
   value?: number;
 }
 
@@ -88,28 +89,31 @@ const fetchTop5Data = async () => {
     ]);
 
     if (vibrationData.rc === 0 && vibrationData.ret?.length) {
-      rankings.value[0] = vibrationData.ret.map(item => ({
+      rankings.value[0] = vibrationData.ret.map((item: any) => ({
         equipmentId: item.equipmentId,
-        equipmentName: item.equipmentName,
-        workshopName: item.workshopName,
+        equipmentName: item.equipmentName ?? '',
+        pointName: item.pointName ?? item.receiverName ?? item.equipmentName ?? '',
+        receiverId: item.receiverId ?? item.pointId ?? undefined,
         value: item.value
       }));
     }
 
     if (soundData.rc === 0 && soundData.ret?.length) {
-      rankings.value[1] = soundData.ret.map(item => ({
+      rankings.value[1] = soundData.ret.map((item: any) => ({
         equipmentId: item.equipmentId,
-        equipmentName: item.equipmentName,
-        workshopName: item.workshopName,
+        equipmentName: item.equipmentName ?? '',
+        pointName: item.pointName ?? item.receiverName ?? item.equipmentName ?? '',
+        receiverId: item.receiverId ?? item.pointId ?? undefined,
         value: item.value
       }));
     }
 
     if (temperatureData.rc === 0 && temperatureData.ret?.length) {
-      rankings.value[2] = temperatureData.ret.map(item => ({
+      rankings.value[2] = temperatureData.ret.map((item: any) => ({
         equipmentId: item.equipmentId,
-        equipmentName: item.equipmentName,
-        workshopName: item.workshopName,
+        equipmentName: item.equipmentName ?? '',
+        pointName: item.pointName ?? item.receiverName ?? item.equipmentName ?? '',
+        receiverId: item.receiverId ?? item.pointId ?? undefined,
         value: item.value
       }));
     }

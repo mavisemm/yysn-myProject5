@@ -4,6 +4,8 @@
             <div class="chart-item">
                 <div class="chart-title-row">
                     <div class="chart-title app-section-title">能量曲线</div>
+                    <el-button class="energy-fullscreen-btn" text circle size="large" :icon="FullScreen"
+                        title="能量 / 密度曲线全屏" :disabled="!hasAnyChartData" @click="energyFullscreenVisible = true" />
                 </div>
                 <div class="chart-container">
                     <CommonEcharts ref="energyChartRef" :option="energyOption" linkage-group="sound-point-charts"
@@ -43,14 +45,47 @@
             </el-button>
         </div>
     </div>
+
+    <el-dialog v-model="energyFullscreenVisible" title="能量 / 密度曲线" fullscreen destroy-on-close append-to-body
+        align-center class="sound-energy-fullscreen-dialog" modal-class="sound-energy-fullscreen-modal"
+        @opened="onEnergyFsOpened" @closed="onEnergyFsClosed">
+        <div class="energy-fs-dialog-inner">
+            <div class="energy-fs-controls-top" @mousedown.stop @wheel.stop>
+                <span class="controls-label">频率范围：</span>
+                <el-input-number v-model="rangeMin" class="range-input" size="small" :min="safeRangeDataMin"
+                    :max="safeRangeDataMax" :step="0.1" :precision="1" controls-position="right"
+                    :disabled="rangeControlsDisabled" @change="applyRangeIfEnabled" />
+                <span class="controls-sep">~</span>
+                <el-input-number v-model="rangeMax" class="range-input" size="small" :min="safeRangeDataMin"
+                    :max="safeRangeDataMax" :step="0.1" :precision="1" controls-position="right"
+                    :disabled="rangeControlsDisabled" @change="applyRangeIfEnabled" />
+                <span class="controls-unit">Hz</span>
+                <el-button size="small" class="reset-btn" :disabled="rangeControlsDisabled"
+                    @click="resetRangeIfEnabled">重置</el-button>
+            </div>
+            <div class="energy-fs-charts-stack">
+                <div class="energy-fs-chart-pane">
+                    <div class="energy-fs-chart-title app-section-title">能量曲线</div>
+                    <div ref="energyFullscreenChartEl" class="energy-fs-chart-host" />
+                </div>
+                <div class="energy-fs-chart-pane">
+                    <div class="energy-fs-chart-title app-section-title">密度曲线</div>
+                    <div ref="densityFullscreenChartEl" class="energy-fs-chart-host" />
+                </div>
+            </div>
+        </div>
+    </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue';
+import { ref, computed, onUnmounted, watch, nextTick, shallowRef } from 'vue';
 import type { EChartsOption } from 'echarts';
+import * as echarts from 'echarts';
+import { FullScreen } from '@element-plus/icons-vue';
 import { CommonEcharts } from '@/components/common/chart';
 import { useRangeControls } from '@/composables/useRangeControls';
 import { getTenantId } from '@/api/tenant';
+import { observeResize, enableMouseWheelZoom } from '@/utils/chart';
 
 const emit = defineEmits(['chart-init']);
 const props = defineProps<{
@@ -77,6 +112,14 @@ const pointList = computed(() => props.pointList || []);
 const energyChartRef = ref<InstanceType<typeof CommonEcharts>>();
 const densityChartRef = ref<InstanceType<typeof CommonEcharts>>();
 
+const energyFullscreenVisible = ref(false);
+const energyFullscreenChartEl = ref<HTMLDivElement | null>(null);
+const densityFullscreenChartEl = ref<HTMLDivElement | null>(null);
+const energyFullscreenChartInstance = shallowRef<echarts.ECharts | null>(null);
+const densityFullscreenChartInstance = shallowRef<echarts.ECharts | null>(null);
+let fsChartDisposers: Array<() => void> | null = null;
+const fsLinkGroup = 'sound-point-energy-density-fs-link-group';
+let fsZoomSyncing = false;
 
 const chartAxisColor = computed(() => '#fff');
 const chartSplitLineColor = computed(() => 'rgba(150,150,150, 0.2)');
@@ -120,7 +163,9 @@ const commonOptionBase = computed(() => {
             borderColor: 'rgba(50,50,50,0.8)',
             textStyle: { color: '#fff' },
             axisPointer: {
-                type: 'cross' as const,
+                // 仅保留竖线指示，不显示十字光标
+                type: 'line' as const,
+                axis: 'x' as const,
                 label: { show: false }
             },
             position: function (pos: any, _params: any, _el: any, _elRect: any, size: any) {
@@ -142,7 +187,7 @@ const commonOptionBase = computed(() => {
                 color: c
             }
         },
-        grid: { left: 30, right: 30, top: 40, bottom: 50, containLabel: true },
+        grid: { left: 30, right: 30, top: 40, bottom: 35, containLabel: true },
         legend: { show: false },
         dataZoom: [
             { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
@@ -303,6 +348,8 @@ const {
     doDataZoom: ({ startValue, endValue }) => {
         const energyInstance = energyChartRef.value?.chartInstance;
         const densityInstance = densityChartRef.value?.chartInstance;
+        const fsEnergy = energyFullscreenChartInstance.value;
+        const fsDensity = densityFullscreenChartInstance.value;
         const payload: any = { type: 'dataZoom', startValue, endValue };
         const safeDispatch = (instance: any) => {
             if (!instance) return;
@@ -315,6 +362,8 @@ const {
         };
         safeDispatch(energyInstance);
         safeDispatch(densityInstance);
+        safeDispatch(fsEnergy);
+        safeDispatch(fsDensity);
     }
 });
 
@@ -337,12 +386,222 @@ const resetRangeIfEnabled = () => {
     resetRange();
 };
 
+const patchSoundOptionForFsDialog = (opt: EChartsOption): EChartsOption => {
+    const raw = opt as Record<string, unknown>;
+    const tooltip = raw.tooltip;
+    const next = { ...raw } as Record<string, unknown>;
+    if (tooltip && typeof tooltip === 'object') {
+        next.tooltip = {
+            ...(tooltip as Record<string, unknown>),
+            appendToBody: true,
+            extraCssText: 'z-index: 99999 !important;'
+        };
+    }
+    return next as EChartsOption;
+};
+
+const buildDataZoomActionFromMainEnergy = (): Record<string, unknown> | null => {
+    const main = energyChartRef.value?.chartInstance;
+    if (!main) return null;
+    try {
+        if (typeof main.isDisposed === 'function' && main.isDisposed()) return null;
+        const opt = main.getOption() as any;
+        const dzs = opt.dataZoom;
+        const d0 = Array.isArray(dzs) ? dzs[0] : dzs;
+        if (!d0 || typeof d0 !== 'object') return null;
+        const action: Record<string, unknown> = { type: 'dataZoom', xAxisIndex: 0 };
+        if (typeof d0.startValue !== 'undefined') action.startValue = d0.startValue;
+        if (typeof d0.endValue !== 'undefined') action.endValue = d0.endValue;
+        if (typeof d0.start !== 'undefined' && typeof action.startValue === 'undefined') {
+            action.start = d0.start;
+            action.end = d0.end;
+        }
+        return action;
+    } catch {
+        return null;
+    }
+};
+
+const syncDataZoomFromMainToFsCharts = () => {
+    const action = buildDataZoomActionFromMainEnergy();
+    if (!action) return;
+    const targets = [energyFullscreenChartInstance.value, densityFullscreenChartInstance.value];
+    for (const fs of targets) {
+        if (!fs) continue;
+        try {
+            if (typeof fs.isDisposed === 'function' && fs.isDisposed()) continue;
+            fs.dispatchAction(action as any);
+        } catch {
+            //
+        }
+    }
+};
+
+const syncDataZoomFromParamsToMainCharts = (params: any) => {
+    if (fsZoomSyncing) return;
+    fsZoomSyncing = true;
+    try {
+        const batch0 = Array.isArray(params?.batch) ? params.batch[0] : null;
+        const payload = batch0 && typeof batch0 === 'object' ? batch0 : params;
+        if (!payload || typeof payload !== 'object') return;
+
+        const action: Record<string, any> = { type: 'dataZoom', xAxisIndex: 0 };
+        if (typeof (payload as any).startValue !== 'undefined' || typeof (payload as any).endValue !== 'undefined') {
+            if (typeof (payload as any).startValue !== 'undefined') action.startValue = (payload as any).startValue;
+            if (typeof (payload as any).endValue !== 'undefined') action.endValue = (payload as any).endValue;
+        } else {
+            if (typeof (payload as any).start !== 'undefined') action.start = (payload as any).start;
+            if (typeof (payload as any).end !== 'undefined') action.end = (payload as any).end;
+        }
+        if (
+            typeof action.start === 'undefined' &&
+            typeof action.end === 'undefined' &&
+            typeof action.startValue === 'undefined' &&
+            typeof action.endValue === 'undefined'
+        ) {
+            return;
+        }
+
+        const mainEnergy = energyChartRef.value?.chartInstance;
+        const mainDensity = densityChartRef.value?.chartInstance;
+        for (const inst of [mainEnergy, mainDensity]) {
+            if (!inst) continue;
+            try {
+                if (typeof inst.isDisposed === 'function' && inst.isDisposed()) continue;
+                inst.dispatchAction(action as any);
+            } catch {
+                //
+            }
+        }
+    } finally {
+        fsZoomSyncing = false;
+    }
+};
+
+const disposeEnergyFsChart = () => {
+    if (fsChartDisposers) {
+        fsChartDisposers.forEach(fn => {
+            try {
+                fn();
+            } catch {
+                //
+            }
+        });
+        fsChartDisposers = null;
+    }
+    if (energyFullscreenChartInstance.value) {
+        try {
+            energyFullscreenChartInstance.value.dispose();
+        } catch {
+            //
+        }
+        energyFullscreenChartInstance.value = null;
+    }
+    if (densityFullscreenChartInstance.value) {
+        try {
+            densityFullscreenChartInstance.value.dispose();
+        } catch {
+            //
+        }
+        densityFullscreenChartInstance.value = null;
+    }
+};
+
+const onEnergyFsOpened = async () => {
+    await nextTick();
+    disposeEnergyFsChart();
+    const elE = energyFullscreenChartEl.value;
+    const elD = densityFullscreenChartEl.value;
+    if (!elE || !elD) return;
+
+    const disposers: Array<() => void> = [];
+    try {
+        const instE = echarts.init(elE);
+        const instD = echarts.init(elD);
+        energyFullscreenChartInstance.value = instE;
+        densityFullscreenChartInstance.value = instD;
+
+        (instE as any).group = fsLinkGroup;
+        (instD as any).group = fsLinkGroup;
+        echarts.connect(fsLinkGroup);
+        disposers.push(() => {
+            try {
+                echarts.disconnect(fsLinkGroup);
+            } catch {
+                //
+            }
+        });
+
+        instE.setOption(patchSoundOptionForFsDialog(energyOption.value) as any, { notMerge: true });
+        instD.setOption(patchSoundOptionForFsDialog(densityOption.value) as any, { notMerge: true });
+        syncDataZoomFromMainToFsCharts();
+
+        const dzHandler = (params: any) => {
+            handleDataZoom(params);
+            syncDataZoomFromParamsToMainCharts(params);
+        };
+        instE.on('datazoom', dzHandler);
+        instD.on('datazoom', dzHandler);
+        disposers.push(() => {
+            try {
+                instE.off('datazoom', dzHandler);
+            } catch {
+                //
+            }
+        });
+        disposers.push(() => {
+            try {
+                instD.off('datazoom', dzHandler);
+            } catch {
+                //
+            }
+        });
+
+        const wheelE = enableMouseWheelZoom(instE);
+        const wheelD = enableMouseWheelZoom(instD);
+        if (wheelE) disposers.push(wheelE);
+        if (wheelD) disposers.push(wheelD);
+
+        disposers.push(observeResize(instE, elE));
+        disposers.push(observeResize(instD, elD));
+
+        instE.resize();
+        instD.resize();
+
+        fsChartDisposers = disposers;
+    } catch {
+        disposeEnergyFsChart();
+    }
+};
+
+const onEnergyFsClosed = () => {
+    disposeEnergyFsChart();
+};
+
+watch([energyOption, densityOption], () => {
+    if (!energyFullscreenVisible.value) return;
+    try {
+        const eInst = energyFullscreenChartInstance.value;
+        const dInst = densityFullscreenChartInstance.value;
+        if (eInst && !(eInst.isDisposed && eInst.isDisposed())) {
+            eInst.setOption(patchSoundOptionForFsDialog(energyOption.value) as any, { notMerge: true });
+        }
+        if (dInst && !(dInst.isDisposed && dInst.isDisposed())) {
+            dInst.setOption(patchSoundOptionForFsDialog(densityOption.value) as any, { notMerge: true });
+        }
+        syncDataZoomFromMainToFsCharts();
+    } catch {
+        //
+    }
+});
+
 onUnmounted(() => {
     if (energyDataZoomCleanup) {
         energyDataZoomCleanup();
         energyDataZoomCleanup = null;
     }
     disposeRangeControls();
+    disposeEnergyFsChart();
 });
 </script>
 
@@ -408,6 +667,30 @@ onUnmounted(() => {
             justify-content: center;
             gap: 10px;
             padding: 10px 20px 0;
+            position: relative;
+
+            .energy-fullscreen-btn {
+                position: absolute;
+                right: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+            }
+
+            :deep(.energy-fullscreen-btn .el-icon) {
+                color: rgba(255, 255, 255, 0.95);
+            }
+
+            :deep(.energy-fullscreen-btn:hover .el-icon),
+            :deep(.energy-fullscreen-btn:focus .el-icon),
+            :deep(.energy-fullscreen-btn:active .el-icon) {
+                color: #ffffff;
+            }
+
+            :deep(.energy-fullscreen-btn:hover),
+            :deep(.energy-fullscreen-btn:focus),
+            :deep(.energy-fullscreen-btn:active) {
+                background-color: transparent !important;
+            }
 
             .chart-title {
                 text-align: center;
@@ -438,5 +721,114 @@ onUnmounted(() => {
     border-radius: 6px;
     font-weight: 500;
     font-size: 14px;
+}
+
+.energy-fs-dialog-inner {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    gap: 12px;
+}
+
+.energy-fs-controls-top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    padding: 4px 8px 8px;
+
+    .controls-label,
+    .controls-sep,
+    .controls-unit {
+        white-space: nowrap;
+        opacity: 0.9;
+    }
+
+    .controls-label {
+        font-size: 0.9rem;
+    }
+
+    :deep(.el-input-number.range-input) {
+        width: 100px;
+    }
+}
+
+.energy-fs-charts-stack {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    gap: 12px;
+
+    .energy-fs-chart-pane {
+        flex: 1;
+        min-height: 0;
+    }
+}
+
+.energy-fs-chart-pane {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+}
+
+.energy-fs-chart-title {
+    flex-shrink: 0;
+    text-align: center;
+    font-size: 1rem;
+    padding: 4px 8px 8px;
+    opacity: 0.95;
+}
+
+.energy-fs-chart-host {
+    flex: 1;
+    min-height: 160px;
+    min-width: 0;
+}
+</style>
+
+<style lang="scss">
+.sound-energy-fullscreen-modal .el-dialog {
+    background: #142060 !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+    max-height: 100vh !important;
+}
+
+.sound-energy-fullscreen-modal .el-dialog__header {
+    flex-shrink: 0;
+    background: #142060 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sound-energy-fullscreen-modal .el-dialog__title {
+    color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.sound-energy-fullscreen-modal .el-dialog__headerbtn .el-dialog__close {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.sound-energy-fullscreen-modal .el-dialog__body {
+    flex: 1;
+    min-height: 0;
+    padding: 16px 20px 20px !important;
+    background: #142060 !important;
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
+}
+
+.sound-energy-fullscreen-modal .energy-fs-controls-top,
+.sound-energy-fullscreen-modal .energy-fs-chart-title {
+    color: rgba(255, 255, 255, 0.9);
 }
 </style>

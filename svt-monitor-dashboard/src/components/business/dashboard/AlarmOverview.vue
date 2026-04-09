@@ -83,7 +83,8 @@
                 <div class="measurement-grid">
                     <div v-for="item in getDisplayPoints(alarm.measurementPoints, alarm.latestPointNum)"
                         :key="item.pointNum"
-                        :class="['point-item', getPointStyleClass(item.point.status, getDeviceDisplayStatus(alarm))]">
+                        :class="['point-item', getPointStyleClass(item.point.status, getDeviceDisplayStatus(alarm))]"
+                        @click.stop="handlePointItemClick(alarm, item)">
                         {{ item.pointNum }}
                     </div>
                 </div>
@@ -729,6 +730,100 @@ function formatAlarmTime(time: string | undefined): string {
     const m = d.getMinutes();
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${pad(month)}-${pad(day)} ${pad(h)}:${pad(m)}`;
+}
+
+const findMatchedDeviceNode = (alarmId: string): DeviceNode | null => {
+    const normalizedAlarmId = String(alarmId ?? '').trim()
+    if (!normalizedAlarmId) return null
+    const stack: DeviceNode[] = [...(deviceTreeStore.deviceTreeData ?? [])]
+    while (stack.length) {
+        const node = stack.pop()
+        if (!node) continue
+        if (node.type === 'device') {
+            const ids = [node.id, node.equipmentId, node.deviceId, node.customerDeviceId]
+                .map(v => String(v ?? '').trim())
+                .filter(Boolean)
+            if (ids.includes(normalizedAlarmId)) return node
+        }
+        if (node.children?.length) stack.push(...node.children)
+    }
+    return null
+}
+
+const findPointDeviceId = (deviceNode: DeviceNode | null, pointNum: number, pointName?: string): string => {
+    if (!deviceNode?.children?.length) return ''
+    const normalizedPointName = String(pointName ?? '').trim()
+    const points = deviceNode.children.filter(child => child.type === 'point')
+    if (!points.length) return ''
+
+    const pickDeviceId = (node?: DeviceNode) =>
+        String(node?.deviceId ?? node?.equipmentId ?? node?.id ?? '').trim()
+
+    if (normalizedPointName) {
+        const byName = points.find(p => String(p.pointName ?? p.name ?? '').trim() === normalizedPointName)
+        const nameDeviceId = pickDeviceId(byName)
+        if (nameDeviceId) return nameDeviceId
+    }
+
+    if (pointNum >= 1) {
+        const byNum = points.find((p) => {
+            const text = String(p.pointName ?? p.name ?? '')
+            const m = text.match(/(\d+)/)
+            return m ? Number(m[1]) === pointNum : false
+        })
+        const numDeviceId = pickDeviceId(byNum)
+        if (numDeviceId) return numDeviceId
+
+        const byIndex = points[pointNum - 1]
+        const indexDeviceId = pickDeviceId(byIndex)
+        if (indexDeviceId) return indexDeviceId
+    }
+
+    return ''
+}
+
+const resolveRealtimeDeviceKey = (alarm: AlarmItem, pointNum: number, pointName?: string): string => {
+    const alarmId = String(alarm.id ?? '').trim()
+    if (!alarmId) return ''
+
+    const foundNode = findMatchedDeviceNode(alarmId)
+    const pointDeviceId = findPointDeviceId(foundNode, pointNum, pointName)
+
+    const candidates = new Set<string>()
+    if (pointDeviceId) candidates.add(pointDeviceId)
+    candidates.add(alarmId)
+    if (foundNode) {
+        for (const id of [foundNode.deviceId, foundNode.customerDeviceId, foundNode.equipmentId, foundNode.id]) {
+            const normalized = String(id ?? '').trim()
+            if (normalized) candidates.add(normalized)
+        }
+    }
+
+    const optionKeys = new Set<string>(
+        (alarmBatchStore.deviceNameList ?? [])
+            .map((item: any) => String(item?.key ?? item?.deviceId ?? item?.id ?? item?.value ?? '').trim())
+            .filter(Boolean)
+    )
+
+    for (const id of candidates) {
+        if (optionKeys.has(id)) return id
+    }
+    return alarmId
+}
+
+const handlePointItemClick = async (
+    alarm: AlarmItem,
+    clicked: { point: MeasurementPoint; pointNum: number }
+) => {
+    const point = clicked?.point
+    if (!point || (point.status !== 'alarm' && point.status !== 'warning')) return
+    await alarmBatchStore.ensureDropdowns()
+    const deviceId = resolveRealtimeDeviceKey(alarm, Number(clicked?.pointNum ?? 0), point.name)
+    alarmBatchStore.resetRealtime()
+    if (deviceId) {
+        alarmBatchStore.realtimeQuery.deviceId = deviceId
+    }
+    void alarmBatchStore.openRealtime()
 }
 
 const goToDeviceDetail = (alarm: AlarmItem) => {

@@ -11,40 +11,27 @@
                 :header-cell-style="{ background: 'transparent', color: 'var(--special-font-color)', 'text-align': 'center' }"
                 :cell-style="{ background: 'transparent', color: '#fff', 'text-align': 'center' }"
                 @row-click="onRowClick" highlight-current-row>
-                <el-table-column prop="id" label="点位编号" width="15%" />
-                <el-table-column prop="name" label="点位名称" width="20%" />
-                <el-table-column prop="lastAlarmTime" label="预警时间" width="20%" />
-                <el-table-column prop="alarmType" label="预警类型" width="15%">
-                    <template #default="{ row }">
-                        <span :class="getAlarmTypeTag(row.alarmType)">
-                            {{ row.alarmType }}
-                        </span>
+                <el-table-column prop="id" label="点位编号" width="30%" />
+                <el-table-column prop="name" label="点位名称" width="25%" />
+                <el-table-column label="声音偏差值阈值" width="25%">
+                    <template #default>
+                        -
                     </template>
                 </el-table-column>
-                <el-table-column prop="alarmValue" label="预警值" width="15%">
-                    <template #default="{ row }">
-                        {{ row.alarmValue === '无' ? '无' : row.alarmValue + getAlarmValueUnit(row.alarmType) }}
-                    </template>
-                </el-table-column>
-                <el-table-column label="操作" width="18%" align="center">
-                    <template #default="{ row }">
-                        <el-button :type="row.hasAlarm ? 'danger' : 'primary'" size="small"
-                            style="min-width: auto; width: fit-c ontent; padding-left: 10px; padding-right: 10px; white-space: nowrap; overflow: visible;"
-                            @click.stop="handleUnprocessedClick(row)">
-                            {{ row.hasAlarm ? '未处理' : '已处理' }}
-                        </el-button>
+                <el-table-column label="振动阈值" width="20%">
+                    <template #default>
+                        -
                     </template>
                 </el-table-column>
             </el-table>
         </div>
     </div>
 </template>
- 
+
 <script setup lang="ts">
-import { ElTable, ElTableColumn, ElButton } from 'element-plus'
+import { ElTable, ElTableColumn } from 'element-plus'
 import { ref } from 'vue'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
-import { useAlarmBatchStore } from '@/stores/alarmBatch'
 
 interface PointInfo {
     id: string
@@ -67,41 +54,11 @@ const emit = defineEmits<{
     'point-selected': [receiverId: string]
 }>()
 
-const getAlarmTypeTag = (type: string) => {
-    switch (type) {
-        case '温度': return 'danger'
-        case '振动': return 'warning'
-        case '声音': return 'primary'
-        default: return 'info'
-    }
-}
-
-const getAlarmValueUnit = (type: string) => {
-    switch (type) {
-        case '振动': return ''
-        case '温度': return ''
-        case '声音': return ''
-        default: return ''
-    }
-}
-
 const pointTableRef = ref<any>(null)
-const alarmBatchStore = useAlarmBatchStore()
 
 const onRowClick = (row: PointInfo) => {
     emit('point-selected', row.id)
 }
-
-
-const handleUnprocessedClick = (row: PointInfo) => {
-    if (!row.hasAlarm) return
-
-    const deviceId = row.deviceId ? String(row.deviceId) : ''
-    alarmBatchStore.resetRealtime()
-    if (deviceId) alarmBatchStore.realtimeQuery.deviceId = deviceId
-    void alarmBatchStore.openRealtime()
-}
-
 
 const setCurrentRow = (rowIndex: number = 0) => {
     if (pointTableRef.value && props.pointList && props.pointList.length > rowIndex) {
