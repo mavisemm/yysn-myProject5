@@ -63,7 +63,7 @@
             'grid-template-columns': `repeat(${responsivePageSize.columns}, 1fr)`,
             'grid-template-rows': `repeat(${responsivePageSize.rows}, 1fr)`
         }">
-            <div v-for="alarm in displayedAlarms" :key="alarm.id" class="alarm-card"
+            <div v-for="alarm in displayedAlarms" :key="alarm.cardId" class="alarm-card"
                 :class="`alarm-card--${getDeviceDisplayStatus(alarm)}`" @click="goToDeviceDetail(alarm)">
                 <div class="card-header">
                     <span class="device-name" :title="alarm.deviceName">{{ alarm.deviceName }}</span>
@@ -81,7 +81,7 @@
                 </div>
 
                 <div class="measurement-grid">
-                    <div v-for="item in getDisplayPoints(alarm.measurementPoints, alarm.latestPointNum)"
+                    <div v-for="item in getDisplayPoints(alarm.measurementPoints, alarm.latestPointNum, alarm.cardType)"
                         :key="item.pointNum"
                         :class="['point-item', getPointStyleClass(item.point.status, getDeviceDisplayStatus(alarm))]"
                         @click.stop="handlePointItemClick(alarm, item)">
@@ -148,6 +148,11 @@ interface AlarmItem {
     measurementPoints: MeasurementPoint[];
     latestPointNum?: number;
     latestOrderKey?: number;
+}
+
+interface DisplayAlarmItem extends AlarmItem {
+    cardId: string;
+    cardType: 'alarm' | 'warning';
 }
 interface AlarmWsPayload {
     alarmId?: string
@@ -492,7 +497,60 @@ const filteredAlarms = computed(() => {
         ? (alarms.value ?? [])
         : (alarms.value ?? []).filter(a => !a?.prefilled)
 
-    let result = [...source];
+    const toDisplayCards = (item: AlarmItem): DisplayAlarmItem[] => {
+        const points = item.measurementPoints ?? []
+        const alarmPoints = points.filter(p => p.status === 'alarm')
+        const warningPoints = points.filter(p => p.status === 'warning')
+
+        const parseTimeValue = (v?: string) => {
+            const n = Number(v ?? 0)
+            return Number.isFinite(n) && n > 0 ? n : 0
+        }
+        const fallbackTime = parseTimeValue(item.time)
+        const alarmLatestTime = alarmPoints.reduce((max, p) => Math.max(max, Number(p.lastAlarmTime ?? 0)), fallbackTime)
+        const warningLatestTime = warningPoints.reduce((max, p) => Math.max(max, Number(p.lastAlarmTime ?? 0)), fallbackTime)
+
+        const getLatestPointNumByType = (type: 'alarm' | 'warning') => {
+            let latestNum: number | undefined
+            let latestTime = -1
+            ;(item.measurementPoints ?? []).forEach((p, idx) => {
+                if (p.status !== type) return
+                const t = Number(p.lastAlarmTime ?? 0)
+                if (t > latestTime) {
+                    latestTime = t
+                    latestNum = idx + 1
+                }
+            })
+            return latestNum
+        }
+
+        const cards: DisplayAlarmItem[] = []
+        if (alarmPoints.length > 0) {
+            cards.push({
+                ...item,
+                cardId: `${item.id}__alarm`,
+                cardType: 'alarm',
+                status: 'alarm',
+                statusText: '报警',
+                time: alarmLatestTime > 0 ? String(alarmLatestTime) : item.time,
+                latestPointNum: getLatestPointNumByType('alarm') ?? item.latestPointNum
+            })
+        }
+        if (warningPoints.length > 0) {
+            cards.push({
+                ...item,
+                cardId: `${item.id}__warning`,
+                cardType: 'warning',
+                status: 'warning',
+                statusText: '预警',
+                time: warningLatestTime > 0 ? String(warningLatestTime) : item.time,
+                latestPointNum: getLatestPointNumByType('warning') ?? item.latestPointNum
+            })
+        }
+        return cards
+    }
+
+    let result: DisplayAlarmItem[] = source.flatMap(toDisplayCards);
     const sortFallbackYear = (() => {
         const s = dateRange.value?.[0]
         if (!s) return new Date().getFullYear()
@@ -681,7 +739,7 @@ const isValidDevice = (deviceId: string): boolean => {
 
     return findDeviceInTree(deviceTreeStore.deviceTreeData);
 };
-function getDeviceDisplayStatus(alarm: AlarmItem): 'alarm' | 'warning' | 'offline' | 'healthy' {
+function getDeviceDisplayStatus(alarm: AlarmItem | DisplayAlarmItem): 'alarm' | 'warning' | 'offline' | 'healthy' {
     if (alarm.status === 'offline') return 'offline';
     const points = alarm.measurementPoints ?? [];
     const hasAlarm = points.some(p => p.status === 'alarm');
@@ -702,9 +760,15 @@ function getPointStyleClass(
     return 'healthy';
 }
 
-function getDisplayPoints(points: MeasurementPoint[], latestPointNum?: number): { point: MeasurementPoint; pointNum: number }[] {
+function getDisplayPoints(
+    points: MeasurementPoint[],
+    latestPointNum?: number,
+    cardType?: 'alarm' | 'warning'
+): { point: MeasurementPoint; pointNum: number }[] {
     const list = points ?? [];
-    const withNum = list.map((p, i) => ({ point: p, pointNum: i + 1 }));
+    const withNum = list
+        .map((p, i) => ({ point: p, pointNum: i + 1 }))
+        .filter(item => !cardType || item.point.status === cardType);
     const order = { alarm: 0, warning: 1, healthy: 2, offline: 3 };
     const sorted = withNum.sort((a, b) => {
         // 约定：latestPointNum 对应“最新点位”，强制置顶（即使其它点位的 lastAlarmTime 更大）
