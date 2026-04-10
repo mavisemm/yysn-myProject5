@@ -62,12 +62,13 @@
     </div>
 
     <div class="device-tree-container">
-      <el-scrollbar class="tree-scrollbar">
+      <el-scrollbar ref="treeScrollbarRef" class="tree-scrollbar">
         <div v-if="!deviceTreeStore.loading && displayTreeData.length === 0" class="no-data">
           <CommonEmptyState size="small" />
         </div>
         <el-tree v-else ref="deviceTreeRef" :data="displayTreeData" :props="treeProps" :expand-on-click-node="false"
-          :highlight-current="false" :default-expanded-keys="expandedKeys" node-key="id" @node-click="handleNodeClick">
+          :highlight-current="false" :default-expanded-keys="expandedKeys"
+          :current-node-key="treeCurrentKey" node-key="id" @node-click="handleNodeClick">
           <template #default="{ node, data }">
             <div class="tree-node" :data-type="data.type" :class="{ 'is-selected': isNodeSelected(data) }">
               <el-icon v-if="node.childNodes && node.childNodes.length > 0" class="expand-icon no-select"
@@ -196,47 +197,119 @@ import type { DeviceNode, Workshop, Device } from '@/types/device'
 const deviceTreeStore = useDeviceTreeStore()
 const deviceTreeData = computed(() => deviceTreeStore.deviceTreeData)
 const selectedDeviceId = computed(() => deviceTreeStore.selectedDeviceId)
-const scrollSelectedNodeIntoView = () => {
+
+/** 从根到目标节点父链的 id（不含目标自身），用于展开工厂/车间/设备以露出点位或设备行 */
+const findAncestorKeysForNodeId = (nodes: DeviceNode[], targetId: string): string[] | null => {
+  const t = String(targetId).trim()
+  const walk = (list: DeviceNode[], path: string[]): string[] | null => {
+    for (const node of list) {
+      if (String(node.id).trim() === t) return path
+      if (node.children?.length) {
+        const found = walk(node.children, [...path, node.id])
+        if (found !== null) return found
+      }
+    }
+    return null
+  }
+  return walk(nodes, [])
+}
+
+const treeScrollbarRef = ref<{ wrapRef?: { value?: HTMLElement } } | null>(null)
+
+const getCssEscaped = (v: string) => {
+  const raw = String(v ?? '')
+  const esc = (globalThis as any)?.CSS?.escape
+  return typeof esc === 'function' ? esc(raw) : raw.replace(/"/g, '\\"')
+}
+
+const scrollSelectedNodeIntoView = (key?: string | null) => {
   const tree = deviceTreeRef.value
   const treeEl = tree?.$el as HTMLElement | undefined
   if (!treeEl) return
 
-  const selectedNode = treeEl.querySelector('.tree-node.is-selected')
-  const contentEl = (selectedNode?.closest('.el-tree-node__content') ?? selectedNode) as HTMLElement | null
+  const k = String(key ?? deviceTreeStore.selectedDeviceId ?? '').trim()
+  const keySelector = k ? `.el-tree-node[data-key="${getCssEscaped(k)}"]` : ''
+  const byKey = keySelector ? (treeEl.querySelector(keySelector) as HTMLElement | null) : null
+  const selectedNode = byKey ?? (treeEl.querySelector('.tree-node.is-selected') as HTMLElement | null)
+  const contentEl = (selectedNode?.querySelector?.('.el-tree-node__content') ??
+    selectedNode?.closest?.('.el-tree-node__content') ??
+    selectedNode) as HTMLElement | null
   if (!contentEl) return
 
-  contentEl.scrollIntoView({
-    block: 'nearest',
-    inline: 'nearest'
-  })
+  const wrapFromRef = treeScrollbarRef.value?.wrapRef?.value
+  const scrollWrap =
+    (wrapFromRef instanceof HTMLElement ? wrapFromRef : null) ??
+    (treeEl.closest('.el-scrollbar')?.querySelector('.el-scrollbar__wrap') as HTMLElement | null)
+
+  if (scrollWrap) {
+    const wrapRect = scrollWrap.getBoundingClientRect()
+    const elRect = contentEl.getBoundingClientRect()
+    // 选中行在滚动内容里的纵向位置（从内容顶部算起）
+    const elTopInContent = elRect.top - wrapRect.top + scrollWrap.scrollTop
+    const elHeight = contentEl.offsetHeight || elRect.height
+    const wrapHeight = scrollWrap.clientHeight
+    // 让选中行在可视区域内垂直居中
+    const targetScrollTop = elTopInContent - wrapHeight / 2 + elHeight / 2
+    const maxScroll = Math.max(0, scrollWrap.scrollHeight - scrollWrap.clientHeight)
+    const nextTop = Math.min(maxScroll, Math.max(0, targetScrollTop))
+    const sb = treeScrollbarRef.value as { setScrollTop?: (n: number) => void } | null
+    if (sb && typeof sb.setScrollTop === 'function') {
+      sb.setScrollTop(nextTop)
+    } else {
+      scrollWrap.scrollTop = nextTop
+    }
+  } else {
+    contentEl.scrollIntoView({
+      block: 'center',
+      inline: 'nearest'
+    })
+  }
+}
+
+/** 与 Element Plus 内部一致：展开目标节点的直接父链（expandParent=true 会一路展开到根） */
+const expandAncestorsViaTreeApi = (treeKey: string) => {
+  const tree = deviceTreeRef.value
+  if (!tree || typeof tree.getNode !== 'function') return
+  try {
+    const node = tree.getNode(treeKey)
+    const parent = node?.parent
+    if (parent && parent.level > 0 && typeof parent.expand === 'function') {
+      parent.expand(null, true)
+    }
+  } catch (e) {
+    console.warn('通过树 API 展开祖先节点失败:', e)
+  }
 }
 
 const updateSelection = async (newId: string | null) => {
+  if (newId) {
+    const ancestors = findAncestorKeysForNodeId(deviceTreeStore.deviceTreeData, newId)
+    if (ancestors?.length) {
+      const merged = [...new Set([...(deviceTreeStore.expandedKeys ?? []), ...ancestors])]
+      deviceTreeStore.setExpandedKeys(merged)
+    }
+  }
+  await nextTick()
   await nextTick()
   const tree = deviceTreeRef.value
   if (!tree || typeof tree.setCurrentKey !== 'function') return
   try {
-    tree.setCurrentKey(newId || null)
+    if (newId) {
+      expandAncestorsViaTreeApi(newId)
+      await nextTick()
+    }
+    tree.setCurrentKey(newId || null, true)
+    await nextTick()
+    const doScroll = () => scrollSelectedNodeIntoView(newId)
     requestAnimationFrame(() => {
-      scrollSelectedNodeIntoView()
+      doScroll()
+      // 展开/渲染较慢时再补几次，保证“从收起到展开”也能稳定居中
+      window.setTimeout(doScroll, 120)
+      window.setTimeout(doScroll, 360)
+      window.setTimeout(doScroll, 800)
     })
   } catch (e) {
     console.warn('更新设备树选中状态失败:', e)
-  }
-}
-
-
-const updateExpansion = async (newKeys: string[]) => {
-  await nextTick()
-  const tree = deviceTreeRef.value
-  if (!newKeys || !tree || typeof tree.setExpandedKeys !== 'function') return
-  try {
-    tree.setExpandedKeys(newKeys)
-    requestAnimationFrame(() => {
-      scrollSelectedNodeIntoView()
-    })
-  } catch (e) {
-    console.warn('更新设备树展开状态失败:', e)
   }
 }
 
@@ -273,8 +346,6 @@ onMounted(async () => {
   }
 
   watch(selectedDeviceId, updateSelection, { immediate: true })
-
-  watch(deviceTreeStore.expandedKeys, updateExpansion, { immediate: true })
 })
 
 const workshopSearchText = ref<string>('')
@@ -289,6 +360,12 @@ const debouncedDeviceSearch = useDebounce(deviceSearchText, 400)
 
 const deviceTreeRef = ref<any>(null)
 const expandedKeys = computed(() => deviceTreeStore.expandedKeys)
+
+const treeCurrentKey = computed(() => {
+  const id = deviceTreeStore.selectedDeviceId
+  if (id == null || String(id).trim() === '') return undefined
+  return id
+})
 
 const treeProps = {
   label: 'name',
@@ -713,7 +790,9 @@ const isNodeSelected = (data: DeviceNode): boolean => {
   if (data.type !== 'device' && data.type !== 'point') {
     return false
   }
-  return deviceTreeStore.selectedDeviceId === data.id
+  const sel = deviceTreeStore.selectedDeviceId
+  if (sel == null) return false
+  return String(sel).trim() === String(data.id).trim()
 }
 
 
@@ -751,11 +830,10 @@ watch(
 )
 
 watch(displayTreeData, () => {
-  updateExpandedKeys()
   if (selectedDeviceId.value) {
-    // 刷新后设备树异步回填时，补一次选中与滚动，确保目标节点进入可视区
     void updateSelection(selectedDeviceId.value)
   }
+  updateExpandedKeys()
 }, { deep: true })
 
 onUnmounted(() => {

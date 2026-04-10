@@ -37,7 +37,6 @@ import { getAllStats } from '@/api/modules/stats';
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
 import { useAlarmOverviewStore } from '@/stores/alarmOverview'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
-import { useDeviceWaringDetailStore } from '@/stores/deviceWaringDetail'
 
 
 interface RankingItem {
@@ -148,6 +147,8 @@ onMounted(() => {
 
   void nextTick(async () => {
     await router.isReady()
+    if (router.currentRoute.value.name !== 'Dashboard') return
+
     const alarmOverviewStore = useAlarmOverviewStore()
     void alarmOverviewStore.start({
       token: localStorage.getItem('token') ?? undefined,
@@ -155,7 +156,8 @@ onMounted(() => {
     })
 
     const deviceTreeStore = useDeviceTreeStore()
-    void deviceTreeStore.loadDeviceTreeData()
+    await deviceTreeStore.loadDeviceTreeData()
+    if (router.currentRoute.value.name !== 'Dashboard') return
     deviceTreeStore.setSelectedDeviceId(null)
 
     const alarmBatchStore = useAlarmBatchStore()
@@ -164,11 +166,6 @@ onMounted(() => {
         console.error('预热实时列表失败:', e)
       })
     }
-
-    const deviceWaringDetailStore = useDeviceWaringDetailStore()
-    void deviceWaringDetailStore.prefetchOnce().catch((e) => {
-      console.error('预热设备预警/报警详情失败:', e)
-    })
 
     historyPrefetchTimerId = window.setTimeout(() => {
       if (!hasToken()) return

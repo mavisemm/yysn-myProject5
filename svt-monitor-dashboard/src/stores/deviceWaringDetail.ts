@@ -38,11 +38,6 @@ export const useDeviceWaringDetailStore = defineStore('deviceWaringDetail', () =
     return inFlight
   }
 
-  const prefetchOnce = async () => {
-    if (sound.value.length || vibration.value.length) return
-    await fetch(false)
-  }
-
   const reset = () => {
     sound.value = []
     vibration.value = []
@@ -53,12 +48,11 @@ export const useDeviceWaringDetailStore = defineStore('deviceWaringDetail', () =
 
   return {
     sound,
-    vibration,
+    vibration, 
     lastFetchedAt,
     loading,
     isStale,
     fetch,
-    prefetchOnce,
     reset
   }
 })

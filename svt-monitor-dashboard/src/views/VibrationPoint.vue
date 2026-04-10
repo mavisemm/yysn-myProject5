@@ -32,21 +32,63 @@ const receiverId = computed(() => {
   return (typeof resolved === 'string' ? resolved : '') || ''
 })
 
+const equipmentIdFromQuery = computed(() => {
+  const q = route.query.equipmentId
+  if (typeof q === 'string') return q
+  if (Array.isArray(q) && q[0]) return String(q[0])
+  return ''
+})
+
+const pointNameFromQuery = computed(() => {
+  const q = route.query.pointName
+  if (typeof q === 'string') return q
+  if (Array.isArray(q) && q[0]) return String(q[0])
+  return ''
+})
+
+const syncTreeSelectionFromRoute = () => {
+  const rid = receiverId.value.trim()
+  if (!rid) return
+  const eid = equipmentIdFromQuery.value.trim()
+  const pname = pointNameFromQuery.value.trim()
+  const treeKey =
+    deviceTreeStore.resolveTreeKeyForPoint(rid, eid || undefined, {
+      pointName: pname || undefined
+    }) ?? rid
+  deviceTreeStore.setSelectedDeviceId(treeKey)
+}
 
 watch(
   () => route.params.receiverId,
-  (newId) => {
-    if (newId) {
-      const resolved = Array.isArray(newId) ? newId[0] : newId
-      if (typeof resolved === 'string' && resolved) deviceTreeStore.setSelectedDeviceId(resolved)
-    }
+  () => {
+    syncTreeSelectionFromRoute()
+  }
+)
+
+watch(equipmentIdFromQuery, () => {
+  syncTreeSelectionFromRoute()
+})
+
+watch(pointNameFromQuery, () => {
+  syncTreeSelectionFromRoute()
+})
+
+watch(
+  () => deviceTreeStore.deviceTreeData.length,
+  () => {
+    syncTreeSelectionFromRoute()
+  }
+)
+
+watch(
+  () => deviceTreeStore.loading,
+  (loading) => {
+    if (!loading) syncTreeSelectionFromRoute()
   }
 )
 
 onMounted(() => {
-  if (receiverId.value) {
-    deviceTreeStore.setSelectedDeviceId(receiverId.value)
-  }
+  syncTreeSelectionFromRoute()
 })
 
 const goBack = () => {

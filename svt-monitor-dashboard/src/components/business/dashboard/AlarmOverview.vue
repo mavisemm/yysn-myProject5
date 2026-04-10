@@ -229,7 +229,7 @@ const pageSize = ref(responsivePageSize.value.pageSize);
 const sortOrder = ref<'asc' | 'desc'>("desc");
 
 const alarmOverviewStore = useAlarmOverviewStore()
-const { alarms } = storeToRefs(alarmOverviewStore)
+const { alarms, httpInitialized } = storeToRefs(alarmOverviewStore)
 const parsePickerDateTime = (s: string): Date => {
     const str = (s ?? '').trim()
     if (!str) return new Date(NaN)
@@ -488,7 +488,12 @@ const filteredDevices = computed(() => {
 });
 
 const filteredAlarms = computed(() => {
-    let result = [...alarms.value];
+    // HTTP 初始化完成前，先隐藏“预填充健康卡片”，避免首页进入时绿->红闪烁
+    const source = httpInitialized.value
+        ? (alarms.value ?? [])
+        : (alarms.value ?? []).filter(a => !a?.prefilled)
+
+    let result = [...source];
     const sortFallbackYear = (() => {
         const s = dateRange.value?.[0]
         if (!s) return new Date().getFullYear()

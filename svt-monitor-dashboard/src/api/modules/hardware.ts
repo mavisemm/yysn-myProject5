@@ -222,6 +222,7 @@ export const getDeviceHealthReport = (deviceId: string, params?: {
   })
 }
 
+/** Top5 接口；声音与振动共用 URL，但声音场景的 receiverId 可能与振动设备树 /vibration/tree 中点位 id 不一致，前端用 pointName 与树对齐 */
 export interface TopDevice {
   equipmentId: string;
   equipmentName: string;
@@ -229,6 +230,10 @@ export interface TopDevice {
   workshopName: string;
   value: number;
   latestTime: string;
+  receiverId?: string;
+  pointName?: string;
+  receiverName?: string;
+  pointId?: string;
 }
 
 export interface TopDeviceResponse {

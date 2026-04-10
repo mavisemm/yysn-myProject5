@@ -78,7 +78,7 @@ export const transformDeviceTreeData = (responseData: DeviceTreeResponse): Devic
   }
 
   return responseData.ret.map(factory => ({
-    id: factory.factoryId,
+    id: String(factory.factoryId),
     name: factory.factoryName,
     type: 'factory',
     status: 'normal', 
@@ -89,17 +89,19 @@ export const transformDeviceTreeData = (responseData: DeviceTreeResponse): Devic
       type: 'workshop',
       status: 'normal', 
       children: workshop.children.map(equipment => ({
-        id: equipment.equipmentId,
+        id: String(equipment.equipmentId),
         name: equipment.equipmentName,
         type: 'device',
         status: 'normal', 
         workshopName: workshop.workshopName,
         customerDeviceId: equipment.customerDeviceId,
-        equipmentId: equipment.equipmentId,
+        equipmentId: String(equipment.equipmentId),
         equipmentName: equipment.equipmentName,
         children: equipment.children.map((point, pointIndex) => ({
           
-          id: point.receiverId ?? `${equipment.equipmentId}-${pointIndex}`,
+          id: point.receiverId != null && point.receiverId !== ''
+            ? String(point.receiverId)
+            : `${equipment.equipmentId}-${pointIndex}`,
           
           name: point.receiverName || point.pointName,
           type: 'point',
@@ -108,8 +110,8 @@ export const transformDeviceTreeData = (responseData: DeviceTreeResponse): Devic
           warningType: point.warningType,
           warningValue: point.warningValue,
           
-          deviceId: point.deviceId,
-          receiverId: point.receiverId
+          deviceId: point.deviceId != null ? String(point.deviceId) : undefined,
+          receiverId: point.receiverId != null && point.receiverId !== '' ? String(point.receiverId) : undefined
         }))
       }))
     }))

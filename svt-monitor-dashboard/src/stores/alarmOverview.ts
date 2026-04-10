@@ -24,6 +24,11 @@ export interface AlarmItem {
   latestPointNum?: number
   // HTTP 数组顺序：越大越新（items[0] 最大）
   latestOrderKey?: number
+  /**
+   * 来自设备树的“预填充”占位项（避免空白），在 HTTP 初始化完成前不参与展示，
+   * 以避免进入首页时先显示健康(绿)再被真实告警覆盖(红)的闪烁。
+   */
+  prefilled?: boolean
 }
 
 function makeHealthyPoint(i: number): MeasurementPoint {
@@ -235,6 +240,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
 
   const connectedTenantId = ref('')
   const connecting = ref(false)
+  const httpInitialized = ref(false)
   let wsClient: VibrationWsClient | null = null
   let treeWatchStopper: (() => void) | null = null
   let treePrefilled = false
@@ -347,7 +353,8 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       status: 'healthy',
       statusText: '健康',
       time: '',
-      measurementPoints
+      measurementPoints,
+      prefilled: true
     }
   }
 
@@ -578,7 +585,8 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
         : '',
       measurementPoints,
       latestPointNum,
-      latestOrderKey
+      latestOrderKey,
+      prefilled: false
     }
 
     if (idx >= 0) alarms.value.splice(idx, 1, item)
@@ -664,6 +672,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     stop()
     alarms.value = []
     treePrefilled = false
+    httpInitialized.value = false
 
     connecting.value = true
     connectedTenantId.value = tId
@@ -697,6 +706,9 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       } catch (e) {
         
         console.warn('预警总览初始化接口获取失败:', e)
+      } finally {
+        // 无论成功与否，都标记“HTTP 初始化流程已结束”，避免一直隐藏预填充项
+        httpInitialized.value = true
       }
 
       wsClient = new VibrationWsClient({ token: params?.token ?? (localStorage.getItem('token') ?? undefined) })
@@ -712,6 +724,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
   function stop() {
     connecting.value = false
     connectedTenantId.value = ''
+    httpInitialized.value = false
     try {
       wsClient?.disconnect()
     } catch {
@@ -733,6 +746,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     alarms,
     connecting,
     connectedTenantId,
+    httpInitialized,
     start,
     stop,
     reset,

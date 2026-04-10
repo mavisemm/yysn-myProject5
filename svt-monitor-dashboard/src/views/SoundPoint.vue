@@ -54,6 +54,32 @@ const receiverId = computed(() => {
   return (typeof resolved === 'string' ? resolved : '') || ''
 });
 
+const equipmentIdFromQuery = computed(() => {
+  const q = route.query.equipmentId
+  if (typeof q === 'string') return q
+  if (Array.isArray(q) && q[0]) return String(q[0])
+  return ''
+})
+
+const pointNameFromQuery = computed(() => {
+  const q = route.query.pointName
+  if (typeof q === 'string') return q
+  if (Array.isArray(q) && q[0]) return String(q[0])
+  return ''
+})
+
+const syncTreeSelectionFromRoute = () => {
+  const rid = receiverId.value.trim()
+  if (!rid) return
+  const eid = equipmentIdFromQuery.value.trim()
+  const pname = pointNameFromQuery.value.trim()
+  const treeKey =
+    deviceTreeStore.resolveTreeKeyForPoint(rid, eid || undefined, {
+      pointName: pname || undefined
+    }) ?? rid
+  deviceTreeStore.setSelectedDeviceId(treeKey)
+}
+
 
 import SoundPointCharts from '@/components/business/sound-point/SoundPointCharts.vue';
 import SoundDataTable from '@/components/business/sound-point/SoundDataTable.vue';
@@ -567,21 +593,38 @@ watch(
   () => route.params.receiverId,
   (newId, oldId) => {
     if (newId !== oldId) {
-      if (newId) {
-        const resolved = Array.isArray(newId) ? newId[0] : newId
-        if (resolved) deviceTreeStore.setSelectedDeviceId(resolved as string);
-        applyStorePointInfo();
-      }
+      syncTreeSelectionFromRoute()
+      applyStorePointInfo();
       loadDeviationList();
     }
   }
 );
 
-onMounted(() => {
-  if (receiverId.value) {
-    deviceTreeStore.setSelectedDeviceId(receiverId.value);
-    applyStorePointInfo();
+watch(equipmentIdFromQuery, () => {
+  syncTreeSelectionFromRoute()
+})
+
+watch(pointNameFromQuery, () => {
+  syncTreeSelectionFromRoute()
+})
+
+watch(
+  () => deviceTreeStore.deviceTreeData.length,
+  () => {
+    syncTreeSelectionFromRoute()
   }
+)
+
+watch(
+  () => deviceTreeStore.loading,
+  (loading) => {
+    if (!loading) syncTreeSelectionFromRoute()
+  }
+)
+
+onMounted(() => {
+  syncTreeSelectionFromRoute()
+  applyStorePointInfo();
   loadDeviationList();
   window.addEventListener('resize', handleResize);
 });

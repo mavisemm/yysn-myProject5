@@ -131,13 +131,20 @@ const goToRankTarget = (rank: RankingItem, metricIndex: number) => {
     // 0: 振动排名 -> 振动点位页；1: 声音排名 -> 声音点位页；2: 温度排名 -> 设备详情页
     if ((metricIndex === 0 || metricIndex === 1) && rank.receiverId && rank.equipmentId) {
         rankDialogVisible.value = false;
+        const rid = String(rank.receiverId).trim()
+        const eid = String(rank.equipmentId).trim()
+        const pname = (rank.pointName ?? '').trim()
+        const treeKey =
+            deviceTreeStore.resolveTreeKeyForPoint(rid, eid, { pointName: pname || undefined }) ?? rid
+        deviceTreeStore.setSelectedDeviceId(treeKey)
         router.push({
             name: metricIndex === 0 ? 'VibrationPoint' : 'SoundPoint',
             params: {
-                receiverId: rank.receiverId
+                receiverId: rid
             },
             query: {
-                equipmentId: rank.equipmentId
+                equipmentId: eid,
+                ...(pname ? { pointName: pname } : {})
             }
         }).catch(() => { });
         return;

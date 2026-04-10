@@ -15,7 +15,8 @@
                 </el-table-column>
                 <el-table-column prop="pointName" label="点位名称" min-width="120">
                     <template #default="{ row }">
-                        <span v-if="row.receiverId && row.equipmentId" class="link-cell" @click.stop="goToSoundPoint(row)">
+                        <span v-if="row.receiverId && row.equipmentId" class="link-cell"
+                            @click.stop="goToSoundPoint(row)">
                             {{ row.pointName }}
                         </span>
                         <span v-else>{{ row.pointName }}</span>
@@ -65,18 +66,18 @@ interface TableRow {
 }
 
 function mapToRow(x: any): TableRow {
-  return {
-    equipmentId: x.equipmentId,
-    equipmentName: x.equipmentName ?? '—',
-    receiverId: x.receiverId,
-    pointName: x.pointName ?? '—',
-    value: x.triggerValue ?? '—'
-  }
+    return {
+        equipmentId: x.equipmentId,
+        equipmentName: x.equipmentName ?? '—',
+        receiverId: x.receiverId,
+        pointName: x.pointName ?? '—',
+        value: x.triggerValue ?? '—'
+    }
 }
 
 const tableData = computed(() => {
-  const list = props.mode === 'trend' ? store.sound : store.vibration
-  return (list ?? []).map(mapToRow)
+    const list = props.mode === 'trend' ? store.sound : store.vibration
+    return (list ?? []).map(mapToRow)
 });
 
 const goToDeviceDetail = (row: TableRow) => {
@@ -105,10 +106,10 @@ watch(() => props.modelValue, (val) => {
 
 watch(visible, (val) => {
     if (!val) {
-      emit('update:modelValue', false);
-      return
+        emit('update:modelValue', false);
+        return
     }
-    void store.fetch(false)
+    void store.fetch(true)
 });
 </script>
 
