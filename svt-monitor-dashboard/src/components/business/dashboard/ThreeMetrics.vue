@@ -135,8 +135,8 @@ const goToRankTarget = (rank: RankingItem, metricIndex: number) => {
         const eid = String(rank.equipmentId).trim()
         const pname = (rank.pointName ?? '').trim()
         const treeKey =
-            deviceTreeStore.resolveTreeKeyForPoint(rid, eid, { pointName: pname || undefined }) ?? rid
-        deviceTreeStore.setSelectedDeviceId(treeKey)
+            deviceTreeStore.resolveTreeKeyForPoint(rid, eid, { pointName: pname || undefined })
+        if (treeKey) deviceTreeStore.setSelectedDeviceId(treeKey)
         router.push({
             name: metricIndex === 0 ? 'VibrationPoint' : 'SoundPoint',
             params: {

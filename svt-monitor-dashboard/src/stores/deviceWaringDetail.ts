@@ -1,55 +1,70 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { getDeviceWaringDetail, type DeviceWaringDetailItem } from '@/api/modules/stats'
+import { getDeviceWaringDetail, getSoundDeviceWaringDetail, type DeviceWaringDetailItem } from '@/api/modules/stats'
 
 const CACHE_TTL_MS = 60_000
 
 export const useDeviceWaringDetailStore = defineStore('deviceWaringDetail', () => {
   const sound = ref<DeviceWaringDetailItem[]>([])
   const vibration = ref<DeviceWaringDetailItem[]>([])
-  const lastFetchedAt = ref<number>(0)
+  const lastFetchedAtByMode = ref<{ trend: number; fault: number }>({ trend: 0, fault: 0 })
   const loading = ref(false)
 
-  let inFlight: Promise<void> | null = null
+  let inFlightTrend: Promise<void> | null = null
+  let inFlightFault: Promise<void> | null = null
 
-  const isStale = computed(() => {
-    const t = lastFetchedAt.value
+  const isStale = computed(() => (mode: 'trend' | 'fault') => {
+    const t = lastFetchedAtByMode.value?.[mode] ?? 0
     if (!t) return true
     return Date.now() - t > CACHE_TTL_MS
   })
 
-  const fetch = async (force = false) => {
-    if (!force && !isStale.value && (sound.value.length || vibration.value.length)) return
-    if (inFlight) return inFlight
+  const fetch = async (mode: 'trend' | 'fault' = 'trend', force = false) => {
+    const hasData = mode === 'trend' ? sound.value.length > 0 : vibration.value.length > 0
+    if (!force && !isStale.value(mode) && hasData) return
+
+    if (mode === 'trend' && inFlightTrend) return inFlightTrend
+    if (mode === 'fault' && inFlightFault) return inFlightFault
 
     loading.value = true
-    inFlight = (async () => {
+    const task = (async () => {
       try {
-        const res = await getDeviceWaringDetail()
-        sound.value = Array.isArray(res?.ret?.sound) ? res.ret.sound : []
-        vibration.value = Array.isArray(res?.ret?.vibration) ? res.ret.vibration : []
-        lastFetchedAt.value = Date.now()
+        if (mode === 'trend') {
+          const soundRes = await getSoundDeviceWaringDetail()
+          sound.value = Array.isArray(soundRes?.ret) ? soundRes.ret : []
+          lastFetchedAtByMode.value = { ...lastFetchedAtByMode.value, trend: Date.now() }
+          return
+        }
+
+        const allRes = await getDeviceWaringDetail()
+        vibration.value = Array.isArray(allRes?.ret?.vibration) ? allRes.ret.vibration : []
+        lastFetchedAtByMode.value = { ...lastFetchedAtByMode.value, fault: Date.now() }
       } finally {
         loading.value = false
-        inFlight = null
+        if (mode === 'trend') inFlightTrend = null
+        else inFlightFault = null
       }
     })()
 
-    return inFlight
+    if (mode === 'trend') inFlightTrend = task
+    else inFlightFault = task
+
+    return task
   }
 
   const reset = () => {
     sound.value = []
     vibration.value = []
-    lastFetchedAt.value = 0
+    lastFetchedAtByMode.value = { trend: 0, fault: 0 }
     loading.value = false
-    inFlight = null
+    inFlightTrend = null
+    inFlightFault = null
   }
 
   return {
     sound,
     vibration, 
-    lastFetchedAt,
+    lastFetchedAtByMode,
     loading,
     isStale,
     fetch,

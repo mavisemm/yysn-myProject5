@@ -89,9 +89,9 @@ export const fetchVibrationEventsForOverview = async (params?: {
     .map((it) => ({
       deviceId: String(it.deviceId ?? ''),
       time: Number(it.time ?? 0),
-      tenantId: String(it.tenantId ?? tenantId),
-      eventTypeCode: String(it.eventTypeCode ?? 'MACHINE_VIBRATION'),
-      statusCode: String(it.statusCode ?? 'VALID'),
+      tenantId: String(it.tenantId ?? ''),
+      eventTypeCode: String(it.eventTypeCode ?? ''),
+      statusCode: String(it.statusCode ?? ''),
       probability: Number(it.probability ?? 0),
       dataJson: typeof it.dataJson === 'string' ? it.dataJson : JSON.stringify(it.dataJson ?? {})
     }))

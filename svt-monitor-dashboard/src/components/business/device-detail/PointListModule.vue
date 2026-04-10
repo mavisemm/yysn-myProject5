@@ -11,8 +11,8 @@
                 :header-cell-style="{ background: 'transparent', color: 'var(--special-font-color)', 'text-align': 'center' }"
                 :cell-style="{ background: 'transparent', color: '#fff', 'text-align': 'center' }"
                 @row-click="onRowClick" highlight-current-row>
-                <el-table-column prop="id" label="点位编号" width="30%" />
                 <el-table-column prop="name" label="点位名称" width="25%" />
+                <el-table-column prop="id" label="点位编号" width="30%" />
                 <el-table-column label="声音偏差值阈值" width="25%">
                     <template #default="{ row }">
                         {{ row.matchMesureValue ?? '-' }}

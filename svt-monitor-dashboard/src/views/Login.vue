@@ -115,7 +115,7 @@ const handleLogin = async () => {
             if (typeof val === 'number') return String(val)
             if (typeof val === 'object') {
                 const obj = val as Record<string, any>
-                return normalizeToken(obj.token ?? obj.accessToken ?? obj.jwt ?? obj.value)
+                return normalizeToken(obj.token)
             }
             return ''
         }
@@ -126,7 +126,7 @@ const handleLogin = async () => {
             if (typeof val === 'number') return String(val)
             if (typeof val === 'object') {
                 const obj = val as Record<string, any>
-                return normalizeTenantId(obj.tenantId ?? obj.tenant_id ?? obj.id ?? obj.value)
+                return normalizeTenantId(obj.tenantId)
             }
             return ''
         }
@@ -137,13 +137,10 @@ const handleLogin = async () => {
         const token =
             normalizeToken((res as any)?.token) ||
             normalizeToken((res as any)?.ret?.token) ||
-            normalizeToken((res as any)?.data?.token) ||
-            normalizeToken((res as any)?.ret?.accessToken) ||
-            normalizeToken((res as any)?.data?.accessToken)
+            normalizeToken((res as any)?.data?.token)
 
         const tenantId =
             normalizeTenantId((res as any)?.data?.tenantId) ||
-            (typeof (res as any)?.ret === 'string' ? normalizeTenantId((res as any)?.ret) : '') ||
             normalizeTenantId((res as any)?.ret) ||
             normalizeTenantId((res as any)?.ret?.tenantId)
 

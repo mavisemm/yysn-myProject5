@@ -321,7 +321,7 @@ function findDeviceInfo(deviceId: string): { deviceName: string; shopName: strin
         }
         return null
     }
-    return walk(deviceTreeStore.deviceTreeData) ?? { deviceName: deviceId, shopName: '' }
+    return walk(deviceTreeStore.deviceTreeData) ?? { deviceName: '', shopName: '' }
 }
 
 function mapLevelToStatus(level: string | undefined): MeasurementPoint['status'] {
@@ -365,7 +365,7 @@ type OverviewNormalized = {
 function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
 
     if (isAlarmWsPayload(input)) {
-        const deviceId = String(input.equipmentId ?? input.deviceId ?? '')
+        const deviceId = String(input.equipmentId ?? '')
         const t = Number(input.alarmTime ?? 0)
         if (!deviceId || !Number.isFinite(t) || t <= 0) return null
         return {
@@ -440,9 +440,8 @@ function upsertAlarmFromEvent(input: any) {
     const isFaultAlarm = String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
 
     const deviceId = evt.deviceId
-    const fromTree = findDeviceInfo(deviceId)
-    const deviceName = evt.deviceName || fromTree.deviceName
-    const shopName = (evt.shopName && evt.shopName !== '未知车间') ? evt.shopName : fromTree.shopName
+    const deviceName = evt.deviceName ? String(evt.deviceName) : ''
+    const shopName = (evt.shopName && evt.shopName !== '未知车间') ? String(evt.shopName) : ''
 
     const t = Number(evt.time)
     const timeStr = Number.isFinite(t) && t > 0 ? String(t) : ''

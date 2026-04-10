@@ -103,6 +103,7 @@ type OverviewNormalized = {
   alarmTypeCode?: string
   statusCode?: string
   receiverId?: string
+  isEventTypeMessage?: boolean
   point: {
     channelNo?: string | number
     level?: string
@@ -143,10 +144,49 @@ function derivePointStatus(alarmTypeCode: string | undefined, level: string | un
 }
 
 function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
+  // 优先规则：只要包含 eventTypeCode，就按“声音预警”处理，
+  // 不再受 alarmTypeCode（例如 MACHINE_VIBRATION）影响。
+  if (input && typeof input === 'object' && 'eventTypeCode' in input) {
+    const parsedFromData = safeParseJson((input as any).dataJson)
+    const parsedFromRaw = safeParseJson((input as any).rawDataJson)
+    const pointNameRaw =
+      parsedFromData?.pointName ??
+      parsedFromData?.pointname ??
+      parsedFromRaw?.pointName ??
+      parsedFromRaw?.pointname
+    const receiverIdRaw =
+      parsedFromData?.receiverId ??
+      parsedFromData?.receiverid ??
+      parsedFromRaw?.receiverId ??
+      parsedFromRaw?.receiverid
+    const deviceId = String((input as any).equipmentId ?? (input as any).deviceId ?? '')
+    const t = Number((input as any).time ?? (input as any).alarmTime ?? 0)
+    if ((!deviceId && !receiverIdRaw) || !Number.isFinite(t) || t <= 0) return null
+
+    return {
+      deviceId,
+      deviceName: (input as any).equipmentName ? String((input as any).equipmentName) : undefined,
+      shopName: (input as any).workshopName ? String((input as any).workshopName) : undefined,
+      time: t,
+      alarmTypeCode: (input as any).eventTypeCode ? String((input as any).eventTypeCode) : undefined,
+      statusCode: (input as any).statusCode ? String((input as any).statusCode) : undefined,
+      receiverId: receiverIdRaw ? String(receiverIdRaw) : undefined,
+      isEventTypeMessage: true,
+      point: {
+        channelNo: parsedFromData?.channelNo ?? parsedFromRaw?.channelNo,
+        level: (parsedFromData?.level ?? parsedFromRaw?.level)
+          ? String(parsedFromData?.level ?? parsedFromRaw?.level)
+          : undefined,
+        pointName: pointNameRaw ? String(pointNameRaw) : undefined
+      }
+    }
+  }
+
   if (isAlarmWsPayload(input)) {
     const parsedFromData = safeParseJson((input as any).dataJson)
     const parsedFromRaw = safeParseJson((input as any).rawDataJson)
-    const deviceId = String(input.equipmentId ?? input.deviceId ?? '')
+    // 预警总览卡片合并主键：严格使用 equipmentId
+    const deviceId = String(input.equipmentId ?? '')
     const receiverIdRaw = (input as any).receiverId ?? parsedFromData?.receiverId ?? parsedFromRaw?.receiverId
     const t = Number(input.alarmTime ?? input.time ?? 0)
     if ((!deviceId && !receiverIdRaw) || !Number.isFinite(t) || t <= 0) return null
@@ -159,6 +199,7 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
       alarmTypeCode: input.alarmTypeCode ? String(input.alarmTypeCode) : undefined,
       statusCode: input.statusCode ? String(input.statusCode) : undefined,
       receiverId: receiverIdRaw ? String(receiverIdRaw) : undefined,
+      isEventTypeMessage: false,
       point: {
         channelNo: input.data?.channelNo ?? parsedFromData?.channelNo ?? parsedFromRaw?.channelNo,
         level: (input.data?.level ?? parsedFromData?.level ?? parsedFromRaw?.level)
@@ -186,6 +227,7 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
     statusCode: evt.statusCode ? String(evt.statusCode) : undefined,
     receiverId: parsed?.receiverId ? String(parsed.receiverId) : undefined,
     shopName: parsed?.shopName ? String(parsed.shopName) : undefined,
+    isEventTypeMessage: true,
     point: {
       channelNo: parsed?.channelNo,
       level: parsed?.level ? String(parsed.level) : undefined,
@@ -395,31 +437,13 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     
     
 
-    const isFaultAlarm = String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
+    const isFaultAlarm =
+      !evt.isEventTypeMessage && String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
     const resolvedByPoint = resolveDeviceByPoint(evt.receiverId, evt.point.pointName)
     const rawDeviceId = String(evt.deviceId ?? '').trim()
-    const resolvedDeviceId = String(resolvedByPoint?.deviceId ?? '').trim()
-    // 声音等点位级事件可能携带的是“测点/子对象ID”而非设备ID。
-    // 只要带 receiverId 且能反查到父设备，就优先用父设备ID做卡片合并键，避免拆成新卡片。
-    const useResolvedDeviceId =
-      !!resolvedDeviceId &&
-      (!rawDeviceId || (!!evt.receiverId && rawDeviceId !== resolvedDeviceId))
-    const deviceId = useResolvedDeviceId
-      ? resolvedDeviceId
-      : (rawDeviceId || resolvedDeviceId)
+    const deviceId = rawDeviceId
     if (!deviceId) return
     const idx = alarms.value.findIndex((a) => a.id === deviceId)
-
-    const deviceName = useResolvedDeviceId
-      ? String(resolvedByPoint?.deviceName ?? deviceId)
-      : (evt.deviceName
-          ? String(evt.deviceName)
-          : (resolvedByPoint?.deviceName ? String(resolvedByPoint.deviceName) : deviceId))
-    const shopName = useResolvedDeviceId
-      ? String(resolvedByPoint?.shopName ?? '')
-      : (evt.shopName
-          ? String(evt.shopName)
-          : (resolvedByPoint?.shopName ? String(resolvedByPoint.shopName) : ''))
 
     const t = Number(evt.time)
     const timeStr = Number.isFinite(t) && t > 0 ? String(t) : ''
@@ -446,7 +470,9 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     }
 
     
-    const derivedPointStatus: MeasurementPoint['status'] = derivePointStatus(evt.alarmTypeCode, evt.point.level)
+    const derivedPointStatus: MeasurementPoint['status'] = evt.isEventTypeMessage
+      ? 'warning'
+      : derivePointStatus(evt.alarmTypeCode, evt.point.level)
 
     
     const pointName = evt.point.pointName ? String(evt.point.pointName) : ''
@@ -487,6 +513,19 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       // orderKey 越大越新：只有“更大”(更靠前) 才允许覆盖
       return nextValue > prevOk
     }
+
+    // 卡片“设备名/车间名”只允许由更“新”的记录覆盖。
+    // 否则 HTTP items 乱序/后续更旧记录会把标题覆盖成旧值，造成你看到的现象。
+    const canOverwriteMeta =
+      !prev ||
+      (!isOlderOrSameTime && shouldOverwritePoint(prevLatestOrderKey, mergeOrderKey)) ||
+      (prevLatestOrderKey == null && !isOlderOrSameTime)
+
+    const nextDeviceNameCandidate = evt.deviceName ? String(evt.deviceName) : ''
+    const nextShopNameCandidate = evt.shopName ? String(evt.shopName) : ''
+
+    const deviceName = canOverwriteMeta ? nextDeviceNameCandidate : String(prev?.deviceName ?? nextDeviceNameCandidate)
+    const shopName = canOverwriteMeta ? nextShopNameCandidate : String(prev?.shopName ?? nextShopNameCandidate)
 
     const measurementPoints: MeasurementPoint[] = (() => {
       if (!prevPoints.length) {
@@ -601,7 +640,16 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
 
   async function initOverviewOnceByHttp(tId: string) {
     
-    const items = await fetchVibrationAlarmsForOverview({ tenantId: tId, pageIndex: 0, pageSize: 5000 })
+    const rawItems = await fetchVibrationAlarmsForOverview({ tenantId: tId, pageIndex: 0, pageSize: 5000 })
+    // 约定：HTTP 接口返回 items 已按“最新在前”排序。
+    // 因此无需再排序；但仍过滤掉非 VALID / 无时间的数据，避免比较键混乱。
+    const items = (rawItems ?? [])
+      .filter((it: any) => {
+        const statusCode = it?.statusCode
+        const isValid = statusCode == null || String(statusCode).toUpperCase() === 'VALID'
+        const ts = Number(it?.alarmTime ?? 0)
+        return isValid && Number.isFinite(ts) && ts > 0
+      })
 
     // 调试：输出 9/2/4 号点位第一次出现的数组顺序（idx）
     try {
@@ -639,23 +687,20 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
 
     httpLatestAlarmTimeByDeviceId.clear()
     for (const it of items) {
-      const deviceId = String((it as any).equipmentId ?? (it as any).deviceId ?? '')
-      const statusCode = (it as any).statusCode
-      const isValid = statusCode == null || String(statusCode).toUpperCase() === 'VALID'
+      const deviceId = String((it as any).equipmentId ?? '')
       const ts = Number((it as any).alarmTime ?? 0)
-      if (!deviceId || !isValid || !Number.isFinite(ts) || ts <= 0) continue
+      if (!deviceId || !Number.isFinite(ts) || ts <= 0) continue
       const prev = httpLatestAlarmTimeByDeviceId.get(deviceId) ?? 0
       if (ts > prev) httpLatestAlarmTimeByDeviceId.set(deviceId, ts)
     }
-    // 约定：HTTP 接口返回 items 已按“最新在前”排序。
-    // 因此：同一设备第一次出现视为“最新”，后续只合并测点状态，不覆盖最新点位号/时间。
+    // items 已按 alarmTime 倒序：同一设备第一次出现视为“最新”，后续只合并测点状态。
     const seenLatestByDeviceId = new Set<string>()
     for (let idx = 0; idx < items.length; idx++) {
       const it = items[idx]
-      const deviceId = String((it as any).equipmentId ?? (it as any).deviceId ?? '')
+      const deviceId = String((it as any).equipmentId ?? '')
       const isOlder = deviceId ? seenLatestByDeviceId.has(deviceId) : false
-      // 用“数组顺序”生成一个可比较的排序键：越靠前越大（越新）
-      const orderKey = items.length - idx
+      // 统一比较口径：用 alarmTime 作为“新旧覆盖”的排序键（越大越新）
+      const orderKey = Number((it as any).alarmTime ?? 0)
       upsertAlarmFromEvent(it, 'http', { keepPrevAsLatest: isOlder, orderKey })
       if (deviceId) seenLatestByDeviceId.add(deviceId)
     }

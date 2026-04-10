@@ -8,9 +8,12 @@
                 </template>
                 <el-table-column prop="equipmentName" label="设备名称" min-width="120">
                     <template #default="{ row }">
-                        <span v-if="row.equipmentId" class="link-cell" @click.stop="goToDeviceDetail(row)">{{
-                            row.equipmentName }}</span>
-                        <span v-else>{{ row.equipmentName }}</span>
+                        <template v-if="row.showEquipmentName">
+                            <span v-if="row.equipmentId" class="link-cell" @click.stop="goToDeviceDetail(row)">{{
+                                row.equipmentName }}</span>
+                            <span v-else>{{ row.equipmentName }}</span>
+                        </template>
+                        <span v-else class="equipment-empty-cell"></span>
                     </template>
                 </el-table-column>
                 <el-table-column prop="pointName" label="点位名称" min-width="120">
@@ -63,6 +66,7 @@ interface TableRow {
     equipmentId?: string;
     value?: string | number;
     receiverId?: string;
+    showEquipmentName?: boolean;
 }
 
 function mapToRow(x: any): TableRow {
@@ -71,13 +75,31 @@ function mapToRow(x: any): TableRow {
         equipmentName: x.equipmentName ?? '—',
         receiverId: x.receiverId,
         pointName: x.pointName ?? '—',
-        value: x.triggerValue ?? '—'
+        value: x.metricValue ?? x.triggerValue ?? '—'
     }
+}
+
+function normalizeDeviceKey(row: TableRow): string {
+    const idKey = String(row.equipmentId ?? '').trim().toLowerCase()
+    const nameKey = String(row.equipmentName ?? '').trim().toLowerCase()
+    // 兼容后端异常：不同设备可能复用了同一个 equipmentId，这里追加名称避免误合并
+    if (idKey) return `${idKey}__${nameKey || '__empty_name__'}`
+    return `__empty_equipment_id__${nameKey || '__empty_name__'}`
 }
 
 const tableData = computed(() => {
     const list = props.mode === 'trend' ? store.sound : store.vibration
-    return (list ?? []).map(mapToRow)
+    const rows = (list ?? []).map(mapToRow)
+    const renderedDeviceKeys = new Set<string>()
+    return rows.map((row) => {
+        const currentKey = normalizeDeviceKey(row)
+        const showEquipmentName = !renderedDeviceKeys.has(currentKey)
+        renderedDeviceKeys.add(currentKey)
+        return {
+            ...row,
+            showEquipmentName
+        }
+    })
 });
 
 const goToDeviceDetail = (row: TableRow) => {
@@ -109,7 +131,7 @@ watch(visible, (val) => {
         emit('update:modelValue', false);
         return
     }
-    void store.fetch(true)
+    void store.fetch(props.mode, true)
 });
 </script>
 
@@ -140,12 +162,18 @@ watch(visible, (val) => {
     }
 
     .link-cell {
-        color: var(--el-color-primary);
+        color: #606266 !important;
         cursor: pointer;
 
         &:hover {
             text-decoration: underline;
         }
+    }
+
+    .equipment-empty-cell {
+        display: inline-block;
+        width: 100%;
+        min-height: 1em;
     }
 
 

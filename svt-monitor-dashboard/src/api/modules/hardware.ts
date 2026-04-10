@@ -303,16 +303,14 @@ export const getSelectCheckPointIn = (equipmentId: string): Promise<SelectCheckP
     if (!res || !Array.isArray(res.ret)) return res
 
     res.ret = res.ret.map((raw: any) => {
-      const receiverId =
-        String(raw?.receiverId ?? raw?.pointId ?? raw?.id ?? '')
-      const receiverName =
-        String(raw?.receiverName ?? raw?.pointName ?? raw?.name ?? '')
+      const receiverId = String(raw?.receiverId ?? '')
+      const receiverName = String(raw?.receiverName ?? '')
 
       return {
         ...raw,
         receiverId,
         receiverName,
-        pointName: raw?.pointName ?? receiverName,
+        pointName: raw?.pointName,
       } as CheckPointItem
     })
     return res

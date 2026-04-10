@@ -243,7 +243,7 @@ const aiHtmlContent = ref<string>('')
 const nosceneVoiceRet = ref<any | null>(null)
 
 const currentEventId = computed(() => {
-  return String(eventDetail.value?.id ?? eventDetail.value?.eventId ?? props.row?.id ?? props.row?.eventId ?? '')
+  return String(eventDetail.value?.id ?? props.row?.id ?? '')
 })
 
 const currentEventTypeCode = computed(() => {
@@ -283,40 +283,15 @@ const currentStatusText = computed(() => {
   return eventDetail.value?.statusText ?? eventDetail.value?.statusCode ?? props.row?.statusText ?? props.row?.statusCode ?? '-'
 })
 
-const currentDeviceName = computed(() =>
-  eventDetail.value?.deviceName
-  ?? props.row?.deviceName
-  ?? (isNoSceneSoundWarn.value ? nosceneVoiceRet.value?.deviceName : undefined)
-  ?? (isNoSceneSoundWarn.value ? nosceneVoiceRet.value?.productName : undefined)
-  ?? eventDetail.value?.equipmentName
-  ?? props.row?.equipmentName
-  ?? '-'
-)
-const currentPointName = computed(() =>
-  (isNoSceneSoundWarn.value ? nosceneVoiceRet.value?.subProductName : undefined)
-  ?? eventDetail.value?.subProductName
-  ?? props.row?.subProductName
-  ?? eventDetail.value?.pointName
-  ?? props.row?.pointName
-  ?? '-'
-)
-const currentReceiverName = computed(() =>
-  (isNoSceneSoundWarn.value ? nosceneVoiceRet.value?.receiverName : undefined)
-  ?? eventDetail.value?.receiverName
-  ?? props.row?.receiverName
-  ?? '-'
-)
+const currentDeviceName = computed(() => eventDetail.value?.deviceName ?? props.row?.deviceName ?? '-')
+const currentPointName = computed(() => eventDetail.value?.pointName ?? props.row?.pointName ?? '-')
+const currentReceiverName = computed(() => eventDetail.value?.receiverName ?? props.row?.receiverName ?? '-')
 
 const currentDeviationValueText = computed(() => {
   const raw =
     dataParse.value?.deviationValue ??
-    dataParse.value?.deviation_value ??
-    dataParse.value?.deviation ??
-    dataParse.value?.deviationVal ??
     eventDetail.value?.deviationValue ??
-    eventDetail.value?.deviation ??
-    (props.row as any)?.deviationValue ??
-    (props.row as any)?.deviation
+    (props.row as any)?.deviationValue
 
   if (raw == null || raw === '') return '-'
   if (typeof raw === 'string') return raw.trim() || '-'
@@ -350,12 +325,8 @@ const receiverId = computed(() => {
 
   return (
     dataParse.value?.receiverId ??
-    dataParse.value?.receiverID ??
-    dataParse.value?.receiver_id ??
     eventDetail.value?.receiverId ??
-    eventDetail.value?.receiverID ??
     (props.row as any)?.receiverId ??
-    (props.row as any)?.receiverID ??
     ''
   )
 })
@@ -367,15 +338,7 @@ const deviceId = computed(() =>
   ?? ''
 )
 const pointId = computed(() =>
-  dataParse.value?.pointId
-  ?? dataParse.value?.point_id
-  ?? dataParse.value?.subProductId
-  ?? eventDetail.value?.pointId
-  ?? eventDetail.value?.subProductId
-  ?? (props.row as any)?.pointId
-  ?? (props.row as any)?.subProductId
-  ?? localStorage.getItem('pointId')
-  ?? ''
+  dataParse.value?.pointId ?? eventDetail.value?.pointId ?? (props.row as any)?.pointId ?? ''
 )
 
 const positionText = computed(() => {

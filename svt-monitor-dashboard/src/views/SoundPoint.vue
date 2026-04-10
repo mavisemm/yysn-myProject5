@@ -51,7 +51,7 @@ const route = useRoute();
 const receiverId = computed(() => {
   const rid = route.params.receiverId
   const resolved = Array.isArray(rid) ? rid[0] : rid
-  return (typeof resolved === 'string' ? resolved : '') || ''
+  return typeof resolved === 'string' ? resolved : ''
 });
 
 const equipmentIdFromQuery = computed(() => {
@@ -76,8 +76,8 @@ const syncTreeSelectionFromRoute = () => {
   const treeKey =
     deviceTreeStore.resolveTreeKeyForPoint(rid, eid || undefined, {
       pointName: pname || undefined
-    }) ?? rid
-  deviceTreeStore.setSelectedDeviceId(treeKey)
+    })
+  if (treeKey) deviceTreeStore.setSelectedDeviceId(treeKey)
 }
 
 
@@ -222,11 +222,11 @@ const normalizeDeviationList = (list: SoundDeviationItem[]): DeviationListItem[]
       sampleSec: item.sampleSec,
       deviceName: raw.deviceName ?? '',
       pointName: raw.pointName ?? '',
-      clusterName: raw.sceneName ?? raw.titleGroupName ?? '',
-      productionEquipment: raw.deviceName ?? raw.productName ?? raw.productionFactory ?? '',
+      clusterName: raw.sceneName ?? '',
+      productionEquipment: raw.deviceName ?? '',
       subComponent: raw.subProductName ?? '',
-      detectionEquipment: raw.detectorName ?? raw.deviceName ?? '',
-      microphone: raw.receiverName ?? raw.pointName ?? (raw.receiverId != null ? String(raw.receiverId) : '')
+      detectionEquipment: raw.detectorName ?? '',
+      microphone: raw.receiverName ?? ''
     };
   });
 };
@@ -257,12 +257,12 @@ const loadDeviationList = async () => {
 
       pointName.value = firstRaw.pointName ?? '';
       deviceName.value = firstRaw.deviceName ?? '';
-      clusterName.value = firstRaw.sceneName ?? firstRaw.titleGroupName ?? '';
-      productionEquipment.value = firstRaw.deviceName ?? firstRaw.productName ?? firstRaw.productionFactory ?? '';
+      clusterName.value = firstRaw.sceneName ?? '';
+      productionEquipment.value = firstRaw.deviceName ?? '';
       subComponent.value = firstRaw.subProductName ?? '';
-      detectionEquipment.value = firstRaw.detectorName ?? firstRaw.deviceName ?? '';
+      detectionEquipment.value = firstRaw.detectorName ?? '';
 
-      microphone.value = firstRaw.receiverName ?? firstRaw.pointName ?? (firstRaw.receiverId != null ? String(firstRaw.receiverId) : '');
+      microphone.value = firstRaw.receiverName ?? '';
       if (firstItem?.id) {
         audioPath.value = getWavByFreqGroupIdUrl(firstItem.id);
       }

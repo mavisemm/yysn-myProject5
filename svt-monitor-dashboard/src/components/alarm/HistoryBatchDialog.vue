@@ -71,7 +71,7 @@
           <template #default="{ row }">{{ getReceiverName(row) || '-' }}</template>
         </el-table-column>
         <el-table-column label="预警类型" min-width="160">
-          <template #default="{ row }">{{ row?.eventType?.name || row.eventTypeCode || '-' }}</template>
+          <template #default="{ row }">{{ row?.eventType?.name || '-' }}</template>
         </el-table-column>
         <el-table-column prop="statusText" label="状态" min-width="120" />
         <el-table-column label="预警时间" min-width="180">
@@ -139,15 +139,15 @@ const pageForUi = computed({
 
 const deviceOptions = computed(() => {
   return (store.deviceNameList ?? []).map((x: any) => ({
-    value: x.key ?? x.deviceId ?? x.id ?? x.value,
-    label: x.text ?? x.deviceName ?? x.name ?? x.label ?? String(x.key ?? x.deviceId ?? x.id ?? x.value ?? '')
+    value: x.key,
+    label: String(x.text ?? '')
   }))
 })
 
 const typeOptions = computed(() => {
   return (store.typeList ?? []).map((x: any) => ({
-    value: x.key ?? x.code ?? x.id ?? x.value,
-    label: x.text ?? x.name ?? x.label ?? String(x.key ?? x.code ?? x.id ?? x.value ?? '')
+    value: x.key,
+    label: String(x.text ?? '')
   }))
 })
 
@@ -231,31 +231,25 @@ function ensureRowParsed(row: any): any {
 }
 
 const getDeviceMainName = (row: any): string => {
-  const parsed = ensureRowParsed(row)
-  const deviceName = row.deviceName ?? parsed?.deviceName
+  const deviceName = row?.deviceName
   const main = deviceName ? splitDeviceName(deviceName).main : ''
-  return row._deviceMainName || main || row.deviceName || ''
+  return row?._deviceMainName || main || String(deviceName ?? '')
 }
 
 const getDeviceSubName = (row: any): string => {
-  const parsed = ensureRowParsed(row)
-  const deviceName = row.deviceName ?? parsed?.deviceName
-  const shopName = row.shopName ?? parsed?.shopName
+  const deviceName = row?.deviceName
+  const shopName = row?.shopName
   if (shopName) return String(shopName)
-  if (!deviceName) return row._deviceSubName || ''
-  return splitDeviceName(deviceName).sub || row._deviceSubName || ''
+  if (!deviceName) return row?._deviceSubName || ''
+  return splitDeviceName(deviceName).sub || row?._deviceSubName || ''
 }
 
 const getPointName = (row: any): string => {
-  if (row.pointName) return row.pointName
-  const parsed = ensureRowParsed(row)
-  return parsed?.pointName ?? ''
+  return row?.pointName ? String(row.pointName) : ''
 }
 
 const getReceiverName = (row: any): string => {
-  if (row.receiverName) return row.receiverName
-  const parsed = ensureRowParsed(row)
-  return parsed?.receiverName ?? ''
+  return row?.receiverName ? String(row.receiverName) : ''
 }
 </script>
 

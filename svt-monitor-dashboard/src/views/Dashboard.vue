@@ -91,8 +91,8 @@ const fetchTop5Data = async () => {
       rankings.value[0] = vibrationData.ret.map((item: any) => ({
         equipmentId: item.equipmentId,
         equipmentName: item.equipmentName ?? '',
-        pointName: item.pointName ?? item.receiverName ?? item.equipmentName ?? '',
-        receiverId: item.receiverId ?? item.pointId ?? undefined,
+        pointName: item.pointName ?? '',
+        receiverId: item.receiverId ?? undefined,
         value: item.value
       }));
     }
@@ -101,8 +101,8 @@ const fetchTop5Data = async () => {
       rankings.value[1] = soundData.ret.map((item: any) => ({
         equipmentId: item.equipmentId,
         equipmentName: item.equipmentName ?? '',
-        pointName: item.pointName ?? item.receiverName ?? item.equipmentName ?? '',
-        receiverId: item.receiverId ?? item.pointId ?? undefined,
+        pointName: item.pointName ?? '',
+        receiverId: item.receiverId ?? undefined,
         value: item.value
       }));
     }
@@ -111,8 +111,8 @@ const fetchTop5Data = async () => {
       rankings.value[2] = temperatureData.ret.map((item: any) => ({
         equipmentId: item.equipmentId,
         equipmentName: item.equipmentName ?? '',
-        pointName: item.pointName ?? item.receiverName ?? item.equipmentName ?? '',
-        receiverId: item.receiverId ?? item.pointId ?? undefined,
+        pointName: item.pointName ?? '',
+        receiverId: item.receiverId ?? undefined,
         value: item.value
       }));
     }

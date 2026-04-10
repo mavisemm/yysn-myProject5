@@ -110,13 +110,13 @@ const initDeviceData = async () => {
     }
     const list: PointInfo[] = res.ret.map((item) => ({
       id: item.receiverId,
-      name: (item as any).receiverName || item.pointName || '未知点位',
+      name: item.pointName || '未知点位',
       lastAlarmTime: item.warningTime != null && item.warningTime !== '' ? item.warningTime : '无',
       alarmType: typeStrToDisplay(item.warningType),
       alarmValue: item.warningValue != null && Number(item.warningValue) !== 0 ? String(item.warningValue) : '无',
       matchMesureValue: (item as any).matchMesureValue,
       thresholdValue: (item as any).thresholdValue,
-      deviceId: (item as any).deviceId ?? resolvePointDeviceId(item.receiverId),
+      deviceId: (item as any).deviceId,
       hasAlarm: item.isAlarm === 0
     }))
     pointList.value = list.sort((a, b) => {

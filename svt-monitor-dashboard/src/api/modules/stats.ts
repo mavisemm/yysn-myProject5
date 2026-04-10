@@ -72,6 +72,14 @@ export const getDeviceWaringDetail = (): Promise<{ rc: number; ret: DeviceWaring
   })
 }
 
+export const getSoundDeviceWaringDetail = (): Promise<{ rc: number; ret: DeviceWaringDetailItem[]; err: string | null }> => {
+  const tenantId = getTenantId()
+  return request.get('/taicang/hardware/device/sound/device/waring/detail/sound', {
+    params: { userId: '', tenantId, _t: Date.now() },
+    showLoading: true
+  })
+}
+
 export const getCheckPointPointMessage = (): Promise<any> => {
   const tenantId = getTenantId()
   return request.post('/taicang/hardware/device/check-point/find/point/message', {

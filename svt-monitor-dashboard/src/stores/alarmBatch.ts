@@ -131,25 +131,17 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     
     
     
-    const needsDataJson =
-      (!r.deviceName && typeof r.dataJson === 'string') ||
-      (!r.pointName && typeof r.dataJson === 'string') ||
-      (!r.receiverName && typeof r.dataJson === 'string') ||
-      (r.shopName == null && typeof r.dataJson === 'string')
-
-    const dataJson = needsDataJson ? safeParseJson(r.dataJson) : (typeof r.dataJson === 'object' ? r.dataJson : undefined)
-    const deviceName = r.deviceName ?? dataJson?.deviceName
+    const deviceName = r.deviceName
     const { main, sub } = splitDeviceName(deviceName)
-    const shopName = r.shopName ?? dataJson?.shopName
+    const shopName = r.shopName
     return {
       ...r,
       
-      dataJson: dataJson ?? r.dataJson,
       deviceName,
       _deviceMainName: main,
       _deviceSubName: shopName ? String(shopName) : sub,
-      pointName: r.pointName ?? dataJson?.pointName,
-      receiverName: r.receiverName ?? dataJson?.receiverName,
+      pointName: r.pointName,
+      receiverName: r.receiverName,
       _timeText: formatTimeText(r.time)
     }
   }
@@ -218,8 +210,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     
     const tId = readTenantIdFromStorageOrAddressBar()
     if (tId) filters.push({ code: 'tenantId', operate: 'EQ', value: tId })
-    const effectiveDeviceId = query.deviceId ?? query.equipmentId
-    if (effectiveDeviceId) filters.push({ code: 'deviceId', operate: 'EQ', value: effectiveDeviceId })
+    if (query.deviceId) filters.push({ code: 'deviceId', operate: 'EQ', value: query.deviceId })
     if (query.eventTypeCode) filters.push({ code: 'eventTypeCode', operate: 'EQ', value: query.eventTypeCode })
 
     const start = toMillis(query.startTime)
@@ -233,14 +224,13 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const realtimeFetchInFlight = new Map<string, Promise<void>>()
   const buildRealtimeCacheKey = (pageIndex: number) => {
     const q = realtimeQuery.value ?? {}
-    const effectiveDeviceId = q.deviceId ?? q.equipmentId
     return JSON.stringify({
       tenantId: readTenantIdFromStorageOrAddressBar(),
       pageIndex,
       pageSize: realtimePageSize.value,
       startTime: q.startTime ?? '',
       endTime: q.endTime ?? '',
-      deviceId: effectiveDeviceId ?? '',
+      deviceId: q.deviceId ?? '',
       eventTypeCode: q.eventTypeCode ?? ''
     })
   }
@@ -309,7 +299,6 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const historyFetchInFlight = new Map<string, Promise<void>>()
   const buildHistoryCacheKey = (pageIndex: number) => {
     const q = historyQuery.value ?? { alarmCode: 'ACCURATE_YES' as AlarmCode }
-    const effectiveDeviceId = q.deviceId ?? q.equipmentId
     return JSON.stringify({
       tenantId: readTenantIdFromStorageOrAddressBar(),
       pageIndex,
@@ -317,7 +306,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
       alarmCode: q.alarmCode ?? 'ACCURATE_YES',
       startTime: q.startTime ?? '',
       endTime: q.endTime ?? '',
-      deviceId: effectiveDeviceId ?? '',
+      deviceId: q.deviceId ?? '',
       eventTypeCode: q.eventTypeCode ?? ''
     })
   }
