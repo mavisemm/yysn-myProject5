@@ -34,7 +34,7 @@
                             <span v-if="rank.equipmentName" class="workshop-info">（{{ rank.equipmentName }}）</span>
                         </span>
                         <span v-if="rank.value !== undefined" class="col-value special-font-color">{{ rank.value
-                            }}</span>
+                        }}</span>
                     </div>
                 </template>
             </div>
@@ -329,7 +329,7 @@ watch(
     gap: 10px;
     overflow: hidden;
     box-sizing: border-box;
-    padding: 10px 20px 0 20px;
+    padding: 10px 10px 0 20px;
 
 
     >.chart-container {

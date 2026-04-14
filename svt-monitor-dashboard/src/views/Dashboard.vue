@@ -165,12 +165,18 @@ onMounted(() => {
       void alarmBatchStore.prefetchRealtimeListForDefault().catch((e) => {
         console.error('预热实时列表失败:', e)
       })
+      void alarmBatchStore.prefetchRealtimeAlarmListForDefault().catch((e) => {
+        console.error('预热实时报警列表失败:', e)
+      })
     }
 
     historyPrefetchTimerId = window.setTimeout(() => {
       if (!hasToken()) return
       void alarmBatchStore.prefetchHistoryListForDefault().catch((e) => {
         console.error('预热历史列表失败:', e)
+      })
+      void alarmBatchStore.prefetchHistoryAlarmListForDefault().catch((e) => {
+        console.error('预热历史报警列表失败:', e)
       })
     }, 3500)
 

@@ -15,19 +15,21 @@
 
     <RealtimeBatchDialog @view="handleRealtimeView" />
     <HistoryBatchDialog @view="handleHistoryView" />
+    <RealtimeAlarmBatchDialog @view="handleRealtimeAlarmView" />
+    <HistoryAlarmBatchDialog @view="handleHistoryAlarmView" />
     <AlarmBatchViewModal v-model="alarmViewVisible" :row="alarmViewRow" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, provide, ref } from 'vue'
+import { provide, ref } from 'vue'
 import MainHeader from './MainHeader.vue'
 import DeviceSidebar from './DeviceSidebar.vue'
 import { RouterView } from 'vue-router'
-import { useAlarmBatchStore } from '@/stores/alarmBatch'
-import { usePointMessageStore } from '@/stores/pointMessage'
 import RealtimeBatchDialog from '@/components/alarm/RealtimeBatchDialog.vue'
 import HistoryBatchDialog from '@/components/alarm/HistoryBatchDialog.vue'
+import RealtimeAlarmBatchDialog from '@/components/alarm/RealtimeAlarmBatchDialog.vue'
+import HistoryAlarmBatchDialog from '@/components/alarm/HistoryAlarmBatchDialog.vue'
 import AlarmBatchViewModal from '@/components/alarm/AlarmBatchViewModal.vue'
 
 const backgroundMode = ref<'image' | 'navy' | 'solid'>('solid')
@@ -47,10 +49,8 @@ const openAlarmView = (row: any) => {
 
 const handleRealtimeView = (row: any) => openAlarmView(row)
 const handleHistoryView = (row: any) => openAlarmView(row)
-
-onMounted(() => {
-  usePointMessageStore().loadPointMessage()
-})
+const handleRealtimeAlarmView = (row: any) => openAlarmView(row)
+const handleHistoryAlarmView = (row: any) => openAlarmView(row)
 </script>
 
 <style lang="scss" scoped>

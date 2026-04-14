@@ -98,7 +98,7 @@ watch(() => props.audioPath, (newPath) => {
     flex-direction: column;
 
     .section-title {
-        padding: 10px 20px 0 20px;
+        padding: 10px 10px 0 10px;
     }
 
     .info-scroll-area {
@@ -107,7 +107,7 @@ watch(() => props.audioPath, (newPath) => {
         display: flex;
         flex-direction: column;
         gap: 10px;
-        padding: 10px 20px 0 20px;
+        padding: 10px 10px 0 10px;
 
         .info-item {
             padding: 8px 0;
@@ -143,7 +143,7 @@ watch(() => props.audioPath, (newPath) => {
     }
 
     .audio-player {
-        padding: 10px 20px 20px;
+        padding: 10px 10px 20px 10px;
 
         audio {
             width: 100%;

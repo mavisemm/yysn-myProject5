@@ -22,6 +22,7 @@ export interface PointMessageInfo {
 export const usePointMessageStore = defineStore('pointMessage', () => {
   const loaded = ref(false)
   const loading = ref(false)
+  const loadedTenantId = ref('')
   const pointMapByReceiverId = ref<Record<string, PointMessageInfo>>({})
   const pointMapById = ref<Record<string, PointMessageInfo>>({})
 
@@ -47,9 +48,16 @@ export const usePointMessageStore = defineStore('pointMessage', () => {
   }
 
   async function loadPointMessage(tenantId: string = getTenantId()) {
+    if (!tenantId) return
+    if (loaded.value && loadedTenantId.value === tenantId) return
     if (loading.value) return
     try {
       loading.value = true
+      if (loadedTenantId.value !== tenantId) {
+        pointMapByReceiverId.value = {}
+        pointMapById.value = {}
+        loaded.value = false
+      }
       const res = await getPointMessage({
         filterPropertyMap: [
           { code: 'tenantId', operate: 'EQ', value: tenantId }
@@ -70,6 +78,7 @@ export const usePointMessageStore = defineStore('pointMessage', () => {
       }
       pointMapByReceiverId.value = byReceiverId
       pointMapById.value = byId
+      loadedTenantId.value = tenantId
       loaded.value = true
     } catch (e) {
       console.error('加载点位详情失败:', e)

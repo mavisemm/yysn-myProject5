@@ -69,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
+import { ref, onUnmounted, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import type { EChartsOption } from 'echarts';
 import { getLast24HoursRange } from '@/utils/datetime';
@@ -90,7 +90,7 @@ const chartAxisColor = computed(() => '#ffffff');
 const chartGridLineColor = computed(() => '#999999');
 
 const intervalHours = ref(1);
-const dateRange = ref<[string, string] | null>(null);
+const dateRange = ref<[string, string] | null>(getLast24HoursRange());
 /** 频率筛选输入（点击「应用」后写入 freqDisplayRange） */
 const freqFilterMin = ref<number | undefined>(undefined);
 const freqFilterMax = ref<number | undefined>(undefined);
@@ -431,13 +431,6 @@ const waterfallOption = computed<EChartsOption>(() => {
     } as EChartsOption;
 });
 
-onMounted(() => {
-    if (!dateRange.value || !dateRange.value[0]) {
-        dateRange.value = getLast24HoursRange();
-    }
-    void loadWaterfallData();
-});
-
 watch([receiverIdFromParams, pointDeviceId], ([rid, pid]) => {
     if (!rid || !pid) return;
     void loadWaterfallData();
@@ -453,8 +446,11 @@ watch(intervalHours, () => {
     scheduleLoadWaterfallData();
 });
 
-watch(dateRange, () => {
+watch(dateRange, (newRange, oldRange) => {
     if (!receiverIdFromParams.value || !pointDeviceId.value) return;
+    const newKey = Array.isArray(newRange) ? `${newRange[0] || ''}|${newRange[1] || ''}` : '';
+    const oldKey = Array.isArray(oldRange) ? `${oldRange[0] || ''}|${oldRange[1] || ''}` : '';
+    if (newKey === oldKey) return;
     scheduleLoadWaterfallData();
 }, { deep: true });
 
@@ -477,7 +473,7 @@ onUnmounted(() => {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        padding: 10px 20px 0 20px;
+        padding: 10px 10px 0 10px;
 
         .card-header-leading {
             display: flex;
@@ -549,7 +545,7 @@ onUnmounted(() => {
         flex: 1;
         width: 100%;
         min-height: 0;
-        padding: 10px 20px 20px;
+        padding: 10px 10px 20px 10px;
     }
 }
 

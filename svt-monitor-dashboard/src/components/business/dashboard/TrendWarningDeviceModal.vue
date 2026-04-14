@@ -30,6 +30,11 @@
                         <span>{{ row.value ?? '—' }}</span>
                     </template>
                 </el-table-column>
+                <el-table-column label="报警时间" min-width="180">
+                    <template #default="{ row }">
+                        <span>{{ formatLocalDateTime(row.alarmTime) }}</span>
+                    </template>
+                </el-table-column>
             </el-table>
         </div>
     </el-dialog>
@@ -65,6 +70,7 @@ interface TableRow {
     pointName: string;
     equipmentId?: string;
     value?: string | number;
+    alarmTime?: string | number;
     receiverId?: string;
     showEquipmentName?: boolean;
 }
@@ -75,8 +81,24 @@ function mapToRow(x: any): TableRow {
         equipmentName: x.equipmentName ?? '—',
         receiverId: x.receiverId,
         pointName: x.pointName ?? '—',
-        value: x.metricValue ?? x.triggerValue ?? '—'
+        value: x.metricValue ?? x.triggerValue ?? '—',
+        alarmTime: x.alarmTime
     }
+}
+
+function formatLocalDateTime(input: unknown): string {
+    if (input == null || input === '') return '—'
+    const raw = String(input).trim()
+    if (!raw) return '—'
+
+    const numeric = Number(raw)
+    const date = Number.isFinite(numeric)
+        ? new Date(numeric < 1e12 ? numeric * 1000 : numeric)
+        : new Date(raw)
+
+    if (Number.isNaN(date.getTime())) return '—'
+    const pad = (v: number) => String(v).padStart(2, '0')
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
 function normalizeDeviceKey(row: TableRow): string {

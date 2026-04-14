@@ -170,7 +170,7 @@ watch([receiverIdFromParams, pointDeviceId], ([rid, pid]) => {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 10px 20px 0 20px;
+        padding: 10px 10px 0 20px;
 
         .card-title {
             color: #fff;
@@ -193,7 +193,7 @@ watch([receiverIdFromParams, pointDeviceId], ([rid, pid]) => {
         grid-template-rows: 1fr 1fr;
         gap: 10px;
         flex: 1;
-        padding: 10px 20px 20px;
+        padding: 10px 10px 20px 20px;
 
         .stat-box {
             font-size: 1rem;

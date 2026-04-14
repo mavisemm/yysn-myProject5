@@ -4,7 +4,8 @@
 
     <div class="right-content">
       <PointListModule ref="pointListModuleRef" :point-list="pointList" :selected-point-id="selectedPointId"
-        @point-selected="selectedPointId = $event" />
+        :current-page="pagination.pageNum" :page-size="pagination.pageSize" :total="pagination.total"
+        @point-selected="selectedPointId = $event" @page-change="handlePageChange" />
 
       <ChartsAnalysisModule :point-list="pointList" :selected-point-id="selectedPointId"
         panel-mode="realtimeTemperature" />
@@ -58,6 +59,11 @@ interface PointInfo {
 const pointList = ref<PointInfo[]>([])
 const pointListModuleRef = ref<ComponentPublicInstance & PointListModuleType>()
 const selectedPointId = ref<string>('')
+const pagination = ref({
+  pageNum: 1,
+  pageSize: 10 as const,
+  total: 0
+})
 
 
 const isEditing = ref(false)
@@ -96,11 +102,24 @@ const initDeviceData = async () => {
       return undefined
     }
 
-    const res = await getSelectCheckPointIn(equipmentId.value)
-    if (res.rc !== 0 || !Array.isArray(res.ret)) {
+    const res = await getSelectCheckPointIn(equipmentId.value, pagination.value.pageSize, pagination.value.pageNum)
+    if (res.rc !== 0 || !res.ret) {
       pointList.value = []
+      pagination.value.total = 0
       return
     }
+    const rawList = Array.isArray(res.ret)
+      ? res.ret
+      : (res.ret.items ?? res.ret.records ?? res.ret.list ?? [])
+    if (!Array.isArray(rawList)) {
+      pointList.value = []
+      pagination.value.total = 0
+      return
+    }
+    const total = Array.isArray(res.ret)
+      ? rawList.length
+      : Number(res.ret.total ?? res.ret.rowCount ?? rawList.length)
+    pagination.value.total = Number.isFinite(total) ? total : rawList.length
     const typeStrToDisplay = (t: string) => {
       const s = String(t || '').toLowerCase()
       if (s === 'vibration') return '振动'
@@ -108,7 +127,7 @@ const initDeviceData = async () => {
       if (s === 'sound') return '声音'
       return t || '无'
     }
-    const list: PointInfo[] = res.ret.map((item) => ({
+    const list: PointInfo[] = rawList.map((item) => ({
       id: item.receiverId,
       name: item.receiverName || '未知点位',
       lastAlarmTime: item.warningTime != null && item.warningTime !== '' ? item.warningTime : '无',
@@ -157,6 +176,7 @@ watch(
   () => equipmentId.value,
   (id) => {
     if (id && typeof id === 'string') {
+      pagination.value.pageNum = 1
       deviceTreeStore.setSelectedDeviceId(id)
       initDeviceData()
     }
@@ -170,6 +190,10 @@ onMounted(() => {
   window.addEventListener('resize', resizeAllCharts);
 })
 
+const handlePageChange = (pageNum: number) => {
+  pagination.value.pageNum = pageNum
+  initDeviceData()
+}
 
 let resizeObserver: ResizeObserver | null = null
 

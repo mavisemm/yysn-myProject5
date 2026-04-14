@@ -89,7 +89,7 @@ function isAlertOrWarning(stat: StatItem) {
     height: 100%;
     min-width: 0;
     min-height: 0;
-    padding: 10px 20px 0;
+    padding: 10px 10px 0 20px;
     overflow: hidden;
     display: flex;
     flex-direction: column;

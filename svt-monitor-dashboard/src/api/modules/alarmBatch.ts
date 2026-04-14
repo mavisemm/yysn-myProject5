@@ -1,7 +1,7 @@
 import request from '../request'
 import { readTenantIdFromStorageOrAddressBar } from '../tenant'
 
-export type FilterOperate = 'EQ' | 'GE' | 'LE' | 'LIKE'
+export type FilterOperate = 'EQ' | 'GE' | 'LE' | 'GTE' | 'LTE' | 'LIKE'
 
 export interface FilterProperty {
   code: string
@@ -45,6 +45,21 @@ export interface FindResponse {
   err: string | null
 }
 
+export interface FindVibrationAlarmByConditionBody {
+  alarmLevel: 'ALARM' | string
+  alarmType: 'MACHINE_VIBRATION' | string
+  pageIndex: number
+  pageSize: number
+  statusCode: string
+  tenantId: string
+  startTime?: number
+  endTime?: number
+  /** 可选：后端若支持则按设备过滤 */
+  deviceId?: string
+  /** 可选：后端若支持则按类型过滤（前端用 eventTypeCode 表达） */
+  eventTypeCode?: string
+}
+
 export interface DropdownItem {
   id?: string | number
   code?: string
@@ -62,6 +77,10 @@ export interface DropdownResponse {
 
 export const apiFindEvents = (body: FindBody) => {
   return request.post<FindResponse>('http://122.224.196.178:8003/taicang/event/find', body, { showLoading: false })
+}
+
+export const apiFindVibrationAlarmByCondition = (body: FindVibrationAlarmByConditionBody) => {
+  return request.post<FindResponse>('/taicang/event/findVibrationAlarmByCondition', body, { showLoading: false })
 }
 
 export const apiGetDeviceNameDropdownList = () => {

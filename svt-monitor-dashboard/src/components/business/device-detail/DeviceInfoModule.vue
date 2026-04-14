@@ -992,7 +992,7 @@ onUnmounted(() => {
 
 
     .module-header {
-        padding: 10px 20px 0 20px;
+        padding: 10px 10px 0 20px;
 
         .header-main {
             display: flex;
@@ -1020,7 +1020,7 @@ onUnmounted(() => {
     }
 
     .device-main {
-        padding: 10px 20px 20px 20px;
+        padding: 10px 10px 20px 20px;
         flex: 1;
 
         .device-no-data {

@@ -12,6 +12,12 @@
                         <el-button size="small" class="batch-btn" @click="openHistoryBatch">
                             历史预警
                         </el-button>
+                        <el-button size="small" class="batch-btn" @click="openRealtimeAlarmBatch">
+                            实时报警
+                        </el-button>
+                        <el-button size="small" class="batch-btn" @click="openHistoryAlarmBatch">
+                            历史报警
+                        </el-button>
                     </div>
                 </div>
             </div>
@@ -125,6 +131,14 @@ const openRealtimeBatch = () => {
 
 const openHistoryBatch = () => {
     void alarmBatchStore.openHistory()
+}
+
+const openRealtimeAlarmBatch = () => {
+    void alarmBatchStore.openRealtimeAlarm()
+}
+
+const openHistoryAlarmBatch = () => {
+    void alarmBatchStore.openHistoryAlarm()
 }
 
 const router = useRouter()
@@ -513,14 +527,14 @@ const filteredAlarms = computed(() => {
         const getLatestPointNumByType = (type: 'alarm' | 'warning') => {
             let latestNum: number | undefined
             let latestTime = -1
-            ;(item.measurementPoints ?? []).forEach((p, idx) => {
-                if (p.status !== type) return
-                const t = Number(p.lastAlarmTime ?? 0)
-                if (t > latestTime) {
-                    latestTime = t
-                    latestNum = idx + 1
-                }
-            })
+                ; (item.measurementPoints ?? []).forEach((p, idx) => {
+                    if (p.status !== type) return
+                    const t = Number(p.lastAlarmTime ?? 0)
+                    if (t > latestTime) {
+                        latestTime = t
+                        latestNum = idx + 1
+                    }
+                })
             return latestNum
         }
 
@@ -916,7 +930,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 .alarm-overview {
     height: 100%;
     min-height: 0;
-    padding: 10px 20px 0;
+    padding: 10px 10px 0 20px;
     overflow: hidden;
     display: flex;
     flex-direction: column;

@@ -51,3 +51,38 @@ export function initializeDateRange(startDate: Date, endDate: Date): [Date, Date
 
     return [startWithDefaultTime, endWithDefaultTime];
 }
+
+export function normalizeEndDateTimeBySelectedDay(
+    value?: string | null,
+    forceApplyRule: boolean = false
+): string | undefined {
+    const raw = String(value ?? '').trim()
+    if (!raw) return undefined
+
+    const parts = raw.split(' ')
+    const datePart = parts[0]
+    const timePart = parts[1] ?? ''
+    if (!datePart) return undefined
+
+    const dateSegments = datePart.split('-').map((x) => Number(x))
+    if (dateSegments.length !== 3 || dateSegments.some((n) => !Number.isFinite(n))) {
+        return raw
+    }
+    const year = dateSegments[0]!
+    const month = dateSegments[1]!
+    const day = dateSegments[2]!
+
+    // 默认仅在“只选日期导致时间为 00:00:00”时自动补全，避免覆盖用户手动设置的时间。
+    // 但如果明确要求“日期变化就按规则重置时间”，则可通过 forceApplyRule 强制执行。
+    if (!forceApplyRule && timePart && timePart !== '00:00:00') {
+        return raw
+    }
+
+    const selectedDate = new Date(year, month - 1, day)
+    if (Number.isNaN(selectedDate.getTime())) return raw
+
+    if (isToday(selectedDate)) {
+        return formatDateTime(new Date())
+    }
+    return `${datePart} 23:59:59`
+}

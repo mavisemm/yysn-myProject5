@@ -25,11 +25,15 @@
                 </el-table-column>
             </el-table>
         </div>
+        <div class="pagination-wrapper">
+            <el-pagination layout="total, prev, pager, next, jumper" :current-page="currentPage" :page-size="pageSize"
+                :total="total" @current-change="onCurrentChange" />
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ElTable, ElTableColumn } from 'element-plus'
+import { ElTable, ElTableColumn, ElPagination } from 'element-plus'
 import { ref } from 'vue'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 
@@ -48,18 +52,26 @@ interface PointInfo {
 interface PointListModuleProps {
     pointList: PointInfo[]
     selectedPointId?: string
+    currentPage: number
+    pageSize: number
+    total: number
 }
 
 const props = defineProps<PointListModuleProps>()
 
 const emit = defineEmits<{
     'point-selected': [receiverId: string]
+    'page-change': [pageNum: number]
 }>()
 
 const pointTableRef = ref<any>(null)
 
 const onRowClick = (row: PointInfo) => {
     emit('point-selected', row.id)
+}
+
+const onCurrentChange = (pageNum: number) => {
+    emit('page-change', pageNum)
 }
 
 const setCurrentRow = (rowIndex: number = 0) => {
@@ -96,7 +108,7 @@ defineExpose({
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 10px 20px 0 20px;
+        padding: 10px 10px 0 10px;
 
         .module-title {
             margin: 0;
@@ -111,9 +123,17 @@ defineExpose({
         background: none !important;
         min-width: 0;
 
-        padding: 10px 20px 20px 20px;
+        padding: 10px 10px 0 10px;
         display: flex;
         align-items: stretch;
+    }
+
+    .pagination-wrapper {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        overflow: hidden;
+        padding: 10px 10px 0 10px;
     }
 
     .point-empty-wrapper {
@@ -274,6 +294,58 @@ defineExpose({
         .el-table__body tr.current-row td:last-child {
             border-top-right-radius: 6px;
             border-bottom-right-radius: 6px;
+        }
+    }
+
+    :deep(.el-pagination) {
+        font-size: 0.9rem;
+        color: #fff;
+
+        .el-pagination__total {
+            color: #fff;
+        }
+
+        .el-pagination__jump {
+            color: white;
+        }
+
+        .el-pager li {
+            background-color: transparent;
+            color: white;
+            border: 1px solid transparent;
+
+            &.is-active {
+                font-size: 1rem;
+                color: rgba(153, 240, 255, 0.7);
+                background-color: transparent;
+                border: 1px solid transparent;
+            }
+
+            &:hover {
+                background-color: transparent;
+            }
+        }
+
+        .btn-prev,
+        .btn-next {
+            background-color: transparent !important;
+            color: white !important;
+
+            &:hover {
+                color: rgba(153, 240, 255, 0.7) !important;
+            }
+
+            &.is-disabled {
+                color: #a8abb4 !important;
+            }
+        }
+
+        .el-pagination__sizes .el-input__inner,
+        .el-pagination__jump .el-input__inner {
+            height: 18px;
+            background-color: transparent;
+            color: #111 !important;
+            font-size: 0.8rem;
         }
     }
 }

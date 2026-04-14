@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { readTenantIdFromStorageOrAddressBar } from '@/api/tenant'
+import { usePointMessageStore } from '@/stores/pointMessage'
 import {
+  apiFindVibrationAlarmByCondition,
   apiConfirmNot,
   apiConfirmNotAll,
   apiConfirmYes,
@@ -13,7 +15,8 @@ import {
   apiGetEventTypeDropdownList,
   type DropdownItem,
   type EventRow,
-  type FilterProperty
+  type FilterProperty,
+  type FindVibrationAlarmByConditionBody
 } from '@/api/modules/alarmBatch'
 
 type AlarmCode = 'ACCURATE_YES' | 'ACCURATE_NOT'
@@ -30,6 +33,13 @@ export interface RealtimeQuery {
 
 export interface HistoryQuery extends RealtimeQuery {
   alarmCode: AlarmCode
+}
+
+export interface AlarmQuery {
+  startTime?: string
+  endTime?: string
+  deviceId?: string
+  eventTypeCode?: string
 }
 
 function toMillis(dateTime?: string): number | undefined {
@@ -84,9 +94,13 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
 
   const realtimeVisible = ref(false)
   const historyVisible = ref(false)
+  const realtimeAlarmVisible = ref(false)
+  const historyAlarmVisible = ref(false)
 
   const realtimeQuery = ref<RealtimeQuery>({})
   const historyQuery = ref<HistoryQuery>({ alarmCode: 'ACCURATE_YES' })
+  const realtimeAlarmQuery = ref<AlarmQuery>({})
+  const historyAlarmQuery = ref<AlarmQuery>({})
 
   const realtimeRows = ref<EventRow[]>([])
   const realtimeTotal = ref(0)
@@ -102,6 +116,20 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const historySelectedRowKeys = ref<string[]>([])
   const historyLoading = ref(false)
 
+  const realtimeAlarmRows = ref<EventRow[]>([])
+  const realtimeAlarmTotal = ref(0)
+  const realtimeAlarmPageIndex = ref(0)
+  const realtimeAlarmPageSize = ref(30)
+  const realtimeAlarmSelectedRowKeys = ref<string[]>([])
+  const realtimeAlarmLoading = ref(false)
+
+  const historyAlarmRows = ref<EventRow[]>([])
+  const historyAlarmTotal = ref(0)
+  const historyAlarmPageIndex = ref(0)
+  const historyAlarmPageSize = ref(30)
+  const historyAlarmSelectedRowKeys = ref<string[]>([])
+  const historyAlarmLoading = ref(false)
+
   
   
   const REALTIME_LIST_CACHE_TTL_MS = 60_000
@@ -111,6 +139,10 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   type ListCacheEntry = { rows: EventRow[]; total: number; fetchedAt: number }
   const realtimeListCache = new Map<string, ListCacheEntry>()
   const historyListCache = new Map<string, ListCacheEntry>()
+  const realtimeAlarmListCache = new Map<string, ListCacheEntry>()
+  const historyAlarmListCache = new Map<string, ListCacheEntry>()
+  const pointMessageStore = usePointMessageStore()
+  let pointMessagePromise: Promise<void> | null = null
 
   const evictOldestIfNeeded = (cache: Map<string, ListCacheEntry>) => {
     if (cache.size <= MAX_LIST_CACHE_ENTRIES) return
@@ -145,6 +177,42 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
       _timeText: formatTimeText(r.time)
     }
   }
+
+  const normalizeAlarmRow = (raw: EventRow): EventRow => {
+    const row = { ...raw }
+    const parsed = safeParseJson(row.dataJson)
+    const equipmentName = String((row as any).equipmentName ?? row.deviceName ?? '')
+    const shopName = String(parsed?.workshopName ?? row.shopName ?? '')
+    const pointName = String((row as any).pointName ?? (row as any).alarmObject ?? parsed?.pointName ?? '')
+    const receiverName = String((row as any).receiverName ?? parsed?.pointName ?? (row as any).alarmObject ?? '')
+    const rawEventTypeName = String((row as any).alarmType ?? (row as any).alarmTypeCode ?? row.eventType?.name ?? '')
+    const eventTypeName = (() => {
+      const code = rawEventTypeName.trim()
+      if (code.toUpperCase() === 'MACHINE_VIBRATION') return '振动报警'
+      return code
+    })()
+    const time = Number((row as any).alarmTime ?? (row as any).createTime ?? row.time ?? 0)
+    const statusCode = String((row as any).statusCode ?? row.statusCode ?? '')
+    const statusText =
+      row.statusText ||
+      (statusCode.trim().toUpperCase() === 'VALID' ? '未处理' : '')
+    return normalizeOneRowLight({
+      ...row,
+      id: String(row.id ?? ''),
+      deviceId: String((row as any).deviceId ?? ''),
+      deviceName: equipmentName,
+      shopName,
+      pointName,
+      receiverName,
+      eventTypeCode: eventTypeName,
+      eventType: { name: eventTypeName || 'MACHINE_VIBRATION' },
+      statusCode,
+      statusText: statusText || (String((row as any).alarmLevel ?? '').toUpperCase() === 'ALARM' ? '报警' : '-'),
+      time
+    })
+  }
+
+  const normalizeAlarmRows = (rows: EventRow[]) => rows.map(normalizeAlarmRow)
 
   const normalizeRows = (rows: EventRow[]) => rows.map(normalizeOneRow)
 
@@ -215,9 +283,46 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
 
     const start = toMillis(query.startTime)
     const end = toMillis(query.endTime)
-    if (start != null) filters.push({ code: 'time', operate: 'GE', value: String(start) })
-    if (end != null) filters.push({ code: 'time', operate: 'LE', value: String(end + 999) })
+    if (start != null) filters.push({ code: 'time', operate: 'GTE' as FilterProperty['operate'], value: start })
+    if (end != null) filters.push({ code: 'time', operate: 'LTE' as FilterProperty['operate'], value: end + 999 })
     return filters
+  }
+
+  const buildAlarmConditionBody = (
+    query: AlarmQuery,
+    statusCode: string,
+    pageIndex: number,
+    pageSize: number
+  ): FindVibrationAlarmByConditionBody | null => {
+    const tenantId = readTenantIdFromStorageOrAddressBar()
+    if (!tenantId) return null
+    return {
+      alarmLevel: 'ALARM',
+      alarmType: 'MACHINE_VIBRATION',
+      pageIndex,
+      pageSize,
+      statusCode,
+      tenantId,
+      ...(query.deviceId ? { deviceId: String(query.deviceId) } : {}),
+      ...(query.eventTypeCode ? { eventTypeCode: String(query.eventTypeCode) } : {}),
+      ...(toMillis(query.startTime) != null ? { startTime: toMillis(query.startTime) } : {}),
+      ...(toMillis(query.endTime) != null ? { endTime: toMillis(query.endTime) } : {})
+    }
+  }
+
+  const ensurePointMessageLoaded = async () => {
+    const tenantId = readTenantIdFromStorageOrAddressBar()
+    if (!tenantId) return
+    if (pointMessagePromise) {
+      await pointMessagePromise
+      return
+    }
+    pointMessagePromise = pointMessageStore.loadPointMessage(tenantId)
+    try {
+      await pointMessagePromise
+    } finally {
+      pointMessagePromise = null
+    }
   }
 
   let realtimeFetchToken = 0
@@ -236,6 +341,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   }
 
   const fetchRealtimeList = async (pageIndex = 0, force = false, normalizeMode: 'sync' | 'yield' | 'light' = 'sync') => {
+    await ensurePointMessageLoaded()
     const cacheKey = buildRealtimeCacheKey(pageIndex)
     if (!force) {
       const cached = realtimeListCache.get(cacheKey)
@@ -312,6 +418,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   }
 
   const fetchHistoryList = async (pageIndex = 0, force = false, normalizeMode: 'sync' | 'yield' | 'light' = 'sync') => {
+    await ensurePointMessageLoaded()
     const cacheKey = buildHistoryCacheKey(pageIndex)
     if (!force) {
       const cached = historyListCache.get(cacheKey)
@@ -374,6 +481,130 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     }
   }
 
+  let realtimeAlarmFetchToken = 0
+  const realtimeAlarmFetchInFlight = new Map<string, Promise<void>>()
+  const buildRealtimeAlarmCacheKey = (pageIndex: number) => JSON.stringify({
+    tenantId: readTenantIdFromStorageOrAddressBar(),
+    pageIndex,
+    pageSize: realtimeAlarmPageSize.value,
+    startTime: realtimeAlarmQuery.value.startTime ?? '',
+    endTime: realtimeAlarmQuery.value.endTime ?? '',
+    deviceId: realtimeAlarmQuery.value.deviceId ?? '',
+    eventTypeCode: realtimeAlarmQuery.value.eventTypeCode ?? '',
+    statusCode: 'VALID'
+  })
+
+  const fetchRealtimeAlarmList = async (pageIndex = 0, force = false) => {
+    await ensurePointMessageLoaded()
+    const cacheKey = buildRealtimeAlarmCacheKey(pageIndex)
+    if (!force) {
+      const cached = realtimeAlarmListCache.get(cacheKey)
+      if (cached && Date.now() - cached.fetchedAt <= REALTIME_LIST_CACHE_TTL_MS) {
+        realtimeAlarmPageIndex.value = pageIndex
+        realtimeAlarmRows.value = cached.rows
+        realtimeAlarmTotal.value = cached.total
+        realtimeAlarmLoading.value = false
+        return
+      }
+      const inFlight = realtimeAlarmFetchInFlight.get(cacheKey)
+      if (inFlight) {
+        realtimeAlarmPageIndex.value = pageIndex
+        await inFlight
+        realtimeAlarmLoading.value = false
+        return
+      }
+    }
+
+    const body = buildAlarmConditionBody(realtimeAlarmQuery.value, 'VALID', pageIndex, realtimeAlarmPageSize.value)
+    if (!body) return
+    const token = ++realtimeAlarmFetchToken
+    realtimeAlarmPageIndex.value = pageIndex
+    realtimeAlarmLoading.value = true
+    const promise = (async () => {
+      try {
+        const res = await apiFindVibrationAlarmByCondition(body)
+        if (token !== realtimeAlarmFetchToken) return
+        const items = (res?.ret?.items ?? []) as EventRow[]
+        const normalized = normalizeAlarmRows(items)
+        const total = Number(res?.ret?.rowCount ?? res?.ret?.total ?? normalized.length ?? 0)
+        realtimeAlarmRows.value = normalized
+        realtimeAlarmTotal.value = total
+        realtimeAlarmListCache.set(cacheKey, { rows: normalized, total, fetchedAt: Date.now() })
+        evictOldestIfNeeded(realtimeAlarmListCache)
+      } finally {
+        if (token === realtimeAlarmFetchToken) realtimeAlarmLoading.value = false
+      }
+    })()
+    realtimeAlarmFetchInFlight.set(cacheKey, promise)
+    try {
+      await promise
+    } finally {
+      if (realtimeAlarmFetchInFlight.get(cacheKey) === promise) realtimeAlarmFetchInFlight.delete(cacheKey)
+    }
+  }
+
+  let historyAlarmFetchToken = 0
+  const historyAlarmFetchInFlight = new Map<string, Promise<void>>()
+  const buildHistoryAlarmCacheKey = (pageIndex: number) => JSON.stringify({
+    tenantId: readTenantIdFromStorageOrAddressBar(),
+    pageIndex,
+    pageSize: historyAlarmPageSize.value,
+    startTime: historyAlarmQuery.value.startTime ?? '',
+    endTime: historyAlarmQuery.value.endTime ?? '',
+    deviceId: historyAlarmQuery.value.deviceId ?? '',
+    eventTypeCode: historyAlarmQuery.value.eventTypeCode ?? '',
+    statusCode: ''
+  })
+
+  const fetchHistoryAlarmList = async (pageIndex = 0, force = false) => {
+    await ensurePointMessageLoaded()
+    const cacheKey = buildHistoryAlarmCacheKey(pageIndex)
+    if (!force) {
+      const cached = historyAlarmListCache.get(cacheKey)
+      if (cached && Date.now() - cached.fetchedAt <= HISTORY_LIST_CACHE_TTL_MS) {
+        historyAlarmPageIndex.value = pageIndex
+        historyAlarmRows.value = cached.rows
+        historyAlarmTotal.value = cached.total
+        historyAlarmLoading.value = false
+        return
+      }
+      const inFlight = historyAlarmFetchInFlight.get(cacheKey)
+      if (inFlight) {
+        historyAlarmPageIndex.value = pageIndex
+        await inFlight
+        historyAlarmLoading.value = false
+        return
+      }
+    }
+
+    const body = buildAlarmConditionBody(historyAlarmQuery.value, '', pageIndex, historyAlarmPageSize.value)
+    if (!body) return
+    const token = ++historyAlarmFetchToken
+    historyAlarmPageIndex.value = pageIndex
+    historyAlarmLoading.value = true
+    const promise = (async () => {
+      try {
+        const res = await apiFindVibrationAlarmByCondition(body)
+        if (token !== historyAlarmFetchToken) return
+        const items = (res?.ret?.items ?? []) as EventRow[]
+        const normalized = normalizeAlarmRows(items)
+        const total = Number(res?.ret?.rowCount ?? res?.ret?.total ?? normalized.length ?? 0)
+        historyAlarmRows.value = normalized
+        historyAlarmTotal.value = total
+        historyAlarmListCache.set(cacheKey, { rows: normalized, total, fetchedAt: Date.now() })
+        evictOldestIfNeeded(historyAlarmListCache)
+      } finally {
+        if (token === historyAlarmFetchToken) historyAlarmLoading.value = false
+      }
+    })()
+    historyAlarmFetchInFlight.set(cacheKey, promise)
+    try {
+      await promise
+    } finally {
+      if (historyAlarmFetchInFlight.get(cacheKey) === promise) historyAlarmFetchInFlight.delete(cacheKey)
+    }
+  }
+
   const resetRealtime = () => {
     realtimeQuery.value = {}
     realtimeSelectedRowKeys.value = []
@@ -394,6 +625,26 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     historyLoading.value = false
   }
 
+  const resetRealtimeAlarm = () => {
+    realtimeAlarmQuery.value = {}
+    realtimeAlarmSelectedRowKeys.value = []
+    realtimeAlarmPageIndex.value = 0
+    realtimeAlarmPageSize.value = 30
+    realtimeAlarmRows.value = []
+    realtimeAlarmTotal.value = 0
+    realtimeAlarmLoading.value = false
+  }
+
+  const resetHistoryAlarm = () => {
+    historyAlarmQuery.value = {}
+    historyAlarmSelectedRowKeys.value = []
+    historyAlarmPageIndex.value = 0
+    historyAlarmPageSize.value = 30
+    historyAlarmRows.value = []
+    historyAlarmTotal.value = 0
+    historyAlarmLoading.value = false
+  }
+
   const openRealtime = async () => {
     realtimeVisible.value = true
   }
@@ -412,8 +663,28 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     resetHistory()
   }
 
+  const openRealtimeAlarm = async () => {
+    realtimeAlarmVisible.value = true
+  }
+
+  const closeRealtimeAlarm = () => {
+    realtimeAlarmVisible.value = false
+    resetRealtimeAlarm()
+  }
+
+  const openHistoryAlarm = async () => {
+    historyAlarmVisible.value = true
+  }
+
+  const closeHistoryAlarm = () => {
+    historyAlarmVisible.value = false
+    resetHistoryAlarm()
+  }
+
   let didPrefetchDefaultRealtime = false
   let didPrefetchDefaultHistory = false
+  let didPrefetchDefaultRealtimeAlarm = false
+  let didPrefetchDefaultHistoryAlarm = false
   
   let prefetchAuthEpoch = 0
 
@@ -445,9 +716,33 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     await fetchHistoryList(0, false, 'light')
   }
 
+  const prefetchRealtimeAlarmListForDefault = async () => {
+    if (didPrefetchDefaultRealtimeAlarm) return
+    if (!hasAuthToken()) return
+    didPrefetchDefaultRealtimeAlarm = true
+    const epoch = prefetchAuthEpoch
+    await ensureDropdowns()
+    if (epoch !== prefetchAuthEpoch) return
+    if (!hasAuthToken()) return
+    await fetchRealtimeAlarmList(0, false)
+  }
+
+  const prefetchHistoryAlarmListForDefault = async () => {
+    if (didPrefetchDefaultHistoryAlarm) return
+    if (!hasAuthToken()) return
+    didPrefetchDefaultHistoryAlarm = true
+    const epoch = prefetchAuthEpoch
+    await ensureDropdowns()
+    if (epoch !== prefetchAuthEpoch) return
+    if (!hasAuthToken()) return
+    await fetchHistoryAlarmList(0, false)
+  }
+
   const resetPrefetchState = () => {
     didPrefetchDefaultRealtime = false
     didPrefetchDefaultHistory = false
+    didPrefetchDefaultRealtimeAlarm = false
+    didPrefetchDefaultHistoryAlarm = false
     prefetchAuthEpoch++
     
     typeList.value = []
@@ -455,6 +750,8 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     dropdownsPromise = null
     realtimeListCache.clear()
     historyListCache.clear()
+    realtimeAlarmListCache.clear()
+    historyAlarmListCache.clear()
   }
 
   const refreshRealtimeAfterBatch = async () => {
@@ -465,6 +762,14 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const refreshHistoryAfterBatch = async () => {
     
     await fetchHistoryList(historyPageIndex.value, true)
+  }
+
+  const refreshRealtimeAlarmAfterBatch = async () => {
+    await fetchRealtimeAlarmList(realtimeAlarmPageIndex.value, true)
+  }
+
+  const refreshHistoryAlarmAfterBatch = async () => {
+    await fetchHistoryAlarmList(historyAlarmPageIndex.value, true)
   }
 
   const batchYesRealtime = async () => {
@@ -513,6 +818,54 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     await apiDeleteEvents(ids)
     historySelectedRowKeys.value = []
     await refreshHistoryAfterBatch()
+  }
+
+  const batchYesRealtimeAlarm = async () => {
+    const ids = realtimeAlarmSelectedRowKeys.value
+    if (!ids.length) return
+    await apiConfirmYes(ids)
+    realtimeAlarmSelectedRowKeys.value = []
+    await refreshRealtimeAlarmAfterBatch()
+  }
+
+  const batchNotRealtimeAlarm = async () => {
+    const ids = realtimeAlarmSelectedRowKeys.value
+    if (!ids.length) return
+    await apiConfirmNot(ids)
+    realtimeAlarmSelectedRowKeys.value = []
+    await refreshRealtimeAlarmAfterBatch()
+  }
+
+  const batchDeleteRealtimeAlarm = async () => {
+    const ids = realtimeAlarmSelectedRowKeys.value
+    if (!ids.length) return
+    await apiDeleteEvents(ids)
+    realtimeAlarmSelectedRowKeys.value = []
+    await refreshRealtimeAlarmAfterBatch()
+  }
+
+  const batchYesHistoryAlarm = async () => {
+    const ids = historyAlarmSelectedRowKeys.value
+    if (!ids.length) return
+    await apiConfirmYes(ids)
+    historyAlarmSelectedRowKeys.value = []
+    await refreshHistoryAlarmAfterBatch()
+  }
+
+  const batchNotHistoryAlarm = async () => {
+    const ids = historyAlarmSelectedRowKeys.value
+    if (!ids.length) return
+    await apiConfirmNot(ids)
+    historyAlarmSelectedRowKeys.value = []
+    await refreshHistoryAlarmAfterBatch()
+  }
+
+  const batchDeleteHistoryAlarm = async () => {
+    const ids = historyAlarmSelectedRowKeys.value
+    if (!ids.length) return
+    await apiDeleteEvents(ids)
+    historyAlarmSelectedRowKeys.value = []
+    await refreshHistoryAlarmAfterBatch()
   }
 
   const fetchAllValidIds = async (): Promise<string[]> => {
@@ -569,6 +922,29 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     await refreshHistoryAfterBatch()
   }
 
+  const allYesHistoryAlarm = async () => {
+    try {
+      await apiConfirmYesAll(undefined)
+    } catch (e) {
+      const ids = await fetchAllValidIds()
+      await apiConfirmYesAll(ids.length ? ids : undefined)
+    }
+    historyAlarmSelectedRowKeys.value = []
+    await refreshHistoryAlarmAfterBatch()
+  }
+
+  const allNotHistoryAlarm = async () => {
+    await apiConfirmNotAll()
+    historyAlarmSelectedRowKeys.value = []
+    await refreshHistoryAlarmAfterBatch()
+  }
+
+  const allDeleteHistoryAlarm = async () => {
+    await apiDeleteAllValid()
+    historyAlarmSelectedRowKeys.value = []
+    await refreshHistoryAlarmAfterBatch()
+  }
+
   return {
     typeList,
     deviceNameList,
@@ -576,9 +952,13 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
 
     realtimeVisible,
     historyVisible,
+    realtimeAlarmVisible,
+    historyAlarmVisible,
 
     realtimeQuery,
     historyQuery,
+    realtimeAlarmQuery,
+    historyAlarmQuery,
 
     realtimeRows,
     realtimeTotal,
@@ -593,19 +973,41 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     historyPageSize,
     historySelectedRowKeys,
     historyLoading,
+    realtimeAlarmRows,
+    realtimeAlarmTotal,
+    realtimeAlarmPageIndex,
+    realtimeAlarmPageSize,
+    realtimeAlarmSelectedRowKeys,
+    realtimeAlarmLoading,
+    historyAlarmRows,
+    historyAlarmTotal,
+    historyAlarmPageIndex,
+    historyAlarmPageSize,
+    historyAlarmSelectedRowKeys,
+    historyAlarmLoading,
 
     ensureDropdowns,
     fetchRealtimeList,
     fetchHistoryList,
+    fetchRealtimeAlarmList,
+    fetchHistoryAlarmList,
     prefetchRealtimeListForDefault,
     prefetchHistoryListForDefault,
+    prefetchRealtimeAlarmListForDefault,
+    prefetchHistoryAlarmListForDefault,
     resetPrefetchState,
     resetRealtime,
     resetHistory,
+    resetRealtimeAlarm,
+    resetHistoryAlarm,
     openRealtime,
     closeRealtime,
     openHistory,
     closeHistory,
+    openRealtimeAlarm,
+    closeRealtimeAlarm,
+    openHistoryAlarm,
+    closeHistoryAlarm,
 
     batchYesRealtime,
     batchNotRealtime,
@@ -614,10 +1016,19 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     batchYesHistory,
     batchNotHistory,
     batchDeleteHistory,
+    batchYesRealtimeAlarm,
+    batchNotRealtimeAlarm,
+    batchDeleteRealtimeAlarm,
+    batchYesHistoryAlarm,
+    batchNotHistoryAlarm,
+    batchDeleteHistoryAlarm,
 
     allYesHistory,
     allNotHistory,
-    allDeleteHistory
+    allDeleteHistory,
+    allYesHistoryAlarm,
+    allNotHistoryAlarm,
+    allDeleteHistoryAlarm
   }
 })
 

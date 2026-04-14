@@ -6,12 +6,17 @@
         <el-form-item label="开始时间：">
           <el-date-picker v-model="store.historyQuery.startTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
             placeholder="开始时间" clearable size="small" class="alarm-filter-control" :show-now="false"
+            :show-confirm="false" :disabled-date="disableFutureDate" :disabled-hours="getDisabledStartHours"
+            :disabled-minutes="getDisabledStartMinutes" :disabled-seconds="getDisabledStartSeconds"
             popper-class="alarm-batch-datetime-popper" />
         </el-form-item>
         <el-form-item label="结束时间：">
           <el-date-picker v-model="store.historyQuery.endTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
             placeholder="结束时间" clearable size="small" class="alarm-filter-control" :show-now="false"
-            popper-class="alarm-batch-datetime-popper" />
+            :show-confirm="false" :disabled-date="disableFutureDate" :disabled-hours="getDisabledEndHours"
+            :disabled-minutes="getDisabledEndMinutes" :disabled-seconds="getDisabledEndSeconds"
+            popper-class="alarm-batch-datetime-popper" @update:model-value="onEndModelValue"
+            @change="onEndTimeChange" @panel-change="onEndPanelChange" @calendar-change="onEndCalendarChange" />
         </el-form-item>
         <el-form-item label="听音器名称：">
           <el-select-v2 v-model="store.historyQuery.deviceId" :options="deviceOptions" filterable clearable size="small"
@@ -97,9 +102,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
+import { formatDateTime, normalizeEndDateTimeBySelectedDay } from '@/utils/datetime'
 
 defineEmits<{ (e: 'view', row: any): void }>()
 
@@ -163,6 +169,95 @@ const onReset = () => {
   store.resetHistory()
   store.fetchHistoryList(0, true)
 }
+
+const endDatePart = ref<string>('')
+
+const getDatePart = (value?: string) => {
+  const raw = String(value ?? '').trim()
+  if (!raw) return ''
+  return raw.split(' ')[0] ?? ''
+}
+
+const normalizeAndApplyEndTime = (rawValue?: string, forceApplyRule: boolean = false) => {
+  const normalized = normalizeEndDateTimeBySelectedDay(rawValue, forceApplyRule)
+  const picked = normalized ? new Date(normalized.replace(' ', 'T')) : null
+  const now = new Date()
+  const finalValue =
+    picked && !Number.isNaN(picked.getTime()) && picked.getTime() > now.getTime()
+      ? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+      : normalized
+  if (finalValue !== rawValue) store.historyQuery.endTime = finalValue
+  endDatePart.value = getDatePart(store.historyQuery.endTime)
+}
+
+const toDateTimeText = (value: unknown): string | undefined => {
+  if (value == null || value === '') return undefined
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : formatDateTime(value)
+  return String(value)
+}
+
+const onEndTimeChange = (value?: string) => {
+  normalizeAndApplyEndTime(value)
+}
+
+const onEndModelValue = (value?: string) => {
+  const nextDatePart = getDatePart(value)
+  const prevDatePart = endDatePart.value || getDatePart(store.historyQuery.endTime)
+  const forceApplyRule = !!nextDatePart && !!prevDatePart && nextDatePart !== prevDatePart
+  normalizeAndApplyEndTime(value, forceApplyRule)
+}
+
+const onEndPanelChange = (value: unknown) => {
+  normalizeAndApplyEndTime(toDateTimeText(value))
+}
+
+const onEndCalendarChange = (value: unknown) => {
+  const picked = Array.isArray(value) ? value[value.length - 1] : value
+  normalizeAndApplyEndTime(toDateTimeText(picked))
+}
+
+const disableFutureDate = (time: Date) => time.getTime() > Date.now()
+
+const isTodayByValue = (rawValue?: string) => {
+  const raw = String(rawValue ?? '').trim()
+  if (!raw) return false
+  const selected = new Date(raw.replace(' ', 'T'))
+  if (Number.isNaN(selected.getTime())) return false
+  const now = new Date()
+  return selected.getFullYear() === now.getFullYear() && selected.getMonth() === now.getMonth() && selected.getDate() === now.getDate()
+}
+
+const getDisabledHoursByRaw = (rawValue?: string) => {
+  if (!isTodayByValue(rawValue)) return []
+  const h = new Date().getHours()
+  return Array.from({ length: 24 - (h + 1) }, (_, i) => h + 1 + i)
+}
+
+const getDisabledMinutesByRaw = (rawValue: string | undefined, hour: number) => {
+  if (!isTodayByValue(rawValue)) return []
+  const now = new Date()
+  if (hour !== now.getHours()) return []
+  const m = now.getMinutes()
+  return Array.from({ length: 60 - (m + 1) }, (_, i) => m + 1 + i)
+}
+
+const getDisabledSecondsByRaw = (rawValue: string | undefined, hour: number, minute: number) => {
+  if (!isTodayByValue(rawValue)) return []
+  const now = new Date()
+  if (hour !== now.getHours() || minute !== now.getMinutes()) return []
+  const s = now.getSeconds()
+  return Array.from({ length: 60 - (s + 1) }, (_, i) => s + 1 + i)
+}
+
+const getDisabledStartHours = () => getDisabledHoursByRaw(store.historyQuery.startTime)
+const getDisabledStartMinutes = (hour: number) => getDisabledMinutesByRaw(store.historyQuery.startTime, hour)
+const getDisabledStartSeconds = (hour: number, minute: number) =>
+  getDisabledSecondsByRaw(store.historyQuery.startTime, hour, minute)
+
+const getDisabledEndHours = () => getDisabledHoursByRaw(store.historyQuery.endTime)
+const getDisabledEndMinutes = (hour: number) => getDisabledMinutesByRaw(store.historyQuery.endTime, hour)
+const getDisabledEndSeconds = (hour: number, minute: number) =>
+  getDisabledSecondsByRaw(store.historyQuery.endTime, hour, minute)
 
 const confirmBatch = async (type: 'yes' | 'not' | 'delete') => {
   const actionText = type === 'yes' ? '批量确认警报' : type === 'not' ? '批量确认误报' : '批量确认删除'

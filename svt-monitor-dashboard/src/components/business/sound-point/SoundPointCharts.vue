@@ -671,7 +671,7 @@ onUnmounted(() => {
             align-items: center;
             justify-content: center;
             gap: 10px;
-            padding: 10px 20px 0;
+            padding: 10px 10px 0 20px;
             position: relative;
 
             .energy-fullscreen-btn {
@@ -709,7 +709,7 @@ onUnmounted(() => {
         .chart-container {
             flex: 1;
             min-height: 200px;
-            padding: 0 20px;
+            padding: 0 10px 0 20px;
         }
     }
 }

@@ -178,6 +178,13 @@ service.interceptors.response.use(
     }
   },
   (error: any) => {
+    if (axios.isCancel(error) || error?.code === 'ERR_CANCELED') {
+      if (error.config?.showLoading !== false) {
+        hideLoading();
+      }
+      return Promise.reject(error)
+    }
+
     if (error.config) {
       const reqKey = generateReqKey(error.config as InternalAxiosRequestConfig)
       if (pendingRequests.has(reqKey)) {

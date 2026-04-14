@@ -291,18 +291,33 @@ export interface CheckPointItem {
 }
 export interface SelectCheckPointInResponse {
   rc: number
-  ret: CheckPointItem[]
+  ret: CheckPointItem[] | {
+    items?: CheckPointItem[]
+    records?: CheckPointItem[]
+    list?: CheckPointItem[]
+    total?: number
+    rowCount?: number
+  }
   err: string | null
 }
 
-export const getSelectCheckPointIn = (equipmentId: string): Promise<SelectCheckPointInResponse> => {
+export const getSelectCheckPointIn = (
+  equipmentId: string,
+  pageSize: 10 = 10,
+  pageNum: number = 1
+): Promise<SelectCheckPointInResponse> => {
   return request.get('/taicang/hardware/device/vibration/selectCheckPointIn', {
-    params: { equipmentId },
+    params: { equipmentId, pageSize, pageNum },
     showLoading: false
   }).then((res: SelectCheckPointInResponse) => {
-    if (!res || !Array.isArray(res.ret)) return res
+    if (!res) return res
 
-    res.ret = res.ret.map((raw: any) => {
+    const rawList = Array.isArray(res.ret)
+      ? res.ret
+      : (res.ret?.items ?? res.ret?.records ?? res.ret?.list ?? [])
+    if (!Array.isArray(rawList)) return res
+
+    const normalizedList = rawList.map((raw: any) => {
       const receiverId = String(raw?.receiverId ?? '')
       const receiverName = String(raw?.receiverName ?? '')
 
@@ -313,6 +328,15 @@ export const getSelectCheckPointIn = (equipmentId: string): Promise<SelectCheckP
         pointName: raw?.pointName,
       } as CheckPointItem
     })
+
+    if (Array.isArray(res.ret)) {
+      res.ret = normalizedList
+    } else {
+      res.ret = {
+        ...res.ret,
+        items: normalizedList
+      }
+    }
     return res
   })
 }

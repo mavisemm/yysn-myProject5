@@ -33,14 +33,15 @@
                             </el-select>
                             <div class="freq-filter-inline">
                                 <span class="freq-filter-label">频率筛选</span>
-                                <el-input-number v-model="freqFilterMin" :min="freqAxisDomain.min" :max="freqAxisDomain.max"
-                                    :precision="0" :step="1" size="small" placeholder="最小" controls-position="right"
-                                    class="freq-filter-num" />
+                                <el-input-number v-model="freqFilterMin" :min="freqAxisDomain.min"
+                                    :max="freqAxisDomain.max" :precision="0" :step="1" size="small" placeholder="最小"
+                                    controls-position="right" class="freq-filter-num" />
                                 <span class="freq-filter-sep">—</span>
-                                <el-input-number v-model="freqFilterMax" :min="freqAxisDomain.min" :max="freqAxisDomain.max"
-                                    :precision="0" :step="1" size="small" placeholder="最大" controls-position="right"
-                                    class="freq-filter-num" />
-                                <el-button type="primary" size="small" class="freq-filter-apply-btn" @click="applyFreqFilter">
+                                <el-input-number v-model="freqFilterMax" :min="freqAxisDomain.min"
+                                    :max="freqAxisDomain.max" :precision="0" :step="1" size="small" placeholder="最大"
+                                    controls-position="right" class="freq-filter-num" />
+                                <el-button type="primary" size="small" class="freq-filter-apply-btn"
+                                    @click="applyFreqFilter">
                                     应用
                                 </el-button>
                                 <el-button size="small" @click="resetFreqFilter">
@@ -740,7 +741,7 @@ onUnmounted(() => {
     .card-header {
         display: flex;
         align-items: center;
-        padding: 10px 20px 0 20px;
+        padding: 10px 10px 0 20px;
         gap: 0;
         min-height: 40px;
 
@@ -809,7 +810,7 @@ onUnmounted(() => {
         flex: 1;
         width: 100%;
         min-height: 0;
-        padding: 10px 20px 20px;
+        padding: 10px 10px 20px 20px;
         position: relative;
     }
 }
