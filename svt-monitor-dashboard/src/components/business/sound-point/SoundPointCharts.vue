@@ -4,8 +4,13 @@
             <div class="chart-item">
                 <div class="chart-title-row">
                     <div class="chart-title app-section-title">能量曲线</div>
-                    <el-button class="energy-fullscreen-btn" text circle size="large" :icon="FullScreen"
-                        title="能量 / 密度曲线全屏" :disabled="!hasAnyChartData" @click="energyFullscreenVisible = true" />
+                    <el-button class="energy-fullscreen-btn" text size="large" :disabled="!hasAnyChartData"
+                        @click="energyFullscreenVisible = true">
+                        全屏显示
+                        <el-icon>
+                            <FullScreen />
+                        </el-icon>
+                    </el-button>
                 </div>
                 <div class="chart-container">
                     <CommonEcharts ref="energyChartRef" :option="energyOption" linkage-group="sound-point-charts"
@@ -674,10 +679,14 @@ onUnmounted(() => {
                 right: 12px;
                 top: 50%;
                 transform: translateY(-50%);
+                padding: 0 !important;
+                gap: 4px;
+                color: rgba(255, 255, 255, 0.95) !important;
             }
 
             :deep(.energy-fullscreen-btn .el-icon) {
                 color: rgba(255, 255, 255, 0.95);
+                margin-left: 4px;
             }
 
             :deep(.energy-fullscreen-btn:hover .el-icon),

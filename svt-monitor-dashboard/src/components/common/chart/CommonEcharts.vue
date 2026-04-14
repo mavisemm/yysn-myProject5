@@ -22,13 +22,26 @@
         </div>
     </div>
 
-    <el-dialog v-if="enableFullscreenButton" v-model="fullscreenVisible" :title="fullscreenTitleResolved"
-        :fullscreen="true" destroy-on-close :append-to-body="true" :modal-append-to-body="true"
-        class="common-echarts-fullscreen-dialog" modal-class="common-echarts-fullscreen-modal"
-        :style="{ '--ce-fullscreen-bg': fullscreenBackgroundResolved }" @opened="handleFullscreenOpened"
-        @closed="handleFullscreenClosed">
-        <div class="common-echarts-fullscreen-wrap">
-            <div ref="fullscreenChartRef" class="common-echarts-fullscreen-inner" />
+    <el-dialog v-if="enableFullscreenButton" v-model="fullscreenVisible" :fullscreen="true" destroy-on-close
+        :append-to-body="true" :modal-append-to-body="true" class="common-echarts-fullscreen-dialog"
+        modal-class="common-echarts-fullscreen-modal" :style="{ '--ce-fullscreen-bg': fullscreenBackgroundResolved }"
+        @opened="handleFullscreenOpened" @closed="handleFullscreenClosed">
+        <template #header="{ titleId, titleClass }">
+            <div class="common-echarts-fullscreen-header-inner">
+                <span :id="titleId" :class="titleClass">{{ fullscreenTitleResolved }}</span>
+                <div class="common-echarts-fullscreen-header-extra" :key="fullscreenToolbarKey">
+                    <slot name="fullscreen-toolbar" />
+                </div>
+                <div class="common-echarts-fullscreen-header-spacer" aria-hidden="true" />
+            </div>
+        </template>
+        <div class="common-echarts-fullscreen-body-stack">
+            <div v-if="$slots['fullscreen-body-top']" class="common-echarts-fullscreen-body-top">
+                <slot name="fullscreen-body-top" />
+            </div>
+            <div class="common-echarts-fullscreen-wrap">
+                <div ref="fullscreenChartRef" class="common-echarts-fullscreen-inner" />
+            </div>
         </div>
     </el-dialog>
 </template>
@@ -129,6 +142,8 @@ const containerRef = ref<HTMLElement>();
 const chartRef = ref<HTMLElement>();
 const chartInstance = shallowRef<echarts.ECharts | null>(null);
 const fullscreenVisible = ref(false);
+/** 每次打开全屏递增，强制工具栏插槽（如轴向 el-select）按当前父级 v-model 重新挂载 */
+const fullscreenToolbarKey = ref(0);
 const fullscreenChartRef = ref<HTMLElement>();
 const fullscreenChartInstance = shallowRef<echarts.ECharts | null>(null);
 let fullscreenAutoYAxisCleanup: (() => void) | null = null;
@@ -943,6 +958,7 @@ const patchFullscreenSeriesMarkLine = (seriesId: string, data: unknown[]) => {
 
 const handleFullscreenOpened = async () => {
     await nextTick();
+    fullscreenToolbarKey.value += 1;
     if (!fullscreenChartRef.value) return;
     if (fullscreenChartInstance.value) {
         try { fullscreenChartInstance.value.dispose(); } catch { }
@@ -1107,26 +1123,92 @@ defineExpose({
 
 /* 全屏触发按钮由业务侧放置（如标题栏），公共组件仅提供 openFullscreen 能力 */
 
+.common-echarts-fullscreen-body-stack {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.common-echarts-fullscreen-body-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+    margin-bottom: 10px;
+}
+
+.common-echarts-fullscreen-header-inner {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-right: 6px;
+}
+
+.common-echarts-fullscreen-header-inner>span {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.25;
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+}
+
+.common-echarts-fullscreen-header-extra {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    gap: 8px;
+    position: relative;
+    z-index: 2;
+}
+
+.common-echarts-fullscreen-header-spacer {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
 .common-echarts-fullscreen-wrap {
-    height: calc(100vh - 120px);
-    min-height: 300px;
-    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
 }
 
 .common-echarts-fullscreen-inner {
     width: 100%;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
 }
 
 /* append-to-body 下用 modal-class + :global 保证能命中 */
 :global(.common-echarts-fullscreen-modal .el-dialog) {
     background: var(--ce-fullscreen-bg, #142060) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
 }
 
 :global(.common-echarts-fullscreen-modal .el-dialog__header) {
     background: var(--ce-fullscreen-bg, #142060) !important;
     margin-right: 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow: visible !important;
 }
 
 :global(.common-echarts-fullscreen-modal .el-dialog__title) {
@@ -1135,6 +1217,13 @@ defineExpose({
 
 :global(.common-echarts-fullscreen-modal .el-dialog__body) {
     background: var(--ce-fullscreen-bg, #142060) !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding: 12px 16px 16px !important;
+    box-sizing: border-box !important;
 }
 
 :global(.common-echarts-fullscreen-modal .el-dialog__headerbtn .el-dialog__close) {
