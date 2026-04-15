@@ -312,9 +312,7 @@ function ensureRowParsed(row: any): any {
   if (parsedRowCache.has(rowId)) return parsedRowCache.get(rowId)
 
 
-  const needsParse =
-    (!row.pointName || !row.receiverName || !row.deviceName) && typeof row.dataJson === 'string'
-  if (!needsParse && row.deviceName && row.pointName && row.receiverName) {
+  if (!row.dataJson) {
     parsedRowCache.set(rowId, undefined)
     return undefined
   }
@@ -340,11 +338,15 @@ const getDeviceSubName = (row: any): string => {
 }
 
 const getPointName = (row: any): string => {
-  return row?.pointName ? String(row.pointName) : ''
+  const parsed = ensureRowParsed(row)
+  const pointName = parsed?.pointName ?? row?.pointName
+  return pointName ? String(pointName) : ''
 }
 
 const getReceiverName = (row: any): string => {
-  return row?.receiverName ? String(row.receiverName) : ''
+  const parsed = ensureRowParsed(row)
+  const receiverName = parsed?.receiverName ?? row?.receiverName
+  return receiverName ? String(receiverName) : ''
 }
 </script>
 

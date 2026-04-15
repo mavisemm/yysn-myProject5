@@ -160,6 +160,9 @@ onMounted(() => {
     if (router.currentRoute.value.name !== 'Dashboard') return
     deviceTreeStore.setSelectedDeviceId(null)
 
+    // 首页核心数据优先：先加载排行与统计，弹窗预热放在最后执行，避免抢占首屏资源
+    await Promise.allSettled([fetchTop5Data(), fetchStatsData()])
+
     const alarmBatchStore = useAlarmBatchStore()
     if (hasToken()) {
       void alarmBatchStore.prefetchRealtimeListForDefault().catch((e) => {
@@ -179,9 +182,6 @@ onMounted(() => {
         console.error('预热历史报警列表失败:', e)
       })
     }, 3500)
-
-    fetchTop5Data();
-    fetchStatsData();
   })
 });
 

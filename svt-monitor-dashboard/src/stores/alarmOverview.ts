@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { getTenantId } from '@/api/tenant'
 import { VibrationWsClient, type VibrationEventPayload } from '@/services/vibrationWs'
 import { fetchVibrationAlarmsForOverview } from '@/api/modules/vibrationEvent'
+import { apiSoundAlarmFind, type EventRow } from '@/api/modules/alarmBatch'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import type { DeviceNode } from '@/types/device'
 
@@ -14,6 +15,7 @@ export interface MeasurementPoint {
 
 export interface AlarmItem {
   id: string
+  kind: 'vibration' | 'sound'
   deviceName: string
   shopName: string
   deviceNameWithShop: string
@@ -104,6 +106,7 @@ type OverviewNormalized = {
   statusCode?: string
   receiverId?: string
   isEventTypeMessage?: boolean
+  kind: AlarmItem['kind']
   point: {
     channelNo?: string | number
     level?: string
@@ -159,9 +162,9 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
       parsedFromData?.receiverid ??
       parsedFromRaw?.receiverId ??
       parsedFromRaw?.receiverid
-    const deviceId = String((input as any).equipmentId ?? (input as any).deviceId ?? '')
+    const deviceId = String((input as any).equipmentId ?? '').trim()
     const t = Number((input as any).time ?? (input as any).alarmTime ?? 0)
-    if ((!deviceId && !receiverIdRaw) || !Number.isFinite(t) || t <= 0) return null
+    if (!deviceId || !Number.isFinite(t) || t <= 0) return null
 
     return {
       deviceId,
@@ -172,6 +175,7 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
       statusCode: (input as any).statusCode ? String((input as any).statusCode) : undefined,
       receiverId: receiverIdRaw ? String(receiverIdRaw) : undefined,
       isEventTypeMessage: true,
+      kind: 'sound',
       point: {
         channelNo: parsedFromData?.channelNo ?? parsedFromRaw?.channelNo,
         level: (parsedFromData?.level ?? parsedFromRaw?.level)
@@ -186,10 +190,10 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
     const parsedFromData = safeParseJson((input as any).dataJson)
     const parsedFromRaw = safeParseJson((input as any).rawDataJson)
     // 预警总览卡片合并主键：严格使用 equipmentId
-    const deviceId = String(input.equipmentId ?? '')
+    const deviceId = String(input.equipmentId ?? '').trim()
     const receiverIdRaw = (input as any).receiverId ?? parsedFromData?.receiverId ?? parsedFromRaw?.receiverId
     const t = Number(input.alarmTime ?? input.time ?? 0)
-    if ((!deviceId && !receiverIdRaw) || !Number.isFinite(t) || t <= 0) return null
+    if (!deviceId || !Number.isFinite(t) || t <= 0) return null
 
     return {
       deviceId,
@@ -200,6 +204,7 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
       statusCode: input.statusCode ? String(input.statusCode) : undefined,
       receiverId: receiverIdRaw ? String(receiverIdRaw) : undefined,
       isEventTypeMessage: false,
+      kind: 'vibration',
       point: {
         channelNo: input.data?.channelNo ?? parsedFromData?.channelNo ?? parsedFromRaw?.channelNo,
         level: (input.data?.level ?? parsedFromData?.level ?? parsedFromRaw?.level)
@@ -228,6 +233,7 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
     receiverId: parsed?.receiverId ? String(parsed.receiverId) : undefined,
     shopName: parsed?.shopName ? String(parsed.shopName) : undefined,
     isEventTypeMessage: true,
+    kind: 'sound',
     point: {
       channelNo: parsed?.channelNo,
       level: parsed?.level ? String(parsed.level) : undefined,
@@ -389,6 +395,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
 
     return {
       id: deviceId,
+      kind: 'vibration',
       deviceName,
       shopName,
       deviceNameWithShop: `${deviceName}（${shopName || ''}）`,
@@ -441,9 +448,11 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       !evt.isEventTypeMessage && String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
     const resolvedByPoint = resolveDeviceByPoint(evt.receiverId, evt.point.pointName)
     const rawDeviceId = String(evt.deviceId ?? '').trim()
+    // 同一设备允许同时存在“振动卡片 + 声音卡片”
     const deviceId = rawDeviceId
     if (!deviceId) return
-    const idx = alarms.value.findIndex((a) => a.id === deviceId)
+    const cardId = `${evt.kind}:${deviceId}`
+    const idx = alarms.value.findIndex((a) => `${a.kind}:${a.id}` === cardId)
 
     const t = Number(evt.time)
     const timeStr = Number.isFinite(t) && t > 0 ? String(t) : ''
@@ -470,9 +479,10 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     }
 
     
-    const derivedPointStatus: MeasurementPoint['status'] = evt.isEventTypeMessage
-      ? 'warning'
-      : derivePointStatus(evt.alarmTypeCode, evt.point.level)
+    const derivedPointStatus: MeasurementPoint['status'] =
+      evt.kind === 'sound'
+        ? 'warning'
+        : derivePointStatus(evt.alarmTypeCode, evt.point.level)
 
     
     const pointName = evt.point.pointName ? String(evt.point.pointName) : ''
@@ -613,6 +623,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
 
     const item: AlarmItem = {
       id: deviceId,
+      kind: evt.kind,
       deviceName,
       shopName,
       deviceNameWithShop: `${deviceName}（${shopName || ''}）`,
@@ -639,8 +650,23 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
   }
 
   async function initOverviewOnceByHttp(tId: string) {
-    
-    const rawItems = await fetchVibrationAlarmsForOverview({ tenantId: tId, pageIndex: 0, pageSize: 5000 })
+    const [vibrationRes, soundRes] = await Promise.allSettled([
+      fetchVibrationAlarmsForOverview({ tenantId: tId, pageIndex: 0, pageSize: 5000 }),
+      apiSoundAlarmFind({
+        filterPropertyMap: [
+          { code: 'statusCode', operate: 'EQ', value: 'VALID' },
+          { code: 'tenantId', operate: 'EQ', value: tId }
+        ],
+        sortValueMap: [{ code: 'time', sort: 'desc' }],
+        pageIndex: 0,
+        pageSize: 5000
+      })
+    ])
+
+    const rawItems = vibrationRes.status === 'fulfilled' ? (vibrationRes.value ?? []) : []
+    if (vibrationRes.status !== 'fulfilled') {
+      console.warn('预警总览振动预警初始化获取失败:', vibrationRes.reason)
+    }
     // 约定：HTTP 接口返回 items 已按“最新在前”排序。
     // 因此无需再排序；但仍过滤掉非 VALID / 无时间的数据，避免比较键混乱。
     const items = (rawItems ?? [])
@@ -704,6 +730,19 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       upsertAlarmFromEvent(it, 'http', { keepPrevAsLatest: isOlder, orderKey })
       if (deviceId) seenLatestByDeviceId.add(deviceId)
     }
+
+    if (soundRes.status === 'fulfilled') {
+      const soundItems = (soundRes.value?.ret?.items ?? []) as EventRow[]
+      for (let i = 0; i < soundItems.length; i++) {
+        const it = soundItems[i]
+        const statusCode = String((it as any)?.statusCode ?? '')
+        if (statusCode && statusCode.toUpperCase() !== 'VALID') continue
+        const orderKey = Number((it as any)?.time ?? 0)
+        upsertAlarmFromEvent(it, 'http', { keepPrevAsLatest: false, orderKey })
+      }
+    } else {
+      console.warn('预警总览声音预警初始化获取失败:', soundRes.reason)
+    }
   }
 
   async function start(params?: { token?: string; tenantId?: string }) {
@@ -746,6 +785,22 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
         )
       }
 
+      const pendingWsClient = new VibrationWsClient({ token: params?.token ?? (localStorage.getItem('token') ?? undefined) })
+      wsClient = pendingWsClient
+
+      const wsReadyPromise = pendingWsClient
+        .connect()
+        .then(() => {
+          if (wsClient !== pendingWsClient) return
+          pendingWsClient.subscribeVibrationTopic(tId, (payload) => {
+            upsertAlarmFromEvent(payload, 'ws')
+          })
+        })
+        .catch((e) => {
+          if (wsClient !== pendingWsClient) return
+          console.warn('预警总览 websocket 连接失败:', e)
+        })
+
       try {
         await initOverviewOnceByHttp(tId)
       } catch (e) {
@@ -756,11 +811,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
         httpInitialized.value = true
       }
 
-      wsClient = new VibrationWsClient({ token: params?.token ?? (localStorage.getItem('token') ?? undefined) })
-      await wsClient.connect()
-      wsClient.subscribeVibrationTopic(tId, (payload) => {
-        upsertAlarmFromEvent(payload, 'ws')
-      })
+      await wsReadyPromise
     } finally {
       connecting.value = false
     }

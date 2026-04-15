@@ -153,6 +153,7 @@ interface MeasurementPoint {
 
 interface AlarmItem {
     id: string;
+    kind: 'vibration' | 'sound';
     deviceName: string;
     shopName: string;
     deviceNameWithShop: string;
@@ -166,7 +167,7 @@ interface AlarmItem {
 
 interface DisplayAlarmItem extends AlarmItem {
     cardId: string;
-    cardType: 'alarm' | 'warning';
+    cardType: 'vibration' | 'sound';
 }
 interface AlarmWsPayload {
     alarmId?: string
@@ -473,6 +474,7 @@ function upsertAlarmFromEvent(input: any) {
 
     const item: AlarmItem = {
         id: deviceId,
+        kind: isFaultAlarm ? 'vibration' : 'sound',
         deviceName,
         shopName,
         deviceNameWithShop: `${deviceName}（${shopName || ''}）`,
@@ -511,60 +513,11 @@ const filteredAlarms = computed(() => {
         ? (alarms.value ?? [])
         : (alarms.value ?? []).filter(a => !a?.prefilled)
 
-    const toDisplayCards = (item: AlarmItem): DisplayAlarmItem[] => {
-        const points = item.measurementPoints ?? []
-        const alarmPoints = points.filter(p => p.status === 'alarm')
-        const warningPoints = points.filter(p => p.status === 'warning')
-
-        const parseTimeValue = (v?: string) => {
-            const n = Number(v ?? 0)
-            return Number.isFinite(n) && n > 0 ? n : 0
-        }
-        const fallbackTime = parseTimeValue(item.time)
-        const alarmLatestTime = alarmPoints.reduce((max, p) => Math.max(max, Number(p.lastAlarmTime ?? 0)), fallbackTime)
-        const warningLatestTime = warningPoints.reduce((max, p) => Math.max(max, Number(p.lastAlarmTime ?? 0)), fallbackTime)
-
-        const getLatestPointNumByType = (type: 'alarm' | 'warning') => {
-            let latestNum: number | undefined
-            let latestTime = -1
-                ; (item.measurementPoints ?? []).forEach((p, idx) => {
-                    if (p.status !== type) return
-                    const t = Number(p.lastAlarmTime ?? 0)
-                    if (t > latestTime) {
-                        latestTime = t
-                        latestNum = idx + 1
-                    }
-                })
-            return latestNum
-        }
-
-        const cards: DisplayAlarmItem[] = []
-        if (alarmPoints.length > 0) {
-            cards.push({
-                ...item,
-                cardId: `${item.id}__alarm`,
-                cardType: 'alarm',
-                status: 'alarm',
-                statusText: '报警',
-                time: alarmLatestTime > 0 ? String(alarmLatestTime) : item.time,
-                latestPointNum: getLatestPointNumByType('alarm') ?? item.latestPointNum
-            })
-        }
-        if (warningPoints.length > 0) {
-            cards.push({
-                ...item,
-                cardId: `${item.id}__warning`,
-                cardType: 'warning',
-                status: 'warning',
-                statusText: '预警',
-                time: warningLatestTime > 0 ? String(warningLatestTime) : item.time,
-                latestPointNum: getLatestPointNumByType('warning') ?? item.latestPointNum
-            })
-        }
-        return cards
-    }
-
-    let result: DisplayAlarmItem[] = source.flatMap(toDisplayCards);
+    let result: DisplayAlarmItem[] = source.map((item: AlarmItem) => ({
+        ...item,
+        cardId: `${item.kind}:${item.id}`,
+        cardType: item.kind
+    }));
     const sortFallbackYear = (() => {
         const s = dateRange.value?.[0]
         if (!s) return new Date().getFullYear()
@@ -777,12 +730,18 @@ function getPointStyleClass(
 function getDisplayPoints(
     points: MeasurementPoint[],
     latestPointNum?: number,
-    cardType?: 'alarm' | 'warning'
+    cardType?: 'vibration' | 'sound'
 ): { point: MeasurementPoint; pointNum: number }[] {
     const list = points ?? [];
     const withNum = list
         .map((p, i) => ({ point: p, pointNum: i + 1 }))
-        .filter(item => !cardType || item.point.status === cardType);
+        .filter(item => {
+            if (!cardType) return true
+            // 声音卡片只展示预警点位；振动卡片只展示报警点位（保持“卡片内部只按时间”）
+            if (cardType === 'sound') return item.point.status === 'warning'
+            if (cardType === 'vibration') return item.point.status === 'alarm'
+            return true
+        });
     const order = { alarm: 0, warning: 1, healthy: 2, offline: 3 };
     const sorted = withNum.sort((a, b) => {
         // 约定：latestPointNum 对应“最新点位”，强制置顶（即使其它点位的 lastAlarmTime 更大）
@@ -794,8 +753,6 @@ function getDisplayPoints(
         const aTime = a.point.lastAlarmTime ?? 0;
         const bTime = b.point.lastAlarmTime ?? 0;
         if (aTime !== bTime) return bTime - aTime; // 最近的时间排前面
-        const statusDiff = order[a.point.status] - order[b.point.status];
-        if (statusDiff !== 0) return statusDiff;
         return a.pointNum - b.pointNum;
     });
     return sorted.slice(0, 8);

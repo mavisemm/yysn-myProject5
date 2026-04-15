@@ -21,6 +21,13 @@ export interface FindBody {
   sortValueMap?: SortValue[]
 }
 
+export interface FindSoundAlarmBody {
+  filterPropertyMap: FilterProperty[]
+  sortValueMap?: SortValue[]
+  pageIndex?: number
+  pageSize?: number
+}
+
 export interface EventRow {
   id: string
   deviceName?: string
@@ -81,6 +88,10 @@ export const apiFindEvents = (body: FindBody) => {
 
 export const apiFindVibrationAlarmByCondition = (body: FindVibrationAlarmByConditionBody) => {
   return request.post<FindResponse>('/taicang/event/findVibrationAlarmByCondition', body, { showLoading: false })
+}
+
+export const apiSoundAlarmFind = (body: FindSoundAlarmBody) => {
+  return request.post<FindResponse>('/taicang/event/soundAlarmFind', body, { showLoading: false })
 }
 
 export const apiGetDeviceNameDropdownList = () => {
