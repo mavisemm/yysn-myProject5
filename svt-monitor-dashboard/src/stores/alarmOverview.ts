@@ -26,6 +26,10 @@ export interface AlarmItem {
   latestPointNum?: number
   // HTTP 数组顺序：越大越新（items[0] 最大）
   latestOrderKey?: number
+  statusPriority?: number
+  sortTimeTs?: number
+  searchText?: string
+  displayStatus?: 'alarm' | 'warning' | 'healthy' | 'offline'
   /**
    * 来自设备树的“预填充”占位项（避免空白），在 HTTP 初始化完成前不参与展示，
    * 以避免进入首页时先显示健康(绿)再被真实告警覆盖(红)的闪烁。
@@ -77,7 +81,9 @@ function safeParseJson(input: any): any {
 function isAlarmWsPayload(x: any): x is AlarmWsPayload {
   // 只要具备告警时间/告警类型等关键信息，就按告警载荷处理
   // 避免因 payload 是否带 `data` 字段不同，导致时间字段走了不同分支
-  return !!x && typeof x === 'object' && ('alarmTypeCode' in x || 'alarmTime' in x || 'alarmId' in x)
+  return (
+    !!x && typeof x === 'object' && ('alarmTypeCode' in x || 'alarmTime' in x || 'alarmId' in x)
+  )
 }
 
 function mapLevelToStatus(level: string | undefined): MeasurementPoint['status'] {
@@ -87,12 +93,15 @@ function mapLevelToStatus(level: string | undefined): MeasurementPoint['status']
   return 'healthy'
 }
 
-function maxPointStatus(a: MeasurementPoint['status'], b: MeasurementPoint['status']): MeasurementPoint['status'] {
+function maxPointStatus(
+  a: MeasurementPoint['status'],
+  b: MeasurementPoint['status'],
+): MeasurementPoint['status'] {
   const order: Record<MeasurementPoint['status'], number> = {
     alarm: 3,
     warning: 2,
     healthy: 1,
-    offline: 0
+    offline: 0,
   }
   return (order[a] ?? 0) >= (order[b] ?? 0) ? a : b
 }
@@ -125,9 +134,23 @@ function statusRank(status: MeasurementPoint['status']): number {
     alarm: 3,
     warning: 2,
     healthy: 1,
-    offline: 0
+    offline: 0,
   }
   return order[status] ?? 0
+}
+
+const MAX_OVERVIEW_ITEMS = 800
+const MAX_DEBUG_MAP_SIZE = 300
+const ENABLE_OVERVIEW_DEBUG_LOG = Boolean(
+  import.meta.env.DEV && import.meta.env.VITE_ALARM_OVERVIEW_DEBUG === '1',
+)
+
+function trimMapSize<K, V>(map: Map<K, V>, maxSize: number) {
+  while (map.size > maxSize) {
+    const firstKey = map.keys().next().value
+    if (firstKey == null) break
+    map.delete(firstKey)
+  }
 }
 
 function parsePointStatus(level: string | undefined): MeasurementPoint['status'] | null {
@@ -137,7 +160,10 @@ function parsePointStatus(level: string | undefined): MeasurementPoint['status']
   return null
 }
 
-function derivePointStatus(alarmTypeCode: string | undefined, level: string | undefined): MeasurementPoint['status'] {
+function derivePointStatus(
+  alarmTypeCode: string | undefined,
+  level: string | undefined,
+): MeasurementPoint['status'] {
   const byLevel = parsePointStatus(level)
   if (byLevel) return byLevel
   const code = String(alarmTypeCode ?? '').toUpperCase()
@@ -171,18 +197,21 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
       deviceName: (input as any).equipmentName ? String((input as any).equipmentName) : undefined,
       shopName: (input as any).workshopName ? String((input as any).workshopName) : undefined,
       time: t,
-      alarmTypeCode: (input as any).eventTypeCode ? String((input as any).eventTypeCode) : undefined,
+      alarmTypeCode: (input as any).eventTypeCode
+        ? String((input as any).eventTypeCode)
+        : undefined,
       statusCode: (input as any).statusCode ? String((input as any).statusCode) : undefined,
       receiverId: receiverIdRaw ? String(receiverIdRaw) : undefined,
       isEventTypeMessage: true,
       kind: 'sound',
       point: {
         channelNo: parsedFromData?.channelNo ?? parsedFromRaw?.channelNo,
-        level: (parsedFromData?.level ?? parsedFromRaw?.level)
-          ? String(parsedFromData?.level ?? parsedFromRaw?.level)
-          : undefined,
-        pointName: pointNameRaw ? String(pointNameRaw) : undefined
-      }
+        level:
+          (parsedFromData?.level ?? parsedFromRaw?.level)
+            ? String(parsedFromData?.level ?? parsedFromRaw?.level)
+            : undefined,
+        pointName: pointNameRaw ? String(pointNameRaw) : undefined,
+      },
     }
   }
 
@@ -191,7 +220,8 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
     const parsedFromRaw = safeParseJson((input as any).rawDataJson)
     // 预警总览卡片合并主键：严格使用 equipmentId
     const deviceId = String(input.equipmentId ?? '').trim()
-    const receiverIdRaw = (input as any).receiverId ?? parsedFromData?.receiverId ?? parsedFromRaw?.receiverId
+    const receiverIdRaw =
+      (input as any).receiverId ?? parsedFromData?.receiverId ?? parsedFromRaw?.receiverId
     const t = Number(input.alarmTime ?? input.time ?? 0)
     if (!deviceId || !Number.isFinite(t) || t <= 0) return null
 
@@ -207,17 +237,18 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
       kind: 'vibration',
       point: {
         channelNo: input.data?.channelNo ?? parsedFromData?.channelNo ?? parsedFromRaw?.channelNo,
-        level: (input.data?.level ?? parsedFromData?.level ?? parsedFromRaw?.level)
-          ? String(input.data?.level ?? parsedFromData?.level ?? parsedFromRaw?.level)
-          : undefined,
-        pointName: (input.data?.pointName ?? parsedFromData?.pointName ?? parsedFromRaw?.pointName)
-          ? String(input.data?.pointName ?? parsedFromData?.pointName ?? parsedFromRaw?.pointName)
-          : undefined
-      }
+        level:
+          (input.data?.level ?? parsedFromData?.level ?? parsedFromRaw?.level)
+            ? String(input.data?.level ?? parsedFromData?.level ?? parsedFromRaw?.level)
+            : undefined,
+        pointName:
+          (input.data?.pointName ?? parsedFromData?.pointName ?? parsedFromRaw?.pointName)
+            ? String(input.data?.pointName ?? parsedFromData?.pointName ?? parsedFromRaw?.pointName)
+            : undefined,
+      },
     }
   }
 
-  
   const evt = input as Partial<VibrationEventPayload>
   if (!evt || typeof evt !== 'object') return null
   const deviceId = String(evt.deviceId ?? '')
@@ -237,14 +268,12 @@ function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
     point: {
       channelNo: parsed?.channelNo,
       level: parsed?.level ? String(parsed.level) : undefined,
-      pointName: parsed?.pointName ? String(parsed.pointName) : undefined
-    }
+      pointName: parsed?.pointName ? String(parsed.pointName) : undefined,
+    },
   }
 }
 
 function buildMeasurementPointsFromPoint(point: OverviewNormalized['point']): MeasurementPoint[] {
-  
-  
   const BASE_TOTAL = 16
 
   const pointName = point?.pointName ? String(point.pointName) : ''
@@ -269,14 +298,14 @@ function buildMeasurementPointsFromPoint(point: OverviewNormalized['point']): Me
   const list: MeasurementPoint[] = Array.from({ length: total }).map((_, i) => ({
     name: `测点${i + 1}`,
     status: 'healthy',
-    lastAlarmTime: undefined
+    lastAlarmTime: undefined,
   }))
 
   if (pointNum != null && pointNum >= 1 && pointNum <= list.length) {
     const existing = list[pointNum - 1]
     list[pointNum - 1] = {
       name: pointName || existing?.name || `测点${pointNum}`,
-      status: pointStatus
+      status: pointStatus,
     }
   }
 
@@ -297,6 +326,43 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
   const lastWsLoggedTsByDeviceId = new Map<string, number>()
   const lastHttpLoggedTsByDeviceId = new Map<string, number>()
 
+  const resolveDisplayStatus = (
+    points: MeasurementPoint[],
+  ): NonNullable<AlarmItem['displayStatus']> => {
+    let hasWarning = false
+    for (const p of points) {
+      if (p.status === 'alarm') return 'alarm'
+      if (p.status === 'warning') hasWarning = true
+    }
+    return hasWarning ? 'warning' : 'healthy'
+  }
+
+  const applyDerivedFields = (item: AlarmItem): AlarmItem => {
+    const displayStatus = resolveDisplayStatus(item.measurementPoints ?? [])
+    const statusPriorityMap: Record<NonNullable<AlarmItem['displayStatus']>, number> = {
+      alarm: 0,
+      warning: 1,
+      healthy: 2,
+      offline: 3,
+    }
+    const timeTs = Number(item.time ?? 0)
+    const normalizedTs = Number.isFinite(timeTs) && timeTs > 0 ? timeTs : 0
+    const searchText =
+      `${item.deviceName ?? ''} ${item.shopName ?? ''} ${item.deviceNameWithShop ?? ''}`.toLowerCase()
+    return {
+      ...item,
+      displayStatus,
+      statusPriority: statusPriorityMap[displayStatus],
+      sortTimeTs: normalizedTs,
+      searchText,
+    }
+  }
+
+  const trimOverviewItems = () => {
+    if (alarms.value.length <= MAX_OVERVIEW_ITEMS) return
+    alarms.value = alarms.value.slice(0, MAX_OVERVIEW_ITEMS)
+  }
+
   const tsToLocalTimeStr = (ts: number): string => {
     const d = new Date(ts)
     if (isNaN(d.getTime())) return 'Invalid Date'
@@ -316,7 +382,10 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     return result
   }
 
-  function resolveDeviceByPoint(receiverId?: string, pointName?: string): DeviceResolvedByPoint | null {
+  function resolveDeviceByPoint(
+    receiverId?: string,
+    pointName?: string,
+  ): DeviceResolvedByPoint | null {
     const rid = String(receiverId ?? '').trim()
     const pName = String(pointName ?? '').trim()
     if (!rid && !pName) return null
@@ -345,7 +414,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
               candidates.push({
                 deviceId,
                 deviceName: String(parentDevice.equipmentName ?? parentDevice.name ?? deviceId),
-                shopName: String(parentDevice.workshopName ?? workshopName ?? '')
+                shopName: String(parentDevice.workshopName ?? workshopName ?? ''),
               })
             }
           }
@@ -365,7 +434,11 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     return candidates.length === 1 ? (candidates[0] ?? null) : null
   }
 
-  function pickLeadingPoint(points: MeasurementPoint[]): { status: MeasurementPoint['status']; timeKey: number; pointNum?: number } {
+  function pickLeadingPoint(points: MeasurementPoint[]): {
+    status: MeasurementPoint['status']
+    timeKey: number
+    pointNum?: number
+  } {
     let bestStatus: MeasurementPoint['status'] = 'healthy'
     let bestTime = 0
     let bestPointNum: number | undefined = undefined
@@ -376,7 +449,11 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       const r = statusRank(p.status)
       const br = statusRank(bestStatus)
       const pointNum = i + 1
-      if (r > br || (r === br && t > bestTime) || (r === br && t === bestTime && bestPointNum == null)) {
+      if (
+        r > br ||
+        (r === br && t > bestTime) ||
+        (r === br && t === bestTime && bestPointNum == null)
+      ) {
         bestStatus = p.status
         bestTime = Number.isFinite(t) && t > 0 ? t : 0
         bestPointNum = pointNum
@@ -390,8 +467,9 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     const deviceName = String(deviceNode.equipmentName ?? deviceNode.name ?? deviceId)
     const shopName = String(deviceNode.workshopName ?? '')
 
-    
-    const measurementPoints: MeasurementPoint[] = Array.from({ length: 16 }).map((_, i) => makeHealthyPoint(i))
+    const measurementPoints: MeasurementPoint[] = Array.from({ length: 16 }).map((_, i) =>
+      makeHealthyPoint(i),
+    )
 
     return {
       id: deviceId,
@@ -403,7 +481,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       statusText: '健康',
       time: '',
       measurementPoints,
-      prefilled: true
+      prefilled: true,
     }
   }
 
@@ -426,7 +504,6 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       })
       .filter((x): x is AlarmItem => Boolean(x))
 
-    
     const leftovers = alarms.value.filter((a) => !treeIds.has(a.id))
 
     alarms.value = [...healthyList, ...leftovers]
@@ -436,16 +513,14 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
   function upsertAlarmFromEvent(
     input: any,
     source: 'http' | 'ws' = 'ws',
-    opts?: { keepPrevAsLatest?: boolean; orderKey?: number }
+    opts?: { keepPrevAsLatest?: boolean; orderKey?: number },
   ) {
     const evt = normalizeToOverviewEvent(input)
     if (!evt) return
 
-    
-    
-
     const isFaultAlarm =
-      !evt.isEventTypeMessage && String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
+      !evt.isEventTypeMessage &&
+      String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
     const resolvedByPoint = resolveDeviceByPoint(evt.receiverId, evt.point.pointName)
     const rawDeviceId = String(evt.deviceId ?? '').trim()
     // 同一设备允许同时存在“振动卡片 + 声音卡片”
@@ -464,11 +539,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     // 否则同一设备不同测点的告警会被整条忽略（你遇到的现象）。
     const keepPrevAsLatest = Boolean(opts?.keepPrevAsLatest)
     const isOlderOrSameTime =
-      keepPrevAsLatest ||
-      (Number.isFinite(prevTs) &&
-        Number.isFinite(t) &&
-        t > 0 &&
-        t <= prevTs)
+      keepPrevAsLatest || (Number.isFinite(prevTs) && Number.isFinite(t) && t > 0 && t <= prevTs)
 
     if ((source === 'ws' || source === 'http') && Number.isFinite(t) && t > 0) {
       const prevLogged = lastWsLoggedTsByDeviceId.get(deviceId) ?? 0
@@ -476,15 +547,13 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       // 只记录更“新”的时间，避免乱序时把 last* 写回旧值。
       if (source === 'ws' && t > prevLogged) lastWsLoggedTsByDeviceId.set(deviceId, t)
       if (source === 'http' && t > prevHttpLogged) lastHttpLoggedTsByDeviceId.set(deviceId, t)
+      trimMapSize(lastWsLoggedTsByDeviceId, MAX_DEBUG_MAP_SIZE)
+      trimMapSize(lastHttpLoggedTsByDeviceId, MAX_DEBUG_MAP_SIZE)
     }
 
-    
     const derivedPointStatus: MeasurementPoint['status'] =
-      evt.kind === 'sound'
-        ? 'warning'
-        : derivePointStatus(evt.alarmTypeCode, evt.point.level)
+      evt.kind === 'sound' ? 'warning' : derivePointStatus(evt.alarmTypeCode, evt.point.level)
 
-    
     const pointName = evt.point.pointName ? String(evt.point.pointName) : ''
     const pointNum = (() => {
       if (pointName) {
@@ -509,7 +578,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     const prevLatestOrderKey = prev?.latestOrderKey
     const mergeOrderKey = (() => {
       const ok = Number(opts?.orderKey)
-      return Number.isFinite(ok) && ok > 0 ? ok : (Number.isFinite(t) && t > 0 ? t : 0)
+      return Number.isFinite(ok) && ok > 0 ? ok : Number.isFinite(t) && t > 0 ? t : 0
     })()
     const eventTimeKey = Number.isFinite(t) && t > 0 ? t : 0
     const keepMax = (prevValue: unknown, nextValue: number): number => {
@@ -534,44 +603,48 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     const nextDeviceNameCandidate = evt.deviceName ? String(evt.deviceName) : ''
     const nextShopNameCandidate = evt.shopName ? String(evt.shopName) : ''
 
-    const deviceName = canOverwriteMeta ? nextDeviceNameCandidate : String(prev?.deviceName ?? nextDeviceNameCandidate)
-    const shopName = canOverwriteMeta ? nextShopNameCandidate : String(prev?.shopName ?? nextShopNameCandidate)
+    const deviceName = canOverwriteMeta
+      ? nextDeviceNameCandidate
+      : String(prev?.deviceName ?? nextDeviceNameCandidate)
+    const shopName = canOverwriteMeta
+      ? nextShopNameCandidate
+      : String(prev?.shopName ?? nextShopNameCandidate)
 
     const measurementPoints: MeasurementPoint[] = (() => {
       if (!prevPoints.length) {
-        
         const built = buildMeasurementPointsFromPoint({
           ...evt.point,
-          
-          level: evt.point.level
+
+          level: evt.point.level,
         })
-        
+
         if (pointNum != null && built.length < pointNum) {
-          const expanded = Array.from({ length: total }).map((_, i) => built[i] ?? makeHealthyPoint(i))
+          const expanded = Array.from({ length: total }).map(
+            (_, i) => built[i] ?? makeHealthyPoint(i),
+          )
           return expanded.map((p, i) =>
             i === pointNum - 1
               ? {
-                ...p,
-                name: pointName || p.name,
-                status: maxPointStatus(p.status, derivedPointStatus),
-                lastAlarmTime: keepMax(p.lastAlarmTime, eventTimeKey)
-              }
-              : p
+                  ...p,
+                  name: pointName || p.name,
+                  status: maxPointStatus(p.status, derivedPointStatus),
+                  lastAlarmTime: keepMax(p.lastAlarmTime, eventTimeKey),
+                }
+              : p,
           )
         }
         return built.map((p, i) =>
           pointNum != null && i === pointNum - 1
             ? {
-              ...p,
-              name: pointName || p.name,
-              status: maxPointStatus(p.status, derivedPointStatus),
-                lastAlarmTime: keepMax(p.lastAlarmTime, eventTimeKey)
-            }
-            : p
+                ...p,
+                name: pointName || p.name,
+                status: maxPointStatus(p.status, derivedPointStatus),
+                lastAlarmTime: keepMax(p.lastAlarmTime, eventTimeKey),
+              }
+            : p,
         )
       }
 
-      
       const next = Array.from({ length: total }).map((_, i) => {
         return prevPoints[i] ?? makeHealthyPoint(i)
       })
@@ -583,18 +656,24 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
         const prevStatus = prevPoint?.status ?? 'healthy'
         const prevRank = statusRank(prevStatus)
         const nextRank = statusRank(derivedPointStatus)
-        const useNewAsPrimary =
-          nextRank > prevRank || (nextRank === prevRank && overwrite)
+        const useNewAsPrimary = nextRank > prevRank || (nextRank === prevRank && overwrite)
         const nextPrimaryStatus = useNewAsPrimary ? derivedPointStatus : prevStatus
         const nextPrimaryTime = useNewAsPrimary
-          ? (Number.isFinite(eventTimeKey) && eventTimeKey > 0 ? eventTimeKey : Number(prevKey ?? 0))
+          ? Number.isFinite(eventTimeKey) && eventTimeKey > 0
+            ? eventTimeKey
+            : Number(prevKey ?? 0)
           : Number(prevKey ?? 0)
         next[pointNum - 1] = {
           // 严格按数组顺序：更旧的记录不允许覆盖更新的点位名称/排序键
-          name: overwrite ? (pointName || prevPoint?.name || `测点${pointNum}`) : (prevPoint?.name || pointName || `测点${pointNum}`),
+          name: overwrite
+            ? pointName || prevPoint?.name || `测点${pointNum}`
+            : prevPoint?.name || pointName || `测点${pointNum}`,
           // 点位状态和时间必须来自同一条“主事件”
           status: nextPrimaryStatus,
-          lastAlarmTime: Number.isFinite(nextPrimaryTime) && nextPrimaryTime > 0 ? nextPrimaryTime : keepMax(prevKey, eventTimeKey)
+          lastAlarmTime:
+            Number.isFinite(nextPrimaryTime) && nextPrimaryTime > 0
+              ? nextPrimaryTime
+              : keepMax(prevKey, eventTimeKey),
         }
       }
 
@@ -602,26 +681,22 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     })()
 
     const leading = pickLeadingPoint(measurementPoints)
-    const latestPointNum = leading.pointNum ?? prevLatestPointNum ?? (pointNum ?? undefined)
+    const latestPointNum = leading.pointNum ?? prevLatestPointNum ?? pointNum ?? undefined
     const latestOrderKey =
-      Number.isFinite(mergeOrderKey) && mergeOrderKey > 0
-        ? mergeOrderKey
-        : prevLatestOrderKey
+      Number.isFinite(mergeOrderKey) && mergeOrderKey > 0 ? mergeOrderKey : prevLatestOrderKey
 
     const deviceStatus: AlarmItem['status'] =
       leading.status === 'alarm'
         ? 'alarm'
         : leading.status === 'warning'
           ? 'warning'
-          : (isFaultAlarm ? 'alarm' : 'healthy')
+          : isFaultAlarm
+            ? 'alarm'
+            : 'healthy'
     const statusText =
-      deviceStatus === 'alarm'
-        ? '报警'
-        : deviceStatus === 'warning'
-          ? '预警'
-          : '健康'
+      deviceStatus === 'alarm' ? '报警' : deviceStatus === 'warning' ? '预警' : '健康'
 
-    const item: AlarmItem = {
+    const item: AlarmItem = applyDerivedFields({
       id: deviceId,
       kind: evt.kind,
       deviceName,
@@ -630,17 +705,21 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       status: deviceStatus,
       statusText,
       // 卡片时间与展示状态保持一致：来自“主事件”对应的点位时间。
-      time: (leading.status === 'alarm' || leading.status === 'warning') && Number.isFinite(leading.timeKey) && leading.timeKey > 0
-        ? String(leading.timeKey)
-        : '',
+      time:
+        (leading.status === 'alarm' || leading.status === 'warning') &&
+        Number.isFinite(leading.timeKey) &&
+        leading.timeKey > 0
+          ? String(leading.timeKey)
+          : '',
       measurementPoints,
       latestPointNum,
       latestOrderKey,
-      prefilled: false
-    }
+      prefilled: false,
+    })
 
     if (idx >= 0) alarms.value.splice(idx, 1, item)
     else alarms.value.unshift(item)
+    trimOverviewItems()
 
     // 关键：写入完再读取一次，确认 store 里最终值是否仍是写入值
     if ((source === 'ws' || source === 'http') && Number.isFinite(t) && t > 0) {
@@ -655,12 +734,12 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       apiSoundAlarmFind({
         filterPropertyMap: [
           { code: 'statusCode', operate: 'EQ', value: 'VALID' },
-          { code: 'tenantId', operate: 'EQ', value: tId }
+          { code: 'tenantId', operate: 'EQ', value: tId },
         ],
         sortValueMap: [{ code: 'time', sort: 'desc' }],
         pageIndex: 0,
-        pageSize: 5000
-      })
+        pageSize: 5000,
+      }),
     ])
 
     const rawItems = vibrationRes.status === 'fulfilled' ? (vibrationRes.value ?? []) : []
@@ -669,13 +748,12 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     }
     // 约定：HTTP 接口返回 items 已按“最新在前”排序。
     // 因此无需再排序；但仍过滤掉非 VALID / 无时间的数据，避免比较键混乱。
-    const items = (rawItems ?? [])
-      .filter((it: any) => {
-        const statusCode = it?.statusCode
-        const isValid = statusCode == null || String(statusCode).toUpperCase() === 'VALID'
-        const ts = Number(it?.alarmTime ?? 0)
-        return isValid && Number.isFinite(ts) && ts > 0
-      })
+    const items = (rawItems ?? []).filter((it: any) => {
+      const statusCode = it?.statusCode
+      const isValid = statusCode == null || String(statusCode).toUpperCase() === 'VALID'
+      const ts = Number(it?.alarmTime ?? 0)
+      return isValid && Number.isFinite(ts) && ts > 0
+    })
 
     // 调试：输出 9/2/4 号点位第一次出现的数组顺序（idx）
     try {
@@ -689,7 +767,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
           equipmentName: String((it as any)?.equipmentName ?? ''),
           alarmTime: Number((it as any)?.alarmTime ?? 0),
           pointName,
-          pointNum: Number.isFinite(pointNum) ? pointNum : null
+          pointNum: Number.isFinite(pointNum) ? pointNum : null,
         }
       })
 
@@ -700,13 +778,20 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
         if ((pn === 9 || pn === 2 || pn === 4) && firstIdxByPointNum[pn] == null) {
           firstIdxByPointNum[pn] = row.idx
         }
-        if (firstIdxByPointNum[9] != null && firstIdxByPointNum[2] != null && firstIdxByPointNum[4] != null) break
+        if (
+          firstIdxByPointNum[9] != null &&
+          firstIdxByPointNum[2] != null &&
+          firstIdxByPointNum[4] != null
+        )
+          break
       }
 
-      console.groupCollapsed('[AlarmOverview][HTTP] items preview (up to 5000)')
-      console.table(preview)
-      console.log('[AlarmOverview][HTTP] first idx by pointNum (9/2/4):', firstIdxByPointNum)
-      console.groupEnd()
+      if (ENABLE_OVERVIEW_DEBUG_LOG) {
+        console.groupCollapsed('[AlarmOverview][HTTP] items preview (up to 5000)')
+        console.table(preview)
+        console.log('[AlarmOverview][HTTP] first idx by pointNum (9/2/4):', firstIdxByPointNum)
+        console.groupEnd()
+      }
     } catch {
       // ignore debug failures
     }
@@ -749,10 +834,8 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     const tId = (params?.tenantId ?? getTenantId() ?? '').trim()
     if (!tId) return
 
-    
     if (connectedTenantId.value === tId && wsClient) return
 
-    
     stop()
     alarms.value = []
     treePrefilled = false
@@ -761,13 +844,11 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     connecting.value = true
     connectedTenantId.value = tId
     try {
-      
       const deviceTreeStore = useDeviceTreeStore()
       const tryPrefill = () => {
         prefillHealthyFromDeviceTree(deviceTreeStore.deviceTreeData)
       }
 
-      
       tryPrefill()
       if (!treePrefilled) {
         treeWatchStopper?.()
@@ -781,11 +862,13 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
               treeWatchStopper = null
             }
           },
-          { immediate: false, deep: false }
+          { immediate: false, deep: false },
         )
       }
 
-      const pendingWsClient = new VibrationWsClient({ token: params?.token ?? (localStorage.getItem('token') ?? undefined) })
+      const pendingWsClient = new VibrationWsClient({
+        token: params?.token ?? localStorage.getItem('token') ?? undefined,
+      })
       wsClient = pendingWsClient
 
       const wsReadyPromise = pendingWsClient
@@ -804,7 +887,6 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       try {
         await initOverviewOnceByHttp(tId)
       } catch (e) {
-        
         console.warn('预警总览初始化接口获取失败:', e)
       } finally {
         // 无论成功与否，都标记“HTTP 初始化流程已结束”，避免一直隐藏预填充项
@@ -823,14 +905,15 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     httpInitialized.value = false
     try {
       wsClient?.disconnect()
-    } catch {
-      
-    }
+    } catch {}
     wsClient = null
 
     treeWatchStopper?.()
     treeWatchStopper = null
     treePrefilled = false
+    httpLatestAlarmTimeByDeviceId.clear()
+    lastWsLoggedTsByDeviceId.clear()
+    lastHttpLoggedTsByDeviceId.clear()
   }
 
   function reset() {
@@ -846,7 +929,6 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     start,
     stop,
     reset,
-    upsertAlarmFromEvent
+    upsertAlarmFromEvent,
   }
 })
-

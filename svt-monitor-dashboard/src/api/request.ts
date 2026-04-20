@@ -6,6 +6,8 @@ interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
   hideNotification?: boolean
   cacheControl?: boolean
   customBaseURL?: string
+  dedupe?: 'none' | 'abortPrevious'
+  cacheBust?: boolean
 }
 declare module 'axios' {
   interface AxiosRequestConfig {
@@ -13,6 +15,8 @@ declare module 'axios' {
     hideNotification?: boolean
     cacheControl?: boolean
     customBaseURL?: string
+    dedupe?: 'none' | 'abortPrevious'
+    cacheBust?: boolean
   }
 }
 
@@ -25,14 +29,31 @@ const service: AxiosInstance = axios.create({
 })
 
 const pendingRequests = new Map<string, AbortController>()
+const REQUEST_KEY_FIELD = '__reqKey'
 
 function generateReqKey(config: InternalAxiosRequestConfig): string {
   const { method, url, params, data } = config
-  return [method, url, JSON.stringify(params), JSON.stringify(data)].join('&')
+  const normalizedParams = (() => {
+    if (!params || typeof params !== 'object' || Array.isArray(params)) return params
+    const clone = { ...(params as Record<string, unknown>) }
+    if ('_t' in clone) delete clone._t
+    return clone
+  })()
+  return [method, url, JSON.stringify(normalizedParams), JSON.stringify(data)].join('&')
+}
+
+function getReqKey(config: InternalAxiosRequestConfig): string {
+  const existing = (config as any)?.[REQUEST_KEY_FIELD]
+  if (typeof existing === 'string' && existing) return existing
+  const key = generateReqKey(config)
+  ;(config as any)[REQUEST_KEY_FIELD] = key
+  return key
 }
 
 function removePendingRequest(config: InternalAxiosRequestConfig): void {
-  const reqKey = generateReqKey(config)
+  const dedupeMode = (config as ExtendedAxiosRequestConfig).dedupe ?? 'none'
+  if (dedupeMode !== 'abortPrevious') return
+  const reqKey = getReqKey(config)
   if (pendingRequests.has(reqKey)) {
     const controller = pendingRequests.get(reqKey)
     controller?.abort()
@@ -40,8 +61,17 @@ function removePendingRequest(config: InternalAxiosRequestConfig): void {
   }
 }
 
+const shouldEnableCacheBust = (config: InternalAxiosRequestConfig) => {
+  const ext = config as ExtendedAxiosRequestConfig
+  if (typeof ext.cacheBust === 'boolean') return ext.cacheBust
+  return false
+}
+
 function addPendingRequest(config: InternalAxiosRequestConfig): void {
-  const reqKey = generateReqKey(config)
+  const dedupeMode = (config as ExtendedAxiosRequestConfig).dedupe ?? 'none'
+  if (dedupeMode !== 'abortPrevious') return
+
+  const reqKey = getReqKey(config)
   const controller = new AbortController()
   config.signal = controller.signal
   pendingRequests.set(reqKey, controller)
@@ -111,7 +141,7 @@ service.interceptors.request.use(
       config.baseURL = config.customBaseURL
     }
     
-    if (config.method === 'get' && config.cacheControl !== false) {
+    if (config.method === 'get' && config.cacheControl !== false && shouldEnableCacheBust(config)) {
       config.params = {
         ...config.params,
         _t: Date.now()
@@ -134,10 +164,8 @@ service.interceptors.request.use(
 
 service.interceptors.response.use(
   (response: AxiosResponse) => {
-    const reqKey = generateReqKey(response.config as InternalAxiosRequestConfig)
-    if (pendingRequests.has(reqKey)) {
-      pendingRequests.delete(reqKey)
-    }
+    const reqKey = getReqKey(response.config as InternalAxiosRequestConfig)
+    pendingRequests.delete(reqKey)
     
     if (response.config.showLoading !== false) {
       hideLoading();
@@ -179,6 +207,10 @@ service.interceptors.response.use(
   },
   (error: any) => {
     if (axios.isCancel(error) || error?.code === 'ERR_CANCELED') {
+      if (error.config) {
+        const reqKey = getReqKey(error.config as InternalAxiosRequestConfig)
+        pendingRequests.delete(reqKey)
+      }
       if (error.config?.showLoading !== false) {
         hideLoading();
       }
@@ -186,10 +218,8 @@ service.interceptors.response.use(
     }
 
     if (error.config) {
-      const reqKey = generateReqKey(error.config as InternalAxiosRequestConfig)
-      if (pendingRequests.has(reqKey)) {
-        pendingRequests.delete(reqKey)
-      }
+      const reqKey = getReqKey(error.config as InternalAxiosRequestConfig)
+      pendingRequests.delete(reqKey)
     }
     
     if (error.config?.showLoading !== false) {

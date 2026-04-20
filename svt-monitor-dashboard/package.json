@@ -14,7 +14,8 @@
         "type-check": "vue-tsc --build",
         "lint": "eslint . --fix --cache",
         "format": "prettier --write --experimental-cli src/",
-        "generate:manual": "node scripts/generate-manual.cjs"
+        "generate:manual": "node scripts/generate-manual.cjs",
+        "assets:replace-webp": "node scripts/replace-webp-refs.cjs"
     },
     "dependencies": {
         "@element-plus/icons-vue": "^2.1.0",
@@ -43,6 +44,7 @@
         "postcss-scss": "^4.0.9",
         "prettier": "3.7.4",
         "sass-embedded": "^1.97.2",
+        "sharp": "^0.34.5",
         "typescript": "~5.9.3",
         "vite": "^7.3.0",
         "vite-plugin-vue-devtools": "^8.0.5",

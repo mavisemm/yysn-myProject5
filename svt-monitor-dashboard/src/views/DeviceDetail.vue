@@ -1,14 +1,28 @@
 <template>
   <div class="device-detail">
-    <DeviceInfoModule v-if="equipmentId" :device-id="equipmentId" @edit-status-change="handleEditStatusChange" />
+    <DeviceInfoModule
+      v-if="equipmentId"
+      :device-id="equipmentId"
+      @edit-status-change="handleEditStatusChange"
+    />
 
     <div class="right-content">
-      <PointListModule ref="pointListModuleRef" :point-list="pointList" :selected-point-id="selectedPointId"
-        :current-page="pagination.pageNum" :page-size="pagination.pageSize" :total="pagination.total"
-        @point-selected="selectedPointId = $event" @page-change="handlePageChange" />
+      <PointListModule
+        ref="pointListModuleRef"
+        :point-list="pointList"
+        :selected-point-id="selectedPointId"
+        :current-page="pagination.pageNum"
+        :page-size="pagination.pageSize"
+        :total="pagination.total"
+        @point-selected="selectedPointId = $event"
+        @page-change="handlePageChange"
+      />
 
-      <ChartsAnalysisModule :point-list="pointList" :selected-point-id="selectedPointId"
-        panel-mode="realtimeTemperature" />
+      <ChartsAnalysisModule
+        :point-list="pointList"
+        :selected-point-id="selectedPointId"
+        panel-mode="realtimeTemperature"
+      />
     </div>
   </div>
 </template>
@@ -31,11 +45,9 @@ const route = useRoute()
 const deviceTreeStore = useDeviceTreeStore()
 
 const equipmentId = computed<string | null>(() => {
-
   const q = route.query.equipmentId
   const qId = Array.isArray(q) ? q[0] : q
   if (typeof qId === 'string' && qId) return qId
-
 
   const p = route.params.id
   const pId = Array.isArray(p) ? p[0] : p
@@ -45,14 +57,14 @@ const equipmentId = computed<string | null>(() => {
 })
 
 interface PointInfo {
-  id: string,
-  name: string,
-  lastAlarmTime: string,
-  alarmType: string,
-  alarmValue: string,
-  matchMesureValue?: string | number,
-  thresholdValue?: string | number,
-  deviceId?: string,
+  id: string
+  name: string
+  lastAlarmTime: string
+  alarmType: string
+  alarmValue: string
+  matchMesureValue?: string | number
+  thresholdValue?: string | number
+  deviceId?: string
   hasAlarm: boolean
 }
 
@@ -62,9 +74,8 @@ const selectedPointId = ref<string>('')
 const pagination = ref({
   pageNum: 1,
   pageSize: 10 as const,
-  total: 0
+  total: 0,
 })
-
 
 const isEditing = ref(false)
 const hasUnsavedChanges = ref(false)
@@ -72,17 +83,17 @@ const hasUnsavedChanges = ref(false)
 const analysisForm = ref({
   receiverId: '',
   days: 7,
-  dateRange: [] as [Date, Date] | []
+  dateRange: [] as [Date, Date] | [],
 })
 
 interface AnalysisResult {
-  deviation: string,
+  deviation: string
   pointName: string
 }
 
 const analysisResult = ref<AnalysisResult>({
   deviation: '0.25',
-  pointName: '进风口位置'
+  pointName: '进风口位置',
 })
 
 const initDeviceData = async () => {
@@ -91,10 +102,10 @@ const initDeviceData = async () => {
   try {
     const resolvePointDeviceId = (rid: string): string | undefined => {
       for (const factory of deviceTreeStore.deviceTreeData) {
-        for (const workshop of (factory.children ?? [])) {
-          for (const device of (workshop.children ?? [])) {
+        for (const workshop of factory.children ?? []) {
+          for (const device of workshop.children ?? []) {
             if (device.type !== 'device') continue
-            const hit = (device.children ?? []).find(p => p.type === 'point' && p.id === rid)
+            const hit = (device.children ?? []).find((p) => p.type === 'point' && p.id === rid)
             if (hit && hit.deviceId) return hit.deviceId
           }
         }
@@ -102,7 +113,11 @@ const initDeviceData = async () => {
       return undefined
     }
 
-    const res = await getSelectCheckPointIn(equipmentId.value, pagination.value.pageSize, pagination.value.pageNum)
+    const res = await getSelectCheckPointIn(
+      equipmentId.value,
+      pagination.value.pageSize,
+      pagination.value.pageNum,
+    )
     if (res.rc !== 0 || !res.ret) {
       pointList.value = []
       pagination.value.total = 0
@@ -132,11 +147,14 @@ const initDeviceData = async () => {
       name: item.receiverName || '未知点位',
       lastAlarmTime: item.warningTime != null && item.warningTime !== '' ? item.warningTime : '无',
       alarmType: typeStrToDisplay(item.warningType),
-      alarmValue: item.warningValue != null && Number(item.warningValue) !== 0 ? String(item.warningValue) : '无',
+      alarmValue:
+        item.warningValue != null && Number(item.warningValue) !== 0
+          ? String(item.warningValue)
+          : '无',
       matchMesureValue: (item as any).matchMesureValue,
       thresholdValue: (item as any).thresholdValue,
       deviceId: (item as any).deviceId,
-      hasAlarm: item.isAlarm === 0
+      hasAlarm: item.isAlarm === 0,
     }))
     pointList.value = list.sort((a, b) => {
       if (a.lastAlarmTime === '无' && b.lastAlarmTime === '无') return 0
@@ -151,15 +169,15 @@ const initDeviceData = async () => {
   }
 
   nextTick(async () => {
-    await nextTick();
+    await nextTick()
     const pointListModule = pointListModuleRef.value
     if (pointList.value.length > 0) {
-      if (!selectedPointId.value || !pointList.value.find(p => p.id === selectedPointId.value)) {
+      if (!selectedPointId.value || !pointList.value.find((p) => p.id === selectedPointId.value)) {
         const firstPoint = pointList.value[0]
         selectedPointId.value = firstPoint ? firstPoint.id : ''
       }
       if (pointListModule && typeof pointListModule.setCurrentRow === 'function') {
-        const currentIndex = pointList.value.findIndex(p => p.id === selectedPointId.value)
+        const currentIndex = pointList.value.findIndex((p) => p.id === selectedPointId.value)
         if (currentIndex >= 0) {
           pointListModule.setCurrentRow(currentIndex)
         } else {
@@ -181,13 +199,13 @@ watch(
       initDeviceData()
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 onMounted(() => {
-  deviceTreeStore.setSelectedDeviceId(equipmentId.value);
-  setupPageResizeObserver();
-  window.addEventListener('resize', resizeAllCharts);
+  deviceTreeStore.setSelectedDeviceId(equipmentId.value)
+  setupPageResizeObserver()
+  window.addEventListener('resize', resizeAllCharts)
 })
 
 const handlePageChange = (pageNum: number) => {
@@ -198,46 +216,37 @@ const handlePageChange = (pageNum: number) => {
 let resizeObserver: ResizeObserver | null = null
 
 const resizeAllCharts = () => {
-  document.body.offsetHeight;
+  document.body.offsetHeight
 }
 
 const setupPageResizeObserver = () => {
-  const pageContainer = document.querySelector('.device-detail') as HTMLDivElement;
+  const pageContainer = document.querySelector('.device-detail') as HTMLDivElement
   if (pageContainer) {
-    resizeObserver = new ResizeObserver(resizeAllCharts);
-    resizeObserver.observe(pageContainer);
+    resizeObserver = new ResizeObserver(resizeAllCharts)
+    resizeObserver.observe(pageContainer)
   }
 }
 
-
 const handleEditStatusChange = (status: { isEditing: boolean; hasChanges: boolean }) => {
-  isEditing.value = status.isEditing;
-  hasUnsavedChanges.value = status.hasChanges;
+  isEditing.value = status.isEditing
+  hasUnsavedChanges.value = status.hasChanges
 }
-
 
 onBeforeRouteLeave(async (to, from, next) => {
   if (hasUnsavedChanges.value) {
     try {
-      await ElMessageBox.confirm(
-        '您有未保存的编辑内容，是否保存后再离开？',
-        '确认离开',
-        {
-          confirmButtonText: '保存',
-          cancelButtonText: '取消',
-          type: 'warning',
-          distinguishCancelAndClose: true
-        }
-      )
-
+      await ElMessageBox.confirm('您有未保存的编辑内容，是否保存后再离开？', '确认离开', {
+        confirmButtonText: '保存',
+        cancelButtonText: '取消',
+        type: 'warning',
+        distinguishCancelAndClose: true,
+      })
 
       next()
     } catch (action) {
       if (action === 'cancel') {
-
         next(false)
       } else {
-
         next(false)
       }
     }
@@ -248,11 +257,11 @@ onBeforeRouteLeave(async (to, from, next) => {
 
 onUnmounted(() => {
   if (resizeObserver) {
-    resizeObserver.disconnect();
-    resizeObserver = null;
+    resizeObserver.disconnect()
+    resizeObserver = null
   }
 
-  window.removeEventListener('resize', resizeAllCharts);
+  window.removeEventListener('resize', resizeAllCharts)
 })
 </script>
 

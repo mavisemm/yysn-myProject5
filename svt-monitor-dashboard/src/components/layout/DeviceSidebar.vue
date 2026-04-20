@@ -2,7 +2,7 @@
   <aside class="device-sidebar">
     <div class="sidebar-header home-title home-title--device-list">
       <div class="sidebar-header__left home-title__left">
-        <img class="sidebar-header__icon home-title__icon" src="@/assets/images/background/小图标.png" alt="" />
+        <img class="sidebar-header__icon home-title__icon" src="@/assets/images/background/小图标.webp" alt="" />
         <div class="title-with-legend">
           <h3 class="app-section-title">设备列表</h3>
         </div>
@@ -26,9 +26,7 @@
               @click="selectWorkshop(workshop)">
               {{ workshop.name }}
             </div>
-            <div v-if="filteredWorkshops.length === 0" class="dropdown-empty">
-              无匹配车间
-            </div>
+            <div v-if="filteredWorkshops.length === 0" class="dropdown-empty">无匹配车间</div>
           </div>
         </div>
 
@@ -53,22 +51,20 @@
               <span class="workshop-name">({{ device.workshopName }})</span>
             </div>
 
-            <div v-if="filteredDevices.length === 0" class="dropdown-empty">
-              无匹配设备
-            </div>
+            <div v-if="filteredDevices.length === 0" class="dropdown-empty">无匹配设备</div>
           </div>
         </div>
       </div>
     </div>
 
     <div class="device-tree-container">
-      <el-scrollbar ref="treeScrollbarRef" class="tree-scrollbar">
+      <el-scrollbar ref="treeScrollbarRef" class="tree-scrollbar" :show="true">
         <div v-if="!deviceTreeStore.loading && displayTreeData.length === 0" class="no-data">
           <CommonEmptyState size="small" />
         </div>
         <el-tree v-else ref="deviceTreeRef" :data="displayTreeData" :props="treeProps" :expand-on-click-node="false"
-          :highlight-current="false" :default-expanded-keys="expandedKeys"
-          :current-node-key="treeCurrentKey" node-key="id" @node-click="handleNodeClick">
+          :highlight-current="false" :default-expanded-keys="expandedKeys" :current-node-key="treeCurrentKey"
+          node-key="id" @node-click="handleNodeClick">
           <template #default="{ node, data }">
             <div class="tree-node" :data-type="data.type" :class="{ 'is-selected': isNodeSelected(data) }">
               <el-icon v-if="node.childNodes && node.childNodes.length > 0" class="expand-icon no-select"
@@ -92,10 +88,15 @@
                 </el-icon>
               </div>
 
-              <span class="node-label"
-                :title="data.type === 'device' && data.customerDeviceId ? `${data.name} (${data.customerDeviceId})` : node.label">
-                {{ data.type === 'device' && data.customerDeviceId ? `${data.name} (${data.customerDeviceId})` :
-                  node.label }}
+              <span class="node-label" :title="data.type === 'device' && data.customerDeviceId
+                ? `${data.name} (${data.customerDeviceId})`
+                : node.label
+                ">
+                {{
+                  data.type === 'device' && data.customerDeviceId
+                    ? `${data.name} (${data.customerDeviceId})`
+                    : node.label
+                }}
               </span>
 
               <!-- <span v-if="(data.type === 'factory' || data.type === 'workshop') && data.deviceCount" class="node-count">
@@ -132,7 +133,7 @@ import {
   Loading,
   ArrowRight,
   ArrowDown,
-  Refresh
+  Refresh,
 } from '@element-plus/icons-vue'
 
 import { useDebounce } from '@/composables/useDebounce'
@@ -141,10 +142,8 @@ import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 
 const router = useRouter()
 
-
 const selectDeviceNode = (deviceId: string) => {
   if (deviceTreeRef.value && deviceTreeRef.value.getNode && deviceTreeRef.value.setCurrentKey) {
-
     const expandParentNodes = (nodeId: string) => {
       try {
         const node = deviceTreeRef.value.getNode(nodeId)
@@ -157,11 +156,9 @@ const selectDeviceNode = (deviceId: string) => {
       }
     }
 
-
     const findAndSelectNode = (nodes: DeviceNode[]): boolean => {
       for (const node of nodes) {
         if (node.id === deviceId) {
-
           expandParentNodes(node.id)
 
           try {
@@ -188,9 +185,6 @@ const selectDeviceNode = (deviceId: string) => {
     }
   }
 }
-
-
-
 
 import type { DeviceNode, Workshop, Device } from '@/types/device'
 
@@ -230,7 +224,8 @@ const scrollSelectedNodeIntoView = (key?: string | null) => {
   const k = String(key ?? deviceTreeStore.selectedDeviceId ?? '').trim()
   const keySelector = k ? `.el-tree-node[data-key="${getCssEscaped(k)}"]` : ''
   const byKey = keySelector ? (treeEl.querySelector(keySelector) as HTMLElement | null) : null
-  const selectedNode = byKey ?? (treeEl.querySelector('.tree-node.is-selected') as HTMLElement | null)
+  const selectedNode =
+    byKey ?? (treeEl.querySelector('.tree-node.is-selected') as HTMLElement | null)
   const contentEl = (selectedNode?.querySelector?.('.el-tree-node__content') ??
     selectedNode?.closest?.('.el-tree-node__content') ??
     selectedNode) as HTMLElement | null
@@ -261,7 +256,7 @@ const scrollSelectedNodeIntoView = (key?: string | null) => {
   } else {
     contentEl.scrollIntoView({
       block: 'center',
-      inline: 'nearest'
+      inline: 'nearest',
     })
   }
 }
@@ -313,10 +308,10 @@ const updateSelection = async (newId: string | null) => {
   }
 }
 
-let timeoutId: number | null = null;
+let timeoutId: number | null = null
 
 onMounted(async () => {
-  await nextTick();
+  await nextTick()
 
   const expandDefaultNodes = () => {
     timeoutId = window.setTimeout(() => {
@@ -341,7 +336,7 @@ onMounted(async () => {
           expandDefaultNodes()
         }
       },
-      { immediate: false }
+      { immediate: false },
     )
   }
 
@@ -369,17 +364,16 @@ const treeCurrentKey = computed(() => {
 
 const treeProps = {
   label: 'name',
-  children: 'children'
+  children: 'children',
 }
-
 
 const allWorkshops = computed<Workshop[]>(() => {
   const workshops: Workshop[] = []
-  deviceTreeData.value.forEach(factory => {
-    factory.children?.forEach(workshop => {
+  deviceTreeData.value.forEach((factory) => {
+    factory.children?.forEach((workshop) => {
       workshops.push({
         id: workshop.id,
-        name: workshop.name
+        name: workshop.name,
       })
     })
   })
@@ -391,23 +385,23 @@ const filteredWorkshops = computed<Workshop[]>(() => {
   if (!searchText) {
     return allWorkshops.value
   }
-  return allWorkshops.value.filter(workshop =>
-    workshop.name.toLowerCase().includes(searchText.toLowerCase())
+  return allWorkshops.value.filter((workshop) =>
+    workshop.name.toLowerCase().includes(searchText.toLowerCase()),
   )
 })
 
 const allDevices = computed<Device[]>(() => {
   const devices: Device[] = []
-  deviceTreeData.value.forEach(factory => {
-    factory.children?.forEach(workshop => {
-      workshop.children?.forEach(device => {
+  deviceTreeData.value.forEach((factory) => {
+    factory.children?.forEach((workshop) => {
+      workshop.children?.forEach((device) => {
         devices.push({
           id: device.id,
           name: device.name,
           workshopId: workshop.id,
           workshopName: workshop.name,
           customerDeviceId: device.customerDeviceId,
-          deviceNode: device
+          deviceNode: device,
         })
       })
     })
@@ -419,15 +413,16 @@ const filteredDevices = computed<Device[]>(() => {
   let devices = allDevices.value
 
   if (selectedWorkshop.value) {
-    devices = devices.filter(device => device.workshopId === selectedWorkshop.value!.id)
+    devices = devices.filter((device) => device.workshopId === selectedWorkshop.value!.id)
   }
 
   const searchText = debouncedDeviceSearch.value
   if (searchText) {
     const lower = searchText.toLowerCase()
-    devices = devices.filter(device =>
-      device.name.toLowerCase().includes(lower) ||
-      (device.customerDeviceId && device.customerDeviceId.toLowerCase().includes(lower))
+    devices = devices.filter(
+      (device) =>
+        device.name.toLowerCase().includes(lower) ||
+        (device.customerDeviceId && device.customerDeviceId.toLowerCase().includes(lower)),
     )
   }
 
@@ -441,17 +436,19 @@ const displayTreeData = computed<DeviceNode[]>(() => {
   const fullData = JSON.parse(JSON.stringify(deviceTreeStore.deviceTreeData))
 
   const calculateCounts = (nodes: DeviceNode[]) => {
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       if (node.children) {
         if (node.type === 'factory') {
           let totalDeviceCount = 0
           let totalPointCount = 0
-          node.children.forEach(workshop => {
+          node.children.forEach((workshop) => {
             if (workshop.children) {
-              const workshopDeviceCount = workshop.children.filter(child => child.type === 'device').length
+              const workshopDeviceCount = workshop.children.filter(
+                (child) => child.type === 'device',
+              ).length
               totalDeviceCount += workshopDeviceCount
 
-              workshop.children.forEach(device => {
+              workshop.children.forEach((device) => {
                 if (device.children) {
                   totalPointCount += device.children.length
                   if (device.pointCount !== device.children.length) {
@@ -466,11 +463,11 @@ const displayTreeData = computed<DeviceNode[]>(() => {
             node.pointCount = totalPointCount
           }
         } else if (node.type === 'workshop') {
-          const devices = node.children.filter(child => child.type === 'device')
+          const devices = node.children.filter((child) => child.type === 'device')
           const deviceCount = devices.length
 
           let totalPointCount = 0
-          node.children.forEach(device => {
+          node.children.forEach((device) => {
             if (device.children) {
               totalPointCount += device.children.length
               if (device.pointCount !== device.children.length) {
@@ -503,9 +500,9 @@ const displayTreeData = computed<DeviceNode[]>(() => {
     return fullData
   }
 
-  const resultData = JSON.parse(JSON.stringify(deviceTreeData.value));
+  const resultData = JSON.parse(JSON.stringify(deviceTreeData.value))
 
-  calculateCounts(resultData);
+  calculateCounts(resultData)
 
   resultData.forEach((factory: DeviceNode) => {
     if (!factory.children) return
@@ -515,8 +512,7 @@ const displayTreeData = computed<DeviceNode[]>(() => {
         return false
       }
 
-      if (workshopSearch &&
-        !workshop.name.toLowerCase().includes(workshopSearch.toLowerCase())) {
+      if (workshopSearch && !workshop.name.toLowerCase().includes(workshopSearch.toLowerCase())) {
         return false
       }
 
@@ -526,9 +522,14 @@ const displayTreeData = computed<DeviceNode[]>(() => {
             return false
           }
 
-          if (deviceSearch &&
+          if (
+            deviceSearch &&
             !device.name.toLowerCase().includes(deviceSearch.toLowerCase()) &&
-            !(device.customerDeviceId && device.customerDeviceId.toLowerCase().includes(deviceSearch.toLowerCase()))) {
+            !(
+              device.customerDeviceId &&
+              device.customerDeviceId.toLowerCase().includes(deviceSearch.toLowerCase())
+            )
+          ) {
             return false
           }
 
@@ -544,20 +545,23 @@ const displayTreeData = computed<DeviceNode[]>(() => {
     })
   })
 
-
   return resultData.filter((factory: DeviceNode) => factory.children && factory.children.length > 0)
 })
 
 const getFirstWorkshopId = (): string | null => {
-  if (!displayTreeData.value ||
+  if (
+    !displayTreeData.value ||
     !displayTreeData.value.length ||
     !displayTreeData.value[0] ||
     !displayTreeData.value[0].children ||
-    !displayTreeData.value[0].children.length) {
+    !displayTreeData.value[0].children.length
+  ) {
     return null
   }
 
-  const firstWorkshop = displayTreeData.value[0].children!.find(child => child.type === 'workshop');
+  const firstWorkshop = displayTreeData.value[0].children!.find(
+    (child) => child.type === 'workshop',
+  )
   return firstWorkshop?.id || null
 }
 
@@ -566,12 +570,13 @@ const getSelectedDeviceWorkshopId = (): string | null => {
     return selectedDevice.value.workshopId
   }
   return null
-
 }
 
 const getFactoryIdByWorkshopId = (workshopId: string): string | null => {
   for (const factory of deviceTreeData.value) {
-    const workshop = factory.children?.find(child => child.type === 'workshop' && child.id === workshopId)
+    const workshop = factory.children?.find(
+      (child) => child.type === 'workshop' && child.id === workshopId,
+    )
     if (workshop) return factory.id
   }
   return null
@@ -581,7 +586,7 @@ const collectAllFactoryAndWorkshopKeys = (data: DeviceNode[]): string[] => {
   const keys: string[] = []
   for (const factory of data) {
     keys.push(factory.id)
-    factory.children?.forEach(child => {
+    factory.children?.forEach((child) => {
       if (child.type === 'workshop') {
         keys.push(child.id)
       }
@@ -604,18 +609,16 @@ const collectAllNodeKeys = (data: DeviceNode[]): Set<string> => {
   return keys
 }
 
-
-
 const handleWorkshopFocus = () => {
   showWorkshopDropdown.value = true
   showDeviceDropdown.value = false
 }
 
-let workshopBlurTimerId: number | null = null;
+let workshopBlurTimerId: number | null = null
 
 const handleWorkshopBlur = () => {
   if (workshopBlurTimerId) {
-    clearTimeout(workshopBlurTimerId);
+    clearTimeout(workshopBlurTimerId)
   }
   workshopBlurTimerId = window.setTimeout(() => {
     showWorkshopDropdown.value = false
@@ -646,11 +649,11 @@ const handleDeviceFocus = () => {
   showWorkshopDropdown.value = false
 }
 
-let deviceBlurTimerId: number | null = null;
+let deviceBlurTimerId: number | null = null
 
 const handleDeviceBlur = () => {
   if (deviceBlurTimerId) {
-    clearTimeout(deviceBlurTimerId);
+    clearTimeout(deviceBlurTimerId)
   }
   deviceBlurTimerId = window.setTimeout(() => {
     showDeviceDropdown.value = false
@@ -693,36 +696,29 @@ const updateExpandedKeys = () => {
     if (firstWorkshopId) {
       keys.push(firstWorkshopId)
     }
-  }
-
-  else if (deviceSearch && !selectedDevice.value) {
-
-    collectAllFactoryAndWorkshopKeys(displayTreeData.value).forEach(k => {
+  } else if (deviceSearch && !selectedDevice.value) {
+    collectAllFactoryAndWorkshopKeys(displayTreeData.value).forEach((k) => {
       if (!keys.includes(k)) keys.push(k)
     })
-  }
-
-  else if (selectedDevice.value) {
+  } else if (selectedDevice.value) {
     const selectedDeviceWorkshopId = getSelectedDeviceWorkshopId()
     if (selectedDeviceWorkshopId && !keys.includes(selectedDeviceWorkshopId)) {
       keys.push(selectedDeviceWorkshopId)
     }
-    const factoryId = selectedDeviceWorkshopId ? getFactoryIdByWorkshopId(selectedDeviceWorkshopId) : null
+    const factoryId = selectedDeviceWorkshopId
+      ? getFactoryIdByWorkshopId(selectedDeviceWorkshopId)
+      : null
     if (factoryId && !keys.includes(factoryId)) {
       keys.push(factoryId)
     }
-  }
-
-  else if (workshopSearch || selectedWorkshop.value) {
-
-    collectAllFactoryAndWorkshopKeys(displayTreeData.value).forEach(k => {
+  } else if (workshopSearch || selectedWorkshop.value) {
+    collectAllFactoryAndWorkshopKeys(displayTreeData.value).forEach((k) => {
       if (!keys.includes(k)) keys.push(k)
     })
   }
 
   deviceTreeStore.setExpandedKeys(keys)
 }
-
 
 const toggleNode = (node: Node) => {
   if (node.expanded) {
@@ -734,7 +730,6 @@ const toggleNode = (node: Node) => {
   syncExpandedKeys()
 }
 
-
 const syncExpandedKeys = () => {
   nextTick(() => {
     if (deviceTreeRef.value && deviceTreeRef.value.getExpandedKeys) {
@@ -745,26 +740,22 @@ const syncExpandedKeys = () => {
 }
 
 const handleExpandIconClick = (node: Node) => {
-
   toggleNode(node)
 }
 
 const handleNodeClick = (data: DeviceNode, node: Node) => {
-
   if (data.type === 'factory' || data.type === 'workshop') {
     toggleNode(node)
     return
   }
 
-
   if (data.type === 'device') {
     deviceTreeStore.setSelectedDeviceId(data.id)
     router.push({
       name: 'DeviceDetail',
-      params: { id: data.id }
+      params: { id: data.id },
     })
   }
-
 
   if (data.type === 'point') {
     deviceTreeStore.setSelectedDeviceId(data.id)
@@ -774,17 +765,15 @@ const handleNodeClick = (data: DeviceNode, node: Node) => {
       return
     }
 
-
     const equipmentId = node.parent?.data?.id || ''
     router.push({
       name: 'SoundPoint',
 
       params: { receiverId },
-      query: { equipmentId }
+      query: { equipmentId },
     })
   }
 }
-
 
 const isNodeSelected = (data: DeviceNode): boolean => {
   if (data.type !== 'device' && data.type !== 'point') {
@@ -795,22 +784,18 @@ const isNodeSelected = (data: DeviceNode): boolean => {
   return String(sel).trim() === String(data.id).trim()
 }
 
-
-
 watch(
   () => debouncedWorkshopSearch.value,
   () => {
     nextTick(() => {
       updateExpandedKeys()
     })
-  }
+  },
 )
 
 watch(
   () => debouncedDeviceSearch.value,
   (newVal) => {
-
-
     const keyword = (newVal ?? '').trim()
     if (!keyword) {
       selectedDevice.value = null
@@ -826,31 +811,34 @@ watch(
     nextTick(() => {
       updateExpandedKeys()
     })
-  }
+  },
 )
 
-watch(displayTreeData, () => {
-  if (selectedDeviceId.value) {
-    void updateSelection(selectedDeviceId.value)
-  }
-  updateExpandedKeys()
-}, { deep: true })
+watch(
+  displayTreeData,
+  () => {
+    if (selectedDeviceId.value) {
+      void updateSelection(selectedDeviceId.value)
+    }
+    updateExpandedKeys()
+  },
+  { deep: true },
+)
 
 onUnmounted(() => {
-
   if (timeoutId) {
-    clearTimeout(timeoutId);
-    timeoutId = null;
+    clearTimeout(timeoutId)
+    timeoutId = null
   }
 
   if (workshopBlurTimerId) {
-    clearTimeout(workshopBlurTimerId);
-    workshopBlurTimerId = null;
+    clearTimeout(workshopBlurTimerId)
+    workshopBlurTimerId = null
   }
 
   if (deviceBlurTimerId) {
-    clearTimeout(deviceBlurTimerId);
-    deviceBlurTimerId = null;
+    clearTimeout(deviceBlurTimerId)
+    deviceBlurTimerId = null
   }
 })
 </script>
@@ -872,7 +860,6 @@ onUnmounted(() => {
     flex-shrink: 0;
     justify-content: flex-start;
     height: auto;
-
   }
 
   .search-area {
@@ -934,7 +921,6 @@ onUnmounted(() => {
             }
 
             .workshop-name {
-
               margin-left: 4px;
               flex-shrink: 0;
             }
@@ -971,7 +957,10 @@ onUnmounted(() => {
 
   .device-tree-container {
     padding: 10px 10px 20px;
-    background: url('@/assets/images/background/首页-设备列表背景.png') no-repeat center center;
+    background-image: image-set(url('@/assets/images/background/首页-设备列表背景.avif') type('image/avif'),
+        url('@/assets/images/background/首页-设备列表背景.webp') type('image/webp'));
+    background-repeat: no-repeat;
+    background-position: center center;
     background-size: 100% 100%;
     flex: 1;
     display: flex;
@@ -1016,7 +1005,7 @@ onUnmounted(() => {
         .el-tree-node__content {
           height: 40px;
           border-radius: 6px;
-          background: url('@/assets/images/background/设备树行背景.png') no-repeat center center;
+          background: url('@/assets/images/background/设备树行背景.webp') no-repeat center center;
           background-size: 100% 100%;
           background-color: transparent;
           transition: all 0.2s;
@@ -1033,7 +1022,7 @@ onUnmounted(() => {
         }
 
         .el-tree-node__content:has(.tree-node.is-selected) {
-          background-image: url('@/assets/images/background/设备树选中行背景.png') !important;
+          background-image: url('@/assets/images/background/设备树选中行背景.webp') !important;
           background-repeat: no-repeat !important;
           background-size: 100% 100% !important;
           background-color: transparent !important;
@@ -1054,7 +1043,6 @@ onUnmounted(() => {
     .expand-icon {
       cursor: pointer;
       transition: transform 0.2s;
-
 
       color: rgba(255, 255, 255, 1) !important;
     }
@@ -1103,27 +1091,6 @@ onUnmounted(() => {
   }
 }
 </style>
-@keyframes rotate {
-from {
-transform: rotate(0deg);
-}
-
-to {
-transform: rotate(360deg);
-}
-}
-
-@media (max-width: 1400px) {
-.device-sidebar {
-
-.sidebar-header,
-.search-area {
-padding-left: 16px;
-padding-right: 16px;
-}
-
-.tree-scrollbar {
-padding: 10px 16px;
-}
-}
-}
+@keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } @media
+(max-width: 1400px) { .device-sidebar { .sidebar-header, .search-area { padding-left: 16px;
+padding-right: 16px; } .tree-scrollbar { padding: 10px 16px; } } }

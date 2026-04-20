@@ -1,67 +1,143 @@
 <template>
-  <el-dialog v-model="store.realtimeVisible" title="实时预警批量操作" width="1100px" align-center class="alarm-batch-dialog"
-    @close="store.closeRealtime">
+  <el-dialog
+    v-model="store.realtimeVisible"
+    title="实时预警批量操作"
+    width="1100px"
+    align-center
+    class="alarm-batch-dialog"
+    @close="store.closeRealtime"
+  >
     <div class="filter-bar">
       <el-form :inline="true" label-width="90px" class="filter-form">
         <el-form-item label="开始时间：">
-          <el-date-picker v-model="store.realtimeQuery.startTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="开始时间" clearable size="small" class="alarm-filter-control" :show-now="false"
-            :show-confirm="false" :disabled-date="disableFutureDate" :disabled-hours="getDisabledStartHours"
-            :disabled-minutes="getDisabledStartMinutes" :disabled-seconds="getDisabledStartSeconds"
-            popper-class="alarm-batch-datetime-popper" />
+          <el-date-picker
+            v-model="store.realtimeQuery.startTime"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="开始时间"
+            clearable
+            size="small"
+            class="alarm-filter-control"
+            :show-now="false"
+            :show-confirm="false"
+            :disabled-date="disableFutureDate"
+            :disabled-hours="getDisabledStartHours"
+            :disabled-minutes="getDisabledStartMinutes"
+            :disabled-seconds="getDisabledStartSeconds"
+            popper-class="alarm-batch-datetime-popper"
+          />
         </el-form-item>
         <el-form-item label="结束时间：">
-          <el-date-picker v-model="store.realtimeQuery.endTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="结束时间" clearable size="small" class="alarm-filter-control" :show-now="false"
-            :show-confirm="false" :disabled-date="disableFutureDate" :disabled-hours="getDisabledEndHours"
-            :disabled-minutes="getDisabledEndMinutes" :disabled-seconds="getDisabledEndSeconds"
-            popper-class="alarm-batch-datetime-popper" @update:model-value="onEndModelValue"
-            @change="onEndTimeChange" @panel-change="onEndPanelChange" @calendar-change="onEndCalendarChange" />
+          <el-date-picker
+            v-model="store.realtimeQuery.endTime"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="结束时间"
+            clearable
+            size="small"
+            class="alarm-filter-control"
+            :show-now="false"
+            :show-confirm="false"
+            :disabled-date="disableFutureDate"
+            :disabled-hours="getDisabledEndHours"
+            :disabled-minutes="getDisabledEndMinutes"
+            :disabled-seconds="getDisabledEndSeconds"
+            popper-class="alarm-batch-datetime-popper"
+            @update:model-value="onEndModelValue"
+            @change="onEndTimeChange"
+            @panel-change="onEndPanelChange"
+            @calendar-change="onEndCalendarChange"
+          />
         </el-form-item>
         <el-form-item label="听音器名称：">
-          <el-select-v2 v-model="store.realtimeQuery.deviceId" :options="deviceOptions" filterable clearable
-            size="small" class="alarm-filter-control" popper-class="alarm-batch-popper"
-            :popper-options="sameWidthPopperOptions" :loading="store.dropdownsLoading" :item-height="28" :height="280"
-            style="width: 220px" placeholder="请选择" />
+          <el-select-v2
+            v-model="store.realtimeQuery.deviceId"
+            :options="deviceOptions"
+            filterable
+            clearable
+            size="small"
+            class="alarm-filter-control"
+            popper-class="alarm-batch-popper"
+            :popper-options="sameWidthPopperOptions"
+            :loading="store.dropdownsLoading"
+            :item-height="28"
+            :height="280"
+            style="width: 220px"
+            placeholder="请选择"
+          />
         </el-form-item>
         <el-form-item label="预警类型：">
-          <el-select-v2 v-model="store.realtimeQuery.eventTypeCode" :options="typeOptions" filterable clearable
-            size="small" class="alarm-filter-control" popper-class="alarm-batch-popper"
-            :popper-options="sameWidthPopperOptions" :loading="store.dropdownsLoading" :item-height="28" :height="280"
-            style="width: 220px" placeholder="请选择" />
+          <el-select-v2
+            v-model="store.realtimeQuery.eventTypeCode"
+            :options="typeOptions"
+            filterable
+            clearable
+            size="small"
+            class="alarm-filter-control"
+            popper-class="alarm-batch-popper"
+            :popper-options="sameWidthPopperOptions"
+            :loading="store.dropdownsLoading"
+            :item-height="28"
+            :height="280"
+            style="width: 220px"
+            placeholder="请选择"
+          />
         </el-form-item>
 
         <el-form-item>
-          <el-button type="primary" size="small" @click="store.fetchRealtimeList(0, true)">查询</el-button>
+          <el-button type="primary" size="small" @click="store.fetchRealtimeList(0, true)"
+            >查询</el-button
+          >
           <el-button size="small" @click="onReset">清空</el-button>
         </el-form-item>
       </el-form>
     </div>
 
     <div class="actions-bar">
-      <el-button type="success" size="small" :disabled="!store.realtimeSelectedRowKeys.length"
-        @click="confirmBatch('yes')">
+      <el-button
+        type="success"
+        size="small"
+        :disabled="!store.realtimeSelectedRowKeys.length"
+        @click="confirmBatch('yes')"
+      >
         批量确认警报
       </el-button>
-      <el-button type="warning" size="small" :disabled="!store.realtimeSelectedRowKeys.length"
-        @click="confirmBatch('not')">
+      <el-button
+        type="warning"
+        size="small"
+        :disabled="!store.realtimeSelectedRowKeys.length"
+        @click="confirmBatch('not')"
+      >
         批量确认误报
       </el-button>
-      <el-button type="danger" size="small" :disabled="!store.realtimeSelectedRowKeys.length"
-        @click="confirmBatch('delete')">
+      <el-button
+        type="danger"
+        size="small"
+        :disabled="!store.realtimeSelectedRowKeys.length"
+        @click="confirmBatch('delete')"
+      >
         批量确认删除
       </el-button>
     </div>
 
     <div class="table-wrapper" v-loading="store.realtimeLoading">
-      <el-table :data="store.realtimeRows" row-key="id" border height="100%" virtualized :row-height="32"
-        @selection-change="onSelectionChange">
+      <el-table
+        :data="store.realtimeRows"
+        row-key="id"
+        border
+        height="100%"
+        virtualized
+        :row-height="32"
+        @selection-change="onSelectionChange"
+      >
         <el-table-column type="selection" width="50" />
         <el-table-column label="设备名称" min-width="180">
           <template #default="{ row }">
             <div class="device-cell">
               <div class="device-name">{{ getDeviceMainName(row) || '-' }}</div>
-              <div v-if="getDeviceSubName(row)" class="device-sub">({{ getDeviceSubName(row) }})</div>
+              <div v-if="getDeviceSubName(row)" class="device-sub">
+                ({{ getDeviceSubName(row) }})
+              </div>
             </div>
           </template>
         </el-table-column>
@@ -91,8 +167,13 @@
     </div>
 
     <div class="pager">
-      <el-pagination v-model:current-page="pageForUi" :page-size="store.realtimePageSize"
-        layout="total, prev, pager, next" :total="store.realtimeTotal" @current-change="onPageChange" />
+      <el-pagination
+        v-model:current-page="pageForUi"
+        :page-size="store.realtimePageSize"
+        layout="total, prev, pager, next"
+        :total="store.realtimeTotal"
+        @current-change="onPageChange"
+      />
     </div>
   </el-dialog>
 </template>
@@ -116,9 +197,9 @@ const sameWidthPopperOptions = {
       requires: ['computeStyles'],
       fn: ({ state }: any) => {
         state.styles.popper.width = `${state.rects.reference.width}px`
-      }
-    }
-  ]
+      },
+    },
+  ],
 } as any
 
 watch(
@@ -130,27 +211,27 @@ watch(
       void store.ensureDropdowns()
       void store.fetchRealtimeList(0)
     })
-  }
+  },
 )
 
 const pageForUi = computed({
   get: () => store.realtimePageIndex + 1,
   set: (v: number) => {
     store.realtimePageIndex = Math.max(0, v - 1) as any
-  }
+  },
 })
 
 const deviceOptions = computed(() => {
   return (store.deviceNameList ?? []).map((x: any) => ({
     value: x.key,
-    label: String(x.text ?? '')
+    label: String(x.text ?? ''),
   }))
 })
 
 const typeOptions = computed(() => {
   return (store.typeList ?? []).map((x: any) => ({
     value: x.key,
-    label: String(x.text ?? '')
+    label: String(x.text ?? ''),
   }))
 })
 
@@ -189,7 +270,8 @@ const normalizeAndApplyEndTime = (rawValue?: string, forceApplyRule: boolean = f
 
 const toDateTimeText = (value: unknown): string | undefined => {
   if (value == null || value === '') return undefined
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : formatDateTime(value)
+  if (value instanceof Date)
+    return Number.isNaN(value.getTime()) ? undefined : formatDateTime(value)
   return String(value)
 }
 
@@ -221,7 +303,11 @@ const isTodayByValue = (rawValue?: string) => {
   const selected = new Date(raw.replace(' ', 'T'))
   if (Number.isNaN(selected.getTime())) return false
   const now = new Date()
-  return selected.getFullYear() === now.getFullYear() && selected.getMonth() === now.getMonth() && selected.getDate() === now.getDate()
+  return (
+    selected.getFullYear() === now.getFullYear() &&
+    selected.getMonth() === now.getMonth() &&
+    selected.getDate() === now.getDate()
+  )
 }
 
 const getDisabledHoursByRaw = (rawValue?: string) => {
@@ -247,17 +333,20 @@ const getDisabledSecondsByRaw = (rawValue: string | undefined, hour: number, min
 }
 
 const getDisabledStartHours = () => getDisabledHoursByRaw(store.realtimeQuery.startTime)
-const getDisabledStartMinutes = (hour: number) => getDisabledMinutesByRaw(store.realtimeQuery.startTime, hour)
+const getDisabledStartMinutes = (hour: number) =>
+  getDisabledMinutesByRaw(store.realtimeQuery.startTime, hour)
 const getDisabledStartSeconds = (hour: number, minute: number) =>
   getDisabledSecondsByRaw(store.realtimeQuery.startTime, hour, minute)
 
 const getDisabledEndHours = () => getDisabledHoursByRaw(store.realtimeQuery.endTime)
-const getDisabledEndMinutes = (hour: number) => getDisabledMinutesByRaw(store.realtimeQuery.endTime, hour)
+const getDisabledEndMinutes = (hour: number) =>
+  getDisabledMinutesByRaw(store.realtimeQuery.endTime, hour)
 const getDisabledEndSeconds = (hour: number, minute: number) =>
   getDisabledSecondsByRaw(store.realtimeQuery.endTime, hour, minute)
 
 const confirmBatch = async (type: 'yes' | 'not' | 'delete') => {
-  const actionText = type === 'yes' ? '批量确认警报' : type === 'not' ? '批量确认误报' : '批量确认删除'
+  const actionText =
+    type === 'yes' ? '批量确认警报' : type === 'not' ? '批量确认误报' : '批量确认删除'
   await ElMessageBox.confirm(`确认要执行【${actionText}】吗？`, '提示', { type: 'warning' })
   if (type === 'yes') await store.batchYesRealtime()
   if (type === 'not') await store.batchNotRealtime()
@@ -290,9 +379,9 @@ function splitDeviceName(rawName: any): { main: string; sub: string } {
   return { main, sub }
 }
 
-
-
 const parsedRowCache = new Map<string, any>()
+const MAX_PARSED_ROW_CACHE = 300
+const clearParsedRowCache = () => parsedRowCache.clear()
 function ensureRowParsed(row: any): any {
   if (!row) return undefined
   const rowId = row.id != null ? String(row.id) : ''
@@ -304,7 +393,6 @@ function ensureRowParsed(row: any): any {
     return cached
   }
 
-
   if (!row.dataJson) {
     parsedRowCache.set(rowId, undefined)
     return undefined
@@ -313,6 +401,10 @@ function ensureRowParsed(row: any): any {
   const raw = row.dataJson
   const parsed = safeParseJson(raw)
   parsedRowCache.set(rowId, parsed)
+  if (parsedRowCache.size > MAX_PARSED_ROW_CACHE) {
+    const firstKey = parsedRowCache.keys().next().value
+    if (firstKey != null) parsedRowCache.delete(firstKey)
+  }
   return parsed
 }
 
@@ -341,6 +433,20 @@ const getReceiverName = (row: any): string => {
   const receiverName = parsed?.receiverName ?? row?.receiverName
   return receiverName ? String(receiverName) : ''
 }
+
+watch(
+  () => store.realtimeVisible,
+  (visible) => {
+    if (!visible) clearParsedRowCache()
+  },
+)
+
+watch(
+  () => store.realtimeRows.map((row: any) => String(row?.id ?? '')),
+  () => {
+    clearParsedRowCache()
+  },
+)
 </script>
 
 <style scoped lang="scss">
@@ -455,9 +561,9 @@ const getReceiverName = (row: any): string => {
 }
 
 .alarm-batch-dialog .el-table__body-wrapper td .el-button.is-link,
-.alarm-batch-dialog .el-table__body-wrapper td .el-button.is-link>span,
+.alarm-batch-dialog .el-table__body-wrapper td .el-button.is-link > span,
 .alarm-batch-dialog .el-table__body-wrapper td .operation-link,
-.alarm-batch-dialog .el-table__body-wrapper td .operation-link>span {
+.alarm-batch-dialog .el-table__body-wrapper td .operation-link > span {
   color: var(--el-color-primary) !important;
 }
 
@@ -488,11 +594,9 @@ const getReceiverName = (row: any): string => {
   overflow: hidden;
 }
 
-
 .alarm-batch-dialog .el-table__cell {
   padding: 5px 0 !important;
 }
-
 
 .alarm-batch-dialog .alarm-filter-control {
   --el-text-color-regular: var(--alarm-dialog-text);
@@ -534,7 +638,6 @@ const getReceiverName = (row: any): string => {
   font-weight: 500;
 }
 
-
 .alarm-batch-popper {
   --el-text-color-regular: #303133;
   --el-text-color-primary: #303133;
@@ -562,7 +665,6 @@ const getReceiverName = (row: any): string => {
   color: var(--el-color-primary) !important;
   font-weight: 600;
 }
-
 
 .alarm-batch-datetime-popper .el-picker-panel__footer .el-picker-panel__link-btn {
   display: none !important;

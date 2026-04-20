@@ -1,154 +1,157 @@
 <template>
-    <div class="info-section-right">
-        <div class="section-title app-section-title">详细信息</div>
-        <div class="info-scroll-area">
-            <div class="info-item">
-                <span class="info-content">
-                    <span class="info-label">聚类名称：</span>
-                    <span class="info-value"></span>
-                </span>
-            </div>
-            <div class="info-item">
-                <span class="info-content">
-                    <span class="info-label">生产设备：</span>
-                    <span class="info-value">{{ productionEquipment }}</span>
-                </span>
-            </div>
-            <div class="info-item">
-                <span class="info-content">
-                    <span class="info-label">子部件：</span>
-                    <span class="info-value">{{ subComponent }}</span>
-                </span>
-            </div>
-            <div class="info-item">
-                <span class="info-content">
-                    <span class="info-label">检测设备：</span>
-                    <span class="info-value">{{ detectionEquipment }}</span>
-                </span>
-            </div>
-            <div class="info-item">
-                <span class="info-content">
-                    <span class="info-label">听筒：</span>
-                    <span class="info-value">{{ microphone }}</span>
-                </span>
-            </div>
-            <div class="info-item">
-                <span class="info-content">
-                    <span class="info-label">点位名称：</span>
-                    <span class="info-value">{{ pointName }}</span>
-                </span>
-            </div>
-            <div class="info-item">
-                <span class="info-content">
-                    <span class="info-label">偏差值：</span>
-                    <span class="info-value"></span>
-                </span>
-            </div>
-        </div>
-        <div class="audio-player">
-            <audio ref="audioRef" :src="audioPath" controls preload="auto"></audio>
-        </div>
+  <div class="info-section-right">
+    <div class="section-title app-section-title">详细信息</div>
+    <div class="info-scroll-area">
+      <div class="info-item">
+        <span class="info-content">
+          <span class="info-label">聚类名称：</span>
+          <span class="info-value"></span>
+        </span>
+      </div>
+      <div class="info-item">
+        <span class="info-content">
+          <span class="info-label">生产设备：</span>
+          <span class="info-value">{{ productionEquipment }}</span>
+        </span>
+      </div>
+      <div class="info-item">
+        <span class="info-content">
+          <span class="info-label">子部件：</span>
+          <span class="info-value">{{ subComponent }}</span>
+        </span>
+      </div>
+      <div class="info-item">
+        <span class="info-content">
+          <span class="info-label">检测设备：</span>
+          <span class="info-value">{{ detectionEquipment }}</span>
+        </span>
+      </div>
+      <div class="info-item">
+        <span class="info-content">
+          <span class="info-label">听筒：</span>
+          <span class="info-value">{{ microphone }}</span>
+        </span>
+      </div>
+      <div class="info-item">
+        <span class="info-content">
+          <span class="info-label">点位名称：</span>
+          <span class="info-value">{{ pointName }}</span>
+        </span>
+      </div>
+      <div class="info-item">
+        <span class="info-content">
+          <span class="info-label">偏差值：</span>
+          <span class="info-value"></span>
+        </span>
+      </div>
     </div>
+    <div class="audio-player">
+      <audio ref="audioRef" :src="audioPath" controls preload="auto"></audio>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed } from 'vue'
 
 const props = defineProps<{
-    pointName: string;
-    deviceName: string;
-    currentDataTime: string;
-    audioPath: string;
-    clusterName?: string;
-    productionEquipment?: string;
-    subComponent?: string;
-    detectionEquipment?: string;
-    microphone?: string;
-    deviationValue?: string | number;
-    uploadTime?: string;
-}>();
+  pointName: string
+  deviceName: string
+  currentDataTime: string
+  audioPath: string
+  clusterName?: string
+  productionEquipment?: string
+  subComponent?: string
+  detectionEquipment?: string
+  microphone?: string
+  deviationValue?: string | number
+  uploadTime?: string
+}>()
 
-const audioRef = ref<HTMLAudioElement | null>(null);
+const audioRef = ref<HTMLAudioElement | null>(null)
 
+const productionEquipment = computed(() => props.productionEquipment || props.deviceName || '')
+const clusterName = computed(() => props.clusterName || '')
+const subComponent = computed(() => props.subComponent || '')
+const detectionEquipment = computed(() => props.detectionEquipment || '')
+const microphone = computed(() => props.microphone || '')
+const deviationValue = computed(() =>
+  props.deviationValue !== undefined && props.deviationValue !== '' ? props.deviationValue : '',
+)
 
-const productionEquipment = computed(() => props.productionEquipment || props.deviceName || '');
-const clusterName = computed(() => props.clusterName || '');
-const subComponent = computed(() => props.subComponent || '');
-const detectionEquipment = computed(() => props.detectionEquipment || '');
-const microphone = computed(() => props.microphone || '');
-const deviationValue = computed(() => (props.deviationValue !== undefined && props.deviationValue !== '') ? props.deviationValue : '');
-
-
-watch(() => props.audioPath, (newPath) => {
+watch(
+  () => props.audioPath,
+  (newPath) => {
     if (newPath && audioRef.value) {
-        setTimeout(() => {
-            audioRef.value?.play().catch(() => {
-                console.info('音频播放受阻，请手动点击');
-            });
-        }, 100);
+      setTimeout(() => {
+        audioRef.value?.play().catch(() => {
+          console.info('音频播放受阻，请手动点击')
+        })
+      }, 100)
     }
-});
+  },
+)
 </script>
 
 <style lang="scss" scoped>
 .info-section-right {
+  flex: 1;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+
+  .section-title {
+    padding: 10px 10px 0 10px;
+  }
+
+  .info-scroll-area {
     flex: 1;
-    border-radius: 8px;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
+    gap: 10px;
+    padding: 10px 10px 0 10px;
 
-    .section-title {
-        padding: 10px 10px 0 10px;
-    }
+    .info-item {
+      padding: 8px 0;
+      min-height: 28px;
+      display: flex;
+      align-items: center;
 
-    .info-scroll-area {
-        flex: 1;
-        overflow-y: auto;
+      .info-content {
         display: flex;
-        flex-direction: column;
-        gap: 10px;
-        padding: 10px 10px 0 10px;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        min-height: 28px;
 
-        .info-item {
-            padding: 8px 0;
-            min-height: 28px;
-            display: flex;
-            align-items: center;
-
-            .info-content {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                width: 100%;
-                min-height: 28px;
-
-                .info-label {
-                    font-size: 0.9rem;
-                    color: #ccc;
-                    white-space: nowrap;
-                    flex-shrink: 0;
-                }
-
-                .info-value {
-                    font-size: 0.9rem;
-                    color: #fff;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    flex: 1;
-                    min-height: 1.2em;
-                }
-            }
+        .info-label {
+          font-size: 0.9rem;
+          color: #ccc;
+          white-space: nowrap;
+          flex-shrink: 0;
         }
-    }
 
-    .audio-player {
-        padding: 10px 10px 20px 10px;
-
-        audio {
-            width: 100%;
-            height: 34px;
+        .info-value {
+          font-size: 0.9rem;
+          color: #fff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          flex: 1;
+          min-height: 1.2em;
         }
+      }
     }
+  }
+
+  .audio-player {
+    padding: 10px 10px 20px 10px;
+
+    audio {
+      width: 100%;
+      height: 34px;
+    }
+  }
 }
 </style>

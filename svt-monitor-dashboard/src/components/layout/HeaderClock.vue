@@ -18,15 +18,14 @@ const now = ref<Date | null>(null)
 let timerId: number | null = null
 const route = useRoute()
 
-
-
-
 const showFull = computed(() => {
   const name = route.name
-  return route.path === '/' ||
+  return (
+    route.path === '/' ||
     route.path.startsWith('/dashboard') ||
     name === 'Home' ||
     name === 'Dashboard'
+  )
 })
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -57,7 +56,6 @@ const weekText = computed(() => {
 onMounted(() => {
   now.value = new Date()
   timerId = window.setInterval(() => {
-
     now.value = new Date()
   }, 1000)
 })
@@ -79,7 +77,7 @@ onUnmounted(() => {
   white-space: nowrap;
   font-family: 'DIN';
   font-style: normal;
-  background: linear-gradient(177.37deg, #FFFFFF 2.19%, #7EA8FF 160.82%);
+  background: linear-gradient(177.37deg, #ffffff 2.19%, #7ea8ff 160.82%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

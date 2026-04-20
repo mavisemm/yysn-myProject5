@@ -1,28 +1,28 @@
 <template>
   <header class="main-header">
     <div class="header-left">
-      <div v-if="showHomeButton" class="nav-btn " @click="goHome">
+      <div v-if="showHomeButton" class="nav-btn" @click="goHome">
         <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <House />
         </el-icon>
         <span>首页</span>
       </div>
 
-      <div v-if="showReturnDeviceButton" class="nav-btn " @click="goToDevice">
+      <div v-if="showReturnDeviceButton" class="nav-btn" @click="goToDevice">
         <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <Back />
         </el-icon>
         <span>返回设备</span>
       </div>
 
-      <div v-if="showVibrationButton" class="nav-btn " @click="goToVibration">
+      <div v-if="showVibrationButton" class="nav-btn" @click="goToVibration">
         <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <Lightning />
         </el-icon>
         <span>振动</span>
       </div>
 
-      <div v-if="showSoundButton" class="nav-btn " @click="goToSound">
+      <div v-if="showSoundButton" class="nav-btn" @click="goToSound">
         <el-icon :size="24" color="rgba(153, 240, 255, 1)">
           <Microphone />
         </el-icon>
@@ -31,8 +31,7 @@
     </div>
 
     <div class="header-center">
-      <h1 class="title">
-        鲁西化工声振温在线监测平台</h1>
+      <h1 class="title">鲁西化工声振温在线监测平台</h1>
     </div>
 
     <div class="header-right-clock">
@@ -41,14 +40,35 @@
 
     <div class="header-right-actions">
       <div class="theme-wrapper" @mouseenter="onThemeEnter" @mouseleave="onThemeLeave">
-        <div class="theme-trigger" :class="`theme-trigger--${currentBackground}`" title="切换背景" />
-        <div v-show="showThemeDropdown" class="theme-dropdown" @mouseenter="onThemeEnter" @mouseleave="onThemeLeave">
-          <div v-if="currentBackground !== 'image'" class="theme-square theme-square--image" title="背景1"
-            @click="selectBackground('image')" />
-          <div v-if="currentBackground !== 'navy'" class="theme-square theme-square--navy" title="背景2"
-            @click="selectBackground('navy')" />
-          <div v-if="currentBackground !== 'solid'" class="theme-square theme-square--solid" title="默认背景"
-            @click="selectBackground('solid')" />
+        <div
+          class="theme-trigger"
+          :class="`theme-trigger--${currentBackground}`"
+          title="切换背景"
+        />
+        <div
+          v-show="showThemeDropdown"
+          class="theme-dropdown"
+          @mouseenter="onThemeEnter"
+          @mouseleave="onThemeLeave"
+        >
+          <div
+            v-if="currentBackground !== 'image'"
+            class="theme-square theme-square--image"
+            title="背景1"
+            @click="selectBackground('image')"
+          />
+          <div
+            v-if="currentBackground !== 'navy'"
+            class="theme-square theme-square--navy"
+            title="背景2"
+            @click="selectBackground('navy')"
+          />
+          <div
+            v-if="currentBackground !== 'solid'"
+            class="theme-square theme-square--solid"
+            title="默认背景"
+            @click="selectBackground('solid')"
+          />
         </div>
       </div>
       <div class="nav-btn logout-btn" @click="handleLogout">
@@ -69,13 +89,7 @@ import { useAlarmBatchStore } from '@/stores/alarmBatch'
 import { useAlarmOverviewStore } from '@/stores/alarmOverview'
 import HeaderClock from './HeaderClock.vue'
 
-import {
-  SwitchButton,
-  House,
-  Back,
-  Lightning,
-  Microphone
-} from '@element-plus/icons-vue'
+import { SwitchButton, House, Back, Lightning, Microphone } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -116,14 +130,13 @@ const onThemeLeave = () => {
 }
 
 const showHomeButton = computed(() => {
-  return route.name === 'DeviceDetail' ||
-    route.name === 'SoundPoint' ||
-    route.name === 'VibrationPoint'
+  return (
+    route.name === 'DeviceDetail' || route.name === 'SoundPoint' || route.name === 'VibrationPoint'
+  )
 })
 
 const showReturnDeviceButton = computed(() => {
-  return route.name === 'SoundPoint' ||
-    route.name === 'VibrationPoint'
+  return route.name === 'SoundPoint' || route.name === 'VibrationPoint'
 })
 
 const showVibrationButton = computed(() => {
@@ -151,26 +164,25 @@ const goHome = () => {
 }
 
 const goToDevice = () => {
-
   if (route.name === 'DeviceDetail') {
     const id = route.params.id
     if (typeof id === 'string' && id) return
   }
 
-
   let equipmentId = (route.query.equipmentId as string) || ''
 
   if (!equipmentId && (route.name === 'SoundPoint' || route.name === 'VibrationPoint')) {
-
     const receiverIdParam = route.params.receiverId
     const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
     if (typeof receiverId === 'string' && receiverId) {
       const findParentDeviceId = (rid: string): string | null => {
         for (const factory of deviceTreeStore.deviceTreeData) {
-          for (const workshop of (factory.children ?? [])) {
-            for (const device of (workshop.children ?? [])) {
+          for (const workshop of factory.children ?? []) {
+            for (const device of workshop.children ?? []) {
               if (device.type !== 'device') continue
-              const hasPoint = (device.children ?? []).some(p => p.type === 'point' && p.id === rid)
+              const hasPoint = (device.children ?? []).some(
+                (p) => p.type === 'point' && p.id === rid,
+              )
               if (hasPoint) return device.id
             }
           }
@@ -203,28 +215,23 @@ const goToSound = () => {
 }
 
 const handleLogout = () => {
-  ElMessageBox.confirm(
-    '确定要退出登录吗？',
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-      customClass: 'logout-confirm-box',
-    }
-  ).then(() => {
-
-    localStorage.clear()
-
-    alarmBatchStore.resetPrefetchState()
-    alarmOverviewStore.reset()
-
-    deviceTreeStore.clearDeviceTreeData()
-    router.push('/login')
-    ElMessage.success('已安全退出')
-  }).catch(() => {
-
+  ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+    customClass: 'logout-confirm-box',
   })
+    .then(() => {
+      localStorage.clear()
+
+      alarmBatchStore.resetPrefetchState()
+      alarmOverviewStore.reset()
+
+      deviceTreeStore.clearDeviceTreeData()
+      router.push('/login')
+      ElMessage.success('已安全退出')
+    })
+    .catch(() => {})
 }
 </script>
 
@@ -236,7 +243,12 @@ const handleLogout = () => {
   align-items: center;
   position: relative;
   z-index: 100;
-  background: url('@/assets/images/background/头部背景.png') no-repeat center center;
+  background-image: image-set(
+    url('@/assets/images/background/头部背景.avif') type('image/avif'),
+    url('@/assets/images/background/头部背景.webp') type('image/webp')
+  );
+  background-repeat: no-repeat;
+  background-position: center center;
   background-size: 100% 100%;
 
   .header-left {
@@ -302,7 +314,6 @@ const handleLogout = () => {
     }
   }
 
-
   .header-right-clock {
     position: absolute;
     right: 115px;
@@ -310,7 +321,6 @@ const handleLogout = () => {
     transform: translateY(-50%);
     z-index: 1;
   }
-
 
   .header-right-actions {
     position: absolute;
@@ -377,7 +387,9 @@ const handleLogout = () => {
     border-radius: 4px;
     cursor: pointer;
     border: 2px solid transparent;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition:
+      transform 0.2s,
+      box-shadow 0.2s;
 
     &:hover {
       transform: scale(1.1);
@@ -430,7 +442,6 @@ const handleLogout = () => {
     padding: 0 16px;
 
     .header-center .title {
-
       font-size: 1.8rem;
     }
   }

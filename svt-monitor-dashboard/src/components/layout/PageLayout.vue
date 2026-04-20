@@ -1,7 +1,7 @@
 <template>
   <div class="page-layout" :class="{
     'page-layout--navy': backgroundMode === 'navy',
-    'page-layout--solid': backgroundMode === 'solid'
+    'page-layout--solid': backgroundMode === 'solid',
   }">
     <MainHeader :current-background="backgroundMode" @change-background="handleChangeBackground" />
     <div class="main-content">
@@ -62,7 +62,8 @@ const handleHistoryAlarmView = (row: any) => openAlarmView(row)
   position: relative;
   overflow: hidden;
   background-color: #091428;
-  background-image: url('@/assets/images/background/背景图.png');
+  background-image: image-set(url('@/assets/images/background/背景图.avif') type('image/avif'),
+      url('@/assets/images/background/背景图.webp') type('image/webp'));
   background-repeat: no-repeat;
   background-position: center center;
   background-size: 100vw 100vh;
@@ -81,14 +82,14 @@ const handleHistoryAlarmView = (row: any) => openAlarmView(row)
   &::before {
     left: -0.3vw;
     width: 5vw;
-    background: url('@/assets/images/background/left背景.png') no-repeat center center;
+    background: url('@/assets/images/background/left背景.webp') no-repeat center center;
     background-size: 100% 100%;
   }
 
   &::after {
     right: -0.2vw;
     width: 5vw;
-    background: url('@/assets/images/background/right背景.png') no-repeat center center;
+    background: url('@/assets/images/background/right背景.webp') no-repeat center center;
     background-size: 100% 100%;
   }
 
@@ -174,7 +175,6 @@ const handleHistoryAlarmView = (row: any) => openAlarmView(row)
       height: 100%;
       min-width: 0;
 
-
       &::-webkit-scrollbar {
         width: 6px;
         height: 6px;
@@ -197,7 +197,7 @@ const handleHistoryAlarmView = (row: any) => openAlarmView(row)
   height: 4vh;
   flex-shrink: 0;
   width: 100%;
-  background: url('@/assets/images/background/footer背景.png') no-repeat center center;
+  background: url('@/assets/images/background/footer背景.webp') no-repeat center center;
   background-size: 100% 100%;
   position: relative;
   z-index: 1;

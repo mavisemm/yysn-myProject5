@@ -17,7 +17,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { computed, onMounted, watch } from 'vue'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 
-
 import VibrationStats from '@/components/business/vibration-point/VibrationStats.vue'
 import VibrationWaterfall from '@/components/business/vibration-point/VibrationWaterfall.vue'
 import VibrationChartComparison from '@/components/business/vibration-point/VibrationChartComparison.vue'
@@ -53,7 +52,7 @@ const syncTreeSelectionFromRoute = () => {
   const pname = pointNameFromQuery.value.trim()
   const treeKey =
     deviceTreeStore.resolveTreeKeyForPoint(rid, eid || undefined, {
-      pointName: pname || undefined
+      pointName: pname || undefined,
     }) ?? rid
   deviceTreeStore.setSelectedDeviceId(treeKey)
 }
@@ -62,7 +61,7 @@ watch(
   () => route.params.receiverId,
   () => {
     syncTreeSelectionFromRoute()
-  }
+  },
 )
 
 watch(equipmentIdFromQuery, () => {
@@ -77,14 +76,14 @@ watch(
   () => deviceTreeStore.deviceTreeData.length,
   () => {
     syncTreeSelectionFromRoute()
-  }
+  },
 )
 
 watch(
   () => deviceTreeStore.loading,
   (loading) => {
     if (!loading) syncTreeSelectionFromRoute()
-  }
+  },
 )
 
 onMounted(() => {

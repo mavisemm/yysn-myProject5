@@ -1,6 +1,13 @@
 <template>
-  <el-dialog v-model="visible" title="预警详情" width="1100px" height="90vh" align-center class="alarm-batch-view-dialog"
-    destroy-on-close>
+  <el-dialog
+    v-model="visible"
+    title="预警详情"
+    width="1100px"
+    height="90vh"
+    align-center
+    class="alarm-batch-view-dialog"
+    destroy-on-close
+  >
     <div class="voiceContainer">
       <div class="voiceContainerItem">
         <div class="panelTitle">预警信息：{{ currentEventTypeName }}</div>
@@ -38,18 +45,33 @@
         <div class="panelTitle">操作</div>
         <div class="controlsBox">
           <div class="controlsRow">
-            <el-button type="danger" size="large" :disabled="!currentEventId" class="controlBtnLarge"
-              @click="onConfirmYes">
+            <el-button
+              type="danger"
+              size="large"
+              :disabled="!currentEventId"
+              class="controlBtnLarge"
+              @click="onConfirmYes"
+            >
               确认预警
             </el-button>
-            <el-button type="warning" size="large" :disabled="!currentEventId" class="controlBtnLarge"
-              @click="notVisible = true">
+            <el-button
+              type="warning"
+              size="large"
+              :disabled="!currentEventId"
+              class="controlBtnLarge"
+              @click="notVisible = true"
+            >
               确认误报
             </el-button>
           </div>
           <div class="controlsRow controlsRow--ai">
-            <el-button type="primary" size="large" :disabled="!currentEventId" class="controlBtnLarge"
-              @click="openAIModal">
+            <el-button
+              type="primary"
+              size="large"
+              :disabled="!currentEventId"
+              class="controlBtnLarge"
+              @click="openAIModal"
+            >
               智能故障分析
             </el-button>
           </div>
@@ -69,12 +91,24 @@
       </div>
     </div>
 
-    <el-dialog v-model="notVisible" title="选择误报类型" width="520px" destroy-on-close :close-on-click-modal="false"
-      @closed="resetNotModal">
+    <el-dialog
+      v-model="notVisible"
+      title="选择误报类型"
+      width="520px"
+      destroy-on-close
+      :close-on-click-modal="false"
+      @closed="resetNotModal"
+    >
       <div class="modalBlock">
         <div class="modalLabel">选择误报类型</div>
-        <el-select v-model="notType" placeholder="请选择" style="width: 100%" size="small" class="notTypeSelect"
-          popper-class="notTypeSelectPopper">
+        <el-select
+          v-model="notType"
+          placeholder="请选择"
+          style="width: 100%"
+          size="small"
+          class="notTypeSelect"
+          popper-class="notTypeSelectPopper"
+        >
           <el-option v-for="it in notTypeList" :key="it.key" :label="it.text" :value="it.key" />
         </el-select>
       </div>
@@ -88,11 +122,25 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="yesVisible" title="异常预警" width="620px" destroy-on-close :close-on-click-modal="false"
-      @open="onYesModalOpen" @closed="resetYesModal">
+    <el-dialog
+      v-model="yesVisible"
+      title="异常预警"
+      width="620px"
+      destroy-on-close
+      :close-on-click-modal="false"
+      @open="onYesModalOpen"
+      @closed="resetYesModal"
+    >
       <div class="modalBlock">
-        <el-select v-model="yesExceptionId" placeholder="历史异常库" style="width: 100%" size="small" class="historySelect"
-          popper-class="historySelectPopper" @change="onYesExceptionChange">
+        <el-select
+          v-model="yesExceptionId"
+          placeholder="历史异常库"
+          style="width: 100%"
+          size="small"
+          class="historySelect"
+          popper-class="historySelectPopper"
+          @change="onYesExceptionChange"
+        >
           <el-option label="重置" :value="YES_RESET_VALUE" />
           <el-option v-for="it in abnormalList" :key="it.id" :label="it.name" :value="it.id" />
         </el-select>
@@ -108,15 +156,31 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="aiModalVisible" title="智能故障分析" width="760px" destroy-on-close :close-on-click-modal="false"
-      @closed="resetAiModal">
+    <el-dialog
+      v-model="aiModalVisible"
+      title="智能故障分析"
+      width="760px"
+      destroy-on-close
+      :close-on-click-modal="false"
+      @closed="resetAiModal"
+    >
       <div class="aiHeader">
         <div class="aiMeta">设备名称：{{ nosceneVoiceRet?.productName ?? '暂无' }}</div>
         <div class="aiMeta">点位名称：{{ nosceneVoiceRet?.subProductName ?? '暂无' }}</div>
-        <div class="aiMeta">设备参数：{{ getTenantId() === '39ad1946358f48d7a90067761aed48d5' ? '6203-2RZ' :
-          (nosceneVoiceRet?.deviceModel ?? '暂无') }}</div>
-        <div class="aiMeta">生产厂家：{{ getTenantId() === '39ad1946358f48d7a90067761aed48d5' ? '洛阳轴承集团' :
-          (nosceneVoiceRet?.productionFactory ?? '暂无') }}</div>
+        <div class="aiMeta">
+          设备参数：{{
+            getTenantId() === '39ad1946358f48d7a90067761aed48d5'
+              ? '6203-2RZ'
+              : (nosceneVoiceRet?.deviceModel ?? '暂无')
+          }}
+        </div>
+        <div class="aiMeta">
+          生产厂家：{{
+            getTenantId() === '39ad1946358f48d7a90067761aed48d5'
+              ? '洛阳轴承集团'
+              : (nosceneVoiceRet?.productionFactory ?? '暂无')
+          }}
+        </div>
       </div>
 
       <div class="modalBlock">
@@ -125,7 +189,12 @@
       </div>
 
       <div class="aiButtons">
-        <el-button size="small" type="primary" :loading="aiLoading" @click="fetchAIModelAnalysis(false)">
+        <el-button
+          size="small"
+          type="primary"
+          :loading="aiLoading"
+          @click="fetchAIModelAnalysis(false)"
+        >
           开始分析
         </el-button>
         <el-button size="small" :loading="aiLoading" @click="fetchAIModelAnalysis(true)">
@@ -153,13 +222,13 @@ import {
   apiConfirmSoundYes,
   apiGetAbnormalHistory,
   apiGetDevicePosition,
-  apiGetEventById
+  apiGetEventById,
 } from '@/api/modules/alarmDetail'
 import {
   askAIModel,
   getLatestFrequencyByReceiver,
   getLatestFrequencyByReceiverNoScene,
-  getWavByFreqGroupIdUrl
+  getWavByFreqGroupIdUrl,
 } from '@/api/modules/voiceSound'
 
 import { getTenantId } from '@/api/tenant'
@@ -176,7 +245,7 @@ const emit = defineEmits<{
 
 const visible = computed({
   get: () => props.modelValue,
-  set: (v) => emit('update:modelValue', v)
+  set: (v) => emit('update:modelValue', v),
 })
 
 const energyChartRef = ref<HTMLDivElement | null>(null)
@@ -188,14 +257,10 @@ const chartLinkGroup = 'alarm-batch-view-link-group'
 const disposeCharts = () => {
   try {
     energyChart.value?.dispose()
-  } catch {
-
-  }
+  } catch {}
   try {
     densityChart.value?.dispose()
-  } catch {
-
-  }
+  } catch {}
   energyChart.value = null
   densityChart.value = null
 }
@@ -218,7 +283,7 @@ const position = ref<any | null>(null)
 const notVisible = ref(false)
 const notTypeList = [
   { key: '0', text: '环境干扰' },
-  { key: '1', text: '新场景' }
+  { key: '1', text: '新场景' },
 ]
 const notType = ref<string>('0')
 const notName = ref('')
@@ -275,17 +340,31 @@ function formatDateTime(input: unknown): string {
 }
 
 const eventTimeText = computed(() => {
-  const t = eventDetail.value?.time ?? props.row?.time ?? eventDetail.value?._timeText ?? props.row?._timeText
+  const t =
+    eventDetail.value?.time ??
+    props.row?.time ??
+    eventDetail.value?._timeText ??
+    props.row?._timeText
   return formatDateTime(t)
 })
 
 const currentStatusText = computed(() => {
-  return eventDetail.value?.statusText ?? eventDetail.value?.statusCode ?? props.row?.statusText ?? props.row?.statusCode ?? '-'
+  return (
+    eventDetail.value?.statusText ??
+    eventDetail.value?.statusCode ??
+    props.row?.statusText ??
+    props.row?.statusCode ??
+    '-'
+  )
 })
 
-const currentDeviceName = computed(() => eventDetail.value?.deviceName ?? props.row?.deviceName ?? '-')
+const currentDeviceName = computed(
+  () => eventDetail.value?.deviceName ?? props.row?.deviceName ?? '-',
+)
 const currentPointName = computed(() => eventDetail.value?.pointName ?? props.row?.pointName ?? '-')
-const currentReceiverName = computed(() => eventDetail.value?.receiverName ?? props.row?.receiverName ?? '-')
+const currentReceiverName = computed(
+  () => eventDetail.value?.receiverName ?? props.row?.receiverName ?? '-',
+)
 
 const currentDeviationValueText = computed(() => {
   const raw =
@@ -298,20 +377,17 @@ const currentDeviationValueText = computed(() => {
   const num = Number(raw)
   if (!Number.isFinite(num)) return String(raw)
 
-
   let s = num.toFixed(4)
   s = s.replace(/\.?0+$/, '')
   return s || '-'
 })
 
 const currentFreqGroupId = computed<string>(() => {
-
   const id = dataParse.value?.frepGroupId
   return id == null || id === '' ? '' : String(id)
 })
 
 const audioSrc = computed(() => {
-
   const freqGroupId = currentFreqGroupId.value
   if (!freqGroupId) return ''
   try {
@@ -322,7 +398,6 @@ const audioSrc = computed(() => {
 })
 
 const receiverId = computed(() => {
-
   return (
     dataParse.value?.receiverId ??
     eventDetail.value?.receiverId ??
@@ -331,14 +406,12 @@ const receiverId = computed(() => {
   )
 })
 
-const deviceId = computed(() =>
-  eventDetail.value?.equipmentId
-  ?? dataParse.value?.equipmentId
-  ?? props.row?.equipmentId
-  ?? ''
+const deviceId = computed(
+  () =>
+    eventDetail.value?.equipmentId ?? dataParse.value?.equipmentId ?? props.row?.equipmentId ?? '',
 )
-const pointId = computed(() =>
-  dataParse.value?.pointId ?? eventDetail.value?.pointId ?? (props.row as any)?.pointId ?? ''
+const pointId = computed(
+  () => dataParse.value?.pointId ?? eventDetail.value?.pointId ?? (props.row as any)?.pointId ?? '',
 )
 
 const positionText = computed(() => {
@@ -349,7 +422,12 @@ const positionText = computed(() => {
 
 const canRenderCharts = computed(() => {
   const code = currentEventTypeCode.value
-  return !!receiverId.value && (code === 'FREQUENCY_SOUND_WARN' || code === 'SOUND_HISTORY_WARN' || code === 'NO_SCENE_SOUND_WARN')
+  return (
+    !!receiverId.value &&
+    (code === 'FREQUENCY_SOUND_WARN' ||
+      code === 'SOUND_HISTORY_WARN' ||
+      code === 'NO_SCENE_SOUND_WARN')
+  )
 })
 
 const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
@@ -377,7 +455,7 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
   const baseGrid = { left: 40, right: 20, top: 30, bottom: 50 }
   const dataZoom = [
     { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-    { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' }
+    { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' },
   ]
 
   energyChart.value.setOption({
@@ -387,7 +465,9 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
     xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
     yAxis: [{ type: 'value', name: '能量' }],
     dataZoom,
-    series: [{ name: '能量', type: 'line', data: nowDbArr, symbolSize: 1, lineStyle: { width: 1 } }]
+    series: [
+      { name: '能量', type: 'line', data: nowDbArr, symbolSize: 1, lineStyle: { width: 1 } },
+    ],
   })
 
   densityChart.value.setOption({
@@ -397,7 +477,9 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
     xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
     yAxis: [{ type: 'value', name: '密度' }],
     dataZoom,
-    series: [{ name: '密度', type: 'line', data: nowDensityArr, symbolSize: 1, lineStyle: { width: 1 } }]
+    series: [
+      { name: '密度', type: 'line', data: nowDensityArr, symbolSize: 1, lineStyle: { width: 1 } },
+    ],
   })
 
   enableMouseWheelZoom(energyChart.value)
@@ -414,8 +496,12 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
   densityChart.value.group = chartLinkGroup
   echarts.connect(chartLinkGroup)
 
-  const soundFrequencyDtoList = Array.isArray(ret?.soundFrequencyDtoList) ? ret.soundFrequencyDtoList : []
-  const soundAvgFrequencyDtoList = Array.isArray(ret?.soundAvgFrequencyDtoList) ? ret.soundAvgFrequencyDtoList : []
+  const soundFrequencyDtoList = Array.isArray(ret?.soundFrequencyDtoList)
+    ? ret.soundFrequencyDtoList
+    : []
+  const soundAvgFrequencyDtoList = Array.isArray(ret?.soundAvgFrequencyDtoList)
+    ? ret.soundAvgFrequencyDtoList
+    : []
 
   const xArr: string[] = []
   const nowDbArr: (number | undefined)[] = []
@@ -439,7 +525,7 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
   const baseGrid = { left: 40, right: 20, top: 30, bottom: 50 }
   const dataZoom = [
     { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-    { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' }
+    { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' },
   ]
 
   energyChart.value.setOption({
@@ -451,8 +537,18 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
     dataZoom,
     series: [
       { name: '能量', type: 'line', data: nowDbArr, symbolSize: 1, lineStyle: { width: 1 } },
-      ...(avgDbArr.length > 0 ? [{ name: '标准能量线', type: 'line', data: avgDbArr, symbolSize: 1, lineStyle: { width: 1 } }] : [])
-    ]
+      ...(avgDbArr.length > 0
+        ? [
+            {
+              name: '标准能量线',
+              type: 'line',
+              data: avgDbArr,
+              symbolSize: 1,
+              lineStyle: { width: 1 },
+            },
+          ]
+        : []),
+    ],
   })
 
   densityChart.value.setOption({
@@ -464,8 +560,18 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
     dataZoom,
     series: [
       { name: '密度', type: 'line', data: nowDensityArr, symbolSize: 1, lineStyle: { width: 1 } },
-      ...(avgDensityArr.length > 0 ? [{ name: '标准密度线', type: 'line', data: avgDensityArr, symbolSize: 1, lineStyle: { width: 1 } }] : [])
-    ]
+      ...(avgDensityArr.length > 0
+        ? [
+            {
+              name: '标准密度线',
+              type: 'line',
+              data: avgDensityArr,
+              symbolSize: 1,
+              lineStyle: { width: 1 },
+            },
+          ]
+        : []),
+    ],
   })
 
   enableMouseWheelZoom(energyChart.value)
@@ -485,7 +591,6 @@ const loadEvent = async () => {
     if (res?.rc === 0 && res?.ret) {
       eventDetail.value = res.ret
     } else {
-
       eventDetail.value = props.row
     }
   } catch {
@@ -495,7 +600,6 @@ const loadEvent = async () => {
   const rawDataJson = eventDetail.value?.dataJson ?? props.row?.dataJson
   dataParse.value = safeParseJson(rawDataJson) ?? {}
 
-
   try {
     if (deviceId.value) {
       const posRes = await apiGetDevicePosition({ objectId: deviceId.value })
@@ -504,7 +608,6 @@ const loadEvent = async () => {
   } catch {
     position.value = null
   }
-
 
   const code = currentEventTypeCode.value
   const rid = receiverId.value
@@ -519,7 +622,6 @@ const loadEvent = async () => {
     nosceneVoiceRet.value = (r as any)?.ret ?? null
     await renderEnergyDensityChartsFromNoScene((r as any)?.ret ?? {})
   } else {
-
     disposeCharts()
   }
 }
@@ -541,7 +643,7 @@ watch(
       ElMessage.error('预警详情加载失败')
     }
   },
-  { immediate: false }
+  { immediate: false },
 )
 
 const resultDtoList = computed(() => {
@@ -554,7 +656,6 @@ const onConfirmYes = async () => {
   if (!id) return
 
   try {
-
     if (currentEventTypeCode.value === 'NO_SCENE_SOUND_WARN' && resultDtoList.value.length === 0) {
       yesVisible.value = true
       return
@@ -588,7 +689,7 @@ const onConfirmNot = async () => {
       type: notType.value,
       name: notName.value.trim(),
       id,
-      tenantId: getTenantId() || ''
+      tenantId: getTenantId() || '',
     })
     ElMessage.success('操作成功')
     notVisible.value = false
@@ -617,9 +718,9 @@ const onYesModalOpen = async () => {
       filterPropertyMap: [
         { code: 'tenantId', operate: 'EQ', value: tid },
         { code: 'type', operate: 'EQ', value: 0 },
-        { code: 'pointId', operate: 'EQ', value: pid }
+        { code: 'pointId', operate: 'EQ', value: pid },
       ],
-      sortValueMap: [{ code: 'time', sort: 'desc' }]
+      sortValueMap: [{ code: 'time', sort: 'desc' }],
     }
     const res = await apiGetAbnormalHistory(payload)
     abnormalList.value = (res as any)?.ret?.items ?? (res as any)?.ret?.item ?? []
@@ -649,7 +750,7 @@ const onConfirmSoundYes = async () => {
       name: yesNewName.value.trim() || undefined,
       exceptionId: yesExceptionId.value,
       id,
-      tenantId: tid
+      tenantId: tid,
     })
     ElMessage.success('操作成功')
     yesVisible.value = false
@@ -666,10 +767,16 @@ function parseMarkdownToHtml(markdown: string): string {
   }
   let html = markdown
     .replace(/\*\*([^*]+?)\*\*/g, '<strong style="font-weight:bold; color:#333;">$1</strong>')
-    .replace(/\n{0,2}---\n{0,2}/g, '<hr style="border:none; border-top:1px solid #777; margin:25px 0; width:100%;" />')
+    .replace(
+      /\n{0,2}---\n{0,2}/g,
+      '<hr style="border:none; border-top:1px solid #777; margin:25px 0; width:100%;" />',
+    )
     .replace(/\n{2,}/g, '</div><div style="margin:15px 0; line-height:1.6;">')
     .replace(/\n/g, '<br/>')
-  if (!html.startsWith('<div')) html = '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif; color:#333; padding:0 5px;">' + html
+  if (!html.startsWith('<div'))
+    html =
+      '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif; color:#333; padding:0 5px;">' +
+      html
   html = html + '</div>'
   return html
 }
@@ -692,9 +799,7 @@ const openAIModal = async () => {
 
   try {
     await fetchNoSceneVoiceRet()
-  } catch {
-
-  }
+  } catch {}
 }
 
 const resetAiModal = () => {
@@ -724,7 +829,7 @@ const fetchAIModelAnalysis = async (isUpdate: boolean) => {
       ...base,
       tenantId: tid,
       textMessage: aiTextMessage.value,
-      update: isUpdate ? 1 : 0
+      update: isUpdate ? 1 : 0,
     }
 
     const res = await askAIModel(requestParams)
