@@ -10,6 +10,8 @@ export const useDeviceTreeStore = defineStore('deviceTree', () => {
   
   
   const loading = ref(false)
+  let loadPromise: Promise<void> | null = null
+  const hasLoaded = ref(false)
 
   const isSameTreeData = (nextData: DeviceNode[], prevData: DeviceNode[]) => {
     if (nextData === prevData) return true
@@ -22,20 +24,29 @@ export const useDeviceTreeStore = defineStore('deviceTree', () => {
   }
   
   
-  const loadDeviceTreeData = async () => {
-    try {
-      loading.value = true;
-      const response = await getDeviceTreeData();
-      const transformedData = transformDeviceTreeData(response);
-      if (!isSameTreeData(transformedData, deviceTreeData.value)) {
-        deviceTreeData.value = transformedData;
+  const loadDeviceTreeData = async (opts?: { force?: boolean }) => {
+    const force = Boolean(opts?.force)
+    if (!force && hasLoaded.value) return
+    if (loadPromise) return loadPromise
+
+    loadPromise = (async () => {
+      try {
+        loading.value = true
+        const response = await getDeviceTreeData()
+        const transformedData = transformDeviceTreeData(response)
+        if (!isSameTreeData(transformedData, deviceTreeData.value)) {
+          deviceTreeData.value = transformedData
+        }
+        hasLoaded.value = true
+      } catch (error) {
+      } finally {
+        loading.value = false
+        loadPromise = null
       }
-    } catch (error) {
-      
-    } finally {
-      loading.value = false;
-    }
-  };
+    })()
+
+    return loadPromise
+  }
   
   
   
@@ -87,6 +98,7 @@ export const useDeviceTreeStore = defineStore('deviceTree', () => {
     deviceTreeData.value = []
     selectedDeviceId.value = null
     expandedKeys.value = []
+    hasLoaded.value = false
   }
 
   
