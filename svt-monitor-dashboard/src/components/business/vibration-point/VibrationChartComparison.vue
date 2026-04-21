@@ -41,6 +41,7 @@
           fullscreen-background="#142060"
           @chart-ready="onFreqChartReady"
           @fullscreen-chart-ready="onFreqFullscreenChartReady"
+          @fullscreen-closing="onFreqFullscreenClosing"
           @fullscreen-closed="onFreqFullscreenClosed"
         >
           <template #fullscreen-toolbar>
@@ -849,6 +850,11 @@ const onFreqFullscreenClosed = () => {
     fullscreenFreqZrClickCleanup()
     fullscreenFreqZrClickCleanup = null
   }
+}
+
+const onFreqFullscreenClosing = () => {
+  // 关闭动画开始前就清空，避免小图短暂闪现打标
+  clearAllPinnedPoints()
 }
 
 const timeOption = computed<EChartsOption>(() => {

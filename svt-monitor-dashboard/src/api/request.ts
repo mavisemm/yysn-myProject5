@@ -126,7 +126,6 @@ service.interceptors.request.use(
     }
     
     if (
-      !import.meta.env.PROD &&
       config.url &&
       (config.url.startsWith('/taicang') ||
         config.url.startsWith('/vortex') ||

@@ -53,6 +53,7 @@
     modal-class="common-echarts-fullscreen-modal"
     :style="{ '--ce-fullscreen-bg': fullscreenBackgroundResolved }"
     @opened="handleFullscreenOpened"
+    @close="handleFullscreenClosing"
     @closed="handleFullscreenClosed"
   >
     <template #header="{ titleId, titleClass }">
@@ -170,6 +171,7 @@ const emit = defineEmits<{
   (e: 'range-change', payload: { min: number; max: number; startValue: any; endValue: any }): void
   (e: 'range-reset'): void
   (e: 'fullscreen-chart-ready', instance: echarts.ECharts): void
+  (e: 'fullscreen-closing'): void
   (e: 'fullscreen-closed'): void
 }>()
 
@@ -1073,6 +1075,9 @@ const handleFullscreenClosed = () => {
     } catch {}
     fullscreenChartInstance.value = null
   }
+}
+const handleFullscreenClosing = () => {
+  emit('fullscreen-closing')
 }
 
 onUnmounted(() => {
