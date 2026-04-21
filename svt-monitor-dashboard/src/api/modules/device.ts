@@ -88,7 +88,7 @@ export const getVibrationFrequencyData = (
   receiverId: string,
   axis: VibrationAxis = 'X'
 ): Promise<NewApiResponse<VibrationFrequencyData>> => {
-  return request.post('/api/device/vibration/data/frequency', {
+  return request.post('/device/vibration/data/frequency', {
     tenantId: getTenantId(),
     deviceId: deviceId,
     receiverId: receiverId,
@@ -104,7 +104,7 @@ export const getVibrationFrequencyWaterfallData = (
   startTime: string,
   endTime: string
 ): Promise<NewApiResponse<VibrationFrequencyWaterfallData>> => {
-  return request.post('/api/device/vibration/data/frequency/waterfall', {
+  return request.post('/device/vibration/data/frequency/waterfall', {
     tenantId: getTenantId(),
     deviceId,
     receiverId,
@@ -137,7 +137,7 @@ export interface VibrationMetricData {
 }
 
 export const getVibrationMetricData = (deviceId: string, receiverId: string): Promise<NewApiResponse<VibrationMetricData>> => {
-  return request.post('/api/device/vibration/data/metric/rms', {
+  return request.post('/device/vibration/data/metric/rms', {
     tenantId: getTenantId(),
     deviceId: deviceId,
     receiverId: receiverId
@@ -156,7 +156,7 @@ export const getVibrationTimeDomainData = (
   receiverId: string,
   axis: VibrationAxis = 'X'
 ): Promise<NewApiResponse<VibrationTimeDomainData>> => {
-  return request.post('/api/device/vibration/data/time', {
+  return request.post('/device/vibration/data/time', {
     tenantId: getTenantId(),
     deviceId: deviceId,
     receiverId: receiverId,

@@ -12,7 +12,7 @@
 
       <div class="health-gauge-container">
         <div class="gauge-block">
-          <div class="gauge-block-topbar">
+          <!-- <div class="gauge-block-topbar">
             <el-button
               class="stage-report-btn"
               type="primary"
@@ -21,7 +21,7 @@
             >
               阶段性报告
             </el-button>
-          </div>
+          </div> -->
           <div class="gauge-title">声音健康度</div>
           <div class="gauge-wrapper">
             <div ref="soundGaugeRef" class="gauge"></div>
@@ -35,25 +35,12 @@
         </div>
       </div>
 
-      <el-dialog
-        v-model="soundStageReport.dialogVisible"
-        title="阶段性报告"
-        width="530px"
-        :close-on-click-modal="true"
-        destroy-on-close
-        :teleported="true"
-        :append-to-body="true"
-        :modal-append-to-body="true"
-      >
+      <el-dialog v-model="soundStageReport.dialogVisible" title="阶段性报告" width="530px" :close-on-click-modal="true"
+        destroy-on-close :teleported="true" :append-to-body="true" :modal-append-to-body="true">
         <div class="sound-stage-report-row">
           <CommonDateTimePicker v-model="soundStageReport.dateRange" width="100%" />
-          <el-button
-            class="sound-stage-report-download"
-            size="small"
-            type="primary"
-            :loading="soundStageReport.downloading"
-            @click="downloadSoundStageReport"
-          >
+          <el-button class="sound-stage-report-download" size="small" type="primary"
+            :loading="soundStageReport.downloading" @click="downloadSoundStageReport">
             下载
           </el-button>
         </div>
@@ -118,7 +105,7 @@
             <span class="info-label">额定转速：</span>
             <span class="info-value">{{
               formatValueWithUnit(deviceInfo.rotationSpeed, 'rpm')
-            }}</span>
+              }}</span>
           </div>
           <div class="info-item">
             <span class="info-label">设计流量：</span>
@@ -154,17 +141,9 @@
           <div class="info-item"></div>
         </div>
 
-        <div
-          class="info-row"
-          v-for="(row, rowIndex) in extraFieldRows"
-          :key="'extra-row-' + rowIndex"
-          v-if="!isEditing"
-        >
-          <div
-            v-for="(field, index) in row"
-            :key="'extra-' + rowIndex + '-' + index"
-            class="info-item"
-          >
+        <div class="info-row" v-for="(row, rowIndex) in extraFieldRows" :key="'extra-row-' + rowIndex"
+          v-if="!isEditing">
+          <div v-for="(field, index) in row" :key="'extra-' + rowIndex + '-' + index" class="info-item">
             <span class="info-label">{{ field.label }}：</span>
             <span class="info-value">{{ field.value }}</span>
           </div>
@@ -172,15 +151,8 @@
       </div>
     </div>
 
-    <el-dialog
-      v-model="addFieldDialogVisible"
-      title="添加设备信息"
-      width="360px"
-      :close-on-click-modal="false"
-      :teleported="true"
-      :append-to-body="true"
-      :modal-append-to-body="true"
-    >
+    <el-dialog v-model="addFieldDialogVisible" title="添加设备信息" width="360px" :close-on-click-modal="false"
+      :teleported="true" :append-to-body="true" :modal-append-to-body="true">
       <div class="add-field-form">
         <div class="form-row">
           <span class="form-label">名称：</span>
@@ -885,7 +857,7 @@ const toggleEdit = async () => {
         onlineStatus: deviceInfo.value.onlineStatus,
       }
 
-      ;(deviceInfoDto as any).deviceNewInfo = buildDeviceNewInfo(extraFields.value)
+        ; (deviceInfoDto as any).deviceNewInfo = buildDeviceNewInfo(extraFields.value)
 
       const response = await editEquipmentInfo(props.deviceId, deviceInfoDto)
 

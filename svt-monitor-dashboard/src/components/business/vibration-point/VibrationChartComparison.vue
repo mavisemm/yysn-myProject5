@@ -94,6 +94,12 @@
                   应用
                 </el-button>
                 <el-button size="small" @click="resetFreqFilter"> 重置 </el-button>
+                <el-button size="small" :disabled="!currentPinnedPointId" @click="clearCurrentPinnedPoint">
+                  清除当前标记
+                </el-button>
+                <el-button size="small" :disabled="!pinnedFreqPoints.length" @click="clearAllPinnedPoints">
+                  清除全部标记
+                </el-button>
               </div>
             </div>
           </template>
@@ -164,7 +170,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted, computed, shallowRef, watch } from 'vue'
+import { ref, onUnmounted, computed, shallowRef, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
@@ -176,6 +182,11 @@ import {
 } from '@/api/modules/device'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import { FullScreen } from '@element-plus/icons-vue'
+import {
+  buildPointMarkerId,
+  formatPersistentPointLabel,
+  type EchartsPersistentPoint,
+} from '@/utils/echartsPointMarker'
 
 const route = useRoute()
 const receiverIdFromParams = computed(() => {
@@ -207,10 +218,15 @@ const chartSplitLineColor = computed(() => 'rgba(255,255,255,0.1)')
 const freqChartRef = ref<InstanceType<typeof CommonEcharts>>()
 const timeChartRef = ref<InstanceType<typeof CommonEcharts>>()
 const freqChartInstance = shallowRef<echarts.ECharts | null>(null)
+const fullscreenFreqChartInstance = shallowRef<echarts.ECharts | null>(null)
 let freqChartCleanup: (() => void) | null = null
 let fullscreenFreqPointerCleanup: (() => void) | null = null
+let fullscreenFreqClickCleanup: (() => void) | null = null
+let fullscreenFreqZrClickCleanup: (() => void) | null = null
 let markLineRafId: number | null = null
 let lastHarmonicBaseFreq: number | null = null
+const pinnedFreqPoints = ref<EchartsPersistentPoint[]>([])
+const currentPinnedPointId = ref<string>('')
 
 const openFreqFullscreen = () => {
   ;(freqChartRef.value as any)?.openFullscreen?.()
@@ -259,6 +275,12 @@ const formatFrequency = (v: number | string) => {
   const n = Number(v)
   if (!Number.isFinite(n)) return ''
   return String(Number(n.toFixed(FREQ_MATCH_DECIMALS)))
+}
+
+const formatPinnedY = (v: number | string) => {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return ''
+  return n.toFixed(10)
 }
 
 const toFreqKey = (v: number) => v.toFixed(FREQ_MATCH_DECIMALS)
@@ -524,6 +546,10 @@ const freqOption = computed<EChartsOption>(() => {
           lineStyle: { type: 'dashed', width: 1, opacity: 0.9 },
           data: [],
         },
+        markPoint: {
+          animation: false,
+          data: getPinnedMarkPointData(),
+        },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: 'rgba(126, 203, 161, 0.8)' },
@@ -565,6 +591,176 @@ const onUpdateAxisPointer = (params: any) => {
   }
 }
 
+const getPinnedMarkPointData = () =>
+  pinnedFreqPoints.value.map((point) => {
+    const isCurrent = point.id === currentPinnedPointId.value
+    return {
+      name: point.id,
+      coord: [point.x, point.y],
+      symbol: 'circle',
+      symbolSize: isCurrent ? 9 : 7,
+      itemStyle: {
+        color: isCurrent ? '#ffd166' : '#ff6b6b',
+        borderColor: '#fff',
+        borderWidth: 1,
+      },
+      label: {
+        show: true,
+        position: 'top',
+        align: 'left',
+        color: '#fff',
+        fontSize: 12,
+        lineHeight: 16,
+        backgroundColor: 'rgba(10, 14, 33, 0.7)',
+        borderColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 1,
+        borderRadius: 4,
+        padding: [4, 6],
+        formatter: formatPersistentPointLabel(
+          point,
+          (v) => `${formatFrequency(v)}Hz`,
+          formatPinnedY,
+        ),
+      },
+      tooltip: {
+        show: true,
+        formatter: formatPersistentPointLabel(
+          point,
+          (v) => `${formatFrequency(v)}Hz`,
+          formatPinnedY,
+        ),
+      },
+    }
+  })
+
+const patchFullscreenPinnedMarkPoints = () => {
+  if (!fullscreenFreqChartInstance.value) return
+  try {
+    fullscreenFreqChartInstance.value.setOption(
+      {
+        series: [
+          {
+            id: 'freq-series',
+            markPoint: {
+              animation: false,
+              data: getPinnedMarkPointData(),
+            },
+          },
+        ],
+      } as any,
+      { notMerge: false, lazyUpdate: true },
+    )
+  } catch {}
+}
+
+const refreshFullscreenPinnedMarkPoints = () => {
+  patchFullscreenPinnedMarkPoints()
+  // 频率范围变更会触发全屏图 setOption，下一帧再补一次，避免被覆盖
+  void nextTick(() => {
+    patchFullscreenPinnedMarkPoints()
+  })
+}
+
+const clearCurrentPinnedPoint = () => {
+  if (!currentPinnedPointId.value) return
+  pinnedFreqPoints.value = pinnedFreqPoints.value.filter((item) => item.id !== currentPinnedPointId.value)
+  currentPinnedPointId.value = pinnedFreqPoints.value[pinnedFreqPoints.value.length - 1]?.id ?? ''
+  refreshFullscreenPinnedMarkPoints()
+}
+
+const clearAllPinnedPoints = () => {
+  pinnedFreqPoints.value = []
+  currentPinnedPointId.value = ''
+  refreshFullscreenPinnedMarkPoints()
+}
+
+const addPinnedFreqPoint = (x: number, y: number) => {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return
+  console.log('[freq-pin] addPinnedFreqPoint', { x, y })
+  const id = buildPointMarkerId(x, y)
+  currentPinnedPointId.value = id
+  const exists = pinnedFreqPoints.value.find((item) => item.id === id)
+  if (!exists) pinnedFreqPoints.value = [...pinnedFreqPoints.value, { id, x, y }]
+  refreshFullscreenPinnedMarkPoints()
+}
+
+const pickNearestFreqPointByX = (x: number): [number, number] | null => {
+  const { chartData } = getSortedFreqChartData()
+  if (!chartData.length || !Number.isFinite(x)) return null
+  let nearest: [number, number] | null = null
+  let minDist = Number.POSITIVE_INFINITY
+  for (const point of chartData) {
+    const dist = Math.abs(point[0] - x)
+    if (dist < minDist) {
+      minDist = dist
+      nearest = point
+    }
+  }
+  return nearest
+}
+
+const addPinnedByPixel = (offsetX: number, offsetY: number) => {
+  const inst = fullscreenFreqChartInstance.value
+  if (!inst || !Number.isFinite(offsetX) || !Number.isFinite(offsetY)) return
+  // 优先使用轴指针的 x（不依赖点击的 y），满足“按 x 轴打标”
+  if (Number.isFinite(pointerBaseFreq.value)) {
+    const nearestByPointer = pickNearestFreqPointByX(Number(pointerBaseFreq.value))
+    console.log('[freq-pin] use pointerBaseFreq', {
+      pointerBaseFreq: pointerBaseFreq.value,
+      nearestByPointer,
+    })
+    if (nearestByPointer) {
+      addPinnedFreqPoint(nearestByPointer[0], nearestByPointer[1])
+      return
+    }
+  }
+
+  let axisValue: unknown
+  try {
+    // 某些场景下 [x,y] 会返回 NaN，这里先按 x 轴单值转换
+    axisValue = inst.convertFromPixel({ xAxisIndex: 0 }, offsetX as any)
+    if (!Number.isFinite(Array.isArray(axisValue) ? Number(axisValue[0]) : Number(axisValue))) {
+      axisValue = inst.convertFromPixel({ xAxisIndex: 0 }, [offsetX, offsetY])
+    }
+    if (!Number.isFinite(Array.isArray(axisValue) ? Number(axisValue[0]) : Number(axisValue))) {
+      axisValue = inst.convertFromPixel({ gridIndex: 0 }, [offsetX, offsetY])
+    }
+    console.log('[freq-pin] convertFromPixel', { axisValue, offsetX, offsetY })
+  } catch {
+    console.log('[freq-pin] convertFromPixel failed')
+    return
+  }
+  const x = Array.isArray(axisValue) ? Number(axisValue[0]) : Number(axisValue)
+  if (!Number.isFinite(x)) return
+  const nearest = pickNearestFreqPointByX(x)
+  console.log('[freq-pin] nearest point by x', { x, nearest })
+  if (!nearest) return
+  addPinnedFreqPoint(nearest[0], nearest[1])
+}
+
+const onFreqFullscreenChartClick = (params: any) => {
+  console.log('[freq-pin] click event', {
+    componentType: params?.componentType,
+    seriesId: params?.seriesId,
+    value: params?.value,
+    offsetX: params?.event?.offsetX,
+    offsetY: params?.event?.offsetY,
+  })
+  const value = params?.value
+  if (Array.isArray(value) && value.length >= 2) {
+    const x = Number(value[0])
+    const y = Number(value[1])
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+      console.log('[freq-pin] use direct series value', { x, y })
+      addPinnedFreqPoint(x, y)
+      return
+    }
+  }
+  const offsetX = Number(params?.event?.offsetX)
+  const offsetY = Number(params?.event?.offsetY)
+  addPinnedByPixel(offsetX, offsetY)
+}
+
 const onFreqChartReady = (instance: echarts.ECharts) => {
   freqChartInstance.value = instance
   if (freqChartCleanup) {
@@ -585,16 +781,46 @@ const onFreqChartReady = (instance: echarts.ECharts) => {
 }
 
 const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
+  console.log('[freq-pin] fullscreen chart ready')
+  fullscreenFreqChartInstance.value = inst
   if (fullscreenFreqPointerCleanup) {
     fullscreenFreqPointerCleanup()
     fullscreenFreqPointerCleanup = null
   }
+  if (fullscreenFreqClickCleanup) {
+    fullscreenFreqClickCleanup()
+    fullscreenFreqClickCleanup = null
+  }
+  if (fullscreenFreqZrClickCleanup) {
+    fullscreenFreqZrClickCleanup()
+    fullscreenFreqZrClickCleanup = null
+  }
   inst.on('updateAxisPointer', onUpdateAxisPointer)
+  inst.on('click', onFreqFullscreenChartClick)
+  const zr = inst.getZr?.()
+  const onZrClick = (evt: any) => {
+    const offsetX = Number(evt?.offsetX)
+    const offsetY = Number(evt?.offsetY)
+    console.log('[freq-pin] zr click', { offsetX, offsetY })
+    addPinnedByPixel(offsetX, offsetY)
+  }
+  zr?.on?.('click', onZrClick)
   fullscreenFreqPointerCleanup = () => {
     try {
       inst.off('updateAxisPointer', onUpdateAxisPointer)
     } catch {}
   }
+  fullscreenFreqClickCleanup = () => {
+    try {
+      inst.off('click', onFreqFullscreenChartClick)
+    } catch {}
+  }
+  fullscreenFreqZrClickCleanup = () => {
+    try {
+      zr?.off?.('click', onZrClick)
+    } catch {}
+  }
+  console.log('[freq-pin] fullscreen click handlers attached')
 
   const base = pointerBaseFreq.value
   if (typeof base === 'number' && Number.isFinite(base) && base > 0) {
@@ -606,12 +832,22 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
 
   freqFilterMin.value = freqAxisDomain.value.min
   freqFilterMax.value = freqAxisDomain.value.max
+  patchFullscreenPinnedMarkPoints()
 }
 
 const onFreqFullscreenClosed = () => {
+  fullscreenFreqChartInstance.value = null
   if (fullscreenFreqPointerCleanup) {
     fullscreenFreqPointerCleanup()
     fullscreenFreqPointerCleanup = null
+  }
+  if (fullscreenFreqClickCleanup) {
+    fullscreenFreqClickCleanup()
+    fullscreenFreqClickCleanup = null
+  }
+  if (fullscreenFreqZrClickCleanup) {
+    fullscreenFreqZrClickCleanup()
+    fullscreenFreqZrClickCleanup = null
   }
 }
 
@@ -786,6 +1022,7 @@ watch(
   [receiverIdFromParams, pointDeviceId],
   ([rid, pid]) => {
     if (!rid || !pid) return
+    clearAllPinnedPoints()
     void loadVibrationChartsData()
   },
   { immediate: true },
@@ -794,8 +1031,24 @@ watch(
 watch(freqAxis, () => {
   if (!receiverIdFromParams.value || !pointDeviceId.value) return
   freqDisplayRange.value = null
+  clearAllPinnedPoints()
   void loadFreqData()
 })
+
+watch(freqDisplayRange, () => {
+  refreshFullscreenPinnedMarkPoints()
+})
+
+watch(
+  freqOption,
+  () => {
+    // CommonEcharts 会在下一帧对全屏图 applyOption，这里再延后一帧补写 markPoint，防止被覆盖
+    requestAnimationFrame(() => {
+      refreshFullscreenPinnedMarkPoints()
+    })
+  },
+  { deep: false },
+)
 
 watch(timeAxis, () => {
   if (!receiverIdFromParams.value || !pointDeviceId.value) return
@@ -810,6 +1063,14 @@ onUnmounted(() => {
   if (fullscreenFreqPointerCleanup) {
     fullscreenFreqPointerCleanup()
     fullscreenFreqPointerCleanup = null
+  }
+  if (fullscreenFreqClickCleanup) {
+    fullscreenFreqClickCleanup()
+    fullscreenFreqClickCleanup = null
+  }
+  if (fullscreenFreqZrClickCleanup) {
+    fullscreenFreqZrClickCleanup()
+    fullscreenFreqZrClickCleanup = null
   }
 })
 </script>
