@@ -1,11 +1,8 @@
 <template>
   <div class="dashboard">
     <div class="dashboard-box dashboard-box-stats">
-      <DashboardStats
-        :stats="statsData"
-        @click-trend-warning="showTrendWarningModal = true"
-        @click-fault-warning="showFaultWarningModal = true"
-      />
+      <DashboardStats :stats="statsData" @click-trend-warning="showTrendWarningModal = true"
+        @click-fault-warning="showFaultWarningModal = true" />
     </div>
     <div class="dashboard-box dashboard-box-alarm">
       <AlarmOverview>
@@ -13,29 +10,16 @@
       </AlarmOverview>
     </div>
     <div class="dashboard-box dashboard-box-metrics">
-      <ThreeMetrics
-        :metrics="[
-          { title: '振动烈度排名', unit: '（单位：mm/s）' },
-          { title: '声音偏差值排名' },
-          { title: '温度排名', unit: '（单位：%）' },
-        ]"
-        :rankings="rankings"
-      >
+      <ThreeMetrics :metrics="[
+        { title: '振动烈度排名', unit: '（单位：mm/s）' },
+        { title: '声音偏差值排名' },
+        { title: '温度排名', unit: '（单位：%）' },
+      ]" :rankings="rankings">
       </ThreeMetrics>
     </div>
 
-    <TrendWarningDeviceModal
-      v-model="showTrendWarningModal"
-      title="趋势预警设备详情"
-      mode="trend"
-      :count="trendWarningCount"
-    />
-    <TrendWarningDeviceModal
-      v-model="showFaultWarningModal"
-      title="故障报警设备详情"
-      mode="fault"
-      :count="faultAlertCount"
-    />
+    <TrendWarningDeviceModal v-model="showTrendWarningModal" title="趋势预警设备详情" mode="trend" :count="trendWarningCount" />
+    <TrendWarningDeviceModal v-model="showFaultWarningModal" title="故障报警设备详情" mode="fault" :count="faultAlertCount" />
   </div>
 </template>
 
@@ -50,7 +34,6 @@ import { getTenantId } from '@/api/tenant'
 import { getTop5Devices } from '@/api/modules/hardware'
 import { getAllStats } from '@/api/modules/stats'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
-import { useAlarmOverviewStore } from '@/stores/alarmOverview'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 
 interface RankingItem {
@@ -183,12 +166,6 @@ onMounted(() => {
     await router.isReady()
     if (router.currentRoute.value.name !== 'Dashboard') return
 
-    const alarmOverviewStore = useAlarmOverviewStore()
-    void alarmOverviewStore.start({
-      token: localStorage.getItem('token') ?? undefined,
-      tenantId: getTenantId() || undefined,
-    })
-
     const deviceTreeStore = useDeviceTreeStore()
     await deviceTreeStore.loadDeviceTreeData()
     if (router.currentRoute.value.name !== 'Dashboard') return
@@ -240,7 +217,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  useAlarmOverviewStore().stop()
   if (historyPrefetchTimerId) {
     clearTimeout(historyPrefetchTimerId)
     historyPrefetchTimerId = null

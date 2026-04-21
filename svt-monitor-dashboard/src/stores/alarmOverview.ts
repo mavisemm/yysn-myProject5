@@ -830,7 +830,11 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     }
   }
 
-  async function start(params?: { token?: string; tenantId?: string }) {
+  async function start(params?: {
+    token?: string
+    tenantId?: string
+    onIncomingEvent?: (payload: unknown) => void
+  }) {
     const tId = (params?.tenantId ?? getTenantId() ?? '').trim()
     if (!tId) return
 
@@ -877,6 +881,11 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
           if (wsClient !== pendingWsClient) return
           pendingWsClient.subscribeVibrationTopic(tId, (payload) => {
             upsertAlarmFromEvent(payload, 'ws')
+            try {
+              params?.onIncomingEvent?.(payload)
+            } catch (e) {
+              console.warn('预警总览 websocket onIncomingEvent 回调异常:', e)
+            }
           })
         })
         .catch((e) => {

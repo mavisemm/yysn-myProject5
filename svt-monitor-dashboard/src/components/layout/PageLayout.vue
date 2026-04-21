@@ -22,15 +22,22 @@
 </template>
 
 <script setup lang="ts">
-import { provide, ref } from 'vue'
+import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import MainHeader from './MainHeader.vue'
 import DeviceSidebar from './DeviceSidebar.vue'
 import { RouterView } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 import RealtimeBatchDialog from '@/components/alarm/RealtimeBatchDialog.vue'
 import HistoryBatchDialog from '@/components/alarm/HistoryBatchDialog.vue'
 import RealtimeAlarmBatchDialog from '@/components/alarm/RealtimeAlarmBatchDialog.vue'
 import HistoryAlarmBatchDialog from '@/components/alarm/HistoryAlarmBatchDialog.vue'
 import AlarmBatchViewModal from '@/components/alarm/AlarmBatchViewModal.vue'
+import { getTenantId } from '@/api/tenant'
+import { useAlarmOverviewStore } from '@/stores/alarmOverview'
+import { useAlarmBatchStore } from '@/stores/alarmBatch'
+import { useDeviceTreeStore } from '@/stores/deviceTree'
+import { resolveRealtimeDeviceKey } from '@/utils/realtimeAlarmNavigator'
 
 const backgroundMode = ref<'image' | 'navy' | 'solid'>('solid')
 provide('backgroundMode', backgroundMode)
@@ -51,6 +58,199 @@ const handleRealtimeView = (row: any) => openAlarmView(row)
 const handleHistoryView = (row: any) => openAlarmView(row)
 const handleRealtimeAlarmView = (row: any) => openAlarmView(row)
 const handleHistoryAlarmView = (row: any) => openAlarmView(row)
+
+const route = useRoute()
+const router = useRouter()
+const alarmOverviewStore = useAlarmOverviewStore()
+const alarmBatchStore = useAlarmBatchStore()
+const deviceTreeStore = useDeviceTreeStore()
+
+type IncomingAlarmPreview = {
+  alarmId: string
+  shopName: string
+  deviceName: string
+  pointName: string
+  pointNum: number
+  status: 'alarm' | 'warning'
+}
+
+const alarmDialogQueue: IncomingAlarmPreview[] = []
+let alarmDialogShowing = false
+
+function escapeHtml(input: string): string {
+  return String(input ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function safeParseJson(input: unknown): any {
+  if (!input) return undefined
+  if (typeof input === 'object') return input
+  if (typeof input !== 'string') return undefined
+  try {
+    return JSON.parse(input)
+  } catch {
+    return undefined
+  }
+}
+
+function normalizeIncomingAlarm(payload: any): IncomingAlarmPreview | null {
+  if (!payload || typeof payload !== 'object') return null
+  const hasEventTypeCode = 'eventTypeCode' in payload
+  const parsedData = safeParseJson((payload as any).dataJson)
+  const parsedRaw = safeParseJson((payload as any).rawDataJson)
+
+  const alarmId = String((payload as any).equipmentId ?? (payload as any).deviceId ?? '').trim()
+  if (!alarmId) return null
+
+  const pointNameRaw =
+    (payload as any).data?.pointName ??
+    parsedData?.pointName ??
+    parsedData?.pointname ??
+    parsedRaw?.pointName ??
+    parsedRaw?.pointname
+  const pointName = String(pointNameRaw ?? '').trim() || '未知点位'
+
+  const pointNum = (() => {
+    const fromName = pointName.match(/(\d+)/)
+    if (fromName) {
+      const n = Number(fromName[1])
+      if (Number.isFinite(n) && n > 0) return n
+    }
+    const ch = (payload as any).data?.channelNo ?? parsedData?.channelNo ?? parsedRaw?.channelNo
+    const channelNo = Number(ch)
+    return Number.isFinite(channelNo) && channelNo > 0 ? channelNo : 0
+  })()
+
+  const level = String((payload as any).data?.level ?? parsedData?.level ?? parsedRaw?.level ?? '').toUpperCase()
+  const alarmTypeCode = String((payload as any).alarmTypeCode ?? '').toUpperCase()
+  const status: 'alarm' | 'warning' =
+    hasEventTypeCode || level === 'WARNING' || level === 'WARN'
+      ? 'warning'
+      : alarmTypeCode === 'MACHINE_VIBRATION' || level === 'ALARM'
+        ? 'alarm'
+        : 'warning'
+
+  return {
+    alarmId,
+    shopName: String((payload as any).workshopName ?? parsedData?.shopName ?? parsedRaw?.shopName ?? '').trim() || '未知车间',
+    deviceName: String((payload as any).equipmentName ?? (payload as any).deviceName ?? '').trim() || alarmId,
+    pointName,
+    pointNum,
+    status,
+  }
+}
+
+async function goToDashboardWithTarget(item: IncomingAlarmPreview) {
+  await alarmBatchStore.ensureDropdowns()
+  const realtimeDeviceId = resolveRealtimeDeviceKey({
+    alarmId: item.alarmId,
+    pointNum: item.pointNum,
+    pointName: item.pointName,
+    deviceTreeData: deviceTreeStore.deviceTreeData ?? [],
+    deviceOptions: (alarmBatchStore.deviceNameList ?? []) as any[],
+  })
+
+  await router.push({ name: 'Dashboard' })
+  if (item.status === 'warning') {
+    alarmBatchStore.resetRealtime()
+    if (realtimeDeviceId) {
+      alarmBatchStore.realtimeQuery.deviceId = realtimeDeviceId
+    }
+    await alarmBatchStore.openRealtime()
+    return
+  }
+
+  alarmBatchStore.resetRealtimeAlarm()
+  if (realtimeDeviceId) {
+    alarmBatchStore.realtimeAlarmQuery.deviceId = realtimeDeviceId
+  }
+  await alarmBatchStore.openRealtimeAlarm()
+}
+
+async function showAlarmDialogQueue() {
+  if (alarmDialogShowing) return
+  alarmDialogShowing = true
+  try {
+    while (alarmDialogQueue.length) {
+      const item = alarmDialogQueue.shift()
+      if (!item) continue
+      const title = item.status === 'alarm' ? '新报警' : '新预警'
+      const actionText = item.status === 'alarm' ? '报警' : '预警'
+      const emphasisClass =
+        item.status === 'alarm' ? 'alarm-remind-dialog__emphasis--alarm' : 'alarm-remind-dialog__emphasis--warning'
+      const message = [
+        `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.shopName)}</span>`,
+        ' 的 ',
+        `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.deviceName)}</span>`,
+        ' 的 ',
+        `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.pointName)}</span>`,
+        ' 发生 ',
+        `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(actionText)}</span>`,
+      ].join('')
+      try {
+        await ElMessageBox.confirm(message, title, {
+          confirmButtonText: '查看',
+          cancelButtonText: '确定',
+          distinguishCancelAndClose: true,
+          type: 'warning',
+          customClass:
+            item.status === 'alarm'
+              ? 'alarm-remind-dialog alarm-remind-dialog--alarm'
+              : 'alarm-remind-dialog alarm-remind-dialog--warning',
+          dangerouslyUseHTMLString: true,
+        })
+        await goToDashboardWithTarget(item)
+      } catch {
+        // 用户点击“确定”或关闭弹窗，仅关闭当前提醒
+      }
+    }
+  } finally {
+    alarmDialogShowing = false
+  }
+}
+
+function enqueueIncomingAlarm(payload: unknown) {
+  if (route.name === 'Login') return
+  const normalized = normalizeIncomingAlarm(payload as any)
+  if (!normalized) return
+  alarmDialogQueue.push(normalized)
+  void showAlarmDialogQueue()
+}
+
+async function startGlobalAlarmStream() {
+  if (route.name === 'Login') return
+  if (!localStorage.getItem('token')) return
+  await alarmOverviewStore.start({
+    token: localStorage.getItem('token') ?? undefined,
+    tenantId: getTenantId() || undefined,
+    onIncomingEvent: enqueueIncomingAlarm,
+  })
+}
+
+onMounted(() => {
+  void startGlobalAlarmStream()
+})
+
+watch(
+  () => route.name,
+  (name) => {
+    if (name === 'Login') {
+      alarmOverviewStore.stop()
+      return
+    }
+    if (!localStorage.getItem('token')) return
+    void startGlobalAlarmStream()
+  },
+)
+
+onUnmounted(() => {
+  alarmOverviewStore.stop()
+  alarmDialogQueue.length = 0
+})
 </script>
 
 <style lang="scss" scoped>
@@ -224,5 +424,66 @@ const handleHistoryAlarmView = (row: any) => openAlarmView(row)
       min-width: 500px;
     }
   }
+}
+</style>
+
+<style lang="scss">
+.alarm-remind-dialog {
+  .el-message-box__status.el-icon {
+    display: none;
+  }
+
+  .el-message-box__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.alarm-remind-dialog--alarm {
+  .el-message-box__title::before {
+    content: '!';
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: #f56c6c;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+  }
+}
+
+.alarm-remind-dialog--warning {
+  .el-message-box__title::before {
+    content: '!';
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: #e6a23c;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+  }
+}
+
+.alarm-remind-dialog__emphasis {
+  font-size: 1.1em;
+  font-weight: 700;
+}
+
+.alarm-remind-dialog__emphasis--alarm {
+  color: #f56c6c;
+}
+
+.alarm-remind-dialog__emphasis--warning {
+  color: #e6a23c;
 }
 </style>
