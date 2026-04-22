@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { getTenantId } from '@/api/tenant'
 import { VibrationWsClient, type VibrationEventPayload } from '@/services/vibrationWs'
+import { SoundWarningWsClient } from '@/services/soundWarningWs'
 import { fetchVibrationAlarmsForOverview } from '@/api/modules/vibrationEvent'
 import { apiSoundAlarmFind, type EventRow } from '@/api/modules/alarmBatch'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
@@ -318,7 +319,8 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
   const connectedTenantId = ref('')
   const connecting = ref(false)
   const httpInitialized = ref(false)
-  let wsClient: VibrationWsClient | null = null
+  let vibrationWsClient: VibrationWsClient | null = null
+  let soundWsClient: SoundWarningWsClient | null = null
   let treeWatchStopper: (() => void) | null = null
   let treePrefilled = false
   // 用于排查“预警总览 HTTP 初始化 vs websocket 更新”展示时间差异
@@ -838,7 +840,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     const tId = (params?.tenantId ?? getTenantId() ?? '').trim()
     if (!tId) return
 
-    if (connectedTenantId.value === tId && wsClient) return
+    if (connectedTenantId.value === tId && vibrationWsClient && soundWsClient) return
 
     stop()
     alarms.value = []
@@ -870,27 +872,50 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
         )
       }
 
-      const pendingWsClient = new VibrationWsClient({
-        token: params?.token ?? localStorage.getItem('token') ?? undefined,
+      const token = params?.token ?? localStorage.getItem('token') ?? undefined
+      const pendingVibrationWsClient = new VibrationWsClient({
+        token,
       })
-      wsClient = pendingWsClient
+      const pendingSoundWsClient = new SoundWarningWsClient({
+        token,
+      })
+      vibrationWsClient = pendingVibrationWsClient
+      soundWsClient = pendingSoundWsClient
 
-      const wsReadyPromise = pendingWsClient
+      const vibrationWsReadyPromise = pendingVibrationWsClient
         .connect()
         .then(() => {
-          if (wsClient !== pendingWsClient) return
-          pendingWsClient.subscribeVibrationTopic(tId, (payload) => {
+          if (vibrationWsClient !== pendingVibrationWsClient) return
+          pendingVibrationWsClient.subscribeVibrationTopic(tId, (payload) => {
             upsertAlarmFromEvent(payload, 'ws')
             try {
               params?.onIncomingEvent?.(payload)
             } catch (e) {
-              console.warn('预警总览 websocket onIncomingEvent 回调异常:', e)
+              console.warn('预警总览振动 websocket onIncomingEvent 回调异常:', e)
             }
           })
         })
         .catch((e) => {
-          if (wsClient !== pendingWsClient) return
-          console.warn('预警总览 websocket 连接失败:', e)
+          if (vibrationWsClient !== pendingVibrationWsClient) return
+          console.warn('预警总览振动 websocket 连接失败:', e)
+        })
+
+      const soundWsReadyPromise = pendingSoundWsClient
+        .connect()
+        .then(() => {
+          if (soundWsClient !== pendingSoundWsClient) return
+          pendingSoundWsClient.subscribeSoundTopic(tId, (payload) => {
+            upsertAlarmFromEvent(payload, 'ws')
+            try {
+              params?.onIncomingEvent?.(payload)
+            } catch (e) {
+              console.warn('预警总览声音 websocket onIncomingEvent 回调异常:', e)
+            }
+          })
+        })
+        .catch((e) => {
+          if (soundWsClient !== pendingSoundWsClient) return
+          console.warn('预警总览声音 websocket 连接失败:', e)
         })
 
       try {
@@ -902,7 +927,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
         httpInitialized.value = true
       }
 
-      await wsReadyPromise
+      await Promise.all([vibrationWsReadyPromise, soundWsReadyPromise])
     } finally {
       connecting.value = false
     }
@@ -913,9 +938,13 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
     connectedTenantId.value = ''
     httpInitialized.value = false
     try {
-      wsClient?.disconnect()
+      vibrationWsClient?.disconnect()
     } catch {}
-    wsClient = null
+    vibrationWsClient = null
+    try {
+      soundWsClient?.disconnect()
+    } catch {}
+    soundWsClient = null
 
     treeWatchStopper?.()
     treeWatchStopper = null

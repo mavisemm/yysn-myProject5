@@ -30,16 +30,20 @@
                 popper-class="vibration-axis-select-dropdown">
                 <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
               </el-select>
+              <span class="freq-fullscreen-divider" aria-hidden="true" />
               <div class="freq-filter-inline">
                 <span class="freq-filter-label">频率筛选：</span>
                 <el-input-number v-model="fullscreenRangeMin" :min="safeFullscreenRangeDataMin"
-                  :max="safeFullscreenRangeDataMax" :precision="0" :step="1" size="small" placeholder="最小"
-                  controls-position="right" class="freq-filter-num" />
-                <span class="freq-filter-sep">—</span>
+                  :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最小"
+                  controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />
+                <span class="freq-filter-sep">~</span>
                 <el-input-number v-model="fullscreenRangeMax" :min="safeFullscreenRangeDataMin"
-                  :max="safeFullscreenRangeDataMax" :precision="0" :step="1" size="small" placeholder="最大"
-                  controls-position="right" class="freq-filter-num" />
+                  :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最大"
+                  controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />
+                <el-button size="small" type="primary" @click="confirmFullscreenRange">确认</el-button>
                 <el-button size="small" @click="resetFullscreenRange"> 重置 </el-button>
+                <span class="freq-filter-divider" aria-hidden="true" />
+                <span class="freq-filter-label">打标功能：</span>
                 <el-button size="small" :disabled="!currentPinnedPointId" @click="clearCurrentPinnedPoint">
                   清除当前标记
                 </el-button>
@@ -174,6 +178,8 @@ const timeAxis = ref<VibrationAxis>('X')
 
 const pointerBaseFreq = ref<number | null>(null)
 const FREQ_MATCH_DECIMALS = 6
+const FREQ_FILTER_PRECISION = 6
+const FREQ_FILTER_STEP = 1
 
 // y 轴刻度：最多保留小数点后两位（并去掉无意义的尾随 0）
 const formatYAxisTick = (v: number | string) => {
@@ -222,10 +228,10 @@ const buildHarmonicMarkLineData = (baseFreq: number) => {
   const hasExactPoint = (x: number) => pointMap.has(toFreqKey(x))
 
   const candidates: Array<{ name: string; x: number; color: string; requirePoint: boolean }> = [
-    { name: '1X', x: baseFreq, color: '#7ecba1', requirePoint: false },
-    { name: '2X', x: baseFreq * 2, color: '#60a5fa', requirePoint: true },
-    { name: '3X', x: baseFreq * 3, color: '#f59e0b', requirePoint: true },
-    { name: '4X', x: baseFreq * 4, color: '#f472b6', requirePoint: true },
+    { name: '', x: baseFreq, color: '#7ecba1', requirePoint: false },
+    { name: '', x: baseFreq * 2, color: '#60a5fa', requirePoint: true },
+    { name: '', x: baseFreq * 3, color: '#f59e0b', requirePoint: true },
+    { name: '', x: baseFreq * 4, color: '#f472b6', requirePoint: true },
   ]
 
   return candidates
@@ -969,8 +975,8 @@ const {
   rangeControlsXAxisIndex: computed(() => 0),
   rangeControlsMin: computed(() => undefined),
   rangeControlsMax: computed(() => undefined),
-  rangeControlsStep: computed(() => 1),
-  rangeControlsPrecision: computed(() => 0),
+  rangeControlsStep: computed(() => FREQ_FILTER_STEP),
+  rangeControlsPrecision: computed(() => FREQ_FILTER_PRECISION),
   rangeControlsDebounceMs: computed(() => 600),
   preserveDataZoom: computed(() => true),
   doDataZoom: ({ startValue, endValue }) => {
@@ -989,6 +995,7 @@ const {
   rangeMax: fullscreenRangeMax,
   rangeDataMin: fullscreenRangeDataMin,
   rangeDataMax: fullscreenRangeDataMax,
+  applyRange: applyFullscreenRange,
   resetRange: resetFullscreenRange,
   handleDataZoom: handleFullscreenDataZoom,
   dispose: disposeFullscreenRangeControls,
@@ -999,8 +1006,8 @@ const {
   rangeControlsXAxisIndex: computed(() => 0),
   rangeControlsMin: computed(() => undefined),
   rangeControlsMax: computed(() => undefined),
-  rangeControlsStep: computed(() => 1),
-  rangeControlsPrecision: computed(() => 0),
+  rangeControlsStep: computed(() => FREQ_FILTER_STEP),
+  rangeControlsPrecision: computed(() => FREQ_FILTER_PRECISION),
   rangeControlsDebounceMs: computed(() => 600),
   preserveDataZoom: computed(() => true),
   doDataZoom: ({ startValue, endValue }) => {
@@ -1013,6 +1020,10 @@ const {
     } catch { }
   },
 })
+
+const confirmFullscreenRange = () => {
+  applyFullscreenRange()
+}
 
 const safeFullscreenRangeDataMin = computed(() => {
   const v = Number(fullscreenRangeDataMin.value)
@@ -1226,12 +1237,32 @@ $vibration-axis-font-size: 12px;
 }
 
 .freq-filter-inline .freq-filter-num {
-  width: 92px;
+  width: 110px;
 }
 
 .freq-filter-inline .freq-filter-sep {
   color: rgba(255, 255, 255, 0.75);
   font-size: 12px;
+}
+
+.freq-filter-inline .freq-filter-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.28);
+  flex: 0 0 auto;
+}
+
+.freq-fullscreen-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: rgba(255, 255, 255, 0.28);
+  flex: 0 0 auto;
+}
+
+.freq-fullscreen-top .freq-filter-inline .el-button+.el-button {
+  margin-left: 0;
 }
 
 /* teleported 到 body 时必须高于全屏 Dialog，否则展开列表被挡在弹窗后面 */

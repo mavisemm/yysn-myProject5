@@ -1,37 +1,18 @@
 <template>
   <div ref="containerRef" class="common-echarts-wrapper">
     <div ref="chartRef" class="common-echarts-inner" />
-    <div
-      v-if="showResolvedRangeControls && !loading && !resolvedEmpty"
-      class="common-echarts-range-controls"
-      @mousedown.stop
-      @wheel.stop
-    >
+    <div v-if="showResolvedRangeControls && !loading && !resolvedEmpty" class="common-echarts-range-controls"
+      @mousedown.stop @wheel.stop>
       <span class="controls-label">{{ rangeControlsLabel }}</span>
-      <el-input-number
-        v-model="rangeMin"
-        class="range-input"
-        size="small"
-        :min="rangeDataMin"
-        :max="rangeDataMax"
-        :step="rangeControlsStep"
-        :precision="rangeControlsPrecision"
-        :controls="false"
-        controls-position="right"
-      />
+      <el-input-number v-model="rangeMin" class="range-input" size="small" :min="rangeDataMin" :max="rangeDataMax"
+        :step="rangeControlsStep" :precision="rangeControlsPrecision" :controls="false" controls-position="right"
+        @blur="applyRange" />
       <span class="controls-sep">{{ rangeControlsSepText }}</span>
-      <el-input-number
-        v-model="rangeMax"
-        class="range-input"
-        size="small"
-        :min="rangeDataMin"
-        :max="rangeDataMax"
-        :step="rangeControlsStep"
-        :precision="rangeControlsPrecision"
-        :controls="false"
-        controls-position="right"
-      />
+      <el-input-number v-model="rangeMax" class="range-input" size="small" :min="rangeDataMin" :max="rangeDataMax"
+        :step="rangeControlsStep" :precision="rangeControlsPrecision" :controls="false" controls-position="right"
+        @blur="applyRange" />
       <span v-if="rangeControlsUnit" class="controls-unit">{{ rangeControlsUnit }}</span>
+      <el-button size="small" type="primary" @click="applyRange">确认</el-button>
       <el-button size="small" @click="resetRange">重置</el-button>
     </div>
     <div v-if="loading" class="common-echarts-loading">
@@ -42,20 +23,10 @@
     </div>
   </div>
 
-  <el-dialog
-    v-if="enableFullscreenButton"
-    v-model="fullscreenVisible"
-    :fullscreen="true"
-    destroy-on-close
-    :append-to-body="true"
-    :modal-append-to-body="true"
-    class="common-echarts-fullscreen-dialog"
-    modal-class="common-echarts-fullscreen-modal"
-    :style="{ '--ce-fullscreen-bg': fullscreenBackgroundResolved }"
-    @opened="handleFullscreenOpened"
-    @close="handleFullscreenClosing"
-    @closed="handleFullscreenClosed"
-  >
+  <el-dialog v-if="enableFullscreenButton" v-model="fullscreenVisible" :fullscreen="true" destroy-on-close
+    :append-to-body="true" :modal-append-to-body="true" class="common-echarts-fullscreen-dialog"
+    modal-class="common-echarts-fullscreen-modal" :style="{ '--ce-fullscreen-bg': fullscreenBackgroundResolved }"
+    @opened="handleFullscreenOpened" @close="handleFullscreenClosing" @closed="handleFullscreenClosed">
     <template #header="{ titleId, titleClass }">
       <div class="common-echarts-fullscreen-header-inner">
         <span :id="titleId" :class="titleClass">{{ fullscreenTitleResolved }}</span>
@@ -195,7 +166,7 @@ let optionUpdateRaf: number | null = null
 type GroupRegistry = Map<string, Set<echarts.ECharts>>
 const linkageRegistry: GroupRegistry =
   (globalThis as any).__COMMON_ECHARTS_LINKAGE_REGISTRY__ ?? new Map()
-;(globalThis as any).__COMMON_ECHARTS_LINKAGE_REGISTRY__ = linkageRegistry
+  ; (globalThis as any).__COMMON_ECHARTS_LINKAGE_REGISTRY__ = linkageRegistry
 
 let linkageZoomCleanup: (() => void) | null = null
 let isSyncingZoom = false
@@ -612,7 +583,7 @@ const attachAutoYAxisListenerForFullscreen = () => {
   fullscreenAutoYAxisCleanup = () => {
     try {
       inst.off('datazoom', handler)
-    } catch {}
+    } catch { }
     if (fullscreenAutoYAxisTimer != null) {
       window.clearTimeout(fullscreenAutoYAxisTimer)
       fullscreenAutoYAxisTimer = null
@@ -685,12 +656,12 @@ const applyLinkageZoom = () => {
   }
 
   if (!props.linkageZoomOnly) {
-    ;(chartInstance.value as any).group = props.linkageGroup
+    ; (chartInstance.value as any).group = props.linkageGroup
     echarts.connect(props.linkageGroup as string)
     return
   }
 
-  ;(chartInstance.value as any).group = ''
+  ; (chartInstance.value as any).group = ''
   const groupId = props.linkageGroup as string
   const inst = chartInstance.value
   if (!linkageRegistry.has(groupId)) linkageRegistry.set(groupId, new Set())
@@ -735,7 +706,7 @@ const applyLinkageZoom = () => {
         if (other === inst) continue
         try {
           other.dispatchAction(action as any)
-        } catch {}
+        } catch { }
       }
     } finally {
       isSyncingZoom = false
@@ -746,7 +717,7 @@ const applyLinkageZoom = () => {
   linkageZoomCleanup = () => {
     try {
       inst.off('datazoom', handler)
-    } catch {}
+    } catch { }
     const set = linkageRegistry.get(groupId)
     if (set) {
       set.delete(inst)
@@ -1046,7 +1017,7 @@ const handleFullscreenOpened = async () => {
   if (fullscreenChartInstance.value) {
     try {
       fullscreenChartInstance.value.dispose()
-    } catch {}
+    } catch { }
     fullscreenChartInstance.value = null
   }
   try {
@@ -1072,7 +1043,7 @@ const handleFullscreenClosed = () => {
   if (fullscreenChartInstance.value) {
     try {
       fullscreenChartInstance.value.dispose()
-    } catch {}
+    } catch { }
     fullscreenChartInstance.value = null
   }
 }
@@ -1089,7 +1060,7 @@ onUnmounted(() => {
   if (fullscreenChartInstance.value) {
     try {
       fullscreenChartInstance.value.dispose()
-    } catch {}
+    } catch { }
     fullscreenChartInstance.value = null
   }
   if (fullscreenAutoYAxisCleanup) {
@@ -1248,7 +1219,7 @@ defineExpose({
   padding-right: 6px;
 }
 
-.common-echarts-fullscreen-header-inner > span {
+.common-echarts-fullscreen-header-inner>span {
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;

@@ -32,10 +32,11 @@
         fullscreen-background="#142060">
         <template #fullscreen-body-top>
           <div class="waterfall-fullscreen-filters">
-            <el-select v-model="waterfallAxis" class="waterfall-axis-select" size="small" teleported
-              :show-arrow="false" popper-class="waterfall-axis-select-dropdown">
+            <el-select v-model="waterfallAxis" class="waterfall-axis-select" size="small" teleported :show-arrow="false"
+              popper-class="waterfall-axis-select-dropdown">
               <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
             </el-select>
+            <span class="waterfall-filter-divider" aria-hidden="true" />
             <div class="interval-input">
               <span class="interval-label">间隔</span>
               <el-input-number v-model="intervalHours" :min="0.25" :max="24" :step="0.25" :precision="2" size="small"
@@ -43,11 +44,12 @@
               <span class="interval-unit">小时</span>
             </div>
             <CommonDateTimePicker v-model="dateRange" width="320px" />
+            <span class="waterfall-filter-divider" aria-hidden="true" />
             <div class="freq-filter">
               <span class="freq-filter-label">频率筛选：</span>
               <el-input-number v-model="freqFilterMin" :min="freqAxisDomain.min" :max="freqAxisDomain.max"
                 :precision="0" :step="1" size="small" placeholder="最小" controls-position="right" class="freq-num" />
-              <span class="freq-sep">—</span>
+              <span class="freq-sep">~</span>
               <el-input-number v-model="freqFilterMax" :min="freqAxisDomain.min" :max="freqAxisDomain.max"
                 :precision="0" :step="1" size="small" placeholder="最大" controls-position="right" class="freq-num" />
               <el-button type="primary" size="small" class="freq-apply-btn" @click="applyFreqFilter">
@@ -88,7 +90,7 @@ const freqFilterMax = ref<number | undefined>(undefined)
 /** null 表示不过滤，使用接口返回全量频率；否则为闭区间 [min,max]（已与输入对齐） */
 const freqDisplayRange = ref<{ min: number; max: number } | null>(null)
 /** 频域 x 轴刻度间隔（Hz） */
-const freqAxisTickInterval = 20
+const freqAxisTickInterval = 10
 const axisOptions: { label: string; value: VibrationAxis }[] = [
   { label: 'X轴', value: 'X' },
   { label: 'Y轴', value: 'Y' },
@@ -301,7 +303,7 @@ const waterfallOption = computed<EChartsOption>(() => {
   const freqSplitNumber =
     freqSpan > 0 ? Math.max(1, Math.round(freqSpan / freqAxisTickInterval)) : 1
   // 仍保持刻度线每 20Hz，但坐标轴文字每隔若干个刻度显示一次，避免全屏文字过密
-  const freqAxisLabelEveryTicks = 5 // 20Hz * 2 = 40Hz 显示一条文字
+  const freqAxisLabelEveryTicks = 5 // 10Hz * 5 = 50Hz 显示一条文字
   return {
     tooltip: {
       show: true,
@@ -649,6 +651,18 @@ onUnmounted(() => {
 
 .waterfall-fullscreen-filters .freq-apply-btn {
   padding: 0 12px;
+}
+
+.waterfall-fullscreen-filters .waterfall-filter-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: rgba(255, 255, 255, 0.28);
+  flex: 0 0 auto;
+}
+
+.waterfall-fullscreen-filters .el-button+.el-button {
+  margin-left: 0;
 }
 
 .waterfall-axis-select-dropdown.el-popper {
