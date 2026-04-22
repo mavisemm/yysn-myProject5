@@ -75,6 +75,15 @@ export function useRangeControls(config: UseRangeControlsConfig) {
     const shouldPreserveDataZoom = computed(
         () => !!config.preserveDataZoom.value || !!config.showRangeControls.value
     );
+    const isCategoryAxis = computed(() => {
+        const opt = config.option.value as any;
+        const xAxis = opt?.xAxis;
+        const idx = config.rangeControlsXAxisIndex.value ?? 0;
+        const axis = Array.isArray(xAxis) ? xAxis[idx] : xAxis;
+        const axisType = axis?.type;
+        if (typeof axisType === 'string') return axisType === 'category';
+        return Array.isArray(axis?.data);
+    });
 
     const applyRange = () => {
         if (!rangeAxisAllFinite.value) return;
@@ -94,22 +103,28 @@ export function useRangeControls(config: UseRangeControlsConfig) {
         const nums = rangeAxisNumsAll.value;
         if (!raw.length || raw.length !== nums.length) return;
 
-        let startIdx = nums.findIndex(v => v >= minV);
-        if (startIdx === -1) startIdx = 0;
+        let startValue: any;
+        let endValue: any;
+        if (isCategoryAxis.value) {
+            let startIdx = nums.findIndex(v => v >= minV);
+            if (startIdx === -1) startIdx = 0;
 
-        let endIdx = -1;
-        for (let i = nums.length - 1; i >= 0; i--) {
-            const v = nums[i];
-            if (typeof v === 'number' && v <= maxV) {
-                endIdx = i;
-                break;
+            let endIdx = -1;
+            for (let i = nums.length - 1; i >= 0; i--) {
+                const v = nums[i];
+                if (typeof v === 'number' && v <= maxV) {
+                    endIdx = i;
+                    break;
+                }
             }
+            if (endIdx === -1) endIdx = nums.length - 1;
+            if (startIdx > endIdx) startIdx = endIdx;
+            startValue = raw[startIdx] ?? raw[0];
+            endValue = raw[endIdx] ?? raw[raw.length - 1];
+        } else {
+            startValue = minV;
+            endValue = maxV;
         }
-        if (endIdx === -1) endIdx = nums.length - 1;
-        if (startIdx > endIdx) startIdx = endIdx;
-
-        const startValue = raw[startIdx] ?? raw[0];
-        const endValue = raw[endIdx] ?? raw[raw.length - 1];
         if (typeof startValue === 'undefined' || typeof endValue === 'undefined') return;
 
         zoomRange.value = { startValue, endValue };
@@ -200,6 +215,30 @@ export function useRangeControls(config: UseRangeControlsConfig) {
         const batch = Array.isArray(params?.batch) ? params.batch[0] : params;
         const startValue = batch?.startValue;
         const endValue = batch?.endValue;
+
+        if (!isCategoryAxis.value) {
+            const sNum = Number(startValue);
+            const eNum = Number(endValue);
+            if (Number.isFinite(sNum) && Number.isFinite(eNum)) {
+                const precision = config.rangeControlsPrecision.value ?? 0;
+                let minV = Math.max(rangeDataMin.value, Math.min(rangeDataMax.value, sNum));
+                let maxV = Math.max(rangeDataMin.value, Math.min(rangeDataMax.value, eNum));
+                if (minV > maxV) [minV, maxV] = [maxV, minV];
+
+                suppressDebouncedApply.value = true;
+                if (debouncedApplyTimer) {
+                    clearTimeout(debouncedApplyTimer);
+                    debouncedApplyTimer = null;
+                }
+                rangeMin.value = roundToPrecision(minV, precision);
+                rangeMax.value = roundToPrecision(maxV, precision);
+                zoomRange.value = { startValue: minV, endValue: maxV };
+                setTimeout(() => {
+                    suppressDebouncedApply.value = false;
+                }, 0);
+                return;
+            }
+        }
 
         const resolveIdx = (v: any, fallbackIdx: number) => {
             if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v < raw.length) return v;

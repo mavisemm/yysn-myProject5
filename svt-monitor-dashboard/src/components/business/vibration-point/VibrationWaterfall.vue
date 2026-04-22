@@ -3,45 +3,20 @@
     <div class="card-header">
       <div class="card-header-leading">
         <div class="card-title app-section-title">频域瀑布图</div>
-        <el-select
-          v-model="waterfallAxis"
-          class="waterfall-axis-select"
-          size="small"
-          teleported
-          :show-arrow="false"
-          popper-class="waterfall-axis-select-dropdown"
-        >
-          <el-option
-            v-for="opt in axisOptions"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
+        <el-select v-model="waterfallAxis" class="waterfall-axis-select" size="small" teleported :show-arrow="false"
+          popper-class="waterfall-axis-select-dropdown">
+          <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
         </el-select>
       </div>
       <div class="time-section">
         <div class="interval-input">
           <div class="interval-left">
             <span class="interval-label">间隔</span>
-            <el-input-number
-              v-model="intervalHours"
-              :min="0.25"
-              :max="24"
-              :step="0.25"
-              :precision="2"
-              size="small"
-              placeholder="小时"
-              controls-position="right"
-              class="interval-num"
-            />
+            <el-input-number v-model="intervalHours" :min="0.25" :max="24" :step="0.25" :precision="2" size="small"
+              placeholder="小时" controls-position="right" class="interval-num" />
             <span class="interval-unit">小时</span>
           </div>
-          <el-button
-            class="waterfall-fullscreen-btn"
-            text
-            size="large"
-            @click="openWaterfallFullscreen"
-          >
+          <el-button class="waterfall-fullscreen-btn" text size="large" @click="openWaterfallFullscreen">
             全屏显示
             <el-icon>
               <FullScreen />
@@ -52,83 +27,30 @@
       </div>
     </div>
     <div class="chart-container">
-      <CommonEcharts
-        ref="waterfallChartRef"
-        :option="waterfallOption"
-        :enable-data-zoom="false"
-        :not-merge="true"
-        @fullscreen-chart-ready="onWaterfallFullscreenChartReady"
-        use-gl
-        enable-fullscreen
-        fullscreen-title="频域瀑布图"
-        fullscreen-background="#142060"
-      >
-        <template #fullscreen-toolbar>
-          <el-select
-            v-model="waterfallAxis"
-            class="waterfall-axis-select"
-            size="small"
-            teleported
-            :show-arrow="false"
-            popper-class="waterfall-axis-select-dropdown"
-          >
-            <el-option
-              v-for="opt in axisOptions"
-              :key="opt.value"
-              :label="opt.label"
-              :value="opt.value"
-            />
-          </el-select>
-        </template>
+      <CommonEcharts ref="waterfallChartRef" :option="waterfallOption" :enable-data-zoom="false" :not-merge="true"
+        @fullscreen-chart-ready="onWaterfallFullscreenChartReady" use-gl enable-fullscreen fullscreen-title="频域瀑布图"
+        fullscreen-background="#142060">
         <template #fullscreen-body-top>
           <div class="waterfall-fullscreen-filters">
+            <el-select v-model="waterfallAxis" class="waterfall-axis-select" size="small" teleported
+              :show-arrow="false" popper-class="waterfall-axis-select-dropdown">
+              <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
             <div class="interval-input">
               <span class="interval-label">间隔</span>
-              <el-input-number
-                v-model="intervalHours"
-                :min="0.25"
-                :max="24"
-                :step="0.25"
-                :precision="2"
-                size="small"
-                placeholder="小时"
-                controls-position="right"
-                class="interval-num"
-              />
+              <el-input-number v-model="intervalHours" :min="0.25" :max="24" :step="0.25" :precision="2" size="small"
+                placeholder="小时" controls-position="right" class="interval-num" />
               <span class="interval-unit">小时</span>
             </div>
             <CommonDateTimePicker v-model="dateRange" width="320px" />
             <div class="freq-filter">
-              <span class="freq-filter-label">频率筛选</span>
-              <el-input-number
-                v-model="freqFilterMin"
-                :min="freqAxisDomain.min"
-                :max="freqAxisDomain.max"
-                :precision="0"
-                :step="1"
-                size="small"
-                placeholder="最小"
-                controls-position="right"
-                class="freq-num"
-              />
+              <span class="freq-filter-label">频率筛选：</span>
+              <el-input-number v-model="freqFilterMin" :min="freqAxisDomain.min" :max="freqAxisDomain.max"
+                :precision="0" :step="1" size="small" placeholder="最小" controls-position="right" class="freq-num" />
               <span class="freq-sep">—</span>
-              <el-input-number
-                v-model="freqFilterMax"
-                :min="freqAxisDomain.min"
-                :max="freqAxisDomain.max"
-                :precision="0"
-                :step="1"
-                size="small"
-                placeholder="最大"
-                controls-position="right"
-                class="freq-num"
-              />
-              <el-button
-                type="primary"
-                size="small"
-                class="freq-apply-btn"
-                @click="applyFreqFilter"
-              >
+              <el-input-number v-model="freqFilterMax" :min="freqAxisDomain.min" :max="freqAxisDomain.max"
+                :precision="0" :step="1" size="small" placeholder="最大" controls-position="right" class="freq-num" />
+              <el-button type="primary" size="small" class="freq-apply-btn" @click="applyFreqFilter">
                 应用
               </el-button>
               <el-button size="small" @click="resetFreqFilter"> 重置 </el-button>
@@ -207,7 +129,7 @@ const resolvePointDeviceId = (rid: string): string => {
 const pointDeviceId = computed(() => resolvePointDeviceId(receiverIdFromParams.value))
 
 const openWaterfallFullscreen = () => {
-  ;(waterfallChartRef.value as any)?.openFullscreen?.()
+  ; (waterfallChartRef.value as any)?.openFullscreen?.()
 }
 
 const applyFreqFilter = () => {
@@ -581,7 +503,7 @@ onUnmounted(() => {
       gap: 8px;
 
       .interval-input {
-        font-size: 0.9rem;
+        font-size: 14px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -612,6 +534,7 @@ onUnmounted(() => {
       color: #fff !important;
       padding: 0 !important;
       gap: 4px;
+      font-size: 0.8rem;
     }
 
     :deep(.waterfall-fullscreen-btn:hover),
@@ -625,6 +548,7 @@ onUnmounted(() => {
     :deep(.waterfall-fullscreen-btn .el-icon) {
       color: #fff !important;
       margin-left: 4px;
+      font-size: 0.8rem;
     }
   }
 
@@ -670,18 +594,18 @@ onUnmounted(() => {
 .waterfall-fullscreen-filters {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 12px;
   width: 100%;
   flex-wrap: nowrap;
 }
 
-.waterfall-fullscreen-filters > * {
+.waterfall-fullscreen-filters>* {
   flex: 0 0 auto;
 }
 
 .waterfall-fullscreen-filters .interval-input {
-  font-size: 0.9rem;
+  font-size: 14px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -711,6 +635,7 @@ onUnmounted(() => {
 
 .waterfall-fullscreen-filters .freq-filter-label {
   color: #fff;
+  font-size: 0.8rem;
 }
 
 .waterfall-fullscreen-filters .freq-num {

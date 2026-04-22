@@ -4,13 +4,8 @@
       <div class="chart-item">
         <div class="chart-title-row">
           <div class="chart-title app-section-title">能量曲线</div>
-          <el-button
-            class="energy-fullscreen-btn"
-            text
-            size="large"
-            :disabled="!hasAnyChartData"
-            @click="energyFullscreenVisible = true"
-          >
+          <el-button class="energy-fullscreen-btn" text size="large" :disabled="!hasAnyChartData"
+            @click="energyFullscreenVisible = true">
             全屏显示
             <el-icon>
               <FullScreen />
@@ -18,18 +13,9 @@
           </el-button>
         </div>
         <div class="chart-container">
-          <CommonEcharts
-            ref="energyChartRef"
-            :option="energyOption"
-            linkage-group="sound-point-charts"
-            :enable-linkage-zoom="true"
-            :enable-wheel-zoom="true"
-            :tooltip-follow-mouse="true"
-            :not-merge="true"
-            :enable-data-zoom="false"
-            :auto-y-axis-on-zoom="true"
-            @chart-ready="onEnergyChartReady"
-          />
+          <CommonEcharts ref="energyChartRef" :option="energyOption" linkage-group="sound-point-charts"
+            :enable-linkage-zoom="true" :enable-wheel-zoom="true" :tooltip-follow-mouse="true" :not-merge="true"
+            :enable-data-zoom="false" :auto-y-axis-on-zoom="true" @chart-ready="onEnergyChartReady" />
         </div>
       </div>
       <div class="chart-item">
@@ -37,118 +23,48 @@
           <div class="chart-title app-section-title">密度曲线</div>
         </div>
         <div class="chart-container">
-          <CommonEcharts
-            ref="densityChartRef"
-            :option="densityOption"
-            linkage-group="sound-point-charts"
-            :enable-linkage-zoom="true"
-            :enable-wheel-zoom="true"
-            :tooltip-follow-mouse="true"
-            :not-merge="true"
-            :enable-data-zoom="false"
-            :auto-y-axis-on-zoom="true"
-            @chart-ready="onDensityChartReady"
-          />
+          <CommonEcharts ref="densityChartRef" :option="densityOption" linkage-group="sound-point-charts"
+            :enable-linkage-zoom="true" :enable-wheel-zoom="true" :tooltip-follow-mouse="true" :not-merge="true"
+            :enable-data-zoom="false" :auto-y-axis-on-zoom="true" @chart-ready="onDensityChartReady" />
         </div>
       </div>
     </div>
 
     <div v-if="true" class="range-controls-bar" @mousedown.stop @wheel.stop>
-      <span class="controls-label">频率范围：</span>
-      <el-input-number
-        v-model="rangeMin"
-        class="range-input"
-        size="small"
-        :min="safeRangeDataMin"
-        :max="safeRangeDataMax"
-        :step="0.1"
-        :precision="1"
-        controls-position="right"
-        :disabled="rangeControlsDisabled"
-        @change="applyRangeIfEnabled"
-      />
+      <span class="controls-label">频率筛选：</span>
+      <el-input-number v-model="rangeMin" class="range-input" size="small" :min="safeRangeDataMin"
+        :max="safeRangeDataMax" :step="0.1" :precision="1" controls-position="right" :disabled="rangeControlsDisabled"
+        @change="applyRangeIfEnabled" />
       <span class="controls-sep">~</span>
-      <el-input-number
-        v-model="rangeMax"
-        class="range-input"
-        size="small"
-        :min="safeRangeDataMin"
-        :max="safeRangeDataMax"
-        :step="0.1"
-        :precision="1"
-        controls-position="right"
-        :disabled="rangeControlsDisabled"
-        @change="applyRangeIfEnabled"
-      />
+      <el-input-number v-model="rangeMax" class="range-input" size="small" :min="safeRangeDataMin"
+        :max="safeRangeDataMax" :step="0.1" :precision="1" controls-position="right" :disabled="rangeControlsDisabled"
+        @change="applyRangeIfEnabled" />
       <span class="controls-unit">Hz</span>
-      <el-button
-        size="small"
-        class="reset-btn"
-        :disabled="rangeControlsDisabled"
-        @click="resetRangeIfEnabled"
-        >重置</el-button
-      >
-      <el-button
-        type="primary"
-        size="small"
-        class="trend-analysis-btn"
-        @mousedown.stop
-        @wheel.stop
-        @click="handleTrendAnalysisClick"
-      >
+      <el-button size="small" class="reset-btn" :disabled="rangeControlsDisabled"
+        @click="resetRangeIfEnabled">重置</el-button>
+      <el-button type="primary" size="small" class="trend-analysis-btn" @mousedown.stop @wheel.stop
+        @click="handleTrendAnalysisClick">
         点位数据趋势分析
       </el-button>
     </div>
   </div>
 
-  <el-dialog
-    v-model="energyFullscreenVisible"
-    title="能量 / 密度曲线"
-    fullscreen
-    destroy-on-close
-    append-to-body
-    align-center
-    class="sound-energy-fullscreen-dialog"
-    modal-class="sound-energy-fullscreen-modal"
-    @opened="onEnergyFsOpened"
-    @closed="onEnergyFsClosed"
-  >
+  <el-dialog v-model="energyFullscreenVisible" title="能量 / 密度曲线" fullscreen destroy-on-close append-to-body align-center
+    class="sound-energy-fullscreen-dialog" modal-class="sound-energy-fullscreen-modal" @opened="onEnergyFsOpened"
+    @closed="onEnergyFsClosed">
     <div class="energy-fs-dialog-inner">
       <div class="energy-fs-controls-top" @mousedown.stop @wheel.stop>
-        <span class="controls-label">频率范围：</span>
-        <el-input-number
-          v-model="rangeMin"
-          class="range-input"
-          size="small"
-          :min="safeRangeDataMin"
-          :max="safeRangeDataMax"
-          :step="0.1"
-          :precision="1"
-          controls-position="right"
-          :disabled="rangeControlsDisabled"
-          @change="applyRangeIfEnabled"
-        />
+        <span class="controls-label">频率筛选：</span>
+        <el-input-number v-model="fullscreenRangeMin" class="range-input" size="small" :min="safeFullscreenRangeDataMin"
+          :max="safeFullscreenRangeDataMax" :step="0.1" :precision="1" controls-position="right"
+          :disabled="fullscreenRangeControlsDisabled" @change="applyFullscreenRangeIfEnabled" />
         <span class="controls-sep">~</span>
-        <el-input-number
-          v-model="rangeMax"
-          class="range-input"
-          size="small"
-          :min="safeRangeDataMin"
-          :max="safeRangeDataMax"
-          :step="0.1"
-          :precision="1"
-          controls-position="right"
-          :disabled="rangeControlsDisabled"
-          @change="applyRangeIfEnabled"
-        />
+        <el-input-number v-model="fullscreenRangeMax" class="range-input" size="small" :min="safeFullscreenRangeDataMin"
+          :max="safeFullscreenRangeDataMax" :step="0.1" :precision="1" controls-position="right"
+          :disabled="fullscreenRangeControlsDisabled" @change="applyFullscreenRangeIfEnabled" />
         <span class="controls-unit">Hz</span>
-        <el-button
-          size="small"
-          class="reset-btn"
-          :disabled="rangeControlsDisabled"
-          @click="resetRangeIfEnabled"
-          >重置</el-button
-        >
+        <el-button size="small" class="reset-btn" :disabled="fullscreenRangeControlsDisabled"
+          @click="resetFullscreenRangeIfEnabled">重置</el-button>
       </div>
       <div class="energy-fs-charts-stack">
         <div class="energy-fs-chart-pane">
@@ -206,7 +122,6 @@ const energyFullscreenChartInstance = shallowRef<echarts.ECharts | null>(null)
 const densityFullscreenChartInstance = shallowRef<echarts.ECharts | null>(null)
 let fsChartDisposers: Array<() => void> | null = null
 const fsLinkGroup = 'sound-point-energy-density-fs-link-group'
-let fsZoomSyncing = false
 
 const chartAxisColor = computed(() => '#fff')
 const chartSplitLineColor = computed(() => 'rgba(150,150,150, 0.2)')
@@ -401,15 +316,15 @@ const tryEmitChartInit = () => {
       const handler = (params: any) => {
         handleDataZoom(params)
       }
-      ;(energy as any).on('datazoom', handler)
+        ; (energy as any).on('datazoom', handler)
       energyDataZoomCleanup = () => {
-        ;(energy as any).off('datazoom', handler)
+        ; (energy as any).off('datazoom', handler)
       }
     }
   }
 }
 
-const updateCharts = () => {}
+const updateCharts = () => { }
 
 defineExpose({ updateCharts })
 
@@ -437,8 +352,6 @@ const {
   doDataZoom: ({ startValue, endValue }) => {
     const energyInstance = energyChartRef.value?.chartInstance
     const densityInstance = densityChartRef.value?.chartInstance
-    const fsEnergy = energyFullscreenChartInstance.value
-    const fsDensity = densityFullscreenChartInstance.value
     const payload: any = { type: 'dataZoom', startValue, endValue }
     const safeDispatch = (instance: any) => {
       if (!instance) return
@@ -451,6 +364,42 @@ const {
     }
     safeDispatch(energyInstance)
     safeDispatch(densityInstance)
+  },
+})
+
+const {
+  rangeMin: fullscreenRangeMin,
+  rangeMax: fullscreenRangeMax,
+  rangeDataMin: fullscreenRangeDataMin,
+  rangeDataMax: fullscreenRangeDataMax,
+  applyRange: applyFullscreenRange,
+  resetRange: resetFullscreenRange,
+  handleDataZoom: handleFullscreenDataZoom,
+  dispose: disposeFullscreenRangeControls,
+} = useRangeControls({
+  option: energyOption,
+  showRangeControls: computed(() => true),
+  rangeControlsData: computed(() => freqsRaw.value || []),
+  rangeControlsXAxisIndex: computed(() => 0),
+  rangeControlsMin: computed(() => undefined),
+  rangeControlsMax: computed(() => undefined),
+  rangeControlsStep: computed(() => 0.1),
+  rangeControlsPrecision: computed(() => 1),
+  rangeControlsDebounceMs: computed(() => 600),
+  preserveDataZoom: computed(() => true),
+  doDataZoom: ({ startValue, endValue }) => {
+    const fsEnergy = energyFullscreenChartInstance.value
+    const fsDensity = densityFullscreenChartInstance.value
+    const payload: any = { type: 'dataZoom', startValue, endValue }
+    const safeDispatch = (instance: any) => {
+      if (!instance) return
+      try {
+        if (typeof instance.isDisposed === 'function' && instance.isDisposed()) return
+        instance.dispatchAction(payload)
+      } catch (e) {
+        console.warn('[SoundPointCharts] fullscreen dataZoom dispatch failed:', e)
+      }
+    }
     safeDispatch(fsEnergy)
     safeDispatch(fsDensity)
   },
@@ -465,6 +414,15 @@ const safeRangeDataMax = computed(() => {
   if (Number.isFinite(v) && v >= safeRangeDataMin.value) return v
   return safeRangeDataMin.value
 })
+const safeFullscreenRangeDataMin = computed(() => {
+  const v = Number(fullscreenRangeDataMin.value)
+  return Number.isFinite(v) ? v : 0
+})
+const safeFullscreenRangeDataMax = computed(() => {
+  const v = Number(fullscreenRangeDataMax.value)
+  if (Number.isFinite(v) && v >= safeFullscreenRangeDataMin.value) return v
+  return safeFullscreenRangeDataMin.value
+})
 
 const applyRangeIfEnabled = () => {
   if (rangeControlsDisabled.value) return
@@ -473,6 +431,15 @@ const applyRangeIfEnabled = () => {
 const resetRangeIfEnabled = () => {
   if (rangeControlsDisabled.value) return
   resetRange()
+}
+const fullscreenRangeControlsDisabled = computed(() => !hasAnyChartData.value)
+const applyFullscreenRangeIfEnabled = () => {
+  if (fullscreenRangeControlsDisabled.value) return
+  applyFullscreenRange()
+}
+const resetFullscreenRangeIfEnabled = () => {
+  if (fullscreenRangeControlsDisabled.value) return
+  resetFullscreenRange()
 }
 
 const patchSoundOptionForFsDialog = (opt: EChartsOption): EChartsOption => {
@@ -487,89 +454,6 @@ const patchSoundOptionForFsDialog = (opt: EChartsOption): EChartsOption => {
     }
   }
   return next as EChartsOption
-}
-
-const buildDataZoomActionFromMainEnergy = (): Record<string, unknown> | null => {
-  const main = energyChartRef.value?.chartInstance
-  if (!main) return null
-  try {
-    if (typeof main.isDisposed === 'function' && main.isDisposed()) return null
-    const opt = main.getOption() as any
-    const dzs = opt.dataZoom
-    const d0 = Array.isArray(dzs) ? dzs[0] : dzs
-    if (!d0 || typeof d0 !== 'object') return null
-    const action: Record<string, unknown> = { type: 'dataZoom', xAxisIndex: 0 }
-    if (typeof d0.startValue !== 'undefined') action.startValue = d0.startValue
-    if (typeof d0.endValue !== 'undefined') action.endValue = d0.endValue
-    if (typeof d0.start !== 'undefined' && typeof action.startValue === 'undefined') {
-      action.start = d0.start
-      action.end = d0.end
-    }
-    return action
-  } catch {
-    return null
-  }
-}
-
-const syncDataZoomFromMainToFsCharts = () => {
-  const action = buildDataZoomActionFromMainEnergy()
-  if (!action) return
-  const targets = [energyFullscreenChartInstance.value, densityFullscreenChartInstance.value]
-  for (const fs of targets) {
-    if (!fs) continue
-    try {
-      if (typeof fs.isDisposed === 'function' && fs.isDisposed()) continue
-      fs.dispatchAction(action as any)
-    } catch {
-      //
-    }
-  }
-}
-
-const syncDataZoomFromParamsToMainCharts = (params: any) => {
-  if (fsZoomSyncing) return
-  fsZoomSyncing = true
-  try {
-    const batch0 = Array.isArray(params?.batch) ? params.batch[0] : null
-    const payload = batch0 && typeof batch0 === 'object' ? batch0 : params
-    if (!payload || typeof payload !== 'object') return
-
-    const action: Record<string, any> = { type: 'dataZoom', xAxisIndex: 0 }
-    if (
-      typeof (payload as any).startValue !== 'undefined' ||
-      typeof (payload as any).endValue !== 'undefined'
-    ) {
-      if (typeof (payload as any).startValue !== 'undefined')
-        action.startValue = (payload as any).startValue
-      if (typeof (payload as any).endValue !== 'undefined')
-        action.endValue = (payload as any).endValue
-    } else {
-      if (typeof (payload as any).start !== 'undefined') action.start = (payload as any).start
-      if (typeof (payload as any).end !== 'undefined') action.end = (payload as any).end
-    }
-    if (
-      typeof action.start === 'undefined' &&
-      typeof action.end === 'undefined' &&
-      typeof action.startValue === 'undefined' &&
-      typeof action.endValue === 'undefined'
-    ) {
-      return
-    }
-
-    const mainEnergy = energyChartRef.value?.chartInstance
-    const mainDensity = densityChartRef.value?.chartInstance
-    for (const inst of [mainEnergy, mainDensity]) {
-      if (!inst) continue
-      try {
-        if (typeof inst.isDisposed === 'function' && inst.isDisposed()) continue
-        inst.dispatchAction(action as any)
-      } catch {
-        //
-      }
-    }
-  } finally {
-    fsZoomSyncing = false
-  }
 }
 
 const disposeEnergyFsChart = () => {
@@ -615,8 +499,8 @@ const onEnergyFsOpened = async () => {
     energyFullscreenChartInstance.value = instE
     densityFullscreenChartInstance.value = instD
 
-    ;(instE as any).group = fsLinkGroup
-    ;(instD as any).group = fsLinkGroup
+      ; (instE as any).group = fsLinkGroup
+      ; (instD as any).group = fsLinkGroup
     echarts.connect(fsLinkGroup)
     disposers.push(() => {
       try {
@@ -628,11 +512,9 @@ const onEnergyFsOpened = async () => {
 
     instE.setOption(patchSoundOptionForFsDialog(energyOption.value) as any, { notMerge: true })
     instD.setOption(patchSoundOptionForFsDialog(densityOption.value) as any, { notMerge: true })
-    syncDataZoomFromMainToFsCharts()
 
     const dzHandler = (params: any) => {
-      handleDataZoom(params)
-      syncDataZoomFromParamsToMainCharts(params)
+      handleFullscreenDataZoom(params)
     }
     instE.on('datazoom', dzHandler)
     instD.on('datazoom', dzHandler)
@@ -683,7 +565,6 @@ watch([energyOption, densityOption], () => {
     if (dInst && !(dInst.isDisposed && dInst.isDisposed())) {
       dInst.setOption(patchSoundOptionForFsDialog(densityOption.value) as any, { notMerge: true })
     }
-    syncDataZoomFromMainToFsCharts()
   } catch {
     //
   }
@@ -695,6 +576,7 @@ onUnmounted(() => {
     energyDataZoomCleanup = null
   }
   disposeRangeControls()
+  disposeFullscreenRangeControls()
   disposeEnergyFsChart()
 })
 </script>
@@ -771,11 +653,13 @@ onUnmounted(() => {
         padding: 0 !important;
         gap: 4px;
         color: rgba(255, 255, 255, 0.95) !important;
+        font-size: 0.8rem;
       }
 
       :deep(.energy-fullscreen-btn .el-icon) {
         color: rgba(255, 255, 255, 0.95);
         margin-left: 4px;
+        font-size: 0.8rem;
       }
 
       :deep(.energy-fullscreen-btn:hover .el-icon),
@@ -847,10 +731,7 @@ onUnmounted(() => {
   .controls-unit {
     white-space: nowrap;
     opacity: 0.9;
-  }
-
-  .controls-label {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
   }
 
   :deep(.el-input-number.range-input) {

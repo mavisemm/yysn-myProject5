@@ -4,20 +4,9 @@
       <div class="card-header">
         <div class="card-header-leading">
           <div class="card-title app-section-title">振动速度频域图</div>
-          <el-select
-            v-model="freqAxis"
-            class="vibration-axis-select"
-            size="small"
-            teleported
-            :show-arrow="false"
-            popper-class="vibration-axis-select-dropdown"
-          >
-            <el-option
-              v-for="opt in axisOptions"
-              :key="opt.value"
-              :label="opt.label"
-              :value="opt.value"
-            />
+          <el-select v-model="freqAxis" class="vibration-axis-select" size="small" teleported :show-arrow="false"
+            popper-class="vibration-axis-select-dropdown">
+            <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </div>
         <div class="card-header-spacer" aria-hidden="true" />
@@ -31,70 +20,26 @@
         </div>
       </div>
       <div class="chart-container">
-        <CommonEcharts
-          ref="freqChartRef"
-          :option="freqOption"
-          :enable-data-zoom="false"
-          :not-merge="true"
-          enable-fullscreen
-          fullscreen-title="振动速度频域图"
-          fullscreen-background="#142060"
-          @chart-ready="onFreqChartReady"
-          @fullscreen-chart-ready="onFreqFullscreenChartReady"
-          @fullscreen-closing="onFreqFullscreenClosing"
-          @fullscreen-closed="onFreqFullscreenClosed"
-        >
-          <template #fullscreen-toolbar>
-            <div class="freq-fullscreen-toolbar">
-              <el-select
-                v-model="freqAxis"
-                class="vibration-axis-select"
-                size="small"
-                teleported
-                :show-arrow="false"
-                popper-class="vibration-axis-select-dropdown"
-              >
-                <el-option
-                  v-for="opt in axisOptions"
-                  :key="opt.value"
-                  :label="opt.label"
-                  :value="opt.value"
-                />
+        <CommonEcharts ref="freqChartRef" :option="freqOption" :enable-data-zoom="false" :not-merge="true"
+          enable-fullscreen fullscreen-title="振动速度频域图" fullscreen-background="#142060" @chart-ready="onFreqChartReady"
+          @fullscreen-chart-ready="onFreqFullscreenChartReady" @fullscreen-closing="onFreqFullscreenClosing"
+          @fullscreen-closed="onFreqFullscreenClosed">
+          <template #fullscreen-body-top>
+            <div class="freq-fullscreen-top">
+              <el-select v-model="freqAxis" class="vibration-axis-select" size="small" teleported :show-arrow="false"
+                popper-class="vibration-axis-select-dropdown">
+                <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
               </el-select>
               <div class="freq-filter-inline">
-                <span class="freq-filter-label">频率筛选</span>
-                <el-input-number
-                  v-model="freqFilterMin"
-                  :min="freqAxisDomain.min"
-                  :max="freqAxisDomain.max"
-                  :precision="0"
-                  :step="1"
-                  size="small"
-                  placeholder="最小"
-                  controls-position="right"
-                  class="freq-filter-num"
-                />
+                <span class="freq-filter-label">频率筛选：</span>
+                <el-input-number v-model="fullscreenRangeMin" :min="safeFullscreenRangeDataMin"
+                  :max="safeFullscreenRangeDataMax" :precision="0" :step="1" size="small" placeholder="最小"
+                  controls-position="right" class="freq-filter-num" />
                 <span class="freq-filter-sep">—</span>
-                <el-input-number
-                  v-model="freqFilterMax"
-                  :min="freqAxisDomain.min"
-                  :max="freqAxisDomain.max"
-                  :precision="0"
-                  :step="1"
-                  size="small"
-                  placeholder="最大"
-                  controls-position="right"
-                  class="freq-filter-num"
-                />
-                <el-button
-                  type="primary"
-                  size="small"
-                  class="freq-filter-apply-btn"
-                  @click="applyFreqFilter"
-                >
-                  应用
-                </el-button>
-                <el-button size="small" @click="resetFreqFilter"> 重置 </el-button>
+                <el-input-number v-model="fullscreenRangeMax" :min="safeFullscreenRangeDataMin"
+                  :max="safeFullscreenRangeDataMax" :precision="0" :step="1" size="small" placeholder="最大"
+                  controls-position="right" class="freq-filter-num" />
+                <el-button size="small" @click="resetFullscreenRange"> 重置 </el-button>
                 <el-button size="small" :disabled="!currentPinnedPointId" @click="clearCurrentPinnedPoint">
                   清除当前标记
                 </el-button>
@@ -111,20 +56,9 @@
       <div class="card-header">
         <div class="card-header-leading">
           <div class="card-title app-section-title">振动速度时域图</div>
-          <el-select
-            v-model="timeAxis"
-            class="vibration-axis-select"
-            size="small"
-            teleported
-            :show-arrow="false"
-            popper-class="vibration-axis-select-dropdown"
-          >
-            <el-option
-              v-for="opt in axisOptions"
-              :key="opt.value"
-              :label="opt.label"
-              :value="opt.value"
-            />
+          <el-select v-model="timeAxis" class="vibration-axis-select" size="small" teleported :show-arrow="false"
+            popper-class="vibration-axis-select-dropdown">
+            <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </div>
         <div class="card-header-spacer" aria-hidden="true" />
@@ -138,31 +72,15 @@
         </div>
       </div>
       <div class="chart-container">
-        <CommonEcharts
-          ref="timeChartRef"
-          :option="timeOption"
-          :enable-data-zoom="false"
-          :not-merge="true"
-          enable-fullscreen
-          fullscreen-title="振动速度时域图"
-          fullscreen-background="#142060"
-        >
-          <template #fullscreen-toolbar>
-            <el-select
-              v-model="timeAxis"
-              class="vibration-axis-select"
-              size="small"
-              teleported
-              :show-arrow="false"
-              popper-class="vibration-axis-select-dropdown"
-            >
-              <el-option
-                v-for="opt in axisOptions"
-                :key="opt.value"
-                :label="opt.label"
-                :value="opt.value"
-              />
-            </el-select>
+        <CommonEcharts ref="timeChartRef" :option="timeOption" :enable-data-zoom="false" :not-merge="true"
+          enable-fullscreen fullscreen-title="振动速度时域图" fullscreen-background="#142060">
+          <template #fullscreen-body-top>
+            <div class="time-fullscreen-top">
+              <el-select v-model="timeAxis" class="vibration-axis-select" size="small" teleported :show-arrow="false"
+                popper-class="vibration-axis-select-dropdown">
+                <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+              </el-select>
+            </div>
           </template>
         </CommonEcharts>
       </div>
@@ -176,6 +94,7 @@ import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 import { CommonEcharts } from '@/components/common/chart'
+import { useRangeControls } from '@/composables/useRangeControls'
 import {
   getVibrationFrequencyData,
   getVibrationTimeDomainData,
@@ -184,8 +103,9 @@ import {
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import { FullScreen } from '@element-plus/icons-vue'
 import {
-  buildPointMarkerId,
-  formatPersistentPointLabel,
+  buildPersistentMarkPointData,
+  removeCurrentPersistentPoint,
+  upsertPersistentPoint,
   type EchartsPersistentPoint,
 } from '@/utils/echartsPointMarker'
 
@@ -230,10 +150,10 @@ const pinnedFreqPoints = ref<EchartsPersistentPoint[]>([])
 const currentPinnedPointId = ref<string>('')
 
 const openFreqFullscreen = () => {
-  ;(freqChartRef.value as any)?.openFullscreen?.()
+  ; (freqChartRef.value as any)?.openFullscreen?.()
 }
 const openTimeFullscreen = () => {
-  ;(timeChartRef.value as any)?.openFullscreen?.()
+  ; (timeChartRef.value as any)?.openFullscreen?.()
 }
 
 const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({
@@ -251,9 +171,6 @@ const axisOptions: { label: string; value: VibrationAxis }[] = [
 
 const freqAxis = ref<VibrationAxis>('X')
 const timeAxis = ref<VibrationAxis>('X')
-const freqFilterMin = ref<number | undefined>(undefined)
-const freqFilterMax = ref<number | undefined>(undefined)
-const freqDisplayRange = ref<{ min: number; max: number } | null>(null)
 
 const pointerBaseFreq = ref<number | null>(null)
 const FREQ_MATCH_DECIMALS = 6
@@ -286,47 +203,12 @@ const formatPinnedY = (v: number | string) => {
 
 const toFreqKey = (v: number) => v.toFixed(FREQ_MATCH_DECIMALS)
 
-const freqAxisDomain = computed(() => {
-  const nums = freqData.value.frequency.map((n) => Number(n)).filter((n) => Number.isFinite(n))
-  if (!nums.length) return { min: 0, max: 2000 }
-  return { min: Math.min(...nums), max: Math.max(...nums) }
-})
-
-const applyFreqFilter = () => {
-  const a = freqFilterMin.value
-  const b = freqFilterMax.value
-  if (a == null && b == null) {
-    freqDisplayRange.value = null
-    return
-  }
-  const lo = a ?? -Infinity
-  const hi = b ?? Infinity
-  freqDisplayRange.value = {
-    min: Math.min(lo, hi),
-    max: Math.max(lo, hi),
-  }
-}
-
-const resetFreqFilter = () => {
-  freqDisplayRange.value = null
-  freqFilterMin.value = freqAxisDomain.value.min
-  freqFilterMax.value = freqAxisDomain.value.max
-}
-
 const getSortedFreqChartData = () => {
-  const rawChartData = freqData.value.frequency
+  const chartData = freqData.value.frequency
     .map((freq, index) => [freq, freqData.value.freqSpeedData[index] ?? 0] as [number, number])
     .sort((a, b) => a[0] - b[0])
-  const range = freqDisplayRange.value
-  const chartData = range
-    ? rawChartData.filter((item) => item[0] >= range.min && item[0] <= range.max)
-    : rawChartData
-  const xMin = range ? range.min : chartData.length > 0 ? Math.min(...freqData.value.frequency) : 0
-  const xMax = range
-    ? range.max
-    : chartData.length > 0
-      ? Math.max(...freqData.value.frequency, 2000)
-      : 2000
+  const xMin = chartData.length > 0 ? Math.min(...freqData.value.frequency) : 0
+  const xMax = chartData.length > 0 ? Math.max(...freqData.value.frequency, 2000) : 2000
   const pointMap = new Map<string, [number, number]>()
   for (const item of chartData) {
     pointMap.set(toFreqKey(item[0]), item)
@@ -410,7 +292,7 @@ const freqOption = computed<EChartsOption>(() => {
             try {
               const px = inst.convertToPixel({ xAxisIndex: 0 }, n) as number
               if (typeof px === 'number' && Number.isFinite(px)) avoidPixels.push(px)
-            } catch {}
+            } catch { }
           }
         }
 
@@ -549,7 +431,7 @@ const freqOption = computed<EChartsOption>(() => {
         },
         markPoint: {
           animation: false,
-          data: getPinnedMarkPointData(),
+          data: [],
         },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -577,7 +459,7 @@ const scheduleHarmonicMarkLines = (baseFreq: number) => {
         )
       }
       freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', data)
-    } catch {}
+    } catch { }
   })
 }
 
@@ -593,46 +475,42 @@ const onUpdateAxisPointer = (params: any) => {
 }
 
 const getPinnedMarkPointData = () =>
-  pinnedFreqPoints.value.map((point) => {
-    const isCurrent = point.id === currentPinnedPointId.value
-    return {
-      name: point.id,
-      coord: [point.x, point.y],
-      symbol: 'circle',
-      symbolSize: isCurrent ? 9 : 7,
-      itemStyle: {
-        color: isCurrent ? '#ffd166' : '#ff6b6b',
-        borderColor: '#fff',
-        borderWidth: 1,
-      },
-      label: {
-        show: true,
-        position: 'top',
-        align: 'left',
-        color: '#fff',
-        fontSize: 12,
-        lineHeight: 16,
-        backgroundColor: 'rgba(10, 14, 33, 0.7)',
-        borderColor: 'rgba(255,255,255,0.2)',
-        borderWidth: 1,
-        borderRadius: 4,
-        padding: [4, 6],
-        formatter: formatPersistentPointLabel(
-          point,
-          (v) => `${formatFrequency(v)}Hz`,
-          formatPinnedY,
-        ),
-      },
-      tooltip: {
-        show: true,
-        formatter: formatPersistentPointLabel(
-          point,
-          (v) => `${formatFrequency(v)}Hz`,
-          formatPinnedY,
-        ),
-      },
-    }
-  })
+  buildPersistentMarkPointData(
+    pinnedFreqPoints.value,
+    currentPinnedPointId.value,
+    {
+      formatX: (v) => `${formatFrequency(v)}Hz`,
+      formatY: formatPinnedY,
+    },
+    {
+      activeSymbolSize: 9,
+      inactiveSymbolSize: 7,
+      activeColor: '#ffd166',
+      inactiveColor: '#ff6b6b',
+      borderColor: '#fff',
+      borderWidth: 1,
+    },
+  )
+
+const patchInlinePinnedMarkPoints = () => {
+  if (!freqChartInstance.value) return
+  try {
+    freqChartInstance.value.setOption(
+      {
+        series: [
+          {
+            id: 'freq-series',
+            markPoint: {
+              animation: false,
+              data: getPinnedMarkPointData(),
+            },
+          },
+        ],
+      } as any,
+      { notMerge: false, lazyUpdate: true },
+    )
+  } catch { }
+}
 
 const patchFullscreenPinnedMarkPoints = () => {
   if (!fullscreenFreqChartInstance.value) return
@@ -651,21 +529,24 @@ const patchFullscreenPinnedMarkPoints = () => {
       } as any,
       { notMerge: false, lazyUpdate: true },
     )
-  } catch {}
+  } catch { }
 }
 
 const refreshFullscreenPinnedMarkPoints = () => {
+  patchInlinePinnedMarkPoints()
   patchFullscreenPinnedMarkPoints()
   // 频率范围变更会触发全屏图 setOption，下一帧再补一次，避免被覆盖
   void nextTick(() => {
+    patchInlinePinnedMarkPoints()
     patchFullscreenPinnedMarkPoints()
   })
 }
 
 const clearCurrentPinnedPoint = () => {
   if (!currentPinnedPointId.value) return
-  pinnedFreqPoints.value = pinnedFreqPoints.value.filter((item) => item.id !== currentPinnedPointId.value)
-  currentPinnedPointId.value = pinnedFreqPoints.value[pinnedFreqPoints.value.length - 1]?.id ?? ''
+  const nextState = removeCurrentPersistentPoint(pinnedFreqPoints.value, currentPinnedPointId.value)
+  pinnedFreqPoints.value = nextState.points
+  currentPinnedPointId.value = nextState.currentId
   refreshFullscreenPinnedMarkPoints()
 }
 
@@ -678,10 +559,9 @@ const clearAllPinnedPoints = () => {
 const addPinnedFreqPoint = (x: number, y: number) => {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return
   console.log('[freq-pin] addPinnedFreqPoint', { x, y })
-  const id = buildPointMarkerId(x, y)
-  currentPinnedPointId.value = id
-  const exists = pinnedFreqPoints.value.find((item) => item.id === id)
-  if (!exists) pinnedFreqPoints.value = [...pinnedFreqPoints.value, { id, x, y }]
+  const nextState = upsertPersistentPoint(pinnedFreqPoints.value, x, y, currentPinnedPointId.value)
+  pinnedFreqPoints.value = nextState.points
+  currentPinnedPointId.value = nextState.currentId
   refreshFullscreenPinnedMarkPoints()
 }
 
@@ -770,10 +650,12 @@ const onFreqChartReady = (instance: echarts.ECharts) => {
   }
 
   instance.on('updateAxisPointer', onUpdateAxisPointer)
+  instance.on('datazoom', handleInlineDataZoom)
   freqChartCleanup = () => {
     try {
       instance.off('updateAxisPointer', onUpdateAxisPointer)
-    } catch {}
+      instance.off('datazoom', handleInlineDataZoom)
+    } catch { }
     if (markLineRafId) {
       cancelAnimationFrame(markLineRafId)
       markLineRafId = null
@@ -797,6 +679,7 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
     fullscreenFreqZrClickCleanup = null
   }
   inst.on('updateAxisPointer', onUpdateAxisPointer)
+  inst.on('datazoom', handleFullscreenDataZoom)
   inst.on('click', onFreqFullscreenChartClick)
   const zr = inst.getZr?.()
   const onZrClick = (evt: any) => {
@@ -809,17 +692,18 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   fullscreenFreqPointerCleanup = () => {
     try {
       inst.off('updateAxisPointer', onUpdateAxisPointer)
-    } catch {}
+      inst.off('datazoom', handleFullscreenDataZoom)
+    } catch { }
   }
   fullscreenFreqClickCleanup = () => {
     try {
       inst.off('click', onFreqFullscreenChartClick)
-    } catch {}
+    } catch { }
   }
   fullscreenFreqZrClickCleanup = () => {
     try {
       zr?.off?.('click', onZrClick)
-    } catch {}
+    } catch { }
   }
   console.log('[freq-pin] fullscreen click handlers attached')
 
@@ -828,11 +712,9 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
     const data = buildHarmonicMarkLineData(base)
     try {
       freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', data)
-    } catch {}
+    } catch { }
   }
 
-  freqFilterMin.value = freqAxisDomain.value.min
-  freqFilterMax.value = freqAxisDomain.value.max
   patchFullscreenPinnedMarkPoints()
 }
 
@@ -984,12 +866,12 @@ const loadTimeData = async () => {
         const raw = (timeResponse.ret as any).timedomaindata
         const timeDomainArray: number[] = Array.isArray(raw)
           ? raw
-              .map((v: any) => (typeof v === 'number' ? v : parseFloat(String(v).trim())))
-              .filter((n: number) => Number.isFinite(n))
+            .map((v: any) => (typeof v === 'number' ? v : parseFloat(String(v).trim())))
+            .filter((n: number) => Number.isFinite(n))
           : String(raw ?? '')
-              .split(',')
-              .map((s) => parseFloat(s.trim()))
-              .filter((n) => Number.isFinite(n))
+            .split(',')
+            .map((s) => parseFloat(s.trim()))
+            .filter((n) => Number.isFinite(n))
         if (
           Array.isArray(timeDomainArray) &&
           timeDomainArray.length > 0 &&
@@ -1036,13 +918,8 @@ watch(
 
 watch(freqAxis, () => {
   if (!receiverIdFromParams.value || !pointDeviceId.value) return
-  freqDisplayRange.value = null
   clearAllPinnedPoints()
   void loadFreqData()
-})
-
-watch(freqDisplayRange, () => {
-  refreshFullscreenPinnedMarkPoints()
 })
 
 watch(
@@ -1078,6 +955,74 @@ onUnmounted(() => {
     fullscreenFreqZrClickCleanup()
     fullscreenFreqZrClickCleanup = null
   }
+  disposeInlineRangeControls()
+  disposeFullscreenRangeControls()
+})
+
+const {
+  handleDataZoom: handleInlineDataZoom,
+  dispose: disposeInlineRangeControls,
+} = useRangeControls({
+  option: freqOption,
+  showRangeControls: computed(() => true),
+  rangeControlsData: computed(() => freqData.value.frequency || []),
+  rangeControlsXAxisIndex: computed(() => 0),
+  rangeControlsMin: computed(() => undefined),
+  rangeControlsMax: computed(() => undefined),
+  rangeControlsStep: computed(() => 1),
+  rangeControlsPrecision: computed(() => 0),
+  rangeControlsDebounceMs: computed(() => 600),
+  preserveDataZoom: computed(() => true),
+  doDataZoom: ({ startValue, endValue }) => {
+    const action: any = { type: 'dataZoom', startValue, endValue, xAxisIndex: 0 }
+    const inst = freqChartInstance.value
+    if (!inst) return
+    try {
+      if (typeof inst.isDisposed === 'function' && inst.isDisposed()) return
+      inst.dispatchAction(action)
+    } catch { }
+  },
+})
+
+const {
+  rangeMin: fullscreenRangeMin,
+  rangeMax: fullscreenRangeMax,
+  rangeDataMin: fullscreenRangeDataMin,
+  rangeDataMax: fullscreenRangeDataMax,
+  resetRange: resetFullscreenRange,
+  handleDataZoom: handleFullscreenDataZoom,
+  dispose: disposeFullscreenRangeControls,
+} = useRangeControls({
+  option: freqOption,
+  showRangeControls: computed(() => true),
+  rangeControlsData: computed(() => freqData.value.frequency || []),
+  rangeControlsXAxisIndex: computed(() => 0),
+  rangeControlsMin: computed(() => undefined),
+  rangeControlsMax: computed(() => undefined),
+  rangeControlsStep: computed(() => 1),
+  rangeControlsPrecision: computed(() => 0),
+  rangeControlsDebounceMs: computed(() => 600),
+  preserveDataZoom: computed(() => true),
+  doDataZoom: ({ startValue, endValue }) => {
+    const action: any = { type: 'dataZoom', startValue, endValue, xAxisIndex: 0 }
+    const inst = fullscreenFreqChartInstance.value
+    if (!inst) return
+    try {
+      if (typeof inst.isDisposed === 'function' && inst.isDisposed()) return
+      inst.dispatchAction(action)
+    } catch { }
+  },
+})
+
+const safeFullscreenRangeDataMin = computed(() => {
+  const v = Number(fullscreenRangeDataMin.value)
+  return Number.isFinite(v) ? v : 0
+})
+
+const safeFullscreenRangeDataMax = computed(() => {
+  const v = Number(fullscreenRangeDataMax.value)
+  if (Number.isFinite(v) && v >= safeFullscreenRangeDataMin.value) return v
+  return safeFullscreenRangeDataMin.value
 })
 </script>
 
@@ -1131,12 +1076,14 @@ onUnmounted(() => {
       color: #fff !important;
       padding: 0 !important;
       gap: 4px;
+      font-size: 0.8rem;
     }
 
     :deep(.time-fullscreen-btn) {
       color: #fff !important;
       padding: 0 !important;
       gap: 4px;
+      font-size: 0.8rem;
     }
 
     :deep(.freq-fullscreen-btn:hover),
@@ -1153,11 +1100,13 @@ onUnmounted(() => {
     :deep(.freq-fullscreen-btn .el-icon) {
       color: #fff !important;
       margin-left: 4px;
+      font-size: 0.8rem;
     }
 
     :deep(.time-fullscreen-btn .el-icon) {
       color: #fff !important;
       margin-left: 4px;
+      font-size: 0.8rem;
     }
   }
 
@@ -1247,11 +1196,20 @@ $vibration-axis-font-size: 12px;
   color: rgba(255, 255, 255, 0.65);
 }
 
-.freq-fullscreen-toolbar {
+.freq-fullscreen-top {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   flex-wrap: nowrap;
+  width: 100%;
+}
+
+.time-fullscreen-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .freq-filter-inline {
@@ -1264,7 +1222,7 @@ $vibration-axis-font-size: 12px;
 
 .freq-filter-inline .freq-filter-label {
   color: #fff;
-  font-size: 12px;
+  font-size: 0.8rem;
 }
 
 .freq-filter-inline .freq-filter-num {
@@ -1274,10 +1232,6 @@ $vibration-axis-font-size: 12px;
 .freq-filter-inline .freq-filter-sep {
   color: rgba(255, 255, 255, 0.75);
   font-size: 12px;
-}
-
-.freq-filter-inline .freq-filter-apply-btn {
-  padding: 0 12px;
 }
 
 /* teleported 到 body 时必须高于全屏 Dialog，否则展开列表被挡在弹窗后面 */
