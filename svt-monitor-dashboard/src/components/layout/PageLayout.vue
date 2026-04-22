@@ -71,11 +71,9 @@ type IncomingAlarmPreview = {
   deviceName: string
   pointName: string
   pointNum: number
+  alarmTimeText: string
   status: 'alarm' | 'warning'
 }
-
-const alarmDialogQueue: IncomingAlarmPreview[] = []
-let alarmDialogShowing = false
 
 function escapeHtml(input: string): string {
   return String(input ?? '')
@@ -95,6 +93,18 @@ function safeParseJson(input: unknown): any {
   } catch {
     return undefined
   }
+}
+
+function formatAlarmTime(input: unknown): string {
+  const timestamp = Number(input)
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return ''
+  const d = new Date(timestamp)
+  if (Number.isNaN(d.getTime())) return ''
+  const month = d.getMonth() + 1
+  const day = d.getDate()
+  const hour = String(d.getHours()).padStart(2, '0')
+  const minute = String(d.getMinutes()).padStart(2, '0')
+  return `${month}月${day}日${hour}:${minute}`
 }
 
 function normalizeIncomingAlarm(payload: any): IncomingAlarmPreview | null {
@@ -140,6 +150,9 @@ function normalizeIncomingAlarm(payload: any): IncomingAlarmPreview | null {
     deviceName: String((payload as any).equipmentName ?? (payload as any).deviceName ?? '').trim() || alarmId,
     pointName,
     pointNum,
+    alarmTimeText: formatAlarmTime(
+      (payload as any).alarmTime ?? parsedData?.alarmTime ?? parsedRaw?.alarmTime,
+    ),
     status,
   }
 }
@@ -155,12 +168,18 @@ async function goToDashboardWithTarget(item: IncomingAlarmPreview) {
   })
 
   await router.push({ name: 'Dashboard' })
+  alarmBatchStore.closeRealtime()
+  alarmBatchStore.closeHistory()
+  alarmBatchStore.closeRealtimeAlarm()
+  alarmBatchStore.closeHistoryAlarm()
+
   if (item.status === 'warning') {
     alarmBatchStore.resetRealtime()
     if (realtimeDeviceId) {
       alarmBatchStore.realtimeQuery.deviceId = realtimeDeviceId
     }
     await alarmBatchStore.openRealtime()
+    await alarmBatchStore.fetchRealtimeList(0, true)
     return
   }
 
@@ -169,56 +188,56 @@ async function goToDashboardWithTarget(item: IncomingAlarmPreview) {
     alarmBatchStore.realtimeAlarmQuery.deviceId = realtimeDeviceId
   }
   await alarmBatchStore.openRealtimeAlarm()
+  await alarmBatchStore.fetchRealtimeAlarmList(0, true)
 }
 
-async function showAlarmDialogQueue() {
-  if (alarmDialogShowing) return
-  alarmDialogShowing = true
-  try {
-    while (alarmDialogQueue.length) {
-      const item = alarmDialogQueue.shift()
-      if (!item) continue
-      const title = item.status === 'alarm' ? '新报警' : '新预警'
-      const actionText = item.status === 'alarm' ? '报警' : '预警'
-      const emphasisClass =
-        item.status === 'alarm' ? 'alarm-remind-dialog__emphasis--alarm' : 'alarm-remind-dialog__emphasis--warning'
-      const message = [
-        `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.shopName)}</span>`,
-        ' 的 ',
-        `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.deviceName)}</span>`,
-        ' 的 ',
-        `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.pointName)}</span>`,
-        ' 发生 ',
-        `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(actionText)}</span>`,
-      ].join('')
-      try {
-        await ElMessageBox.confirm(message, title, {
-          confirmButtonText: '查看',
-          cancelButtonText: '确定',
-          distinguishCancelAndClose: true,
-          type: 'warning',
-          customClass:
-            item.status === 'alarm'
-              ? 'alarm-remind-dialog alarm-remind-dialog--alarm'
-              : 'alarm-remind-dialog alarm-remind-dialog--warning',
-          dangerouslyUseHTMLString: true,
-        })
-        await goToDashboardWithTarget(item)
-      } catch {
-        // 用户点击“确定”或关闭弹窗，仅关闭当前提醒
-      }
-    }
-  } finally {
-    alarmDialogShowing = false
-  }
+function showIncomingAlarmDialog(item: IncomingAlarmPreview) {
+  ElMessageBox.close()
+  const title = item.status === 'alarm' ? '新报警' : '新预警'
+  const actionText = item.status === 'alarm' ? '报警' : '预警'
+  const emphasisClass =
+    item.status === 'alarm' ? 'alarm-remind-dialog__emphasis--alarm' : 'alarm-remind-dialog__emphasis--warning'
+  const message = [
+    item.alarmTimeText
+      ? `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.alarmTimeText)}</span>`
+      : '',
+    item.alarmTimeText ? '，' : '',
+    `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.shopName)}</span>`,
+    ' 的 ',
+    `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.deviceName)}</span>`,
+    ' 的 ',
+    `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.pointName)}</span>`,
+    ' 发生 ',
+    `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(actionText)}</span>`,
+  ].join('')
+
+  const messagePromise = ElMessageBox.confirm(message, title, {
+    confirmButtonText: '查看',
+    cancelButtonText: '确定',
+    distinguishCancelAndClose: true,
+    type: 'warning',
+    modal: true,
+    customClass:
+      item.status === 'alarm'
+        ? 'alarm-remind-dialog alarm-remind-dialog--alarm'
+        : 'alarm-remind-dialog alarm-remind-dialog--warning',
+    dangerouslyUseHTMLString: true,
+  })
+
+  void messagePromise
+    .then(async () => {
+      await goToDashboardWithTarget(item)
+    })
+    .catch(() => {
+      // 用户点击“确定”或关闭弹窗，仅关闭当前提醒
+    })
 }
 
 function enqueueIncomingAlarm(payload: unknown) {
   if (route.name === 'Login') return
   const normalized = normalizeIncomingAlarm(payload as any)
   if (!normalized) return
-  alarmDialogQueue.push(normalized)
-  void showAlarmDialogQueue()
+  showIncomingAlarmDialog(normalized)
 }
 
 async function startGlobalAlarmStream() {
@@ -249,7 +268,6 @@ watch(
 
 onUnmounted(() => {
   alarmOverviewStore.stop()
-  alarmDialogQueue.length = 0
 })
 </script>
 
