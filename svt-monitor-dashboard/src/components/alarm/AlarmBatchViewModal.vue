@@ -206,6 +206,13 @@ const disposeCharts = () => {
   densityChart.value = null
 }
 
+// y 轴刻度最多保留小数点后两位（并去掉无意义的尾随 0）
+const formatYAxisTick = (v: unknown) => {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return ''
+  return String(Number(n.toFixed(2)))
+}
+
 function safeParseJson(input: any): any {
   if (!input) return undefined
   if (typeof input === 'object') return input
@@ -436,7 +443,7 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
     grid: baseGrid,
     legend: { show: false },
     xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
-    yAxis: [{ type: 'value', name: '能量' }],
+    yAxis: [{ type: 'value', name: '能量', axisLabel: { formatter: formatYAxisTick } }],
     dataZoom,
     series: [
       { name: '能量', type: 'line', data: nowDbArr, symbolSize: 1, lineStyle: { width: 1 } },
@@ -448,7 +455,7 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
     grid: baseGrid,
     legend: { show: false },
     xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
-    yAxis: [{ type: 'value', name: '密度' }],
+    yAxis: [{ type: 'value', name: '密度', axisLabel: { formatter: formatYAxisTick } }],
     dataZoom,
     series: [
       { name: '密度', type: 'line', data: nowDensityArr, symbolSize: 1, lineStyle: { width: 1 } },
@@ -506,7 +513,7 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
     grid: baseGrid,
     legend: { show: false },
     xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
-    yAxis: [{ type: 'value', name: '能量' }],
+    yAxis: [{ type: 'value', name: '能量', axisLabel: { formatter: formatYAxisTick } }],
     dataZoom,
     series: [
       { name: '能量', type: 'line', data: nowDbArr, symbolSize: 1, lineStyle: { width: 1 } },
@@ -529,7 +536,7 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
     grid: baseGrid,
     legend: { show: false },
     xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
-    yAxis: [{ type: 'value', name: '密度' }],
+    yAxis: [{ type: 'value', name: '密度', axisLabel: { formatter: formatYAxisTick } }],
     dataZoom,
     series: [
       { name: '密度', type: 'line', data: nowDensityArr, symbolSize: 1, lineStyle: { width: 1 } },

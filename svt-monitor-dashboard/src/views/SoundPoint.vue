@@ -166,6 +166,18 @@ const formatYAxisTick = (v: unknown) => {
   return String(Number(n.toFixed(2)))
 }
 
+const toSafeNumber = (
+  value: unknown,
+  opts: { min?: number; max?: number; fixed?: number } = {},
+): number | undefined => {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return undefined
+  if (opts.min != null && n < opts.min) return undefined
+  if (opts.max != null && n > opts.max) return undefined
+  if (opts.fixed == null) return n
+  return Number(n.toFixed(opts.fixed))
+}
+
 interface DeviationListItem {
   id: string
   time: string
@@ -411,23 +423,23 @@ const viewDetails = async (row: any) => {
 
     const XARR: string[] = []
     const nowdbArr: (number | undefined)[] = []
-    const nowdensityArr: number[] = []
+    const nowdensityArr: (number | undefined)[] = []
     const avgdbArr: (number | undefined)[] = []
-    const avgdensityArr: number[] = []
+    const avgdensityArr: (number | undefined)[] = []
 
     for (let i = 0; i < soundFrequencyDtoList.length; i++) {
       const item = soundFrequencyDtoList[i]
       const f1 = Number(item?.freq1 ?? 0)
       const f2 = Number(item?.freq2 ?? 0)
       XARR.push(Number(Math.sqrt(f1 * f2)).toFixed(1))
-      nowdbArr.push(item?.db != null ? Number(Number(item.db).toFixed(2)) : undefined)
-      nowdensityArr.push(Number(Number(item?.density ?? 0).toFixed(4)))
+      nowdbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 6 }))
+      nowdensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 6 }))
     }
     if (Array.isArray(soundAvgFrequencyDtoList)) {
       for (let i = 0; i < soundAvgFrequencyDtoList.length; i++) {
         const item = soundAvgFrequencyDtoList[i]
-        avgdbArr.push(item?.db != null ? Number(Number(item.db).toFixed(2)) : undefined)
-        avgdensityArr.push(Number(Number(item?.density ?? 0).toFixed(4)))
+        avgdbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 6 }))
+        avgdensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 6 }))
       }
     }
 
