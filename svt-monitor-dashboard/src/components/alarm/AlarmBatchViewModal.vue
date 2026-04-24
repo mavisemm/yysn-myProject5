@@ -472,15 +472,16 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
   const soundFrequencyDtoList = Array.isArray(ret?.soundFrequencyDtoList)
     ? ret.soundFrequencyDtoList
     : []
-  const soundAvgFrequencyDtoList = Array.isArray(ret?.soundAvgFrequencyDtoList)
-    ? ret.soundAvgFrequencyDtoList
-    : []
+  // 仅展示能量/密度曲线，不展示标准曲线
+  // const soundAvgFrequencyDtoList = Array.isArray(ret?.soundAvgFrequencyDtoList)
+  //   ? ret.soundAvgFrequencyDtoList
+  //   : []
 
   const xArr: string[] = []
   const nowDbArr: (number | undefined)[] = []
   const nowDensityArr: (number | undefined)[] = []
-  const avgDbArr: (number | undefined)[] = []
-  const avgDensityArr: (number | undefined)[] = []
+  // const avgDbArr: (number | undefined)[] = []
+  // const avgDensityArr: (number | undefined)[] = []
 
   for (const item of soundFrequencyDtoList) {
     const f1 = Number(item?.freq1 ?? 0)
@@ -490,10 +491,7 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
     nowDensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 4 }))
   }
 
-  for (const item of soundAvgFrequencyDtoList) {
-    avgDbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 2 }))
-    avgDensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 4 }))
-  }
+  // 不再组装标准曲线数据
 
   const baseGrid = { left: 40, right: 20, top: 30, bottom: 50 }
   const dataZoom = [
@@ -510,17 +508,6 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
     dataZoom,
     series: [
       { name: '能量', type: 'line', data: nowDbArr, symbolSize: 1, lineStyle: { width: 1 } },
-      ...(avgDbArr.length > 0
-        ? [
-          {
-            name: '标准能量线',
-            type: 'line',
-            data: avgDbArr,
-            symbolSize: 1,
-            lineStyle: { width: 1 },
-          },
-        ]
-        : []),
     ],
   })
 
@@ -533,17 +520,6 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
     dataZoom,
     series: [
       { name: '密度', type: 'line', data: nowDensityArr, symbolSize: 1, lineStyle: { width: 1 } },
-      ...(avgDensityArr.length > 0
-        ? [
-          {
-            name: '标准密度线',
-            type: 'line',
-            data: avgDensityArr,
-            symbolSize: 1,
-            lineStyle: { width: 1 },
-          },
-        ]
-        : []),
     ],
   })
 

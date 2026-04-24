@@ -407,29 +407,25 @@ const viewDetails = async (row: any) => {
     const res = await findLatestFrequencyById({ id: row.id, type: 2 })
     const ret = (res as any)?.ret ?? res
     const soundFrequencyDtoList = ret?.soundFrequencyDtoList ?? []
-    const soundAvgFrequencyDtoList = ret?.soundAvgFrequencyDtoList ?? []
+    // 仅展示能量/密度曲线，不展示标准曲线
+    // const soundAvgFrequencyDtoList = ret?.soundAvgFrequencyDtoList ?? []
 
     const XARR: string[] = []
     const nowdbArr: (number | undefined)[] = []
     const nowdensityArr: number[] = []
-    const avgdbArr: (number | undefined)[] = []
-    const avgdensityArr: number[] = []
+    // const avgdbArr: (number | undefined)[] = []
+    // const avgdensityArr: number[] = []
 
     for (let i = 0; i < soundFrequencyDtoList.length; i++) {
       const item = soundFrequencyDtoList[i]
       const f1 = Number(item?.freq1 ?? 0)
       const f2 = Number(item?.freq2 ?? 0)
       XARR.push(Number(Math.sqrt(f1 * f2)).toFixed(1))
-      nowdbArr.push(item?.db != null ? Number(Number(item.db).toFixed(2)) : undefined)
-      nowdensityArr.push(Number(Number(item?.density ?? 0).toFixed(4)))
+      // “查看曲线”弹窗内的 y 值保留 6 位小数（不影响 y 轴刻度 formatter）
+      nowdbArr.push(item?.db != null ? Number(Number(item.db).toFixed(6)) : undefined)
+      nowdensityArr.push(Number(Number(item?.density ?? 0).toFixed(6)))
     }
-    if (Array.isArray(soundAvgFrequencyDtoList)) {
-      for (let i = 0; i < soundAvgFrequencyDtoList.length; i++) {
-        const item = soundAvgFrequencyDtoList[i]
-        avgdbArr.push(item?.db != null ? Number(Number(item.db).toFixed(2)) : undefined)
-        avgdensityArr.push(Number(Number(item?.density ?? 0).toFixed(4)))
-      }
-    }
+    // 不再组装标准曲线数据
 
     voiceVisible.value = true
     nextTick(() => {
@@ -500,9 +496,6 @@ const viewDetails = async (row: any) => {
           dataZoom: [...dataZoom],
           series: [
             { name: '能量', type: 'line', data: nowdbArr, symbolSize: 1 },
-            ...(avgdbArr.length > 0
-              ? [{ name: '标准能量线', type: 'line', data: avgdbArr, symbolSize: 1 }]
-              : []),
           ],
         })
         enableMouseWheelZoom(modalEnergyChartInstance.value)
@@ -543,9 +536,6 @@ const viewDetails = async (row: any) => {
           dataZoom: [...dataZoom],
           series: [
             { name: '密度', type: 'line', data: nowdensityArr, symbolSize: 1 },
-            ...(avgdensityArr.length > 0
-              ? [{ name: '标准密度线', type: 'line', data: avgdensityArr, symbolSize: 1 }]
-              : []),
           ],
         })
         enableMouseWheelZoom(modalDensityChartInstance.value)
