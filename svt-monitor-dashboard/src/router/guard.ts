@@ -5,15 +5,16 @@ export function setupRouterGuard(router: Router) {
   router.beforeEach((to, from, next) => {
     
     const publicPages = ['/login']
+
+    if (to.path === '/login') {
+      localStorage.clear()
+      sessionStorage.clear()
+      next()
+      return
+    }
     
     
     const isLoggedIn = localStorage.getItem('token') !== null
-    
-    
-    if (publicPages.includes(to.path) && isLoggedIn) {
-      next('/dashboard')
-      return
-    }
     
     
     if (!publicPages.includes(to.path) && !isLoggedIn) {

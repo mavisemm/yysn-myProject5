@@ -1,13 +1,6 @@
 <template>
-  <el-dialog
-    v-model="visible"
-    title="预警详情"
-    width="1100px"
-    height="90vh"
-    align-center
-    class="alarm-batch-view-dialog"
-    destroy-on-close
-  >
+  <el-dialog v-model="visible" title="预警详情" width="1100px" height="90vh" align-center class="alarm-batch-view-dialog"
+    destroy-on-close>
     <div class="voiceContainer">
       <div class="voiceContainerItem">
         <div class="panelTitle">预警信息：{{ currentEventTypeName }}</div>
@@ -45,33 +38,18 @@
         <div class="panelTitle">操作</div>
         <div class="controlsBox">
           <div class="controlsRow">
-            <el-button
-              type="danger"
-              size="large"
-              :disabled="!currentEventId"
-              class="controlBtnLarge"
-              @click="onConfirmYes"
-            >
+            <el-button type="danger" size="large" :disabled="!currentEventId" class="controlBtnLarge"
+              @click="onConfirmYes">
               确认预警
             </el-button>
-            <el-button
-              type="warning"
-              size="large"
-              :disabled="!currentEventId"
-              class="controlBtnLarge"
-              @click="notVisible = true"
-            >
+            <el-button type="warning" size="large" :disabled="!currentEventId" class="controlBtnLarge"
+              @click="notVisible = true">
               确认误报
             </el-button>
           </div>
           <div class="controlsRow controlsRow--ai">
-            <el-button
-              type="primary"
-              size="large"
-              :disabled="!currentEventId"
-              class="controlBtnLarge"
-              @click="openAIModal"
-            >
+            <el-button type="primary" size="large" :disabled="!currentEventId" class="controlBtnLarge"
+              @click="openAIModal">
               智能故障分析
             </el-button>
           </div>
@@ -91,24 +69,12 @@
       </div>
     </div>
 
-    <el-dialog
-      v-model="notVisible"
-      title="选择误报类型"
-      width="520px"
-      destroy-on-close
-      :close-on-click-modal="false"
-      @closed="resetNotModal"
-    >
+    <el-dialog v-model="notVisible" title="选择误报类型" width="520px" destroy-on-close :close-on-click-modal="false"
+      @closed="resetNotModal">
       <div class="modalBlock">
         <div class="modalLabel">选择误报类型</div>
-        <el-select
-          v-model="notType"
-          placeholder="请选择"
-          style="width: 100%"
-          size="small"
-          class="notTypeSelect"
-          popper-class="notTypeSelectPopper"
-        >
+        <el-select v-model="notType" placeholder="请选择" style="width: 100%" size="small" class="notTypeSelect"
+          popper-class="notTypeSelectPopper">
           <el-option v-for="it in notTypeList" :key="it.key" :label="it.text" :value="it.key" />
         </el-select>
       </div>
@@ -122,25 +88,11 @@
       </template>
     </el-dialog>
 
-    <el-dialog
-      v-model="yesVisible"
-      title="异常预警"
-      width="620px"
-      destroy-on-close
-      :close-on-click-modal="false"
-      @open="onYesModalOpen"
-      @closed="resetYesModal"
-    >
+    <el-dialog v-model="yesVisible" title="异常预警" width="620px" destroy-on-close :close-on-click-modal="false"
+      @open="onYesModalOpen" @closed="resetYesModal">
       <div class="modalBlock">
-        <el-select
-          v-model="yesExceptionId"
-          placeholder="历史异常库"
-          style="width: 100%"
-          size="small"
-          class="historySelect"
-          popper-class="historySelectPopper"
-          @change="onYesExceptionChange"
-        >
+        <el-select v-model="yesExceptionId" placeholder="历史异常库" style="width: 100%" size="small" class="historySelect"
+          popper-class="historySelectPopper" @change="onYesExceptionChange">
           <el-option label="重置" :value="YES_RESET_VALUE" />
           <el-option v-for="it in abnormalList" :key="it.id" :label="it.name" :value="it.id" />
         </el-select>
@@ -156,14 +108,8 @@
       </template>
     </el-dialog>
 
-    <el-dialog
-      v-model="aiModalVisible"
-      title="智能故障分析"
-      width="760px"
-      destroy-on-close
-      :close-on-click-modal="false"
-      @closed="resetAiModal"
-    >
+    <el-dialog v-model="aiModalVisible" title="智能故障分析" width="760px" destroy-on-close :close-on-click-modal="false"
+      @closed="resetAiModal">
       <div class="aiHeader">
         <div class="aiMeta">设备名称：{{ nosceneVoiceRet?.productName ?? '暂无' }}</div>
         <div class="aiMeta">点位名称：{{ nosceneVoiceRet?.subProductName ?? '暂无' }}</div>
@@ -189,12 +135,7 @@
       </div>
 
       <div class="aiButtons">
-        <el-button
-          size="small"
-          type="primary"
-          :loading="aiLoading"
-          @click="fetchAIModelAnalysis(false)"
-        >
+        <el-button size="small" type="primary" :loading="aiLoading" @click="fetchAIModelAnalysis(false)">
           开始分析
         </el-button>
         <el-button size="small" :loading="aiLoading" @click="fetchAIModelAnalysis(true)">
@@ -257,10 +198,10 @@ const chartLinkGroup = 'alarm-batch-view-link-group'
 const disposeCharts = () => {
   try {
     energyChart.value?.dispose()
-  } catch {}
+  } catch { }
   try {
     densityChart.value?.dispose()
-  } catch {}
+  } catch { }
   energyChart.value = null
   densityChart.value = null
 }
@@ -430,6 +371,38 @@ const canRenderCharts = computed(() => {
   )
 })
 
+const logFrequencyDebugInfo = (tag: string, payload: any) => {
+  const bins = Array.isArray(payload) ? payload : []
+  const dbList = bins
+    .map((x: any) => Number(x?.db))
+    .filter((n: number) => Number.isFinite(n))
+  const densityList = bins
+    .map((x: any) => Number(x?.density))
+    .filter((n: number) => Number.isFinite(n))
+  const maxDb = dbList.length ? Math.max(...dbList) : undefined
+  const minDb = dbList.length ? Math.min(...dbList) : undefined
+  const maxDensity = densityList.length ? Math.max(...densityList) : undefined
+  const minDensity = densityList.length ? Math.min(...densityList) : undefined
+  const sample = bins.slice(0, 5).map((x: any) => ({
+    freq1: x?.freq1,
+    freq2: x?.freq2,
+    db: x?.db,
+    density: x?.density,
+  }))
+}
+
+const toSafeNumber = (
+  value: unknown,
+  opts: { min?: number; max?: number; fixed?: number } = {},
+): number | undefined => {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return undefined
+  if (opts.min != null && n < opts.min) return undefined
+  if (opts.max != null && n > opts.max) return undefined
+  if (opts.fixed == null) return n
+  return Number(n.toFixed(opts.fixed))
+}
+
 const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
   if (!energyChartRef.value || !densityChartRef.value) return
   disposeCharts()
@@ -442,14 +415,14 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
 
   const xArr: string[] = []
   const nowDbArr: (number | undefined)[] = []
-  const nowDensityArr: number[] = []
+  const nowDensityArr: (number | undefined)[] = []
 
   for (const item of bins ?? []) {
     const f1 = Number(item?.freq1 ?? 0)
     const f2 = Number(item?.freq2 ?? 0)
     xArr.push(Number(Math.sqrt(f1 * f2)).toFixed(0))
-    nowDbArr.push(item?.db != null ? Number(Number(item.db).toFixed(2)) : undefined)
-    nowDensityArr.push(Number(Number(item?.density ?? 0).toFixed(4)))
+    nowDbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 2 }))
+    nowDensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 4 }))
   }
 
   const baseGrid = { left: 40, right: 20, top: 30, bottom: 50 }
@@ -505,21 +478,21 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
 
   const xArr: string[] = []
   const nowDbArr: (number | undefined)[] = []
-  const nowDensityArr: number[] = []
+  const nowDensityArr: (number | undefined)[] = []
   const avgDbArr: (number | undefined)[] = []
-  const avgDensityArr: number[] = []
+  const avgDensityArr: (number | undefined)[] = []
 
   for (const item of soundFrequencyDtoList) {
     const f1 = Number(item?.freq1 ?? 0)
     const f2 = Number(item?.freq2 ?? 0)
     xArr.push(Number(Math.sqrt(f1 * f2)).toFixed(0))
-    nowDbArr.push(item?.db != null ? Number(Number(item.db).toFixed(2)) : undefined)
-    nowDensityArr.push(Number(Number(item?.density ?? 0).toFixed(4)))
+    nowDbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 2 }))
+    nowDensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 4 }))
   }
 
   for (const item of soundAvgFrequencyDtoList) {
-    avgDbArr.push(item?.db != null ? Number(Number(item.db).toFixed(2)) : undefined)
-    avgDensityArr.push(Number(Number(item?.density ?? 0).toFixed(4)))
+    avgDbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 2 }))
+    avgDensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 4 }))
   }
 
   const baseGrid = { left: 40, right: 20, top: 30, bottom: 50 }
@@ -539,14 +512,14 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
       { name: '能量', type: 'line', data: nowDbArr, symbolSize: 1, lineStyle: { width: 1 } },
       ...(avgDbArr.length > 0
         ? [
-            {
-              name: '标准能量线',
-              type: 'line',
-              data: avgDbArr,
-              symbolSize: 1,
-              lineStyle: { width: 1 },
-            },
-          ]
+          {
+            name: '标准能量线',
+            type: 'line',
+            data: avgDbArr,
+            symbolSize: 1,
+            lineStyle: { width: 1 },
+          },
+        ]
         : []),
     ],
   })
@@ -562,14 +535,14 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
       { name: '密度', type: 'line', data: nowDensityArr, symbolSize: 1, lineStyle: { width: 1 } },
       ...(avgDensityArr.length > 0
         ? [
-            {
-              name: '标准密度线',
-              type: 'line',
-              data: avgDensityArr,
-              symbolSize: 1,
-              lineStyle: { width: 1 },
-            },
-          ]
+          {
+            name: '标准密度线',
+            type: 'line',
+            data: avgDensityArr,
+            symbolSize: 1,
+            lineStyle: { width: 1 },
+          },
+        ]
         : []),
     ],
   })
@@ -613,13 +586,23 @@ const loadEvent = async () => {
   const rid = receiverId.value
   if (rid && code === 'FREQUENCY_SOUND_WARN') {
     const r = await getLatestFrequencyByReceiver({ receiverId: String(rid), type: 2 })
+    logFrequencyDebugInfo('FREQUENCY_SOUND_WARN response', (r as any)?.ret ?? [])
     await renderEnergyDensityChartsFromFrequency((r as any)?.ret ?? [])
   } else if (rid && code === 'SOUND_HISTORY_WARN') {
     const r = await getLatestFrequencyByReceiver({ receiverId: String(rid), type: 2 })
+    logFrequencyDebugInfo('SOUND_HISTORY_WARN response', (r as any)?.ret ?? [])
     await renderEnergyDensityChartsFromFrequency((r as any)?.ret ?? [])
   } else if (rid && code === 'NO_SCENE_SOUND_WARN') {
     const r = await getLatestFrequencyByReceiverNoScene({ receiverId: String(rid), type: 2 })
     nosceneVoiceRet.value = (r as any)?.ret ?? null
+    logFrequencyDebugInfo(
+      'NO_SCENE_SOUND_WARN response.soundFrequencyDtoList',
+      (r as any)?.ret?.soundFrequencyDtoList ?? [],
+    )
+    logFrequencyDebugInfo(
+      'NO_SCENE_SOUND_WARN response.soundAvgFrequencyDtoList',
+      (r as any)?.ret?.soundAvgFrequencyDtoList ?? [],
+    )
     await renderEnergyDensityChartsFromNoScene((r as any)?.ret ?? {})
   } else {
     disposeCharts()
@@ -799,7 +782,7 @@ const openAIModal = async () => {
 
   try {
     await fetchNoSceneVoiceRet()
-  } catch {}
+  } catch { }
 }
 
 const resetAiModal = () => {

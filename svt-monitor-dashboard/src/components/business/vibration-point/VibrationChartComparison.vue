@@ -214,7 +214,7 @@ const getSortedFreqChartData = () => {
     .map((freq, index) => [freq, freqData.value.freqSpeedData[index] ?? 0] as [number, number])
     .sort((a, b) => a[0] - b[0])
   const xMin = chartData.length > 0 ? Math.min(...freqData.value.frequency) : 0
-  const xMax = chartData.length > 0 ? Math.max(...freqData.value.frequency, 2000) : 2000
+  const xMax = chartData.length > 0 ? Math.max(...freqData.value.frequency) : 0
   const pointMap = new Map<string, [number, number]>()
   for (const item of chartData) {
     pointMap.set(toFreqKey(item[0]), item)
