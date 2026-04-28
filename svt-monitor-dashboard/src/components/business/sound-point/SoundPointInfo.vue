@@ -4,44 +4,50 @@
     <div class="info-scroll-area">
       <div class="info-item">
         <span class="info-content">
-          <span class="info-label">聚类名称：</span>
-          <span class="info-value"></span>
+          <span class="info-label mobile-font-title">聚类名称：</span>
+          <span class="info-value mobile-font-title">{{ clusterName }}</span>
         </span>
       </div>
       <div class="info-item">
         <span class="info-content">
-          <span class="info-label">生产设备：</span>
-          <span class="info-value">{{ productionEquipment }}</span>
+          <span class="info-label mobile-font-title">生产设备：</span>
+          <span class="info-value mobile-font-title">{{ productionEquipment }}</span>
         </span>
       </div>
       <div class="info-item">
         <span class="info-content">
-          <span class="info-label">子部件：</span>
-          <span class="info-value">{{ subComponent }}</span>
+          <span class="info-label mobile-font-title">子部件：</span>
+          <span class="info-value mobile-font-title">{{ subComponent }}</span>
         </span>
       </div>
       <div class="info-item">
         <span class="info-content">
-          <span class="info-label">检测设备：</span>
-          <span class="info-value">{{ detectionEquipment }}</span>
+          <span class="info-label mobile-font-title">检测设备：</span>
+          <span class="info-value mobile-font-title">{{ detectionEquipment }}</span>
         </span>
       </div>
       <div class="info-item">
         <span class="info-content">
-          <span class="info-label">听筒：</span>
-          <span class="info-value">{{ microphone }}</span>
+          <span class="info-label mobile-font-title">听筒：</span>
+          <span class="info-value mobile-font-title">{{ microphone }}</span>
         </span>
       </div>
       <div class="info-item">
         <span class="info-content">
-          <span class="info-label">点位名称：</span>
-          <span class="info-value">{{ pointName }}</span>
+          <span class="info-label mobile-font-title">点位名称：</span>
+          <span class="info-value mobile-font-title">{{ pointName }}</span>
         </span>
       </div>
       <div class="info-item">
         <span class="info-content">
-          <span class="info-label">偏差值：</span>
-          <span class="info-value"></span>
+          <span class="info-label mobile-font-title">偏差值：</span>
+          <span class="info-value mobile-font-title">{{ deviationValue }}</span>
+        </span>
+      </div>
+      <div class="info-item">
+        <span class="info-content">
+          <span class="info-label mobile-font-title">上传时间：</span>
+          <span class="info-value mobile-font-title">{{ uploadTimeText }}</span>
         </span>
       </div>
     </div>
@@ -78,6 +84,7 @@ const microphone = computed(() => props.microphone || '')
 const deviationValue = computed(() =>
   props.deviationValue !== undefined && props.deviationValue !== '' ? props.deviationValue : '',
 )
+const uploadTimeText = computed(() => props.uploadTime || props.currentDataTime || '')
 
 watch(
   () => props.audioPath,
@@ -99,6 +106,7 @@ watch(
   border-radius: 8px;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 
   .section-title {
     padding: 10px 10px 0 10px;
@@ -152,6 +160,36 @@ watch(
       width: 100%;
       height: 34px;
     }
+  }
+}
+
+@media (max-width: 800px) {
+  .info-section-right {
+    flex: none;
+  }
+
+  .info-section-right .section-title,
+  .info-section-right .info-scroll-area,
+  .info-section-right .audio-player {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .info-section-right .info-scroll-area {
+    overflow: visible;
+  }
+
+  .info-section-right .info-scroll-area .info-item .info-content {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+
+  .info-section-right .info-scroll-area .info-item .info-content .info-value {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    word-break: break-all;
   }
 }
 </style>

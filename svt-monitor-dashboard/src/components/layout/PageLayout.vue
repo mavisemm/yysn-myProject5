@@ -9,12 +9,12 @@
       <div v-if="isMobile" class="mobile-top-actions">
         <div class="device-sidebar-drawer-trigger" @click="mobileDeviceDrawerVisible = true">
           <span class="device-sidebar-drawer-trigger__icon">≡</span>
-          <span class="device-sidebar-drawer-trigger__text">设备</span>
+          <span class="device-sidebar-drawer-trigger__text mobile-font-nav">设备</span>
         </div>
-        <div v-if="showHomeButton" class="mobile-nav-btn" @click="goHome">首页</div>
-        <div v-if="showReturnDeviceButton" class="mobile-nav-btn" @click="goToDevice">返回设备</div>
-        <div v-if="showVibrationButton" class="mobile-nav-btn" @click="goToVibration">振动</div>
-        <div v-if="showSoundButton" class="mobile-nav-btn" @click="goToSound">声音</div>
+        <div v-if="showHomeButton" class="mobile-nav-btn mobile-font-nav" @click="goHome">首页</div>
+        <div v-if="showReturnDeviceButton" class="mobile-nav-btn mobile-font-nav" @click="goToDevice">返回设备</div>
+        <div v-if="showVibrationButton" class="mobile-nav-btn mobile-font-nav" @click="goToVibration">振动</div>
+        <div v-if="showSoundButton" class="mobile-nav-btn mobile-font-nav" @click="goToSound">声音</div>
       </div>
       <el-drawer v-if="isMobile" v-model="mobileDeviceDrawerVisible" direction="ltr" size="82vw" :with-header="false"
         :append-to-body="true" class="device-sidebar-drawer">
@@ -536,8 +536,10 @@ onUnmounted(() => {
       .device-sidebar-drawer-trigger {
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 6px;
         padding: 8px 10px;
+        min-height: 36px;
         border-radius: 10px;
         color: rgba(255, 255, 255, 0.9);
         background: rgba(0, 0, 0, 0.25);
@@ -552,7 +554,6 @@ onUnmounted(() => {
         }
 
         &__text {
-          font-size: 13px;
           line-height: 1;
         }
       }
@@ -574,6 +575,7 @@ onUnmounted(() => {
         align-items: center;
         justify-content: center;
         padding: 8px 10px;
+        min-height: 36px;
         border-radius: 10px;
         color: rgba(255, 255, 255, 0.9);
         background: rgba(0, 0, 0, 0.25);
@@ -581,7 +583,6 @@ onUnmounted(() => {
         backdrop-filter: blur(8px);
         user-select: none;
         cursor: pointer;
-        font-size: 13px;
         line-height: 1;
       }
 

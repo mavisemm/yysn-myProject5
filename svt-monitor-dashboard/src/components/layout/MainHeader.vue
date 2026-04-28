@@ -424,7 +424,7 @@ const handleLogout = () => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 800px) {
   .main-header {
     height: 56px;
     background-size: cover;

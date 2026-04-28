@@ -2,27 +2,17 @@
   <div class="table-section-left">
     <div class="section-title app-section-title">声音数据分析</div>
     <div class="voiceDetail-table-container">
-      <el-table
-        :data="deviationList"
-        height="100%"
-        @row-click="handleRowClick"
-        :header-cell-style="{
-          background: 'transparent',
-          color: 'var(--special-font-color)',
-          textAlign: 'center',
-        }"
-        :cell-style="{ background: 'transparent', color: 'white', textAlign: 'center' }"
-      >
+      <el-table :data="deviationList" height="100%" @row-click="handleRowClick" :header-cell-style="{
+        background: 'transparent',
+        color: 'var(--special-font-color)',
+        textAlign: 'center',
+      }" :cell-style="{ background: 'transparent', color: 'white', textAlign: 'center' }">
         <template #empty>
           <CommonEmptyState text="暂无声音数据" size="small" />
         </template>
         <el-table-column width="10%" align="center">
           <template #header>
-            <el-checkbox
-              :model-value="isAllSelected"
-              :indeterminate="isIndeterminate"
-              @change="handleSelectAll"
-            />
+            <el-checkbox :model-value="isAllSelected" :indeterminate="isIndeterminate" @change="handleSelectAll" />
           </template>
           <template #default="{ row, $index }">
             <el-checkbox v-model="row.visible" @change="toggleVisible" @click.stop />
@@ -49,10 +39,8 @@
 
         <el-table-column label="色块" width="10%" align="center">
           <template #default="{ row }">
-            <div
-              v-if="row.color"
-              :style="{ width: '12px', height: '12px', background: row.color, margin: '0 auto' }"
-            ></div>
+            <div v-if="row.color" :style="{ width: '12px', height: '12px', background: row.color, margin: '0 auto' }">
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -137,6 +125,7 @@ const playAudio = (row: any) => {
   border-radius: 8px;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 
   .section-title {
     padding: 10px 10px 0 20px;
@@ -232,6 +221,40 @@ const playAudio = (row: any) => {
     display: flex;
     justify-content: center;
     gap: 5px;
+  }
+}
+
+@media (max-width: 800px) {
+  .table-section-left {
+    flex: none;
+  }
+
+  .table-section-left .voiceDetail-table-container {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 10px 12px 0;
+  }
+
+  .table-section-left :deep(.el-table) {
+    min-width: 720px;
+    font-size: var(--mobile-font-size-body);
+  }
+
+  .table-section-left :deep(.el-table th),
+  .table-section-left :deep(.el-table td),
+  .table-section-left :deep(.el-checkbox),
+  .table-section-left :deep(.el-button) {
+    font-size: var(--mobile-font-size-body);
+  }
+
+  .table-section-left .section-title,
+  .table-section-left .hint-text {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .table-section-left .hint-text {
+    font-size: var(--mobile-font-size-body);
   }
 }
 </style>

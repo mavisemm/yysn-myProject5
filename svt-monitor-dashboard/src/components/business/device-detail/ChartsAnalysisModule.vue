@@ -3,7 +3,7 @@
     <div ref="chartGridRef" class="charts-grid">
       <div class="chart-item">
         <div class="chart-header">
-          <span class="chart-title">烈度随时间变化</span>
+          <span class="chart-title app-section-title">烈度随时间变化</span>
           <span class="chart-unit special-font-color">（单位：mm/s）</span>
         </div>
         <div class="chart">
@@ -15,7 +15,7 @@
 
       <div class="chart-item">
         <div class="chart-header">
-          <span class="chart-title">偏差值随时间变化</span>
+          <span class="chart-title app-section-title">偏差值随时间变化</span>
           <span class="chart-unit special-font-color">（单位：dB）</span>
         </div>
         <div class="chart">
@@ -27,7 +27,7 @@
 
       <div class="chart-item chart-item--wide">
         <div class="chart-header">
-          <span class="chart-title">温度随时间变化</span>
+          <span class="chart-title app-section-title">温度随时间变化</span>
           <div class="chart-header-right">
             <span class="realtime-temp-inline">
               实时温度：<span class="special-font-color">{{ realtimeTempValueText }}</span>
@@ -677,6 +677,15 @@ onMounted(() => {
         flex: 1;
         min-height: 0;
         min-width: 0;
+
+        :deep(.common-echarts-wrapper) {
+          height: 100%;
+          min-height: inherit;
+        }
+
+        :deep(.common-echarts-inner) {
+          min-height: inherit;
+        }
       }
     }
 
@@ -818,27 +827,12 @@ onMounted(() => {
       min-height: 220px;
     }
 
-    .charts-grid .chart-item--wide {
-      grid-column: auto;
+    .charts-grid .chart-item .chart-header .chart-title {
+      font-size: 1.1rem;
     }
 
-    .charts-grid {
-      .chart-item {
-        .chart-header {
-
-          .chart-title {
-            font-size: 1.4rem;
-          }
-
-          .chart-unit {
-            font-size: 1.1rem;
-          }
-
-          .realtime-temp-inline {
-            font-size: 1.1rem;
-          }
-        }
-      }
+    .charts-grid .chart-item--wide {
+      grid-column: auto;
     }
 
 

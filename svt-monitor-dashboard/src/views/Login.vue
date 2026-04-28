@@ -12,32 +12,15 @@
 
           <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" class="login-form">
             <el-form-item prop="userName">
-              <el-input
-                v-model="loginForm.userName"
-                placeholder="请输入用户名"
-                size="large"
-                :prefix-icon="User"
-              />
+              <el-input v-model="loginForm.userName" placeholder="请输入用户名" size="large" :prefix-icon="User" />
             </el-form-item>
 
             <el-form-item prop="password">
-              <el-input
-                v-model="loginForm.password"
-                type="password"
-                placeholder="请输入密码"
-                size="large"
-                :prefix-icon="Lock"
-                show-password
-              />
+              <el-input v-model="loginForm.password" type="password" placeholder="请输入密码" size="large"
+                :prefix-icon="Lock" show-password />
             </el-form-item>
 
-            <el-button
-              type="primary"
-              size="large"
-              class="login-button"
-              @click="handleLogin"
-              :loading="loading"
-            >
+            <el-button type="primary" size="large" class="login-button" @click="handleLogin" :loading="loading">
               登录
             </el-button>
           </el-form>
@@ -169,10 +152,8 @@ const handleLogin = async () => {
 .login-page {
   width: 100vw;
   height: 100vh;
-  background-image: image-set(
-    url('@/assets/images/background/登录页背景.avif') type('image/avif'),
-    url('@/assets/images/background/登录页背景.webp') type('image/webp')
-  );
+  background-image: image-set(url('@/assets/images/background/登录页背景.avif') type('image/avif'),
+      url('@/assets/images/background/登录页背景.webp') type('image/webp'));
   background-repeat: no-repeat;
   background-position: center center;
   background-size: cover;
@@ -285,7 +266,7 @@ const handleLogin = async () => {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 800px) {
   .login-page {
     .login-container {
       flex-direction: column;

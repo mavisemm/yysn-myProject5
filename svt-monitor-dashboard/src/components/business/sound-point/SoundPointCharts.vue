@@ -683,6 +683,15 @@ onUnmounted(() => {
       flex: 1;
       min-height: 200px;
       padding: 0 10px 0 20px;
+
+      :deep(.common-echarts-wrapper) {
+        height: 100%;
+        min-height: inherit;
+      }
+
+      :deep(.common-echarts-inner) {
+        min-height: inherit;
+      }
     }
   }
 }
@@ -772,6 +781,93 @@ onUnmounted(() => {
   min-height: 160px;
   min-width: 0;
 }
+
+@media (max-width: 800px) {
+  .charts-section {
+    height: auto;
+    min-height: 0;
+  }
+
+  .charts-section .charts-row {
+    flex-direction: column;
+    gap: 12px;
+    flex: none;
+  }
+
+  .charts-section .chart-item {
+    flex: none;
+    min-height: 260px;
+  }
+
+  .charts-section .chart-item .chart-title-row {
+    justify-content: flex-start;
+    padding: 10px 12px 0;
+  }
+
+  .charts-section .chart-item .chart-title-row .energy-fullscreen-btn {
+    position: static;
+    transform: none;
+    margin-left: auto;
+  }
+
+  .charts-section .chart-item .chart-container {
+    min-height: 240px;
+    padding: 0 12px;
+  }
+
+  .charts-section .range-controls-bar {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+    overflow: visible;
+    font-size: var(--mobile-font-size-body);
+  }
+
+  .charts-section .range-controls-bar .controls-label,
+  .charts-section .range-controls-bar .controls-sep,
+  .charts-section .range-controls-bar .controls-unit,
+  .charts-section .range-controls-bar :deep(.el-input-number.range-input),
+  .charts-section .range-controls-bar :deep(.el-button.reset-btn) {
+    flex: 0 0 auto;
+    font-size: var(--mobile-font-size-body);
+  }
+
+  .charts-section .range-controls-bar :deep(.el-button.trend-analysis-btn) {
+    flex: 0 0 auto;
+    width: auto;
+    margin-top: 0;
+    font-size: var(--mobile-font-size-body);
+  }
+
+  .charts-section .chart-item .chart-title-row .energy-fullscreen-btn,
+  .charts-section .chart-item .chart-title-row :deep(.energy-fullscreen-btn .el-icon) {
+    font-size: var(--mobile-font-size-title);
+  }
+
+  .energy-fs-dialog-inner {
+    gap: 10px;
+  }
+
+  .energy-fs-controls-top {
+    justify-content: flex-start;
+    padding: 0;
+    font-size: var(--mobile-font-size-title);
+  }
+
+  .energy-fs-controls-top .controls-label,
+  .energy-fs-controls-top .controls-sep,
+  .energy-fs-controls-top .controls-unit,
+  .energy-fs-controls-top :deep(.el-input-number.range-input),
+  .energy-fs-controls-top :deep(.el-button.reset-btn) {
+    flex: 0 0 auto;
+    font-size: var(--mobile-font-size-title);
+  }
+
+  .energy-fs-chart-host {
+    min-height: 240px;
+  }
+}
 </style>
 
 <style lang="scss">
@@ -811,5 +907,17 @@ onUnmounted(() => {
 .sound-energy-fullscreen-modal .energy-fs-controls-top,
 .sound-energy-fullscreen-modal .energy-fs-chart-title {
   color: rgba(255, 255, 255, 0.9);
+}
+
+@media (max-width: 800px) {
+  .sound-energy-fullscreen-modal .el-dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
+  }
+
+  .sound-energy-fullscreen-modal .el-dialog__body {
+    padding: 12px !important;
+  }
 }
 </style>

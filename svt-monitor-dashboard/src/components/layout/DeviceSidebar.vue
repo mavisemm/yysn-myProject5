@@ -1098,6 +1098,12 @@ onUnmounted(() => {
     max-width: none;
     height: 100%;
     padding-top: 8px;
+
+    .device-tree-container {
+      .node-label {
+        font-size: 1.1rem;
+      }
+    }
   }
 }
 </style>

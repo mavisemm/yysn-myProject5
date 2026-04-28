@@ -11,6 +11,11 @@
 :root {
   --global-font-color: white;
   --special-font-color: rgba(153, 240, 255, 1);
+  --mobile-font-size-caption: 0.8rem;
+  --mobile-font-size-body: 0.9rem;
+  --mobile-font-size-title: 1.1rem;
+  --mobile-font-size-number: 1.5rem;
+  --mobile-font-size-nav: 13px;
 }
 
 /* 全局字体颜色与字号设置：根字号随视口宽度变化 */
@@ -44,6 +49,26 @@ body {
     min-height: 100vh;
     height: auto;
   }
+
+  .mobile-font-caption {
+    font-size: var(--mobile-font-size-caption) !important;
+  }
+
+  .mobile-font-body {
+    font-size: var(--mobile-font-size-body) !important;
+  }
+
+  .mobile-font-title {
+    font-size: var(--mobile-font-size-title) !important;
+  }
+
+  .mobile-font-number {
+    font-size: var(--mobile-font-size-number) !important;
+  }
+
+  .mobile-font-nav {
+    font-size: var(--mobile-font-size-nav) !important;
+  }
 }
 
 .app-section-title {
@@ -51,6 +76,12 @@ body {
   letter-spacing: 1.22px;
   color: rgba(255, 255, 255, 1);
   font-size: 1.2rem;
+}
+
+@media (max-width: 800px) {
+  .app-section-title {
+    font-size: 1.4rem;
+  }
 }
 
 .home-title {

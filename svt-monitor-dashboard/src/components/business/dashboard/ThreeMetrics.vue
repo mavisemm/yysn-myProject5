@@ -9,7 +9,7 @@
             @click="openRankDialog(index)">更多</span>
         </div>
 
-        <div class="metric-columns-header">
+        <div class="metric-columns-header mobile-font-title">
           <span class="metric-col metric-col--seq">序号</span>
           <span class="metric-col metric-col--device">点位名称</span>
           <span class="metric-col metric-col--value">
@@ -22,7 +22,7 @@
           <CommonEmptyState size="small" />
         </div>
         <template v-else>
-          <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex" class="ranking-item"
+          <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex" class="ranking-item mobile-font-body"
             :class="{ 'ranking-item--with-bg': rankIndex % 2 === 0 }" @click="goToRankTarget(rank, index)"
             style="cursor: pointer">
             <span class="col-seq">
@@ -35,7 +35,7 @@
             </span>
             <span v-if="rank.value !== undefined" class="col-value special-font-color">{{
               rank.value
-              }}</span>
+            }}</span>
           </div>
         </template>
       </div>
@@ -60,7 +60,7 @@
           </span>
           <span v-if="rank.value !== undefined" class="rank-value special-font-color">{{
             rank.value
-            }}</span>
+          }}</span>
         </div>
       </div>
     </el-dialog>
@@ -530,12 +530,11 @@ watch(
       }
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 800px) {
       .rankings {
         --ranking-row-height: 26px;
 
         .ranking-item {
-          font-size: 0.8rem;
           padding: 0 10px;
         }
       }
@@ -545,13 +544,8 @@ watch(
 
 :deep() {
   .chart-container h3.metric-title {
-    font-weight: 500;
-    letter-spacing: 1.22px;
-    color: rgba(255, 255, 255, 1);
     margin: 0 !important;
     text-align: left !important;
-
-    font-size: 1.2rem !important;
     display: block !important;
     width: auto !important;
   }

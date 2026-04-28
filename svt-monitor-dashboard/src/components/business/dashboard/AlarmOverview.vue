@@ -9,16 +9,16 @@
         </div>
       </div>
       <div class="batch-actions header-controls-desktop">
-        <el-button size="small" class="batch-btn" @click="openRealtimeBatch">
+        <el-button size="small" class="batch-btn mobile-font-title" @click="openRealtimeBatch">
           声音实时预警
         </el-button>
-        <el-button size="small" class="batch-btn" @click="openHistoryBatch">
+        <el-button size="small" class="batch-btn mobile-font-title" @click="openHistoryBatch">
           声音历史预警
         </el-button>
-        <el-button size="small" class="batch-btn" @click="openRealtimeAlarmBatch">
+        <el-button size="small" class="batch-btn mobile-font-title" @click="openRealtimeAlarmBatch">
           振动实时报警
         </el-button>
-        <el-button size="small" class="batch-btn" @click="openHistoryAlarmBatch">
+        <el-button size="small" class="batch-btn mobile-font-title" @click="openHistoryAlarmBatch">
           振动历史报警
         </el-button>
       </div>
@@ -133,9 +133,9 @@
     </div>
 
     <div v-if="filteredAlarms.length > 0" class="pagination-wrapper">
-      <span class="pagination-page-meta">共 {{ alarmTotalPages }} 页，第 {{ currentPage }} 页</span>
+      <span class="pagination-page-meta mobile-font-body">共 {{ alarmTotalPages }} 页，第 {{ currentPage }} 页</span>
       <el-pagination v-model:current-page="currentPage" :page-size="pageSize" :total="filteredAlarms.length"
-        layout="prev, pager, next" @current-change="handleCurrentChange" />
+        class="mobile-font-body" layout="prev, pager, next" @current-change="handleCurrentChange" />
     </div>
   </div>
 </template>
@@ -1349,13 +1349,11 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
     }
   }
 
-  @media (max-width: 768px) {
-    .alarm-overview {
-      height: auto;
-      min-height: auto;
-      overflow: visible;
-      padding: 10px 10px 0 10px;
-    }
+  @media (max-width: 800px) {
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+    padding: 10px 10px 0 10px !important;
 
     .header-section {
       gap: 8px;
@@ -1442,7 +1440,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
   }
 
   :deep(.el-pagination) {
-    font-size: 0.9rem;
+    font-size: var(--mobile-font-size-body);
 
     .el-pager li {
       background-color: transparent;
@@ -1479,7 +1477,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
       height: 18px;
       background-color: transparent;
       color: #111 !important;
-      font-size: 0.8rem;
+      font-size: var(--mobile-font-size-caption);
     }
   }
 }

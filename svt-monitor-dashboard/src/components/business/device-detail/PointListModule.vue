@@ -7,21 +7,12 @@
       <div v-if="!pointList.length" class="point-empty-wrapper">
         <CommonEmptyState text="暂无数据" size="small" />
       </div>
-      <el-table
-        v-else
-        ref="pointTableRef"
-        :data="pointList"
-        height="100%"
-        :fit="true"
-        :header-cell-style="{
-          background: 'transparent',
-          color: 'var(--special-font-color)',
-          'text-align': 'center',
-        }"
-        :cell-style="{ background: 'transparent', color: '#fff', 'text-align': 'center' }"
-        @row-click="onRowClick"
-        highlight-current-row
-      >
+      <el-table v-else ref="pointTableRef" :data="pointList" height="100%" :fit="true" :header-cell-style="{
+        background: 'transparent',
+        color: 'var(--special-font-color)',
+        'text-align': 'center',
+      }" :cell-style="{ background: 'transparent', color: '#fff', 'text-align': 'center' }" @row-click="onRowClick"
+        highlight-current-row>
         <el-table-column prop="name" label="点位名称" width="25%" />
         <el-table-column prop="id" label="点位编号" width="30%" />
         <el-table-column label="声音偏差值阈值" width="25%">
@@ -38,13 +29,8 @@
     </div>
     <div class="pagination-wrapper">
       <span class="pagination-page-meta">共 {{ totalPages }} 页，第 {{ currentPage }} 页</span>
-      <el-pagination
-        layout="prev, pager, next"
-        :current-page="currentPage"
-        :page-size="pageSize"
-        :total="total"
-        @current-change="onCurrentChange"
-      />
+      <el-pagination layout="prev, pager, next" :current-page="currentPage" :page-size="pageSize" :total="total"
+        @current-change="onCurrentChange" />
     </div>
   </div>
 </template>
@@ -258,12 +244,10 @@ defineExpose({
     }
 
     .el-table__body tbody tr {
-      background-image: linear-gradient(
-        90deg,
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.25) 50%,
-        rgba(255, 255, 255, 0) 100%
-      );
+      background-image: linear-gradient(90deg,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 255, 255, 0.25) 50%,
+          rgba(255, 255, 255, 0) 100%);
       background-repeat: no-repeat;
       background-size: 100% 1px;
       background-position: bottom left;
@@ -284,7 +268,7 @@ defineExpose({
       white-space: nowrap !important;
     }
 
-    .el-table__body tr.current-row > td {
+    .el-table__body tr.current-row>td {
       background-color: rgb(150, 150, 150, 0.2) !important;
     }
 
@@ -368,12 +352,6 @@ defineExpose({
     height: auto;
     min-height: 0;
 
-    .module-header {
-      .module-title {
-        font-size: 1.4rem;
-      }
-    }
-
     .point-table-container {
       overflow-x: auto;
       overflow-y: hidden;
@@ -388,25 +366,25 @@ defineExpose({
     }
 
     .pagination-page-meta {
-      font-size: 1.1rem;
+      font-size: var(--mobile-font-size-title);
     }
 
     :deep(.el-table) {
       min-width: 760px;
-      font-size: 1.1rem;
+      font-size: var(--mobile-font-size-body);
     }
 
     :deep(.el-table th),
     :deep(.el-table td) {
-      font-size: 1.1rem;
+      font-size: var(--mobile-font-size-body);
     }
 
     :deep(.el-pagination) {
-      font-size: 1.1rem;
+      font-size: var(--mobile-font-size-title);
     }
 
     :deep(.el-pagination .el-pager li.is-active) {
-      font-size: 1.1rem;
+      font-size: var(--mobile-font-size-title);
     }
   }
 }

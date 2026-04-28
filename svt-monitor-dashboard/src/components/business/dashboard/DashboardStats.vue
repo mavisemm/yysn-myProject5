@@ -21,15 +21,15 @@
             </el-icon>
           </div>
           <div class="stat-text-wrap">
-            <div class="stat-number">
+            <div class="stat-number mobile-font-number">
               <template v-for="(ch, i) in splitNumberChars(stat.number)" :key="i">
                 <span v-if="isSingleDigit(ch)" class="digit-bg">
-                  <span class="digit-text">{{ ch }}</span>
+                  <span class="digit-text mobile-font-number">{{ ch }}</span>
                 </span>
-                <span v-else class="digit-text digit-text-plain">{{ ch }}</span>
+                <span v-else class="digit-text digit-text-plain mobile-font-number">{{ ch }}</span>
               </template>
             </div>
-            <div class="stat-text">{{ stat.title }}</div>
+            <div class="stat-text mobile-font-title">{{ stat.title }}</div>
           </div>
         </div>
       </div>
@@ -278,14 +278,6 @@ function isAlertOrWarning(stat: StatItem) {
       width: 50px;
     }
 
-    .stats-grid .stat-text {
-      font-size: 0.95rem;
-    }
-
-    .stats-grid .stat-number,
-    .stats-grid .digit-text {
-      font-size: 1.5rem;
-    }
   }
 }
 </style>

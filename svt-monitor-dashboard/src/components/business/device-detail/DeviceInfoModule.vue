@@ -22,13 +22,13 @@
               阶段性报告
             </el-button>
           </div> -->
-          <div class="gauge-title">声音健康度</div>
+          <div class="gauge-title app-section-title mobile-font-title">声音健康度</div>
           <div class="gauge-wrapper">
             <div ref="soundGaugeRef" class="gauge"></div>
           </div>
         </div>
         <div class="gauge-block">
-          <div class="gauge-title">振动健康度</div>
+          <div class="gauge-title app-section-title mobile-font-title">振动健康度</div>
           <div class="gauge-wrapper">
             <div ref="vibrationGaugeRef" class="gauge"></div>
           </div>
@@ -47,10 +47,10 @@
       </el-dialog>
 
       <div class="header-actions">
-        <el-button type="primary" size="small" @click="openAddFieldDialog" class="add-field-btn">
+        <el-button type="primary" size="small" @click="openAddFieldDialog" class="add-field-btn mobile-font-title">
           添加信息
         </el-button>
-        <el-button type="primary" size="small" @click="toggleEdit" class="edit-btn">
+        <el-button type="primary" size="small" @click="toggleEdit" class="edit-btn mobile-font-title">
           {{ isEditing ? '保存' : '编辑' }}
         </el-button>
       </div>
@@ -59,83 +59,83 @@
       <div v-else class="device-basic-info">
         <div class="info-row" v-if="!isEditing">
           <div class="info-item">
-            <span class="info-label">设备名称：</span>
-            <span class="info-value">{{ deviceInfo.equipmentName }}</span>
+            <span class="info-label mobile-font-title">设备名称：</span>
+            <span class="info-value mobile-font-title">{{ deviceInfo.equipmentName }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">设备型号：</span>
-            <span class="info-value">{{ deviceInfo.deviceModel }}</span>
+            <span class="info-label mobile-font-title">设备型号：</span>
+            <span class="info-value mobile-font-title">{{ deviceInfo.deviceModel }}</span>
           </div>
         </div>
 
         <div class="info-row" v-else>
           <div class="info-item">
-            <span class="info-label">设备名称：</span>
+            <span class="info-label mobile-font-title">设备名称：</span>
             <el-input v-model="editForm.equipmentName" size="small" class="info-input" />
           </div>
           <div class="info-item">
-            <span class="info-label">设备型号：</span>
+            <span class="info-label mobile-font-title">设备型号：</span>
             <el-input v-model="editForm.deviceModel" size="small" class="info-input" />
           </div>
         </div>
 
         <div class="info-row" v-if="!isEditing">
           <div class="info-item">
-            <span class="info-label">生产厂家：</span>
-            <span class="info-value">{{ deviceInfo.deviceFactory }}</span>
+            <span class="info-label mobile-font-title">生产厂家：</span>
+            <span class="info-value mobile-font-title">{{ deviceInfo.deviceFactory }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">安装位置：</span>
-            <span class="info-value">{{ deviceInfo.locationDetail }}</span>
+            <span class="info-label mobile-font-title">安装位置：</span>
+            <span class="info-value mobile-font-title">{{ deviceInfo.locationDetail }}</span>
           </div>
         </div>
         <div class="info-row" v-else>
           <div class="info-item">
-            <span class="info-label">生产厂家：</span>
+            <span class="info-label mobile-font-title">生产厂家：</span>
             <el-input v-model="editForm.deviceFactory" size="small" class="info-input" />
           </div>
           <div class="info-item">
-            <span class="info-label">安装位置：</span>
+            <span class="info-label mobile-font-title">安装位置：</span>
             <el-input v-model="editForm.locationDetail" size="small" class="info-input" />
           </div>
         </div>
 
         <div class="info-row" v-if="!isEditing">
           <div class="info-item">
-            <span class="info-label">额定转速：</span>
-            <span class="info-value">{{
+            <span class="info-label mobile-font-title">额定转速：</span>
+            <span class="info-value mobile-font-title">{{
               formatValueWithUnit(deviceInfo.rotationSpeed, 'rpm')
               }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">设计流量：</span>
-            <span class="info-value">{{ formatValueWithUnit(deviceInfo.designFlow, 'm³/h') }}</span>
+            <span class="info-label mobile-font-title">设计流量：</span>
+            <span class="info-value mobile-font-title">{{ formatValueWithUnit(deviceInfo.designFlow, 'm³/h') }}</span>
           </div>
         </div>
         <div class="info-row" v-else>
           <div class="info-item">
-            <span class="info-label">额定转速：</span>
+            <span class="info-label mobile-font-title">额定转速：</span>
             <el-input v-model="editForm.rotationSpeed" size="small" class="info-input" />
           </div>
           <div class="info-item">
-            <span class="info-label">设计流量：</span>
+            <span class="info-label mobile-font-title">设计流量：</span>
             <el-input v-model="editForm.designFlow" size="small" class="info-input" />
           </div>
         </div>
 
         <div class="info-row" v-if="!isEditing">
           <div class="info-item">
-            <span class="info-label">压力：</span>
-            <span class="info-value">{{ formatValueWithUnit(deviceInfo.pressure, 'MPa') }}</span>
+            <span class="info-label mobile-font-title">压力：</span>
+            <span class="info-value mobile-font-title">{{ formatValueWithUnit(deviceInfo.pressure, 'MPa') }}</span>
           </div>
           <div v-if="extraFields.length > 0" class="info-item">
-            <span class="info-label">{{ extraFields[0]?.label }}：</span>
-            <span class="info-value">{{ extraFields[0]?.value }}</span>
+            <span class="info-label mobile-font-title">{{ extraFields[0]?.label }}：</span>
+            <span class="info-value mobile-font-title">{{ extraFields[0]?.value }}</span>
           </div>
         </div>
         <div class="info-row" v-else>
           <div class="info-item">
-            <span class="info-label">压力：</span>
+            <span class="info-label mobile-font-title">压力：</span>
             <el-input v-model="editForm.pressure" size="small" class="info-input" />
           </div>
           <div class="info-item"></div>
@@ -144,8 +144,8 @@
         <div class="info-row" v-for="(row, rowIndex) in extraFieldRows" :key="'extra-row-' + rowIndex"
           v-if="!isEditing">
           <div v-for="(field, index) in row" :key="'extra-' + rowIndex + '-' + index" class="info-item">
-            <span class="info-label">{{ field.label }}：</span>
-            <span class="info-value">{{ field.value }}</span>
+            <span class="info-label mobile-font-title">{{ field.label }}：</span>
+            <span class="info-value mobile-font-title">{{ field.value }}</span>
           </div>
         </div>
       </div>
@@ -497,7 +497,7 @@ const loadDeviceDataParallel = async () => {
   deviceInfo.value.equipmentName = ''
 
   try {
-    const [infoResponse, soundHealthResponse, vibrationHealthResponse] = await Promise.all([
+    const [infoResult, soundHealthResult, vibrationHealthResult] = await Promise.allSettled([
       getDeviceInfoByEquipmentId(props.deviceId),
       getEquipmentHealth({
         equipmentId: props.deviceId,
@@ -509,7 +509,12 @@ const loadDeviceDataParallel = async () => {
       }),
     ])
 
-    if (infoResponse.rc === 0 && infoResponse.ret) {
+    const infoResponse = infoResult.status === 'fulfilled' ? infoResult.value : null
+    const soundHealthResponse = soundHealthResult.status === 'fulfilled' ? soundHealthResult.value : null
+    const vibrationHealthResponse =
+      vibrationHealthResult.status === 'fulfilled' ? vibrationHealthResult.value : null
+
+    if (infoResponse?.rc === 0 && infoResponse.ret) {
       const raw: any = infoResponse.ret
       if (requestId !== currentDeviceInfoRequestId) return
       deviceInfo.value = {
@@ -517,13 +522,15 @@ const loadDeviceDataParallel = async () => {
         equipmentId: raw.equipmentId ?? '',
         equipmentName: raw.equipmentName ?? '',
       } as any
+      hasDeviceInfo.value = true
       syncExtraFieldsFromDeviceInfo()
       isDeviceInfoLoaded.value = true
     } else {
+      hasDeviceInfo.value = false
       ElMessage.error('获取设备信息失败')
     }
 
-    if (soundHealthResponse.rc === 0 && soundHealthResponse.ret) {
+    if (soundHealthResponse?.rc === 0 && soundHealthResponse.ret) {
       const ret: any = soundHealthResponse.ret
       const score = typeof ret.healthScore === 'number' ? ret.healthScore : null
       const grade = extractHealthGrade(ret)
@@ -536,7 +543,7 @@ const loadDeviceDataParallel = async () => {
       soundHealthGrade.value = ''
     }
 
-    if (vibrationHealthResponse.rc === 0 && vibrationHealthResponse.ret) {
+    if (vibrationHealthResponse?.rc === 0 && vibrationHealthResponse.ret) {
       const ret: any = vibrationHealthResponse.ret
       const grade = extractHealthGrade(ret)
       hasVibrationHealthData.value = !!grade
@@ -1185,31 +1192,14 @@ onUnmounted(() => {
     flex: 0 0 auto;
     padding-bottom: 0;
 
-    .module-header {
-      .header-main {
-        .module-title {
-          font-size: 1.4rem;
-        }
-      }
-    }
-
     .device-main {
       .device-basic-info {
         .info-row {
           .info-item {
-            .info-label,
-            .info-value {
-              font-size: 1.1rem;
-            }
           }
         }
       }
 
-      .health-gauge-container {
-        .gauge-title {
-          font-size: 1.4rem;
-        }
-      }
     }
   }
 }

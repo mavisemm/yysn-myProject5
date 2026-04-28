@@ -22,6 +22,7 @@
         :point-name="pointName"
         :device-name="deviceName"
         :current-data-time="currentDataTime"
+        :upload-time="currentDataTime"
         :audio-path="audioPath"
         :cluster-name="clusterName"
         :production-equipment="productionEquipment"
@@ -36,7 +37,7 @@
   <el-dialog
     v-model="voiceVisible"
     title="详情"
-    width="70vw"
+    :width="detailDialogWidth"
     align-center
     class="voice-detail-dialog"
     destroy-on-close
@@ -124,6 +125,8 @@ let modalChartsResizeObserver: ResizeObserver | null = null
 
 const audioPath = ref('')
 const voiceVisible = ref(false)
+const isMobileView = ref(window.innerWidth <= 800)
+const detailDialogWidth = computed(() => (isMobileView.value ? '100vw' : '70vw'))
 
 const pointName = ref('')
 const deviceName = ref('')
@@ -651,6 +654,7 @@ const handleModalClosed = () => {
 }
 
 const handleResize = () => {
+  isMobileView.value = window.innerWidth <= 800
   if (!voiceVisible.value) return
   setTimeout(() => {
     try {
@@ -716,6 +720,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 0;
 
   .bottom-section {
     display: flex;
@@ -769,6 +774,49 @@ onUnmounted(() => {
     .modal-chart-dom {
       width: 100%;
       height: 40vh;
+    }
+  }
+}
+
+@media (max-width: 800px) {
+  .sound-point-container {
+    height: auto;
+    min-height: 100%;
+    overflow-y: auto;
+
+    .bottom-section {
+      flex-direction: column;
+      height: auto;
+      overflow: visible;
+    }
+  }
+
+  :deep(.voice-detail-dialog) {
+    .el-dialog {
+      width: 100vw !important;
+      max-width: 100vw !important;
+      height: 100vh;
+      max-height: 100vh;
+      border-radius: 0;
+    }
+
+    .el-dialog__header {
+      padding: 16px;
+    }
+
+    .el-dialog__body {
+      padding: 12px;
+    }
+  }
+
+  .modal-charts {
+    gap: 12px;
+
+    .modal-chart-item {
+      .modal-chart-dom {
+        height: 32vh;
+        min-height: 220px;
+      }
     }
   }
 }
