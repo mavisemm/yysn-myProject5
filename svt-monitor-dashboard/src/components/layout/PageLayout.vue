@@ -5,7 +5,21 @@
   }">
     <MainHeader :current-background="backgroundMode" @change-background="handleChangeBackground" />
     <div class="main-content">
-      <DeviceSidebar />
+      <DeviceSidebar class="device-sidebar--desktop" />
+      <div v-if="isMobile" class="mobile-top-actions">
+        <div class="device-sidebar-drawer-trigger" @click="mobileDeviceDrawerVisible = true">
+          <span class="device-sidebar-drawer-trigger__icon">≡</span>
+          <span class="device-sidebar-drawer-trigger__text">设备</span>
+        </div>
+        <div v-if="showHomeButton" class="mobile-nav-btn" @click="goHome">首页</div>
+        <div v-if="showReturnDeviceButton" class="mobile-nav-btn" @click="goToDevice">返回设备</div>
+        <div v-if="showVibrationButton" class="mobile-nav-btn" @click="goToVibration">振动</div>
+        <div v-if="showSoundButton" class="mobile-nav-btn" @click="goToSound">声音</div>
+      </div>
+      <el-drawer v-if="isMobile" v-model="mobileDeviceDrawerVisible" direction="ltr" size="82vw" :with-header="false"
+        :append-to-body="true" class="device-sidebar-drawer">
+        <DeviceSidebar class="device-sidebar--drawer" />
+      </el-drawer>
       <div class="content-wrapper">
         <RouterView />
       </div>
@@ -22,12 +36,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import MainHeader from './MainHeader.vue'
 import DeviceSidebar from './DeviceSidebar.vue'
 import { RouterView } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox, ElDrawer } from 'element-plus'
 import RealtimeBatchDialog from '@/components/alarm/RealtimeBatchDialog.vue'
 import HistoryBatchDialog from '@/components/alarm/HistoryBatchDialog.vue'
 import RealtimeAlarmBatchDialog from '@/components/alarm/RealtimeAlarmBatchDialog.vue'
@@ -41,6 +55,85 @@ import { resolveRealtimeDeviceKey } from '@/utils/realtimeAlarmNavigator'
 
 const backgroundMode = ref<'image' | 'navy' | 'solid'>('solid')
 provide('backgroundMode', backgroundMode)
+
+const mobileDeviceDrawerVisible = ref(false)
+const isMobile = ref(false)
+
+const updateMobileState = () => {
+  isMobile.value = window.innerWidth <= 800
+  if (!isMobile.value) {
+    mobileDeviceDrawerVisible.value = false
+  }
+}
+
+const showHomeButton = computed(() => {
+  return route.name === 'DeviceDetail' || route.name === 'SoundPoint' || route.name === 'VibrationPoint'
+})
+
+const showReturnDeviceButton = computed(() => {
+  return route.name === 'SoundPoint' || route.name === 'VibrationPoint'
+})
+
+const showVibrationButton = computed(() => {
+  return route.name === 'SoundPoint'
+})
+
+const showSoundButton = computed(() => {
+  return route.name === 'VibrationPoint'
+})
+
+const goHome = () => {
+  router.push('/dashboard')
+}
+
+const goToDevice = () => {
+  if (route.name === 'DeviceDetail') {
+    const id = route.params.id
+    if (typeof id === 'string' && id) return
+  }
+
+  let equipmentId = (route.query.equipmentId as string) || ''
+
+  if (!equipmentId && (route.name === 'SoundPoint' || route.name === 'VibrationPoint')) {
+    const receiverIdParam = route.params.receiverId
+    const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
+    if (typeof receiverId === 'string' && receiverId) {
+      const findParentDeviceId = (rid: string): string | null => {
+        for (const factory of deviceTreeStore.deviceTreeData) {
+          for (const workshop of factory.children ?? []) {
+            for (const device of workshop.children ?? []) {
+              if (device.type !== 'device') continue
+              const hasPoint = (device.children ?? []).some((p) => p.type === 'point' && p.id === rid)
+              if (hasPoint) return device.id
+            }
+          }
+        }
+        return null
+      }
+      equipmentId = findParentDeviceId(receiverId) ?? ''
+    }
+  }
+
+  if (equipmentId) {
+    router.push({ name: 'DeviceDetail', params: { id: equipmentId } })
+  } else {
+    router.push('/dashboard')
+  }
+}
+
+const goToVibration = () => {
+  const receiverIdParam = route.params.receiverId
+  const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
+  if (typeof receiverId !== 'string' || !receiverId) return
+  router.push({ name: 'VibrationPoint', params: { receiverId }, query: route.query })
+}
+
+const goToSound = () => {
+  const receiverIdParam = route.params.receiverId
+  const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
+  if (typeof receiverId !== 'string' || !receiverId) return
+  router.push({ name: 'SoundPoint', params: { receiverId }, query: route.query })
+}
 
 const handleChangeBackground = (mode: 'image' | 'navy' | 'solid') => {
   backgroundMode.value = mode
@@ -251,6 +344,8 @@ async function startGlobalAlarmStream() {
 }
 
 onMounted(() => {
+  updateMobileState()
+  window.addEventListener('resize', updateMobileState)
   void startGlobalAlarmStream()
 })
 
@@ -267,6 +362,7 @@ watch(
 )
 
 onUnmounted(() => {
+  window.removeEventListener('resize', updateMobileState)
   alarmOverviewStore.stop()
 })
 </script>
@@ -423,29 +519,106 @@ onUnmounted(() => {
 
 @media (max-width: 800px) {
   .page-layout {
-    overflow-x: auto;
-    overflow-y: hidden;
+    padding: 0 10px;
+    overflow-x: hidden;
+    overflow-y: visible;
+    min-height: 100vh;
+    height: auto;
 
     .main-content {
-      min-width: 500px;
+      min-width: 0;
+      overflow: visible;
 
-      .device-sidebar-container {
-        width: 200px;
+      .device-sidebar--desktop {
+        display: none;
+      }
+
+      .device-sidebar-drawer-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        color: rgba(255, 255, 255, 0.9);
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(8px);
+        user-select: none;
+        cursor: pointer;
+
+        &__icon {
+          font-size: 18px;
+          line-height: 1;
+        }
+
+        &__text {
+          font-size: 13px;
+          line-height: 1;
+        }
+      }
+
+      .mobile-top-actions {
+        position: fixed;
+        left: 6px;
+        top: 68px;
+        z-index: 1200;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        max-width: calc(100vw - 12px);
+      }
+
+      .mobile-nav-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 10px;
+        border-radius: 10px;
+        color: rgba(255, 255, 255, 0.9);
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(8px);
+        user-select: none;
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1;
+      }
+
+      .content-wrapper {
+        overflow-y: visible;
+        overflow-x: hidden;
+        padding-top: 44px;
       }
     }
+  }
+
+  .page-layout.page-layout--solid {
+    background-size: auto;
   }
 }
 
 @media (max-width: 500px) {
   .page-layout {
-    .main-content {
-      min-width: 500px;
-    }
+    padding: 0 8px;
   }
 }
 </style>
 
 <style lang="scss">
+@media (max-width: 800px) {
+  .device-sidebar-drawer {
+    .el-drawer {
+      background: #132668 !important;
+    }
+
+    .el-drawer__body {
+      background: #132668 !important;
+      padding: 0;
+    }
+  }
+}
+
 .alarm-remind-dialog {
   .el-message-box__status.el-icon {
     display: none;

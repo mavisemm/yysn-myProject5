@@ -69,8 +69,8 @@
       </div>
     </div>
 
-    <el-dialog v-model="notVisible" title="选择误报类型" width="520px" destroy-on-close :close-on-click-modal="false"
-      @closed="resetNotModal">
+    <el-dialog v-model="notVisible" title="选择误报类型" width="520px" class="alarm-batch-sub-dialog" destroy-on-close
+      :close-on-click-modal="false" @closed="resetNotModal">
       <div class="modalBlock">
         <div class="modalLabel">选择误报类型</div>
         <el-select v-model="notType" placeholder="请选择" style="width: 100%" size="small" class="notTypeSelect"
@@ -88,8 +88,8 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="yesVisible" title="异常预警" width="620px" destroy-on-close :close-on-click-modal="false"
-      @open="onYesModalOpen" @closed="resetYesModal">
+    <el-dialog v-model="yesVisible" title="异常预警" width="620px" class="alarm-batch-sub-dialog" destroy-on-close
+      :close-on-click-modal="false" @open="onYesModalOpen" @closed="resetYesModal">
       <div class="modalBlock">
         <el-select v-model="yesExceptionId" placeholder="历史异常库" style="width: 100%" size="small" class="historySelect"
           popper-class="historySelectPopper" @change="onYesExceptionChange">
@@ -108,8 +108,8 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="aiModalVisible" title="智能故障分析" width="760px" destroy-on-close :close-on-click-modal="false"
-      @closed="resetAiModal">
+    <el-dialog v-model="aiModalVisible" title="智能故障分析" width="760px" class="alarm-batch-sub-dialog"
+      destroy-on-close :close-on-click-modal="false" @closed="resetAiModal">
       <div class="aiHeader">
         <div class="aiMeta">设备名称：{{ nosceneVoiceRet?.productName ?? '暂无' }}</div>
         <div class="aiMeta">点位名称：{{ nosceneVoiceRet?.subProductName ?? '暂无' }}</div>
@@ -428,8 +428,8 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
     const f1 = Number(item?.freq1 ?? 0)
     const f2 = Number(item?.freq2 ?? 0)
     xArr.push(Number(Math.sqrt(f1 * f2)).toFixed(0))
-    nowDbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 2 }))
-    nowDensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 4 }))
+    nowDbArr.push(toSafeNumber(item?.db, { min: -2000, max: 2000, fixed: 2 }))
+    nowDensityArr.push(toSafeNumber(item?.density, { min: -2000, max: 2000, fixed: 4 }))
   }
 
   const baseGrid = { left: 40, right: 20, top: 30, bottom: 50 }
@@ -493,13 +493,13 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
     const f1 = Number(item?.freq1 ?? 0)
     const f2 = Number(item?.freq2 ?? 0)
     xArr.push(Number(Math.sqrt(f1 * f2)).toFixed(0))
-    nowDbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 2 }))
-    nowDensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 4 }))
+    nowDbArr.push(toSafeNumber(item?.db, { min: -2000, max: 2000, fixed: 2 }))
+    nowDensityArr.push(toSafeNumber(item?.density, { min: -2000, max: 2000, fixed: 4 }))
   }
 
   for (const item of soundAvgFrequencyDtoList) {
-    avgDbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 2 }))
-    avgDensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 4 }))
+    avgDbArr.push(toSafeNumber(item?.db, { min: -2000, max: 2000, fixed: 2 }))
+    avgDensityArr.push(toSafeNumber(item?.density, { min: -2000, max: 2000, fixed: 4 }))
   }
 
   const baseGrid = { left: 40, right: 20, top: 30, bottom: 50 }
@@ -1108,5 +1108,50 @@ onBeforeUnmount(() => {
 .notTypeSelectPopper .el-select-dropdown__item {
   height: 28px;
   line-height: 28px;
+}
+
+@media (max-width: 800px) {
+  .alarm-batch-view-dialog,
+  .alarm-batch-view-dialog.el-dialog,
+  .alarm-batch-view-dialog .el-dialog,
+  .alarm-batch-sub-dialog.el-dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+  }
+
+  .alarm-batch-view-dialog.el-dialog,
+  .alarm-batch-view-dialog .el-dialog {
+    height: 92vh !important;
+    max-height: 92vh !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .alarm-batch-view-dialog .el-dialog__body,
+  .alarm-batch-sub-dialog .el-dialog__body {
+    padding: 12px !important;
+  }
+
+  .alarm-batch-view-dialog .voiceContainer {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-auto-rows: 350px;
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .alarm-batch-view-dialog .voiceContainerItem {
+    min-height: 350px;
+    height: 350px;
+  }
+
+  .alarm-batch-view-dialog .el-dialog__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
 }
 </style>

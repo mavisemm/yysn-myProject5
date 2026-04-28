@@ -3,15 +3,10 @@
     <div v-for="(metric, index) in metrics" :key="index" class="chart-container">
       <div class="metric-header">
         <div class="metric-title-row home-title home-title--ranking">
-          <img
-            class="metric-title-row__icon home-title__icon"
-            src="@/assets/images/background/小图标.webp"
-            alt=""
-          />
+          <img class="metric-title-row__icon home-title__icon" src="@/assets/images/background/小图标.webp" alt="" />
           <h3 class="metric-title app-section-title">{{ metric.title }}</h3>
-          <span v-if="getRankings(index).length > 0" class="more-btn" @click="openRankDialog(index)"
-            >更多</span
-          >
+          <span v-if="getRankings(index).length > 0 && !isMobileView" class="more-btn"
+            @click="openRankDialog(index)">更多</span>
         </div>
 
         <div class="metric-columns-header">
@@ -27,68 +22,45 @@
           <CommonEmptyState size="small" />
         </div>
         <template v-else>
-          <div
-            v-for="(rank, rankIndex) in displayRankings(index)"
-            :key="rankIndex"
-            class="ranking-item"
-            :class="{ 'ranking-item--with-bg': rankIndex % 2 === 0 }"
-            @click="goToRankTarget(rank, index)"
-            style="cursor: pointer"
-          >
+          <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex" class="ranking-item"
+            :class="{ 'ranking-item--with-bg': rankIndex % 2 === 0 }" @click="goToRankTarget(rank, index)"
+            style="cursor: pointer">
             <span class="col-seq">
               <img class="seq-icon" src="@/assets/images/background/首页-排名序标.webp" alt="" />
               <span class="seq-num">{{ rankIndex + 1 }}</span>
             </span>
             <span class="col-device special-font-color" :title="getRankDeviceTooltip(rank)">
               {{ rank.pointName }}
-              <span v-if="rank.equipmentName" class="workshop-info"
-                >（{{ rank.equipmentName }}）</span
-              >
+              <span v-if="rank.equipmentName" class="workshop-info">（{{ rank.equipmentName }}）</span>
             </span>
             <span v-if="rank.value !== undefined" class="col-value special-font-color">{{
               rank.value
-            }}</span>
+              }}</span>
           </div>
         </template>
       </div>
       <slot :name="'metric-' + index"></slot>
     </div>
 
-    <el-dialog
-      v-model="rankDialogVisible"
-      width="480px"
-      class="rank-dialog"
-      destroy-on-close
-      append-to-body
-      @close="rankDialogMetricIndex = -1"
-    >
+    <el-dialog v-model="rankDialogVisible" width="480px" class="rank-dialog" destroy-on-close append-to-body
+      @close="rankDialogMetricIndex = -1">
       <template #header>
         <span class="dialog-header-inner">
           <span>{{ rankDialogTitle }}</span>
-          <span
-            v-if="rankDialogMetricIndex >= 0 && metrics[rankDialogMetricIndex]?.unit"
-            class="dialog-unit-inline"
-            >{{ metrics[rankDialogMetricIndex]?.unit }}</span
-          >
+          <span v-if="rankDialogMetricIndex >= 0 && metrics[rankDialogMetricIndex]?.unit" class="dialog-unit-inline">{{
+            metrics[rankDialogMetricIndex]?.unit }}</span>
         </span>
       </template>
       <div class="dialog-rankings">
-        <div
-          v-for="(rank, rankIndex) in dialogRankings"
-          :key="rankIndex"
-          class="dialog-ranking-item"
-          @click="goToRankTarget(rank, rankDialogMetricIndex)"
-        >
+        <div v-for="(rank, rankIndex) in dialogRankings" :key="rankIndex" class="dialog-ranking-item"
+          @click="goToRankTarget(rank, rankDialogMetricIndex)">
           <span class="rank-num special-font-color">{{ rankIndex + 1 }}.</span>
-          <span class="rank-device special-font-color"
-            >{{ rank.pointName }}
-            <span v-if="rank.equipmentName" class="workshop-info"
-              >（{{ rank.equipmentName }}）</span
-            >
+          <span class="rank-device special-font-color">{{ rank.pointName }}
+            <span v-if="rank.equipmentName" class="workshop-info">（{{ rank.equipmentName }}）</span>
           </span>
           <span v-if="rank.value !== undefined" class="rank-value special-font-color">{{
             rank.value
-          }}</span>
+            }}</span>
         </div>
       </div>
     </el-dialog>
@@ -178,7 +150,7 @@ const goToRankTarget = (rank: RankingItem, metricIndex: number) => {
           ...(pname ? { pointName: pname } : {}),
         },
       })
-      .catch(() => {})
+      .catch(() => { })
     return
   }
 
@@ -201,7 +173,7 @@ const goToRankTarget = (rank: RankingItem, metricIndex: number) => {
           pointName: rank.pointName || '',
         },
       })
-      .catch(() => {})
+      .catch(() => { })
   }
 }
 
@@ -238,6 +210,7 @@ const visibleRowsByMetric = ref<number[]>([2, 2, 2])
 
 let resizeObserver: ResizeObserver | null = null
 let resizeListener: (() => void) | null = null
+const isMobileView = ref(window.innerWidth <= 800)
 
 const setRankingsEl = (el: unknown, index: number) => {
   const target = el instanceof Element ? (el as HTMLDivElement) : null
@@ -257,6 +230,7 @@ const getRankDeviceTooltip = (rank: RankingItem): string => {
 }
 
 const measureAndUpdateVisibleRows = () => {
+  isMobileView.value = window.innerWidth <= 800
   const indices = props.metrics.map((_m, i) => i)
 
   for (const index of indices) {
@@ -289,6 +263,7 @@ const scheduleMeasure = () => {
 
 const displayRankings = (index: number): RankingItem[] => {
   const list = getRankings(index)
+  if (isMobileView.value) return list
   const maxRows = visibleRowsByMetric.value[index] ?? 2
   return list.slice(0, Math.min(maxRows, list.length))
 }
@@ -360,7 +335,7 @@ watch(
   box-sizing: border-box;
   padding: 10px 10px 0 20px;
 
-  > .chart-container {
+  >.chart-container {
     flex: 1;
     background: url('@/assets/images/background/首页-排名背景.webp') no-repeat center center;
     background-size: 100% 100%;
@@ -368,7 +343,7 @@ watch(
     overflow: hidden;
   }
 
-  > div {
+  >div {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -638,6 +613,15 @@ watch(
       margin-left: 8px;
       color: #606266 !important;
     }
+  }
+}
+
+@media (max-width: 800px) {
+  .metrics-area {
+    flex-direction: column;
+    padding: 10px 10px 0 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }
 </style>

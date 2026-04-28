@@ -1,21 +1,8 @@
 <template>
-  <el-dialog
-    v-model="visible"
-    :title="props.title"
-    width="900px"
-    :close-on-click-modal="true"
-    draggable
-    class="trend-warning-modal"
-    @close="handleClose"
-  >
+  <el-dialog v-model="visible" :title="props.title" :width="dialogWidth" :close-on-click-modal="true" draggable
+    class="trend-warning-modal" @close="handleClose">
     <div class="modal-body">
-      <el-table
-        :data="tableData"
-        stripe
-        class="warning-table"
-        max-height="400"
-        v-loading="store.loading"
-      >
+      <el-table :data="tableData" stripe class="warning-table" max-height="400" v-loading="store.loading">
         <template #empty>
           <div class="table-empty">暂无数据</div>
         </template>
@@ -32,21 +19,13 @@
         </el-table-column>
         <el-table-column prop="pointName" label="点位名称" min-width="120">
           <template #default="{ row }">
-            <span
-              v-if="row.receiverId && row.equipmentId"
-              class="link-cell"
-              @click.stop="goToSoundPoint(row)"
-            >
+            <span v-if="row.receiverId && row.equipmentId" class="link-cell" @click.stop="goToSoundPoint(row)">
               {{ row.pointName }}
             </span>
             <span v-else>{{ row.pointName }}</span>
           </template>
         </el-table-column>
-        <el-table-column
-          prop="value"
-          :label="props.mode === 'trend' ? '预警值' : '报警值'"
-          min-width="100"
-        >
+        <el-table-column prop="value" :label="props.mode === 'trend' ? '预警值' : '报警值'" min-width="100">
           <template #default="{ row }">
             <span>{{ row.value ?? '—' }}</span>
           </template>
@@ -88,6 +67,8 @@ const emit = defineEmits<{
 
 const visible = ref(props.modelValue)
 const store = useDeviceWaringDetailStore()
+const isMobile = computed(() => window.innerWidth <= 800)
+const dialogWidth = computed(() => (isMobile.value ? '100vw' : '900px'))
 
 interface TableRow {
   equipmentName: string
@@ -234,6 +215,28 @@ watch(visible, (val) => {
 
   :deep(.el-table__body td) {
     color: #606266 !important;
+  }
+}
+
+@media (max-width: 800px) {
+  .trend-warning-modal {
+    :deep(.el-dialog) {
+      width: 100vw !important;
+      max-width: 100vw;
+      margin: 0 !important;
+    }
+
+    :deep(.el-dialog__body) {
+      padding: 12px;
+    }
+  }
+
+  .modal-body {
+    overflow-x: auto;
+  }
+
+  .warning-table {
+    min-width: 620px;
   }
 }
 </style>

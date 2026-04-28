@@ -1,92 +1,37 @@
 <template>
-  <el-dialog
-    v-model="store.historyAlarmVisible"
-    title="历史报警批量操作"
-    width="1100px"
-    align-center
-    class="alarm-batch-dialog"
-    @close="store.closeHistoryAlarm"
-  >
+  <el-dialog v-model="store.historyAlarmVisible" title="历史报警批量操作" :width="dialogWidth" align-center
+    class="alarm-batch-dialog alarm-batch-dialog--history-alarm" @close="store.closeHistoryAlarm">
     <div class="filter-bar">
       <el-form :inline="true" label-width="90px" class="filter-form">
         <el-form-item label="开始时间：">
-          <el-date-picker
-            v-model="store.historyAlarmQuery.startTime"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="开始时间"
-            clearable
-            size="small"
-            class="alarm-filter-control"
-            :show-now="false"
-            :show-confirm="false"
-            :disabled-date="disableFutureDate"
-            :disabled-hours="getDisabledStartHours"
-            :disabled-minutes="getDisabledStartMinutes"
-            :disabled-seconds="getDisabledStartSeconds"
-            popper-class="alarm-batch-datetime-popper"
-          />
+          <el-date-picker v-model="store.historyAlarmQuery.startTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="开始时间" clearable size="small" class="alarm-filter-control" :show-now="false"
+            :show-confirm="false" :disabled-date="disableFutureDate" :disabled-hours="getDisabledStartHours"
+            :disabled-minutes="getDisabledStartMinutes" :disabled-seconds="getDisabledStartSeconds"
+            popper-class="alarm-batch-datetime-popper" />
         </el-form-item>
         <el-form-item label="结束时间：">
-          <el-date-picker
-            v-model="store.historyAlarmQuery.endTime"
-            type="datetime"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            placeholder="结束时间"
-            clearable
-            size="small"
-            class="alarm-filter-control"
-            :show-now="false"
-            :show-confirm="false"
-            :disabled-date="disableFutureDate"
-            :disabled-hours="getDisabledEndHours"
-            :disabled-minutes="getDisabledEndMinutes"
-            :disabled-seconds="getDisabledEndSeconds"
-            popper-class="alarm-batch-datetime-popper"
-            @update:model-value="onEndModelValue"
-            @change="onEndTimeChange"
-            @panel-change="onEndPanelChange"
-            @calendar-change="onEndCalendarChange"
-          />
+          <el-date-picker v-model="store.historyAlarmQuery.endTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="结束时间" clearable size="small" class="alarm-filter-control" :show-now="false"
+            :show-confirm="false" :disabled-date="disableFutureDate" :disabled-hours="getDisabledEndHours"
+            :disabled-minutes="getDisabledEndMinutes" :disabled-seconds="getDisabledEndSeconds"
+            popper-class="alarm-batch-datetime-popper" @update:model-value="onEndModelValue" @change="onEndTimeChange"
+            @panel-change="onEndPanelChange" @calendar-change="onEndCalendarChange" />
         </el-form-item>
         <el-form-item label="听音器名称：">
-          <el-select-v2
-            v-model="store.historyAlarmQuery.deviceId"
-            :options="deviceOptions"
-            filterable
-            clearable
-            size="small"
-            class="alarm-filter-control"
-            popper-class="alarm-batch-popper"
-            :popper-options="sameWidthPopperOptions"
-            :loading="store.dropdownsLoading"
-            :item-height="28"
-            :height="280"
-            style="width: 220px"
-            placeholder="请选择"
-          />
+          <el-select-v2 v-model="store.historyAlarmQuery.deviceId" :options="deviceOptions" filterable clearable
+            size="small" class="alarm-filter-control" popper-class="alarm-batch-popper"
+            :popper-options="sameWidthPopperOptions" :loading="store.dropdownsLoading" :item-height="28" :height="280"
+            style="width: 220px" placeholder="请选择" />
         </el-form-item>
         <el-form-item label="报警类型：">
-          <el-select-v2
-            v-model="store.historyAlarmQuery.eventTypeCode"
-            :options="typeOptions"
-            filterable
-            clearable
-            size="small"
-            class="alarm-filter-control"
-            popper-class="alarm-batch-popper"
-            :popper-options="sameWidthPopperOptions"
-            :loading="store.dropdownsLoading"
-            :item-height="28"
-            :height="280"
-            style="width: 220px"
-            placeholder="请选择"
-          />
+          <el-select-v2 v-model="store.historyAlarmQuery.eventTypeCode" :options="typeOptions" filterable clearable
+            size="small" class="alarm-filter-control" popper-class="alarm-batch-popper"
+            :popper-options="sameWidthPopperOptions" :loading="store.dropdownsLoading" :item-height="28" :height="280"
+            style="width: 220px" placeholder="请选择" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" size="small" @click="store.fetchHistoryAlarmList(0, true)"
-            >查询</el-button
-          >
+          <el-button type="primary" size="small" @click="store.fetchHistoryAlarmList(0, true)">查询</el-button>
           <el-button size="small" @click="onReset">清空</el-button>
         </el-form-item>
       </el-form>
@@ -97,43 +42,24 @@
         <el-button type="success" size="small" @click="confirmAll('yes')">全部确认警报</el-button>
         <el-button type="warning" size="small" @click="confirmAll('not')">全部确认误报</el-button>
         <el-button type="danger" size="small" @click="confirmAll('delete')">全部删除</el-button>
-        <el-button
-          type="success"
-          size="small"
-          :disabled="!store.historyAlarmSelectedRowKeys.length"
-          @click="confirmBatch('yes')"
-        >
+        <el-button type="success" size="small" :disabled="!store.historyAlarmSelectedRowKeys.length"
+          @click="confirmBatch('yes')">
           批量确认警报
         </el-button>
-        <el-button
-          type="warning"
-          size="small"
-          :disabled="!store.historyAlarmSelectedRowKeys.length"
-          @click="confirmBatch('not')"
-        >
+        <el-button type="warning" size="small" :disabled="!store.historyAlarmSelectedRowKeys.length"
+          @click="confirmBatch('not')">
           批量确认误报
         </el-button>
-        <el-button
-          type="danger"
-          size="small"
-          :disabled="!store.historyAlarmSelectedRowKeys.length"
-          @click="confirmBatch('delete')"
-        >
+        <el-button type="danger" size="small" :disabled="!store.historyAlarmSelectedRowKeys.length"
+          @click="confirmBatch('delete')">
           批量确认删除
         </el-button>
       </div>
     </div>
 
     <div class="table-wrapper" v-loading="store.historyAlarmLoading">
-      <el-table
-        :data="store.historyAlarmRows"
-        row-key="id"
-        border
-        height="100%"
-        virtualized
-        :row-height="32"
-        @selection-change="onSelectionChange"
-      >
+      <el-table :data="store.historyAlarmRows" row-key="id" border height="100%" virtualized :row-height="32"
+        @selection-change="onSelectionChange">
         <el-table-column type="selection" width="50" />
         <el-table-column label="设备名称" min-width="180">
           <template #default="{ row }">
@@ -171,13 +97,8 @@
     </div>
 
     <div class="pager">
-      <el-pagination
-        v-model:current-page="pageForUi"
-        :page-size="store.historyAlarmPageSize"
-        layout="total, prev, pager, next"
-        :total="store.historyAlarmTotal"
-        @current-change="onPageChange"
-      />
+      <el-pagination v-model:current-page="pageForUi" :page-size="store.historyAlarmPageSize"
+        layout="total, prev, pager, next" :total="store.historyAlarmTotal" @current-change="onPageChange" />
     </div>
   </el-dialog>
 </template>
@@ -190,6 +111,8 @@ import { formatDateTime, normalizeEndDateTimeBySelectedDay } from '@/utils/datet
 
 defineEmits<{ (e: 'view', row: any): void }>()
 const store = useAlarmBatchStore()
+const isMobile = computed(() => window.innerWidth <= 800)
+const dialogWidth = computed(() => (isMobile.value ? '100vw' : '1100px'))
 const sameWidthPopperOptions = {
   modifiers: [
     {
@@ -447,5 +370,72 @@ const getReceiverName = (row: any): string => {
 
 .operation-cell :deep(.operation-link) {
   font-size: 12px;
+}
+
+@media (max-width: 800px) {
+  .table-wrapper {
+    overflow-x: auto;
+  }
+
+  .table-wrapper :deep(.el-table) {
+    min-width: 980px;
+  }
+}
+</style>
+
+<style lang="scss">
+@media (max-width: 800px) {
+  .alarm-batch-dialog.el-dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+  }
+
+  .alarm-batch-dialog .el-dialog__body {
+    padding: 12px;
+  }
+
+  .alarm-batch-dialog .filter-form .el-form-item {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 8px;
+  }
+
+  .alarm-batch-dialog .filter-form .el-form-item .alarm-filter-control {
+    width: 100% !important;
+  }
+
+  .alarm-batch-dialog .filter-form .el-form-item:last-child .el-form-item__content {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .alarm-batch-dialog--history-alarm .actions-bar {
+    display: block !important;
+    margin-bottom: 10px;
+  }
+
+  .alarm-batch-dialog--history-alarm .all-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    grid-column: 1 / -1;
+  }
+
+  .alarm-batch-dialog--history-alarm .all-actions .el-button {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  .alarm-batch-datetime-popper.el-picker__popper {
+    width: calc(100vw - 2px) !important;
+    max-width: calc(100vw - 2px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    overflow-x: hidden;
+  }
 }
 </style>

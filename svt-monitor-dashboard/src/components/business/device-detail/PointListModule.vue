@@ -362,4 +362,52 @@ defineExpose({
     }
   }
 }
+
+@media (max-width: 800px) {
+  .point-list-module {
+    height: auto;
+    min-height: 0;
+
+    .module-header {
+      .module-title {
+        font-size: 1.4rem;
+      }
+    }
+
+    .point-table-container {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .pagination-wrapper {
+      justify-content: space-between;
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+    }
+
+    .pagination-page-meta {
+      font-size: 1.1rem;
+    }
+
+    :deep(.el-table) {
+      min-width: 760px;
+      font-size: 1.1rem;
+    }
+
+    :deep(.el-table th),
+    :deep(.el-table td) {
+      font-size: 1.1rem;
+    }
+
+    :deep(.el-pagination) {
+      font-size: 1.1rem;
+    }
+
+    :deep(.el-pagination .el-pager li.is-active) {
+      font-size: 1.1rem;
+    }
+  }
+}
 </style>

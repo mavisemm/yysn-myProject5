@@ -154,6 +154,26 @@ const fullscreenVisible = ref(false)
 const fullscreenToolbarKey = ref(0)
 const fullscreenChartRef = ref<HTMLElement>()
 const fullscreenChartInstance = shallowRef<echarts.ECharts | null>(null)
+let initSizeObserver: ResizeObserver | null = null
+let initRaf: number | null = null
+let initRetryTimer: number | null = null
+const hasNonZeroSize = (el: HTMLElement) => el.clientWidth > 0 && el.clientHeight > 0
+const cleanupInitWatchers = () => {
+  if (initSizeObserver) {
+    try {
+      initSizeObserver.disconnect()
+    } catch { }
+    initSizeObserver = null
+  }
+  if (initRaf != null) {
+    cancelAnimationFrame(initRaf)
+    initRaf = null
+  }
+  if (initRetryTimer != null) {
+    window.clearTimeout(initRetryTimer)
+    initRetryTimer = null
+  }
+}
 let fullscreenAutoYAxisCleanup: (() => void) | null = null
 let fullscreenAutoYAxisTimer: number | null = null
 let wheelZoomCleanup: (() => void) | null = null
@@ -743,6 +763,34 @@ const applyWheelZoom = () => {
 const initChart = async () => {
   if (!chartRef.value || !containerRef.value) return
 
+  // DOM 容器在部分移动端布局/切换场景下首次渲染可能为 0 尺寸，直接 init 会报错
+  if (!hasNonZeroSize(containerRef.value)) {
+    if (!initSizeObserver) {
+      initSizeObserver = new ResizeObserver(() => {
+        if (!containerRef.value) return
+        if (!hasNonZeroSize(containerRef.value)) return
+        cleanupInitWatchers()
+        initRaf = requestAnimationFrame(() => {
+          initRaf = null
+          initChart()
+        })
+      })
+      try {
+        initSizeObserver.observe(containerRef.value)
+      } catch { }
+
+      // 兜底：某些浏览器 ResizeObserver 触发不稳定，稍后再试一次
+      initRetryTimer = window.setTimeout(() => {
+        initRetryTimer = null
+        if (!containerRef.value) return
+        if (!hasNonZeroSize(containerRef.value)) return
+        cleanupInitWatchers()
+        initChart()
+      }, 300)
+    }
+    return
+  }
+
   if (props.useGl) {
     await import('echarts-gl')
   }
@@ -756,6 +804,10 @@ const initChart = async () => {
   applyLinkageZoom()
   applyWheelZoom()
   applyOption()
+  // 在移动端模拟/视口切换时，init 后再补一次 resize 更稳
+  try {
+    chartInstance.value.resize()
+  } catch { }
 
   attachRangeControlsListener()
   attachAutoYAxisListener()
@@ -868,7 +920,25 @@ const getThemeColors = () => ({
   isGrayTheme: isGrayTheme.value,
 })
 
-const { bindResize } = useChartResize(chartInstance, chartRef)
+const { bindResize } = useChartResize(chartInstance, containerRef)
+
+const forceResize = (reason?: string) => {
+  if (!chartInstance.value) return
+  if (!containerRef.value || !hasNonZeroSize(containerRef.value)) return
+  try {
+    chartInstance.value.resize()
+  } catch {
+    // ignore
+  }
+}
+
+const scheduleForceResizePasses = () => {
+  // 移动端首屏/切换视口时布局可能分多次稳定，单次 ResizeObserver 有时会错过最终高度
+  requestAnimationFrame(() => forceResize('raf1'))
+  requestAnimationFrame(() => requestAnimationFrame(() => forceResize('raf2')))
+  window.setTimeout(() => forceResize('t120'), 120)
+  window.setTimeout(() => forceResize('t360'), 360)
+}
 
 const scheduleOptionRefresh = () => {
   const delay = Math.max(0, Number(props.updateThrottleMs ?? 16))
@@ -986,7 +1056,23 @@ onMounted(() => {
   if (!resolvedEmpty.value && !props.loading) {
     initChart()
     bindResize()
+    scheduleForceResizePasses()
   }
+
+  const onWinResize = () => scheduleForceResizePasses()
+  const onOrientation = () => scheduleForceResizePasses()
+  const onVisibility = () => {
+    if (!document.hidden) scheduleForceResizePasses()
+  }
+  window.addEventListener('resize', onWinResize, { passive: true } as any)
+  window.addEventListener('orientationchange', onOrientation, { passive: true } as any)
+  document.addEventListener('visibilitychange', onVisibility)
+
+  onUnmounted(() => {
+    window.removeEventListener('resize', onWinResize as any)
+    window.removeEventListener('orientationchange', onOrientation as any)
+    document.removeEventListener('visibilitychange', onVisibility)
+  })
 })
 
 const enableFullscreenButton = computed(() => !!props.enableFullscreen)
@@ -1014,6 +1100,11 @@ const handleFullscreenOpened = async () => {
   await nextTick()
   fullscreenToolbarKey.value += 1
   if (!fullscreenChartRef.value) return
+  if (!hasNonZeroSize(fullscreenChartRef.value)) {
+    // 全屏弹窗打开到可见之间也可能出现 0 尺寸，延后一帧再初始化
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    if (!fullscreenChartRef.value || !hasNonZeroSize(fullscreenChartRef.value)) return
+  }
   if (fullscreenChartInstance.value) {
     try {
       fullscreenChartInstance.value.dispose()
@@ -1052,6 +1143,7 @@ const handleFullscreenClosing = () => {
 }
 
 onUnmounted(() => {
+  cleanupInitWatchers()
   if (chartInstance.value) {
     chartInstance.value.dispose()
     chartInstance.value = null
@@ -1132,7 +1224,6 @@ defineExpose({
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 100px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1298,5 +1389,11 @@ defineExpose({
 
 :global(.common-echarts-fullscreen-modal .el-dialog__headerbtn .el-dialog__close) {
   color: rgba(255, 255, 255, 0.92) !important;
+}
+
+@media (max-width: 800px) {
+  .common-echarts-wrapper {
+    min-height: 100px;
+  }
 }
 </style>

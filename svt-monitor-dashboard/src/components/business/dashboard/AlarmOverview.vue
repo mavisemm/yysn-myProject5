@@ -6,23 +6,23 @@
           loading="lazy" decoding="async" />
         <div class="title-with-legend">
           <h3 class="app-section-title">预警总览</h3>
-          <div class="batch-actions">
-            <el-button size="small" class="batch-btn" @click="openRealtimeBatch">
-              声音实时预警
-            </el-button>
-            <el-button size="small" class="batch-btn" @click="openHistoryBatch">
-              声音历史预警
-            </el-button>
-            <el-button size="small" class="batch-btn" @click="openRealtimeAlarmBatch">
-              振动实时报警
-            </el-button>
-            <el-button size="small" class="batch-btn" @click="openHistoryAlarmBatch">
-              振动历史报警
-            </el-button>
-          </div>
         </div>
       </div>
-      <div class="search-section">
+      <div class="batch-actions header-controls-desktop">
+        <el-button size="small" class="batch-btn" @click="openRealtimeBatch">
+          声音实时预警
+        </el-button>
+        <el-button size="small" class="batch-btn" @click="openHistoryBatch">
+          声音历史预警
+        </el-button>
+        <el-button size="small" class="batch-btn" @click="openRealtimeAlarmBatch">
+          振动实时报警
+        </el-button>
+        <el-button size="small" class="batch-btn" @click="openHistoryAlarmBatch">
+          振动历史报警
+        </el-button>
+      </div>
+      <div class="search-section header-controls-desktop">
         <!-- <div class="device-search-wrapper">
                     <el-input v-model="deviceSearch" placeholder="请输入设备名称" :prefix-icon="Search" size="small" clearable
                         style="width: 140px;" @focus="showDeviceDropdown" @blur="hideDeviceDropdown"
@@ -37,7 +37,29 @@
                 </div> -->
 
         <div class="time-section">
-          <CommonDateTimePicker v-model="dateRange" width="320px" />
+          <CommonDateTimePicker v-model="dateRange" :width="pickerWidth" />
+          <el-button @click="toggleSortOrder" class="sort-btn" :icon="sortIcon"> </el-button>
+        </div>
+      </div>
+    </div>
+    <div class="header-controls-mobile">
+      <div class="batch-actions">
+        <el-button size="small" class="batch-btn" @click="openRealtimeBatch">
+          声音实时预警
+        </el-button>
+        <el-button size="small" class="batch-btn" @click="openHistoryBatch">
+          声音历史预警
+        </el-button>
+        <el-button size="small" class="batch-btn" @click="openRealtimeAlarmBatch">
+          振动实时报警
+        </el-button>
+        <el-button size="small" class="batch-btn" @click="openHistoryAlarmBatch">
+          振动历史报警
+        </el-button>
+      </div>
+      <div class="search-section">
+        <div class="time-section">
+          <CommonDateTimePicker v-model="dateRange" :width="pickerWidth" />
           <el-button @click="toggleSortOrder" class="sort-btn" :icon="sortIcon"> </el-button>
         </div>
       </div>
@@ -255,8 +277,11 @@ const containerWidth = ref(window.innerWidth)
 const containerHeight = ref(window.innerHeight)
 
 const responsivePageSize = computed(() => {
+  const w = containerWidth.value
+  if (w <= 800) return { pageSize: 2, columns: 2, rows: 1 }
   return { pageSize: 4, columns: 4, rows: 1 }
 })
+const pickerWidth = computed(() => (containerWidth.value <= 800 ? '100vw' : '320px'))
 
 const rowsCount = computed(() => {
   const { pageSize, columns } = responsivePageSize.value
@@ -860,6 +885,10 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
   flex-direction: column;
   box-sizing: border-box;
 
+  .header-controls-mobile {
+    display: none;
+  }
+
   .header-section {
     display: flex;
     justify-content: space-between;
@@ -906,6 +935,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
       .batch-btn {
         flex: 1 1 0;
+        width: 100%;
         min-width: 0;
         max-width: 9.5em;
         font-size: 0.8rem;
@@ -919,6 +949,10 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
           text-overflow: ellipsis;
           white-space: nowrap;
         }
+      }
+
+      :deep(.el-button + .el-button) {
+        margin-left: 0;
       }
     }
 
@@ -970,6 +1004,90 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
           :deep(.el-icon) {
             color: #fff;
           }
+        }
+      }
+    }
+  }
+
+  .batch-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+
+    .batch-btn {
+      flex: 1 1 0;
+      width: 100%;
+      min-width: 0;
+      max-width: 9.5em;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: rgba(255, 255, 255) !important;
+
+      :deep(.el-button__text) {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    :deep(.el-button + .el-button) {
+      margin-left: 0;
+    }
+  }
+
+  .search-section {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-end;
+    gap: 10px;
+    flex: 0 0 auto;
+
+    .device-search-wrapper {
+      position: relative;
+      right: 1vw;
+    }
+
+    .time-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-right: 1vw;
+
+      .time-search-input {
+        :deep(.el-input__wrapper) {
+          background-size: 100% 100%;
+          border-radius: 4px;
+          box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+          border: none;
+
+          .el-input__inner {
+            color: white;
+            background: transparent;
+          }
+
+          .el-input__prefix {
+            color: white;
+          }
+        }
+      }
+
+      .sort-btn {
+        width: 14px;
+        height: 14px;
+        background: transparent;
+        border: none;
+        padding: 0;
+        color: #fff;
+
+        :deep(.el-icon) {
+          color: #fff;
         }
       }
     }
@@ -1232,30 +1350,94 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
   }
 
   @media (max-width: 768px) {
+    .alarm-overview {
+      height: auto;
+      min-height: auto;
+      overflow: visible;
+      padding: 10px 10px 0 10px;
+    }
+
     .header-section {
       gap: 8px;
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .header-section .header-controls-desktop {
+      display: none;
+    }
+
+    .header-controls-mobile {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .header-controls-mobile .batch-actions {
+      width: 100%;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      white-space: normal;
+
+      .batch-btn {
+        max-width: none;
+
+        :deep(.el-button__text) {
+          white-space: normal;
+          word-break: break-all;
+          line-height: 1.15;
+        }
+      }
     }
 
     .header-section .title-with-legend {
-      gap: 10px;
+      width: 100%;
+      align-items: center;
+      gap: 8px;
     }
 
-    .header-section .batch-actions {
-      gap: 6px;
+    .header-controls-mobile .search-section {
+      width: 100%;
+      align-items: flex-start;
     }
 
-    .header-section .batch-actions .batch-btn {
-      max-width: 7.5em;
+    .header-controls-mobile .search-section .time-section {
+      width: 100%;
+      padding-right: 0;
+    }
 
-      :deep(.el-button__text) {
-        white-space: normal;
-        word-break: break-all;
-        line-height: 1.15;
-        display: -webkit-box;
-        line-clamp: 2;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
+    .status-legend {
+      align-self: flex-start;
+    }
+
+    .alarm-grid .alarm-card {
+      width: auto;
+      max-height: none;
+      height: 168px;
+      min-height: 168px;
+
+      .measurement-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+
+        .point-item {
+          width: auto;
+          height: 28px;
+          max-height: none;
+        }
       }
+    }
+
+    .alarm-grid {
+      flex: 0 0 auto;
+      max-height: 180px;
+      overflow: hidden;
+    }
+
+    .alarm-grid .alarm-card .card-header .status-dot {
+      width: 6vw;
     }
   }
 

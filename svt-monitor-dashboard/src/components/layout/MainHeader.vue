@@ -40,35 +40,14 @@
 
     <div class="header-right-actions">
       <div class="theme-wrapper" @mouseenter="onThemeEnter" @mouseleave="onThemeLeave">
-        <div
-          class="theme-trigger"
-          :class="`theme-trigger--${currentBackground}`"
-          title="切换背景"
-        />
-        <div
-          v-show="showThemeDropdown"
-          class="theme-dropdown"
-          @mouseenter="onThemeEnter"
-          @mouseleave="onThemeLeave"
-        >
-          <div
-            v-if="currentBackground !== 'image'"
-            class="theme-square theme-square--image"
-            title="背景1"
-            @click="selectBackground('image')"
-          />
-          <div
-            v-if="currentBackground !== 'navy'"
-            class="theme-square theme-square--navy"
-            title="背景2"
-            @click="selectBackground('navy')"
-          />
-          <div
-            v-if="currentBackground !== 'solid'"
-            class="theme-square theme-square--solid"
-            title="默认背景"
-            @click="selectBackground('solid')"
-          />
+        <div class="theme-trigger" :class="`theme-trigger--${currentBackground}`" title="切换背景" />
+        <div v-show="showThemeDropdown" class="theme-dropdown" @mouseenter="onThemeEnter" @mouseleave="onThemeLeave">
+          <div v-if="currentBackground !== 'image'" class="theme-square theme-square--image" title="背景1"
+            @click="selectBackground('image')" />
+          <div v-if="currentBackground !== 'navy'" class="theme-square theme-square--navy" title="背景2"
+            @click="selectBackground('navy')" />
+          <div v-if="currentBackground !== 'solid'" class="theme-square theme-square--solid" title="默认背景"
+            @click="selectBackground('solid')" />
         </div>
       </div>
       <div class="nav-btn logout-btn" @click="handleLogout">
@@ -231,7 +210,7 @@ const handleLogout = () => {
       router.push('/login')
       ElMessage.success('已安全退出')
     })
-    .catch(() => {})
+    .catch(() => { })
 }
 </script>
 
@@ -243,10 +222,8 @@ const handleLogout = () => {
   align-items: center;
   position: relative;
   z-index: 100;
-  background-image: image-set(
-    url('@/assets/images/background/头部背景.avif') type('image/avif'),
-    url('@/assets/images/background/头部背景.webp') type('image/webp')
-  );
+  background-image: image-set(url('@/assets/images/background/头部背景.avif') type('image/avif'),
+      url('@/assets/images/background/头部背景.webp') type('image/webp'));
   background-repeat: no-repeat;
   background-position: center center;
   background-size: 100% 100%;
@@ -443,6 +420,60 @@ const handleLogout = () => {
 
     .header-center .title {
       font-size: 1.8rem;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .main-header {
+    height: 56px;
+    background-size: cover;
+
+    .header-left {
+      display: none;
+    }
+
+    .header-right-clock {
+      display: none;
+    }
+
+    .header-right-actions {
+      right: 8px;
+      gap: 8px;
+
+      .theme-wrapper {
+        display: none;
+      }
+
+      .logout-btn {
+        width: 0.8em;
+        height: 0.8em;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
+    .header-center {
+      justify-content: flex-start;
+      padding-left: 12px;
+
+      .title {
+        max-width: calc(100vw - 70px);
+        font-size: 1.5rem;
+        white-space: nowrap;
+      }
+    }
+  }
+}
+
+@media (max-width: 800px) {
+  .main-header {
+    .header-center {
+      .title {
+        font-size: 1.6rem;
+      }
     }
   }
 }

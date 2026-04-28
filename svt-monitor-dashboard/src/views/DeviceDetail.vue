@@ -284,4 +284,22 @@ onUnmounted(() => {
     min-width: 0;
   }
 }
+
+@media (max-width: 800px) {
+  .device-detail {
+    flex-direction: column;
+    height: auto;
+    gap: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 10px;
+
+    .right-content {
+      width: 100% !important;
+      flex: 0 0 auto;
+      height: auto;
+      min-height: 0;
+    }
+  }
+}
 </style>

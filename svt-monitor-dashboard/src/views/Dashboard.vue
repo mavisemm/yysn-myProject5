@@ -256,4 +256,43 @@ onUnmounted(() => {
     flex: 1;
   }
 }
+
+@media (max-width: 800px) {
+  .dashboard {
+    min-height: auto;
+    height: auto;
+    padding-bottom: 12px;
+
+    .dashboard-box {
+      overflow: visible;
+    }
+
+    .dashboard-box-stats {
+      height: 260px;
+      min-height: 260px;
+    }
+
+    .dashboard-box-alarm {
+      min-height: auto !important;
+    }
+
+    .dashboard-box-metrics {
+      flex: 0 0 auto;
+      min-height: auto;
+      background: rgba(19, 38, 104, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+    }
+
+    :deep(.alarm-overview),
+    :deep(.metrics-area) {
+      background: transparent !important;
+    }
+
+    :deep(.dashboard-box-stats > .stats-area) {
+      flex: 1;
+      min-height: 0;
+    }
+  }
+}
 </style>

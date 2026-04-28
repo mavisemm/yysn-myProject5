@@ -7,16 +7,9 @@
           <span class="chart-unit special-font-color">（单位：mm/s）</span>
         </div>
         <div class="chart">
-          <CommonEcharts
-            :option="vibOption"
-            :enable-data-zoom="false"
-            :not-merge="true"
-            :tooltip-follow-mouse="true"
-            linkage-group="device-detail-charts"
-            :enable-linkage-zoom="true"
-            :enable-wheel-zoom="true"
-            :auto-y-axis-on-zoom="true"
-          />
+          <CommonEcharts :option="vibOption" :enable-data-zoom="false" :not-merge="true" :tooltip-follow-mouse="true"
+            linkage-group="device-detail-charts" :enable-linkage-zoom="true" :enable-wheel-zoom="true"
+            :auto-y-axis-on-zoom="true" />
         </div>
       </div>
 
@@ -26,16 +19,9 @@
           <span class="chart-unit special-font-color">（单位：dB）</span>
         </div>
         <div class="chart">
-          <CommonEcharts
-            :option="soundOption"
-            :enable-data-zoom="false"
-            :not-merge="true"
-            :tooltip-follow-mouse="true"
-            linkage-group="device-detail-charts"
-            :enable-linkage-zoom="true"
-            :enable-wheel-zoom="true"
-            :auto-y-axis-on-zoom="true"
-          />
+          <CommonEcharts :option="soundOption" :enable-data-zoom="false" :not-merge="true" :tooltip-follow-mouse="true"
+            linkage-group="device-detail-charts" :enable-linkage-zoom="true" :enable-wheel-zoom="true"
+            :auto-y-axis-on-zoom="true" />
         </div>
       </div>
 
@@ -50,16 +36,9 @@
           </div>
         </div>
         <div class="chart">
-          <CommonEcharts
-            :option="tempOption"
-            :enable-data-zoom="false"
-            :not-merge="true"
-            :tooltip-follow-mouse="true"
-            linkage-group="device-detail-charts"
-            :enable-linkage-zoom="true"
-            :enable-wheel-zoom="true"
-            :auto-y-axis-on-zoom="true"
-          />
+          <CommonEcharts :option="tempOption" :enable-data-zoom="false" :not-merge="true" :tooltip-follow-mouse="true"
+            linkage-group="device-detail-charts" :enable-linkage-zoom="true" :enable-wheel-zoom="true"
+            :auto-y-axis-on-zoom="true" />
         </div>
       </div>
     </div>
@@ -221,29 +200,29 @@ const tempOption = computed<EChartsOption>(() => {
     },
     series: values.length
       ? [
-          {
-            data: values,
-            type: 'line',
-            smooth: true,
-            symbolSize: 1,
-            itemStyle: { color: TEMP_COLOR },
-            lineStyle: { color: TEMP_COLOR, width: 2 },
-            areaStyle: {
-              color: {
-                type: 'linear',
-                x: 0,
-                y: 0,
-                x2: 0,
-                y2: 1,
-                colorStops: [
-                  { offset: 0, color: 'rgba(255, 77, 79, 0.5)' },
-                  { offset: 1, color: 'rgba(255, 77, 79, 0.1)' },
-                ],
-              },
-              opacity: 0.3,
+        {
+          data: values,
+          type: 'line',
+          smooth: true,
+          symbolSize: 1,
+          itemStyle: { color: TEMP_COLOR },
+          lineStyle: { color: TEMP_COLOR, width: 2 },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(255, 77, 79, 0.5)' },
+                { offset: 1, color: 'rgba(255, 77, 79, 0.1)' },
+              ],
             },
+            opacity: 0.3,
           },
-        ]
+        },
+      ]
       : [],
     backgroundColor: 'transparent',
   } as EChartsOption
@@ -305,29 +284,29 @@ const vibOption = computed<EChartsOption>(() => {
     },
     series: values.length
       ? [
-          {
-            data: values,
-            type: 'line',
-            smooth: true,
-            symbolSize: 1,
-            itemStyle: { color: VIB_COLOR },
-            lineStyle: { color: VIB_COLOR, width: 2 },
-            areaStyle: {
-              color: {
-                type: 'linear',
-                x: 0,
-                y: 0,
-                x2: 0,
-                y2: 1,
-                colorStops: [
-                  { offset: 0, color: 'rgba(24, 144, 255, 0.5)' },
-                  { offset: 1, color: 'rgba(24, 144, 255, 0.1)' },
-                ],
-              },
-              opacity: 0.3,
+        {
+          data: values,
+          type: 'line',
+          smooth: true,
+          symbolSize: 1,
+          itemStyle: { color: VIB_COLOR },
+          lineStyle: { color: VIB_COLOR, width: 2 },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(24, 144, 255, 0.5)' },
+                { offset: 1, color: 'rgba(24, 144, 255, 0.1)' },
+              ],
             },
+            opacity: 0.3,
           },
-        ]
+        },
+      ]
       : [],
     backgroundColor: 'transparent',
   } as EChartsOption
@@ -390,29 +369,29 @@ const soundOption = computed<EChartsOption>(() => {
     },
     series: values.length
       ? [
-          {
-            data: values,
-            type: 'line',
-            smooth: true,
-            symbolSize: 1,
-            itemStyle: { color: SOUND_COLOR },
-            lineStyle: { color: SOUND_COLOR, width: 2 },
-            areaStyle: {
-              color: {
-                type: 'linear',
-                x: 0,
-                y: 0,
-                x2: 0,
-                y2: 1,
-                colorStops: [
-                  { offset: 0, color: 'rgba(250, 219, 20, 0.5)' },
-                  { offset: 1, color: 'rgba(250, 219, 20, 0.1)' },
-                ],
-              },
-              opacity: 0.3,
+        {
+          data: values,
+          type: 'line',
+          smooth: true,
+          symbolSize: 1,
+          itemStyle: { color: SOUND_COLOR },
+          lineStyle: { color: SOUND_COLOR, width: 2 },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(250, 219, 20, 0.5)' },
+                { offset: 1, color: 'rgba(250, 219, 20, 0.1)' },
+              ],
             },
+            opacity: 0.3,
           },
-        ]
+        },
+      ]
       : [],
     backgroundColor: 'transparent',
   } as EChartsOption
@@ -824,6 +803,48 @@ onMounted(() => {
   }
 }
 
+@media (max-width: 800px) {
+  .charts-analysis-module {
+    height: auto;
+
+    .charts-grid {
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
+    }
+
+    .charts-grid .chart-item {
+      height: 220px;
+      min-height: 220px;
+    }
+
+    .charts-grid .chart-item--wide {
+      grid-column: auto;
+    }
+
+    .charts-grid {
+      .chart-item {
+        .chart-header {
+
+          .chart-title {
+            font-size: 1.4rem;
+          }
+
+          .chart-unit {
+            font-size: 1.1rem;
+          }
+
+          .realtime-temp-inline {
+            font-size: 1.1rem;
+          }
+        }
+      }
+    }
+
+
+  }
+}
+
 /*
 :global(.page-layout--gray) .charts-analysis-module {
     .analysis-form {
@@ -899,6 +920,7 @@ onMounted(() => {
 .trend-chart-dialog,
 .el-dialog.trend-chart-dialog,
 .el-overlay-dialog .trend-chart-dialog {
+
   .el-dialog__header,
   .el-dialog__header.show-close {
     .el-dialog__title {

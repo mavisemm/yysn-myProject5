@@ -138,3 +138,19 @@
     }
   }
 }
+
+@media (max-width: 800px) {
+  .custom-datepicker-popper {
+    width: calc(100vw - 2px) !important;
+    max-width: calc(100vw - 2px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    overflow-x: hidden;
+  }
+
+  .custom-datepicker-popper .el-date-range-picker {
+    width: calc(100vw - 2px) !important;
+    min-width: calc(100vw - 2px) !important;
+    border-radius: 0;
+  }
+}

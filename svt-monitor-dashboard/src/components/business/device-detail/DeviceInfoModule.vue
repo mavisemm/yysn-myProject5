@@ -1176,4 +1176,41 @@ onUnmounted(() => {
     }
   }
 }
+
+@media (max-width: 800px) {
+  .device-info-module {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    flex: 0 0 auto;
+    padding-bottom: 0;
+
+    .module-header {
+      .header-main {
+        .module-title {
+          font-size: 1.4rem;
+        }
+      }
+    }
+
+    .device-main {
+      .device-basic-info {
+        .info-row {
+          .info-item {
+            .info-label,
+            .info-value {
+              font-size: 1.1rem;
+            }
+          }
+        }
+      }
+
+      .health-gauge-container {
+        .gauge-title {
+          font-size: 1.4rem;
+        }
+      }
+    }
+  }
+}
 </style>

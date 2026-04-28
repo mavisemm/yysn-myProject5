@@ -2,35 +2,20 @@
   <div class="stats-area">
     <div class="header-section home-title home-title--device-monitor">
       <div class="header-section__left home-title__left">
-        <img
-          class="header-section__icon home-title__icon"
-          src="@/assets/images/background/小图标.webp"
-          alt=""
-        />
+        <img class="header-section__icon home-title__icon" src="@/assets/images/background/小图标.webp" alt="" />
         <div class="title-with-legend">
           <h3 class="app-section-title">设备监测</h3>
         </div>
       </div>
     </div>
     <div class="stats-grid">
-      <div
-        v-for="(stat, index) in stats"
-        :key="index"
-        class="stat-card"
-        :class="[
-          `stat-card-${index}`,
-          stat.title === '趋势预警设备' || stat.title === '故障报警设备' ? 'stat-card-trend' : '',
-        ]"
-        @click="handleCardClick(stat.title)"
-      >
+      <div v-for="(stat, index) in stats" :key="index" class="stat-card" :class="[
+        `stat-card-${index}`,
+        stat.title === '趋势预警设备' || stat.title === '故障报警设备' ? 'stat-card-trend' : '',
+      ]" @click="handleCardClick(stat.title)">
         <div class="stat-content">
           <div class="stat-icon" :class="{ 'stat-icon-blink': isAlertOrWarning(stat) }">
-            <img
-              v-if="getIconSrc(stat.title)"
-              :src="getIconSrc(stat.title)"
-              :alt="stat.title"
-              class="stat-icon-img"
-            />
+            <img v-if="getIconSrc(stat.title)" :src="getIconSrc(stat.title)" :alt="stat.title" class="stat-icon-img" />
             <el-icon v-else>
               <Monitor />
             </el-icon>
@@ -205,6 +190,7 @@ function isAlertOrWarning(stat: StatItem) {
     }
 
     @keyframes stat-icon-blink {
+
       0%,
       100% {
         opacity: 1;
@@ -273,6 +259,32 @@ function isAlertOrWarning(stat: StatItem) {
 
     .digit-text-plain {
       background: none;
+    }
+  }
+}
+
+@media (max-width: 800px) {
+  .stats-area {
+    padding: 10px 10px 0 10px;
+
+    .stats-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      align-content: stretch;
+      gap: 10px;
+    }
+
+    .stats-grid .stat-icon {
+      width: 50px;
+    }
+
+    .stats-grid .stat-text {
+      font-size: 0.95rem;
+    }
+
+    .stats-grid .stat-number,
+    .stats-grid .digit-text {
+      font-size: 1.5rem;
     }
   }
 }

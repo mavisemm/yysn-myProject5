@@ -1090,6 +1090,16 @@ onUnmounted(() => {
     }
   }
 }
+
+@media (max-width: 800px) {
+  .device-sidebar {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    height: 100%;
+    padding-top: 8px;
+  }
+}
 </style>
 @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } @media
 (max-width: 1400px) { .device-sidebar { .sidebar-header, .search-area { padding-left: 16px;
