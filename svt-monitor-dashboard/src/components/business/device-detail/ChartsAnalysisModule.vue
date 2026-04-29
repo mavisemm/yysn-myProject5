@@ -62,7 +62,10 @@
 
         <div class="device-detail-charts-fullscreen-stack">
           <template v-if="hasAnyFullscreenChartSelected">
-            <div v-if="fullscreenChartVisible.vib" class="device-detail-chart-fs-pane">
+            <div
+              v-if="fullscreenChartVisible.vib"
+              class="device-detail-chart-fs-pane device-detail-chart-fs-pane--vib"
+            >
               <div class="chart-header">
                 <span class="chart-title app-section-title">烈度随时间变化</span>
                 <span class="chart-unit special-font-color vib-trend-unit">（单位：mm/s）</span>
@@ -85,7 +88,10 @@
               </div>
             </div>
 
-            <div v-if="fullscreenChartVisible.temp" class="device-detail-chart-fs-pane">
+            <div
+              v-if="fullscreenChartVisible.temp"
+              class="device-detail-chart-fs-pane device-detail-chart-fs-pane--temp"
+            >
               <div class="chart-header">
                 <span class="chart-title app-section-title">温度随时间变化</span>
                 <div class="chart-header-right">
@@ -1016,11 +1022,67 @@ onMounted(() => {
       font-size: 1.1rem;
     }
 
+    /* 手机端：“xx随时间变化”单位/实时温度字号统一为 0.9rem（含烈度/温度，全屏/非全屏） */
+    .charts-grid .chart-item .chart-header .chart-unit,
+    .charts-grid .chart-item .chart-header .vib-trend-unit,
+    .charts-grid .chart-item .chart-header .realtime-temp-inline,
+    .charts-grid .chart-item .chart-header .realtime-temp-value {
+      font-size: 0.9rem !important;
+    }
+
+    .device-detail-chart-fs-pane .chart-header .chart-unit,
+    .device-detail-chart-fs-pane .chart-header-right .chart-unit,
+    .device-detail-chart-fs-pane .vib-trend-unit,
+    .device-detail-chart-fs-pane .realtime-temp-inline,
+    .device-detail-chart-fs-pane .realtime-temp-value {
+      font-size: 0.9rem !important;
+    }
+
+    /* 手机端：烈度标题栏单位不允许换行 */
+    .charts-grid .chart-item .chart-header .vib-trend-unit {
+      white-space: nowrap !important;
+      flex-wrap: nowrap !important;
+    }
+
     .charts-grid .chart-item--wide {
       grid-column: auto;
     }
 
 
+  }
+
+  /* 手机端：温度模块表头右侧（全屏按钮/单位）视觉垂直对齐 */
+  .charts-grid .chart-item--wide .chart-header-right {
+    align-items: center !important;
+  }
+
+  .charts-grid .chart-item--wide .realtime-temp-inline {
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+  }
+
+  .charts-grid .chart-item--wide .chart-unit {
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+  }
+
+  .charts-grid .chart-item--wide .temp-fullscreen-btn {
+    align-items: center !important;
+    line-height: 1 !important;
+  }
+
+  .charts-grid .chart-item--wide .temp-fullscreen-btn {
+    :deep(.el-button__content),
+    :deep(.el-button__text) {
+      line-height: 1 !important;
+    }
+
+    :deep(.el-icon) {
+      align-self: center !important;
+      line-height: 1 !important;
+    }
   }
 
   /* 全屏多图：移动端排版（toolbar/表头换行） */
@@ -1042,6 +1104,40 @@ onMounted(() => {
       white-space: normal !important;
       flex-wrap: wrap !important;
       gap: 8px !important;
+    }
+  }
+
+  /* 移动端：温度全屏表头保持“标题 + 单行（单位+实时温度）”，不允许换行 */
+  .device-detail-chart-fs-pane--temp {
+    .chart-header {
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 10px !important;
+    }
+
+    .chart-header-right {
+      white-space: nowrap !important;
+      flex-wrap: nowrap !important;
+      gap: 10px !important;
+    }
+
+    .realtime-temp-inline {
+      white-space: nowrap !important;
+    }
+  }
+
+  /* 移动端：烈度全屏表头保持“标题 + 单位”一行，不允许换行 */
+  .device-detail-chart-fs-pane--vib {
+    .chart-header {
+      flex-direction: row !important;
+      align-items: center !important;
+      gap: 10px !important;
+      flex-wrap: nowrap !important;
+      white-space: nowrap !important;
+    }
+
+    .vib-trend-unit {
+      white-space: nowrap !important;
     }
   }
 }

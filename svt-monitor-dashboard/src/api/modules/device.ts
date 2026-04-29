@@ -86,14 +86,19 @@ export interface VibrationFrequencyWaterfallData {
 export const getVibrationFrequencyData = (
   deviceId: string,
   receiverId: string,
-  axis: VibrationAxis = 'X'
+  axis: VibrationAxis = 'X',
+  alarmTime?: number,
 ): Promise<NewApiResponse<VibrationFrequencyData>> => {
-  return request.post('/device/vibration/data/frequency', {
+  const payload: any = {
     tenantId: getTenantId(),
-    deviceId: deviceId,
-    receiverId: receiverId,
-    axis
-  })
+    deviceId,
+    receiverId,
+    axis,
+  }
+  if (alarmTime && Number.isFinite(alarmTime)) {
+    payload.alarmTime = alarmTime
+  }
+  return request.post('/device/vibration/data/frequency', payload)
 }
 
 export const getVibrationFrequencyWaterfallData = (

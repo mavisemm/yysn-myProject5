@@ -1,15 +1,23 @@
 <template>
-  <el-dialog v-model="visible" title="预警详情" width="1100px" height="90vh" align-center class="alarm-batch-view-dialog"
+  <el-dialog
+    v-model="visible"
+    :title="isWarningEvent ? '预警详情' : '报警详情'"
+    width="1100px"
+    height="90vh"
+    align-center
+    class="alarm-batch-view-dialog"
     destroy-on-close>
     <div class="voiceContainer">
       <div class="voiceContainerItem">
-        <div class="panelTitle">预警信息：{{ currentEventTypeName }}</div>
+        <div class="panelTitle">
+          {{ isWarningEvent ? '预警信息' : '报警信息' }}：{{ currentEventTypeName }}
+        </div>
         <div class="panelRow">
           <span class="k">发生时间：</span>
           <span class="v">{{ eventTimeText }}</span>
         </div>
         <div class="panelRow">
-          <span class="k">预警类型：</span>
+          <span class="k">{{ isWarningEvent ? '预警类型：' : '报警类型：' }}</span>
           <span class="v">{{ currentEventTypeName }}</span>
         </div>
         <div class="panelRow">
@@ -25,7 +33,7 @@
           <span class="v">{{ currentReceiverName }}</span>
         </div>
         <div class="panelRow">
-          <span class="k">偏差值：</span>
+          <span class="k">{{ isWarningEvent ? '偏差值：' : '报警值：' }}</span>
           <span class="v">{{ currentDeviationValueText }}</span>
         </div>
         <div class="audioRow">
@@ -38,9 +46,14 @@
         <div class="panelTitle">操作</div>
         <div class="controlsBox">
           <div class="controlsRow">
-            <el-button type="danger" size="large" :disabled="!currentEventId" class="controlBtnLarge"
-              @click="onConfirmYes">
-              确认预警
+            <el-button
+              type="danger"
+              size="large"
+              :disabled="!currentEventId"
+              class="controlBtnLarge"
+              @click="onConfirmYes"
+            >
+              {{ isWarningEvent ? '确认预警' : '确认报警' }}
             </el-button>
             <el-button type="warning" size="large" :disabled="!currentEventId" class="controlBtnLarge"
               @click="notVisible = true">
@@ -57,15 +70,19 @@
       </div>
 
       <div class="voiceContainerItem">
-        <div class="panelTitle">能量曲线图</div>
+        <div class="panelTitle">{{ isWarningEvent ? '能量曲线图' : '振动频域图' }}</div>
         <div ref="energyChartRef" class="chart-dom" />
-        <div v-if="!canRenderCharts" class="no-chart no-chart--overlay">暂无能量曲线</div>
+        <div v-if="showEnergyNoChart" class="no-chart no-chart--overlay">
+          {{ isWarningEvent ? '暂无能量曲线' : '暂无振动频域图' }}
+        </div>
       </div>
 
       <div class="voiceContainerItem">
-        <div class="panelTitle">密度曲线图</div>
+        <div class="panelTitle">{{ isWarningEvent ? '密度曲线图' : '振动时域图' }}</div>
         <div ref="densityChartRef" class="chart-dom" />
-        <div v-if="!canRenderCharts" class="no-chart no-chart--overlay">暂无密度曲线</div>
+        <div v-if="showDensityNoChart" class="no-chart no-chart--overlay">
+          {{ isWarningEvent ? '暂无密度曲线' : '暂无振动时域图' }}
+        </div>
       </div>
     </div>
 
@@ -171,6 +188,7 @@ import {
   getLatestFrequencyByReceiverNoScene,
   getWavByFreqGroupIdUrl,
 } from '@/api/modules/voiceSound'
+import { getVibrationFrequencyData } from '@/api/modules/device'
 
 import { getTenantId } from '@/api/tenant'
 import { enableMouseWheelZoom } from '@/utils/chart'
@@ -211,6 +229,12 @@ const formatYAxisTick = (v: unknown) => {
   const n = Number(v)
   if (!Number.isFinite(n)) return ''
   return String(Number(n.toFixed(2)))
+}
+
+const formatFreqYAxisTick = (v: number | string) => {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return ''
+  return n.toFixed(5)
 }
 
 function safeParseJson(input: any): any {
@@ -264,6 +288,12 @@ const currentEventTypeCode = computed(() => {
 })
 const isNoSceneSoundWarn = computed(() => currentEventTypeCode.value === 'NO_SCENE_SOUND_WARN')
 
+const isWarningEvent = computed(() => {
+  const code = currentEventTypeCode.value || ''
+  // 声音侧：以 *_WARN 结尾的事件视为“预警”，其余为“报警”（主要是振动报警）
+  return code.endsWith('_WARN')
+})
+
 const currentEventTypeName = computed(() => {
   return eventDetail.value?.eventType?.name ?? currentEventTypeCode.value ?? '-'
 })
@@ -294,6 +324,16 @@ const eventTimeText = computed(() => {
     eventDetail.value?._timeText ??
     props.row?._timeText
   return formatDateTime(t)
+})
+
+const alarmTime = computed(() => {
+  const raw =
+    (eventDetail.value as any)?.alarmTime ??
+    (props.row as any)?.alarmTime ??
+    eventDetail.value?.time ??
+    props.row?.time
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : 0
 })
 
 const currentStatusText = computed(() => {
@@ -354,10 +394,17 @@ const receiverId = computed(() => {
   )
 })
 
-const deviceId = computed(
-  () =>
-    eventDetail.value?.equipmentId ?? dataParse.value?.equipmentId ?? props.row?.equipmentId ?? '',
-)
+const deviceId = computed(() => {
+  // 振动报警频域接口需要的 deviceId：优先使用当前行数据的 deviceId
+  return (
+    (eventDetail.value as any)?.deviceId ??
+    (props.row as any)?.deviceId ??
+    (eventDetail.value as any)?.equipmentId ??
+    (props.row as any)?.equipmentId ??
+    dataParse.value?.equipmentId ??
+    ''
+  )
+})
 const pointId = computed(
   () => dataParse.value?.pointId ?? eventDetail.value?.pointId ?? (props.row as any)?.pointId ?? '',
 )
@@ -370,12 +417,30 @@ const positionText = computed(() => {
 
 const canRenderCharts = computed(() => {
   const code = currentEventTypeCode.value
-  return (
-    !!receiverId.value &&
-    (code === 'FREQUENCY_SOUND_WARN' ||
-      code === 'SOUND_HISTORY_WARN' ||
-      code === 'NO_SCENE_SOUND_WARN')
-  )
+  // 声音预警：使用声音频谱接口
+  if (isWarningEvent.value) {
+    return (
+      !!receiverId.value &&
+      (code === 'FREQUENCY_SOUND_WARN' ||
+        code === 'SOUND_HISTORY_WARN' ||
+        code === 'NO_SCENE_SOUND_WARN')
+    )
+  }
+  // 振动报警：需要有设备和测点（听筒）信息
+  return !!deviceId.value && !!receiverId.value
+})
+
+const hasVibrationFrequencyData = ref(false)
+const hasVibrationTimeData = ref(false)
+
+const showEnergyNoChart = computed(() => {
+  if (isWarningEvent.value) return !canRenderCharts.value
+  return !hasVibrationFrequencyData.value
+})
+
+const showDensityNoChart = computed(() => {
+  if (isWarningEvent.value) return !canRenderCharts.value
+  return !hasVibrationTimeData.value
 })
 
 const logFrequencyDebugInfo = (tag: string, payload: any) => {
@@ -434,8 +499,8 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
 
   const baseGrid = { left: 40, right: 20, top: 30, bottom: 50 }
   const dataZoom = [
-    { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-    { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' },
+    { type: 'inside', xAxisIndex: [0], filterMode: 'filter' },
+    { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'filter' },
   ]
 
   energyChart.value.setOption({
@@ -464,6 +529,121 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
 
   enableMouseWheelZoom(energyChart.value)
   enableMouseWheelZoom(densityChart.value)
+  hasVibrationFrequencyData.value = false
+  hasVibrationTimeData.value = false
+}
+
+const renderVibrationFrequencyCharts = async (frequency: number[], freqSpeedData: number[]) => {
+  if (!energyChartRef.value || !densityChartRef.value) return
+  disposeCharts()
+  await nextTick()
+  energyChart.value = echarts.init(energyChartRef.value)
+  densityChart.value = echarts.init(densityChartRef.value)
+
+  const chartData = frequency
+    .map((freq, index) => [Number(freq), Number(freqSpeedData[index] ?? 0)] as [number, number])
+    .filter((it) => Number.isFinite(it[0]) && Number.isFinite(it[1]))
+    .sort((a, b) => a[0] - b[0])
+
+  const xMin = chartData.length > 0 ? Math.min(...chartData.map((x) => x[0])) : 0
+  const xMax = chartData.length > 0 ? Math.max(...chartData.map((x) => x[0])) : 0
+  const yValues = chartData.map((item) => item[1])
+  const yMin = yValues.length > 0 ? Math.min(...yValues) : 0
+  const yMax = yValues.length > 0 ? Math.max(...yValues) : 1
+  const yMargin = (yMax - yMin) * 0.1
+  const yMinWithMargin = Math.max(0, yMin - yMargin)
+  const yMaxWithMargin = yMax + yMargin
+
+  const baseGrid = { top: 30, left: 40, right: 50, bottom: 35, containLabel: true }
+  const dataZoom = [
+    { type: 'inside', xAxisIndex: [0], filterMode: 'filter' },
+    {
+      type: 'slider',
+      xAxisIndex: [0],
+      bottom: 10,
+      height: 20,
+      fillerColor: 'rgba(126, 203, 161, 0.3)',
+      borderColor: 'rgba(126, 203, 161, 0.5)',
+      handleStyle: { color: '#7ecba1' },
+      filterMode: 'filter',
+    },
+  ]
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      className: 'echarts-tooltip',
+      backgroundColor: 'rgba(50, 50, 50, 0.9)',
+      borderColor: 'rgba(50, 50, 50, 0.9)',
+      textStyle: { color: '#fff' },
+      appendToBody: true,
+      extraCssText: 'z-index:99999 !important;',
+      formatter: (params: any) => {
+        if (!params?.length || !params[0]?.value) return ''
+        const data = params[0].value
+        const x = Number(data?.[0])
+        const y = Number(data?.[1])
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return ''
+        return `${x}Hz：${y.toFixed(10)}`
+      },
+    },
+    grid: baseGrid,
+    legend: { show: false },
+    xAxis: [{
+      type: 'value',
+      name: 'Hz',
+      min: xMin,
+      max: xMax,
+      axisLabel: { margin: 8, showMaxLabel: true, hideOverlap: true },
+      splitLine: { show: false },
+    }],
+    yAxis: [{
+      type: 'value',
+      name: 'mm/s',
+      min: (v: any) => {
+        const min = Number(v?.min)
+        const max = Number(v?.max)
+        if (!Number.isFinite(min) || !Number.isFinite(max)) return yMinWithMargin
+        // 按当前可见区间自适应；极小区间时给一个很小缓冲避免重合
+        if (min === max) return min - Math.max(Math.abs(min) * 0.01, 1e-6)
+        return min
+      },
+      max: (v: any) => {
+        const min = Number(v?.min)
+        const max = Number(v?.max)
+        if (!Number.isFinite(min) || !Number.isFinite(max)) return yMaxWithMargin
+        if (min === max) return max + Math.max(Math.abs(max) * 0.01, 1e-6)
+        return max
+      },
+      axisLabel: { formatter: formatFreqYAxisTick },
+    }],
+    dataZoom,
+    series: [
+      {
+        name: '振动频谱',
+        type: 'line',
+        smooth: false,
+        showSymbol: false,
+        animation: false,
+        data: chartData,
+        lineStyle: { color: '#7ecba1', width: 1 },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(126, 203, 161, 0.8)' },
+            { offset: 1, color: 'rgba(126, 203, 161, 0.2)' },
+          ]),
+        },
+      },
+    ],
+  }
+
+  energyChart.value.setOption(option)
+  // 右侧保留“振动时域图”占位，后续再对接时域接口
+  densityChart.value.clear()
+
+  enableMouseWheelZoom(energyChart.value)
+  hasVibrationFrequencyData.value = chartData.length > 0
+  hasVibrationTimeData.value = false
 }
 
 const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
@@ -564,6 +744,8 @@ const loadEvent = async () => {
   eventDetail.value = null
   dataParse.value = null
   position.value = null
+  hasVibrationFrequencyData.value = false
+  hasVibrationTimeData.value = false
   disposeCharts()
 
   try {
@@ -591,26 +773,67 @@ const loadEvent = async () => {
 
   const code = currentEventTypeCode.value
   const rid = receiverId.value
-  if (rid && code === 'FREQUENCY_SOUND_WARN') {
-    const r = await getLatestFrequencyByReceiver({ receiverId: String(rid), type: 2 })
-    logFrequencyDebugInfo('FREQUENCY_SOUND_WARN response', (r as any)?.ret ?? [])
-    await renderEnergyDensityChartsFromFrequency((r as any)?.ret ?? [])
-  } else if (rid && code === 'SOUND_HISTORY_WARN') {
-    const r = await getLatestFrequencyByReceiver({ receiverId: String(rid), type: 2 })
-    logFrequencyDebugInfo('SOUND_HISTORY_WARN response', (r as any)?.ret ?? [])
-    await renderEnergyDensityChartsFromFrequency((r as any)?.ret ?? [])
-  } else if (rid && code === 'NO_SCENE_SOUND_WARN') {
-    const r = await getLatestFrequencyByReceiverNoScene({ receiverId: String(rid), type: 2 })
-    nosceneVoiceRet.value = (r as any)?.ret ?? null
-    logFrequencyDebugInfo(
-      'NO_SCENE_SOUND_WARN response.soundFrequencyDtoList',
-      (r as any)?.ret?.soundFrequencyDtoList ?? [],
-    )
-    logFrequencyDebugInfo(
-      'NO_SCENE_SOUND_WARN response.soundAvgFrequencyDtoList',
-      (r as any)?.ret?.soundAvgFrequencyDtoList ?? [],
-    )
-    await renderEnergyDensityChartsFromNoScene((r as any)?.ret ?? {})
+
+  // 声音预警：沿用原有声音频谱接口
+  if (isWarningEvent.value) {
+    if (rid && code === 'FREQUENCY_SOUND_WARN') {
+      const r = await getLatestFrequencyByReceiver({ receiverId: String(rid), type: 2 })
+      logFrequencyDebugInfo('FREQUENCY_SOUND_WARN response', (r as any)?.ret ?? [])
+      await renderEnergyDensityChartsFromFrequency((r as any)?.ret ?? [])
+      return
+    }
+    if (rid && code === 'SOUND_HISTORY_WARN') {
+      const r = await getLatestFrequencyByReceiver({ receiverId: String(rid), type: 2 })
+      logFrequencyDebugInfo('SOUND_HISTORY_WARN response', (r as any)?.ret ?? [])
+      await renderEnergyDensityChartsFromFrequency((r as any)?.ret ?? [])
+      return
+    }
+    if (rid && code === 'NO_SCENE_SOUND_WARN') {
+      const r = await getLatestFrequencyByReceiverNoScene({ receiverId: String(rid), type: 2 })
+      nosceneVoiceRet.value = (r as any)?.ret ?? null
+      logFrequencyDebugInfo(
+        'NO_SCENE_SOUND_WARN response.soundFrequencyDtoList',
+        (r as any)?.ret?.soundFrequencyDtoList ?? [],
+      )
+      logFrequencyDebugInfo(
+        'NO_SCENE_SOUND_WARN response.soundAvgFrequencyDtoList',
+        (r as any)?.ret?.soundAvgFrequencyDtoList ?? [],
+      )
+      await renderEnergyDensityChartsFromNoScene((r as any)?.ret ?? {})
+      return
+    }
+    disposeCharts()
+    return
+  }
+
+  // 振动报警：调用振动页的频域接口，带上 alarmTime
+  if (deviceId.value && rid) {
+    try {
+      const res = await getVibrationFrequencyData(
+        String(deviceId.value),
+        String(rid),
+        'X',
+        alarmTime.value,
+      )
+      if (res?.rc === 0 && res?.ret) {
+        const { frequency, freqSpeedData } = res.ret as any
+        if (
+          Array.isArray(frequency) &&
+          Array.isArray(freqSpeedData) &&
+          frequency.length > 0 &&
+          freqSpeedData.length > 0
+        ) {
+          await renderVibrationFrequencyCharts(frequency, freqSpeedData)
+        } else {
+          disposeCharts()
+        }
+      } else {
+        disposeCharts()
+      }
+    } catch (e) {
+      console.error('loadEvent vibration frequency failed:', e)
+      disposeCharts()
+    }
   } else {
     disposeCharts()
   }
@@ -656,7 +879,7 @@ const onConfirmYes = async () => {
     visible.value = false
   } catch (e) {
     console.error(e)
-    ElMessage.error('确认预警失败')
+    ElMessage.error(isWarningEvent.value ? '确认预警失败' : '确认报警失败')
   }
 }
 
