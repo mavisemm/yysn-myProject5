@@ -107,6 +107,9 @@ const waterfallData = ref<{
   freqSpeedData: [],
 })
 let waterfallReloadTimer: ReturnType<typeof setTimeout> | null = null
+const isMobileViewport =
+  typeof window !== 'undefined' ? window.matchMedia('(max-width: 800px)').matches : false
+const mobileLegendExtraHeight = 82
 
 const receiverIdFromParams = computed(() => {
   const rid = route.params.receiverId
@@ -328,8 +331,9 @@ const waterfallOption = computed<EChartsOption>(() => {
       },
     },
     grid3D: {
-      left: '-10%',
-      top: '-2%',
+      left: isMobileViewport ? '-2%' : '-10%',
+      top: isMobileViewport ? '-8%' : '-2%',
+      bottom: isMobileViewport ? mobileLegendExtraHeight : 0,
       viewControl: {
         projection: 'orthographic',
         alpha: 15,
@@ -408,10 +412,13 @@ const waterfallOption = computed<EChartsOption>(() => {
       pageTextStyle: { color: c },
       pageIconColor: '#ffffff',
       pageIconInactiveColor: 'rgba(255,255,255,0.5)',
-      right: 10,
-      top: 'middle',
-      orient: 'vertical',
+      left: isMobileViewport ? 0 : undefined,
+      right: isMobileViewport ? 0 : 10,
+      top: isMobileViewport ? 'bottom' : 'middle',
+      orient: isMobileViewport ? 'horizontal' : 'vertical',
       type: 'scroll',
+      itemWidth: isMobileViewport ? 10 : 14,
+      itemHeight: isMobileViewport ? 7 : 10,
     },
     zAxis3D: {
       name: '速\n度\n有\n效\n值\n(mm/s)',
@@ -565,6 +572,42 @@ onUnmounted(() => {
 .waterfall-card {
   width: 66.66%;
 }
+
+@media (max-width: 800px) {
+  .waterfall-card {
+    width: 100%;
+  }
+
+  .card-item .card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .card-item .card-header .card-header-leading {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .card-item .card-header .time-section {
+    width: 100%;
+  }
+
+  .card-item .card-header .time-section .interval-input {
+    width: 100%;
+  }
+
+  .card-item .chart-container {
+    height: 312px;
+    min-height: 312px;
+  }
+
+  .card-item .chart-container :deep(.common-echarts-wrapper),
+  .card-item .chart-container :deep(.common-echarts-inner) {
+    height: 100%;
+    min-height: 312px;
+  }
+}
 </style>
 
 <style lang="scss">
@@ -680,5 +723,34 @@ onUnmounted(() => {
 .waterfall-axis-select-dropdown .el-select-dropdown__item.is-hovering,
 .waterfall-axis-select-dropdown .el-select-dropdown__item:hover {
   background: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 800px) {
+  .common-echarts-fullscreen-modal .el-dialog {
+    height: 600px !important;
+    max-height: 600px !important;
+  }
+
+  .waterfall-fullscreen-filters {
+    flex-wrap: wrap;
+  }
+
+  .waterfall-fullscreen-filters .interval-input,
+  .waterfall-fullscreen-filters .freq-filter {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  /* 振动点位页：弹窗内图表高度固定（仅手机端） */
+  .common-echarts-fullscreen-wrap {
+    height: 372px !important;
+    min-height: 372px !important;
+    max-height: 372px !important;
+  }
+
+  .common-echarts-fullscreen-inner {
+    height: 372px !important;
+    min-height: 372px !important;
+  }
 }
 </style>

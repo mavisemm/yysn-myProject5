@@ -108,8 +108,8 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="aiModalVisible" title="智能故障分析" width="760px" class="alarm-batch-sub-dialog"
-      destroy-on-close :close-on-click-modal="false" @closed="resetAiModal">
+    <el-dialog v-model="aiModalVisible" title="智能故障分析" width="760px" class="alarm-batch-sub-dialog" destroy-on-close
+      :close-on-click-modal="false" @closed="resetAiModal">
       <div class="aiHeader">
         <div class="aiMeta">设备名称：{{ nosceneVoiceRet?.productName ?? '暂无' }}</div>
         <div class="aiMeta">点位名称：{{ nosceneVoiceRet?.subProductName ?? '暂无' }}</div>
@@ -1111,6 +1111,7 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 800px) {
+
   .alarm-batch-view-dialog,
   .alarm-batch-view-dialog.el-dialog,
   .alarm-batch-view-dialog .el-dialog,

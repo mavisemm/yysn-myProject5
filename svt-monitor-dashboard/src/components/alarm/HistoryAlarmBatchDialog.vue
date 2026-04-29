@@ -112,7 +112,7 @@ import { formatDateTime, normalizeEndDateTimeBySelectedDay } from '@/utils/datet
 defineEmits<{ (e: 'view', row: any): void }>()
 const store = useAlarmBatchStore()
 const isMobile = computed(() => window.innerWidth <= 800)
-const dialogWidth = computed(() => (isMobile.value ? '100vw' : '1100px'))
+const dialogWidth = computed(() => (isMobile.value ? '100vw' : '70vw'))
 const sameWidthPopperOptions = {
   modifiers: [
     {

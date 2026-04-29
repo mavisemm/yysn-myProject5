@@ -1176,10 +1176,33 @@ const safeFullscreenRangeDataMax = computed(() => {
 .time-card {
   width: 50%;
 }
+
+@media (max-width: 800px) {
+  .bottom-row {
+    height: auto;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .freq-card,
+  .time-card {
+    width: 100%;
+  }
+
+  .card-item .chart-container {
+    height: 250px;
+    min-height: 250px;
+  }
+
+  .card-item .chart-container :deep(.common-echarts-wrapper),
+  .card-item .chart-container :deep(.common-echarts-inner) {
+    height: 100%;
+    min-height: 250px;
+  }
+}
 </style>
 
 <style lang="scss">
-/* 页头与全屏工具栏共用（全屏内不在 .card-header 下，须用全局样式） */
 $vibration-axis-font-size: 12px;
 
 .vibration-axis-select {
@@ -1281,5 +1304,34 @@ $vibration-axis-font-size: 12px;
 .vibration-axis-select-dropdown .el-select-dropdown__item.is-hovering,
 .vibration-axis-select-dropdown .el-select-dropdown__item:hover {
   background: rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 800px) {
+  .common-echarts-fullscreen-modal .el-dialog {
+    height: 500px !important;
+    max-height: 500px !important;
+  }
+
+  .freq-fullscreen-top {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .freq-filter-inline {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  /* 振动点位页：弹窗内图表高度固定（仅手机端） */
+  .common-echarts-fullscreen-wrap {
+    height: 300px !important;
+    min-height: 300px !important;
+    max-height: 300px !important;
+  }
+
+  .common-echarts-fullscreen-inner {
+    height: 300px !important;
+    min-height: 300px !important;
+  }
 }
 </style>

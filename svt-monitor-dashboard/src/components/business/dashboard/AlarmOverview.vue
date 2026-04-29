@@ -1382,6 +1382,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 
       .batch-btn {
         max-width: none;
+        font-size: 0.9rem;
 
         :deep(.el-button__text) {
           white-space: normal;

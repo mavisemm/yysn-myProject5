@@ -12,16 +12,16 @@
         </div>
         <div class="stat-axes">
           <div class="axis-row">
-            <span class="axis-name">x轴：</span
-            ><span class="stat-value">{{ formatValue(vibrationData.xvelocityRms) }}</span>
+            <span class="axis-name">x轴：</span><span class="stat-value">{{ formatValue(vibrationData.xvelocityRms)
+              }}</span>
           </div>
           <div class="axis-row">
-            <span class="axis-name">y轴：</span
-            ><span class="stat-value">{{ formatValue(vibrationData.yvelocityRms) }}</span>
+            <span class="axis-name">y轴：</span><span class="stat-value">{{ formatValue(vibrationData.yvelocityRms)
+              }}</span>
           </div>
           <div class="axis-row">
-            <span class="axis-name">z轴：</span
-            ><span class="stat-value">{{ formatValue(vibrationData.zvelocityRms) }}</span>
+            <span class="axis-name">z轴：</span><span class="stat-value">{{ formatValue(vibrationData.zvelocityRms)
+              }}</span>
           </div>
         </div>
       </div>
@@ -32,16 +32,16 @@
         </div>
         <div class="stat-axes">
           <div class="axis-row">
-            <span class="axis-name">x轴：</span
-            ><span class="stat-value">{{ formatValue(vibrationData.xvelocityMax) }}</span>
+            <span class="axis-name">x轴：</span><span class="stat-value">{{ formatValue(vibrationData.xvelocityMax)
+              }}</span>
           </div>
           <div class="axis-row">
-            <span class="axis-name">y轴：</span
-            ><span class="stat-value">{{ formatValue(vibrationData.yvelocityMax) }}</span>
+            <span class="axis-name">y轴：</span><span class="stat-value">{{ formatValue(vibrationData.yvelocityMax)
+              }}</span>
           </div>
           <div class="axis-row">
-            <span class="axis-name">z轴：</span
-            ><span class="stat-value">{{ formatValue(vibrationData.zvelocityMax) }}</span>
+            <span class="axis-name">z轴：</span><span class="stat-value">{{ formatValue(vibrationData.zvelocityMax)
+              }}</span>
           </div>
         </div>
       </div>
@@ -52,16 +52,16 @@
         </div>
         <div class="stat-axes">
           <div class="axis-row">
-            <span class="axis-name">x轴：</span
-            ><span class="stat-value">{{ formatValue(vibrationData.xaccelerationRms) }}</span>
+            <span class="axis-name">x轴：</span><span class="stat-value">{{ formatValue(vibrationData.xaccelerationRms)
+              }}</span>
           </div>
           <div class="axis-row">
-            <span class="axis-name">y轴：</span
-            ><span class="stat-value">{{ formatValue(vibrationData.yaccelerationRms) }}</span>
+            <span class="axis-name">y轴：</span><span class="stat-value">{{ formatValue(vibrationData.yaccelerationRms)
+              }}</span>
           </div>
           <div class="axis-row">
-            <span class="axis-name">z轴：</span
-            ><span class="stat-value">{{ formatValue(vibrationData.zaccelerationRms) }}</span>
+            <span class="axis-name">z轴：</span><span class="stat-value">{{ formatValue(vibrationData.zaccelerationRms)
+              }}</span>
           </div>
         </div>
       </div>
@@ -72,16 +72,16 @@
         </div>
         <div class="stat-axes">
           <div class="axis-row">
-            <span class="axis-name">x轴：</span
-            ><span class="stat-value">{{ formatValue(vibrationData.xaccelerationMax) }}</span>
+            <span class="axis-name">x轴：</span><span class="stat-value">{{ formatValue(vibrationData.xaccelerationMax)
+              }}</span>
           </div>
           <div class="axis-row">
-            <span class="axis-name">y轴：</span
-            ><span class="stat-value">{{ formatValue(vibrationData.yaccelerationMax) }}</span>
+            <span class="axis-name">y轴：</span><span class="stat-value">{{ formatValue(vibrationData.yaccelerationMax)
+              }}</span>
           </div>
           <div class="axis-row">
-            <span class="axis-name">z轴：</span
-            ><span class="stat-value">{{ formatValue(vibrationData.zaccelerationMax) }}</span>
+            <span class="axis-name">z轴：</span><span class="stat-value">{{ formatValue(vibrationData.zaccelerationMax)
+              }}</span>
           </div>
         </div>
       </div>
@@ -281,6 +281,12 @@ watch(
         }
       }
     }
+  }
+}
+
+@media (max-width: 800px) {
+  .stats-card {
+    width: 100%;
   }
 }
 </style>

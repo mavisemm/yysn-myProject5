@@ -4,11 +4,11 @@
       <div class="chart-item">
         <div class="chart-header">
           <span class="chart-title app-section-title">烈度随时间变化</span>
-          <span class="chart-unit special-font-color">（单位：mm/s）</span>
+          <span class="chart-unit special-font-color vib-trend-unit">（单位：mm/s）</span>
         </div>
         <div class="chart">
           <CommonEcharts :option="vibOption" :enable-data-zoom="false" :not-merge="true" :tooltip-follow-mouse="true"
-            linkage-group="device-detail-charts" :enable-linkage-zoom="true" :enable-wheel-zoom="true"
+            :linkage-group="normalLinkageGroup" :enable-linkage-zoom="true" :enable-wheel-zoom="true"
             :auto-y-axis-on-zoom="true" />
         </div>
       </div>
@@ -16,11 +16,10 @@
       <div class="chart-item">
         <div class="chart-header">
           <span class="chart-title app-section-title">偏差值随时间变化</span>
-          <span class="chart-unit special-font-color">（单位：dB）</span>
         </div>
         <div class="chart">
           <CommonEcharts :option="soundOption" :enable-data-zoom="false" :not-merge="true" :tooltip-follow-mouse="true"
-            linkage-group="device-detail-charts" :enable-linkage-zoom="true" :enable-wheel-zoom="true"
+            :linkage-group="normalLinkageGroup" :enable-linkage-zoom="true" :enable-wheel-zoom="true"
             :auto-y-axis-on-zoom="true" />
         </div>
       </div>
@@ -30,23 +29,93 @@
           <span class="chart-title app-section-title">温度随时间变化</span>
           <div class="chart-header-right">
             <span class="realtime-temp-inline">
-              实时温度：<span class="special-font-color">{{ realtimeTempValueText }}</span>
+              实时温度：<span class="realtime-temp-value special-font-color">{{ realtimeTempValueText }}</span>
             </span>
             <span class="chart-unit special-font-color">（单位：℃）</span>
+            <el-button class="temp-fullscreen-btn" text size="small" :disabled="!hasAnyChartData"
+              @click="openDeviceChartsFullscreen">
+              全屏显示
+              <el-icon>
+                <FullScreen />
+              </el-icon>
+            </el-button>
           </div>
         </div>
         <div class="chart">
           <CommonEcharts :option="tempOption" :enable-data-zoom="false" :not-merge="true" :tooltip-follow-mouse="true"
-            linkage-group="device-detail-charts" :enable-linkage-zoom="true" :enable-wheel-zoom="true"
+            :linkage-group="normalLinkageGroup" :enable-linkage-zoom="true" :enable-wheel-zoom="true"
             :auto-y-axis-on-zoom="true" />
         </div>
       </div>
     </div>
+
+    <el-dialog v-model="deviceChartsFullscreenVisible" title="随时间变化曲线" fullscreen destroy-on-close append-to-body
+      :modal-append-to-body="true" align-center class="device-detail-charts-fullscreen-dialog"
+      modal-class="common-echarts-fullscreen-modal" @opened="onDeviceChartsFullscreenOpened"
+      @closed="onDeviceChartsFullscreenClosed">
+      <div class="device-detail-charts-fullscreen-content">
+        <div class="device-detail-charts-fullscreen-toolbar" @mousedown.stop @wheel.stop>
+          <el-checkbox v-model="fullscreenChartVisible.vib">烈度随时间变化</el-checkbox>
+          <el-checkbox v-model="fullscreenChartVisible.sound">偏差值随时间变化</el-checkbox>
+          <el-checkbox v-model="fullscreenChartVisible.temp">温度随时间变化</el-checkbox>
+        </div>
+
+        <div class="device-detail-charts-fullscreen-stack">
+          <template v-if="hasAnyFullscreenChartSelected">
+            <div v-if="fullscreenChartVisible.vib" class="device-detail-chart-fs-pane">
+              <div class="chart-header">
+                <span class="chart-title app-section-title">烈度随时间变化</span>
+                <span class="chart-unit special-font-color vib-trend-unit">（单位：mm/s）</span>
+              </div>
+              <div class="chart-host">
+                <CommonEcharts ref="vibFullscreenChartRef" :option="vibOption" :enable-data-zoom="false"
+                  :not-merge="true" :tooltip-follow-mouse="true" :linkage-group="fullscreenLinkageGroup"
+                  :enable-linkage-zoom="true" :enable-wheel-zoom="true" :auto-y-axis-on-zoom="true" />
+              </div>
+            </div>
+
+            <div v-if="fullscreenChartVisible.sound" class="device-detail-chart-fs-pane">
+              <div class="chart-header">
+                <span class="chart-title app-section-title">偏差值随时间变化</span>
+              </div>
+              <div class="chart-host">
+                <CommonEcharts ref="soundFullscreenChartRef" :option="soundOption" :enable-data-zoom="false"
+                  :not-merge="true" :tooltip-follow-mouse="true" :linkage-group="fullscreenLinkageGroup"
+                  :enable-linkage-zoom="true" :enable-wheel-zoom="true" :auto-y-axis-on-zoom="true" />
+              </div>
+            </div>
+
+            <div v-if="fullscreenChartVisible.temp" class="device-detail-chart-fs-pane">
+              <div class="chart-header">
+                <span class="chart-title app-section-title">温度随时间变化</span>
+                <div class="chart-header-right">
+                  <span class="realtime-temp-inline">
+                    实时温度：<span class="special-font-color">{{ realtimeTempValueText }}</span>
+                  </span>
+                  <span class="chart-unit special-font-color">（单位：℃）</span>
+                </div>
+              </div>
+              <div class="chart-host">
+                <CommonEcharts ref="tempFullscreenChartRef" :option="tempOption" :enable-data-zoom="false"
+                  :not-merge="true" :tooltip-follow-mouse="true" :linkage-group="fullscreenLinkageGroup"
+                  :enable-linkage-zoom="true" :enable-wheel-zoom="true" :auto-y-axis-on-zoom="true" />
+              </div>
+            </div>
+          </template>
+
+          <div v-else class="device-detail-charts-empty">
+            请至少选择一个图表
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
+import { ElButton, ElDialog, ElCheckbox, ElIcon } from 'element-plus'
+import { FullScreen } from '@element-plus/icons-vue'
 import type { Ref } from 'vue'
 import {
   getTemperatureRealTime,
@@ -106,6 +175,92 @@ const TEMP_COLOR = '#ff4d4f'
 const VIB_COLOR = '#1890ff'
 const SOUND_COLOR = '#fadb14'
 
+// 全屏弹窗里/页面上的图表同时存在于 DOM 时，如果使用同一个 linkage-group，
+// ECharts 会把同组图表联动 tooltip（你看到的“3个图却显示5/4个 tooltip”就是这个原因）。
+const normalLinkageGroup = 'device-detail-charts-normal'
+const fullscreenLinkageGroup = 'device-detail-charts-fullscreen'
+
+const deviceChartsFullscreenVisible = ref(false)
+const fullscreenChartVisible = ref({
+  vib: true,
+  sound: true,
+  temp: true,
+})
+
+const FULLSCREEN_DATAZOOM_SLIDER_HEIGHT_PX = 20 // 如需更大手柄/刻度，可改成 50
+const fullscreenDataZoomSliderHeight = computed(() => {
+  // 全屏时 slider 高度固定，避免随容器比例变化导致图表区域被挤压
+  return deviceChartsFullscreenVisible.value ? FULLSCREEN_DATAZOOM_SLIDER_HEIGHT_PX : '10%'
+})
+
+const isDeviceChartsFullscreen = computed(() => deviceChartsFullscreenVisible.value)
+const fullscreenGridTop = computed(() => (isDeviceChartsFullscreen.value ? 30 : '10%'))
+const fullscreenGridBottom = computed(() => (isDeviceChartsFullscreen.value ? 35 : '15%'))
+const fullscreenDataZoomBottom = computed(() => (isDeviceChartsFullscreen.value ? 10 : '5%'))
+
+const hasAnyChartData = computed(() => {
+  const vibLen = vibChartData.value?.values?.length ?? 0
+  const soundLen = soundChartData.value?.values?.length ?? 0
+  const tempLen = tempChartData.value?.values?.length ?? 0
+  return vibLen > 0 || soundLen > 0 || tempLen > 0
+})
+
+const hasAnyFullscreenChartSelected = computed(
+  () =>
+    fullscreenChartVisible.value.vib
+    || fullscreenChartVisible.value.sound
+    || fullscreenChartVisible.value.temp,
+)
+
+const openDeviceChartsFullscreen = () => {
+  fullscreenChartVisible.value = { vib: true, sound: true, temp: true }
+  deviceChartsFullscreenVisible.value = true
+}
+
+watch(
+  () => fullscreenChartVisible.value,
+  async () => {
+    if (!deviceChartsFullscreenVisible.value) return
+    await nextTick()
+    resizeVisibleFullscreenCharts()
+  },
+  { deep: true },
+)
+
+const vibFullscreenChartRef = ref<InstanceType<typeof CommonEcharts> | null>(null)
+const soundFullscreenChartRef = ref<InstanceType<typeof CommonEcharts> | null>(null)
+const tempFullscreenChartRef = ref<InstanceType<typeof CommonEcharts> | null>(null)
+
+const resizeVisibleFullscreenCharts = () => {
+  // 防止弹窗打开瞬间容器高度尚未稳定，导致 ECharts 画布高度计算不正确（顶部被裁切）
+  requestAnimationFrame(() => {
+    try {
+      if (fullscreenChartVisible.value.vib) {
+        ; (vibFullscreenChartRef.value as any)?.chartInstance?.resize?.()
+      }
+      if (fullscreenChartVisible.value.sound) {
+        ; (soundFullscreenChartRef.value as any)?.chartInstance?.resize?.()
+      }
+      if (fullscreenChartVisible.value.temp) {
+        ; (tempFullscreenChartRef.value as any)?.chartInstance?.resize?.()
+      }
+    } catch {
+      // ignore
+    }
+  })
+}
+
+const onDeviceChartsFullscreenOpened = async () => {
+  await nextTick()
+  resizeVisibleFullscreenCharts()
+  // 再补一次，给字体/布局收敛留余量
+  setTimeout(resizeVisibleFullscreenCharts, 50)
+}
+
+const onDeviceChartsFullscreenClosed = () => {
+  // nothing
+}
+
 // y 轴刻度最多保留小数点后两位（同时去掉无意义的尾随 0）
 const formatYAxisTick = (v: number | string) => {
   const n = Number(v)
@@ -157,14 +312,20 @@ const tempOption = computed<EChartsOption>(() => {
       borderColor: 'rgba(50,50,50,0.8)',
       textStyle: { color: '#fff' },
     },
-    grid: { left: '3%', right: '6%', bottom: '15%', top: '10%', containLabel: true },
+    grid: {
+      left: '3%',
+      right: '6%',
+      bottom: fullscreenGridBottom.value,
+      top: fullscreenGridTop.value,
+      containLabel: true,
+    },
     dataZoom: [
       { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
       {
         type: 'slider',
         xAxisIndex: [0],
-        bottom: '5%',
-        height: '10%',
+        bottom: fullscreenDataZoomBottom.value,
+        height: fullscreenDataZoomSliderHeight.value,
         fillerColor: 'rgba(255, 77, 79, 0.3)',
         borderColor: 'rgba(255, 77, 79, 0.5)',
         handleStyle: { color: TEMP_COLOR },
@@ -186,7 +347,6 @@ const tempOption = computed<EChartsOption>(() => {
     },
     yAxis: {
       type: 'value',
-      name: '℃',
       scale: true,
       ...(yMin != null && yMax != null
         ? { min: yMin, max: yMax }
@@ -195,7 +355,6 @@ const tempOption = computed<EChartsOption>(() => {
       axisLine: { lineStyle: { color: c } },
       axisTick: { lineStyle: { color: c } },
       splitLine: { lineStyle: { color: s } },
-      nameTextStyle: { color: c },
       splitNumber: 4,
     },
     series: values.length
@@ -244,14 +403,20 @@ const vibOption = computed<EChartsOption>(() => {
       borderColor: 'rgba(50,50,50,0.8)',
       textStyle: { color: '#fff' },
     },
-    grid: { left: '3%', right: '6%', bottom: '15%', top: '10%', containLabel: true },
+    grid: {
+      left: '3%',
+      right: '6%',
+      bottom: fullscreenGridBottom.value,
+      top: fullscreenGridTop.value,
+      containLabel: true,
+    },
     dataZoom: [
       { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
       {
         type: 'slider',
         xAxisIndex: [0],
-        bottom: '5%',
-        height: '10%',
+        bottom: fullscreenDataZoomBottom.value,
+        height: fullscreenDataZoomSliderHeight.value,
         fillerColor: 'rgba(24, 144, 255, 0.3)',
         borderColor: 'rgba(24, 144, 255, 0.5)',
         handleStyle: { color: VIB_COLOR },
@@ -273,13 +438,11 @@ const vibOption = computed<EChartsOption>(() => {
     },
     yAxis: {
       type: 'value',
-      name: 'mm/s',
       ...(yMin != null && yMax != null ? { min: yMin, max: yMax } : {}),
       axisLabel: { fontSize: 10, color: c, formatter: formatYAxisTick },
       axisLine: { lineStyle: { color: c } },
       axisTick: { lineStyle: { color: c } },
       splitLine: { lineStyle: { color: s } },
-      nameTextStyle: { color: c },
       splitNumber: 4,
     },
     series: values.length
@@ -328,14 +491,20 @@ const soundOption = computed<EChartsOption>(() => {
       borderColor: 'rgba(50,50,50,0.8)',
       textStyle: { color: '#fff' },
     },
-    grid: { left: '3%', right: '6%', bottom: '15%', top: '10%', containLabel: true },
+    grid: {
+      left: '3%',
+      right: '6%',
+      bottom: fullscreenGridBottom.value,
+      top: fullscreenGridTop.value,
+      containLabel: true,
+    },
     dataZoom: [
       { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
       {
         type: 'slider',
         xAxisIndex: [0],
-        bottom: '5%',
-        height: '10%',
+        bottom: fullscreenDataZoomBottom.value,
+        height: fullscreenDataZoomSliderHeight.value,
         fillerColor: 'rgba(250, 219, 20, 0.3)',
         borderColor: 'rgba(250, 219, 20, 0.5)',
         handleStyle: { color: SOUND_COLOR },
@@ -357,14 +526,12 @@ const soundOption = computed<EChartsOption>(() => {
     },
     yAxis: {
       type: 'value',
-      name: 'dB',
       scale: true,
       ...(yMin != null && yMax != null ? { min: yMin, max: yMax } : {}),
       axisLabel: { fontSize: 10, color: c, formatter: formatYAxisTick },
       axisLine: { lineStyle: { color: c } },
       axisTick: { lineStyle: { color: c } },
       splitLine: { lineStyle: { color: s } },
-      nameTextStyle: { color: c },
       splitNumber: 4,
     },
     series: values.length
@@ -656,6 +823,12 @@ onMounted(() => {
           color: #fff;
         }
 
+        /* 烈度随时间变化：单位字号固定 0.8rem */
+        .vib-trend-unit {
+          font-size: 0.8rem;
+          color: #fff;
+        }
+
         .chart-header-right {
           display: inline-flex;
           align-items: center;
@@ -667,8 +840,20 @@ onMounted(() => {
         }
 
         .realtime-temp-inline {
-          font-size: 0.9rem;
+          font-size: 0.8rem;
           font-weight: 500;
+          color: #fff;
+        }
+
+        .realtime-temp-unit {
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: #fff;
+        }
+
+        /* 仅温度标题栏右侧单位：固定 0.8rem */
+        .chart-header-right .chart-unit {
+          font-size: 0.8rem;
           color: #fff;
         }
       }
@@ -837,6 +1022,28 @@ onMounted(() => {
 
 
   }
+
+  /* 全屏多图：移动端排版（toolbar/表头换行） */
+  .device-detail-charts-fullscreen-toolbar {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .device-detail-chart-fs-pane {
+    .chart-header {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 6px !important;
+    }
+
+    .chart-header-right {
+      white-space: normal !important;
+      flex-wrap: wrap !important;
+      gap: 8px !important;
+    }
+  }
 }
 
 /*
@@ -900,6 +1107,184 @@ onMounted(() => {
     background-color: #ffffff !important;
     border-bottom: 1px solid #e4e7ed;
   }
+}
+
+/* Fullscreen multi-chart dialog (device detail) */
+.temp-fullscreen-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  padding: 0 !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  font-size: 0.8rem;
+
+  /* element-plus：text button hover/focus/active 的底色（避免出现白底） */
+  &:hover,
+  &:focus,
+  &:active,
+  &.is-disabled:hover {
+    background-color: transparent !important;
+    background: transparent !important;
+  }
+
+  &:hover::before,
+  &:hover::after,
+  &:focus::before,
+  &:focus::after,
+  &:active::before,
+  &:active::after {
+    background-color: transparent !important;
+    background: transparent !important;
+  }
+
+  :deep(.el-button__content),
+  :deep(.el-button__text) {
+    color: rgba(255, 255, 255, 0.95) !important;
+  }
+
+  :deep(.el-icon) {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.95) !important;
+    margin-left: 4px;
+  }
+
+  &:hover :deep(.el-icon),
+  &:focus :deep(.el-icon),
+  &:active :deep(.el-icon) {
+    color: #ffffff !important;
+  }
+}
+
+.device-detail-charts-fullscreen-content {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.device-detail-charts-fullscreen-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+
+  :deep(.el-checkbox__label) {
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  :deep(.el-checkbox__inner) {
+    border-color: rgba(255, 255, 255, 0.65);
+  }
+}
+
+.device-detail-charts-fullscreen-stack {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.device-detail-chart-fs-pane {
+  flex: 1;
+  min-height: 0;
+  border-radius: 8px;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.1);
+
+  /* 全屏内：单位/实时温度强制白色 */
+  .realtime-temp-inline {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #fff;
+  }
+
+  .realtime-temp-unit {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #fff;
+  }
+
+  .realtime-temp-value {
+    color: #fff !important;
+  }
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 10px;
+    flex: 0 0 auto;
+    min-width: 0;
+
+    .chart-title {
+      font-size: 1rem !important;
+    }
+  }
+
+  .chart-header-right {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    min-width: 0;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* 全屏：烈度标题栏单位仍保持白色/0.8rem */
+  .vib-trend-unit {
+    font-size: 0.8rem;
+    color: #fff !important;
+  }
+
+  /* 全屏：温度标题栏右侧单位强制白色/字号一致 */
+  .chart-header-right .chart-unit {
+    font-size: 0.8rem;
+    color: #fff !important;
+  }
+
+  .chart-host {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+
+    :deep(.common-echarts-wrapper) {
+      height: 100%;
+      min-height: inherit;
+    }
+
+    :deep(.common-echarts-inner) {
+      min-height: inherit;
+    }
+  }
+}
+
+.device-detail-charts-empty {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+}
+
+:global(.device-detail-charts-fullscreen-dialog .el-dialog__body) {
+  /* 防止 body padding 挤压/覆盖全屏图表顶部区域 */
+  padding: 0 !important;
 }
 </style>
 

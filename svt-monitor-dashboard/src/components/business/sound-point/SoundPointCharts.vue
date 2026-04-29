@@ -101,10 +101,26 @@ const handleTrendAnalysisClick = () => {
   const base = import.meta.env.BASE_URL || '/'
   const normalizedBase = base.endsWith('/') ? base : `${base}/`
   const tenantId = getTenantId()
+  const activeReceiverName = String(
+    props.deviationList?.[0]?.receiverName ??
+      props.deviationList?.[0]?.microphone ??
+      props.deviationList?.[0]?.pointName ??
+      '',
+  ).trim()
+  const activeReceiverId = String(selectedPointId.value ?? '').trim()
 
   const params = new URLSearchParams()
   if (tenantId) params.set('tenantId', tenantId)
   params.set('ip', '122.224.196.178')
+  if (activeReceiverId) {
+    params.set('receiverId', activeReceiverId)
+    params.set('selectedReceiverId', activeReceiverId)
+  }
+  if (activeReceiverName) {
+    // trend 页使用 pointName 字段，这里传当前点位的 receiverName 做对应
+    params.set('pointName', activeReceiverName)
+    params.set('selectedPointName', activeReceiverName)
+  }
   const url = `${normalizedBase}trend/trend.html?${params.toString()}`
   window.open(url, '_blank', 'noopener,noreferrer')
 }

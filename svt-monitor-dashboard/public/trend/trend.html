@@ -1105,6 +1105,9 @@
         let currentTrendDistributionChart = null;
         const dataZoomStateMap = {};
         let pointList = []; // 存储点位列表
+        let preselectedPointId = '';
+        let preselectedPointName = '';
+        let preselectedReceiverId = '';
         let tenantId = null; // 存储租户ID
         let apiIp = '122.224.196.178'; // 存储API IP地址，默认值
         let authToken = null; // 存储登录token
@@ -1149,6 +1152,9 @@
             const urlParams = new URLSearchParams(window.location.search);
             tenantId = urlParams.get('tenantId') || localStorage.getItem('tenantId');
             apiIp = urlParams.get('ip') || '122.224.196.178'; // 默认IP
+            preselectedPointId = (urlParams.get('selectedPointId') || '').trim();
+            preselectedPointName = (urlParams.get('pointName') || urlParams.get('selectedPointName') || '').trim();
+            preselectedReceiverId = (urlParams.get('receiverId') || urlParams.get('selectedReceiverId') || '').trim();
             console.log('获取到的租户ID:', tenantId);
             console.log('获取到的API IP:', apiIp);
             
@@ -1207,6 +1213,43 @@
             });
         }
         
+        function normalizeText(value) {
+            return String(value || '').trim().toLowerCase();
+        }
+
+        function resolvePreselectedPointId(points) {
+            if (!Array.isArray(points) || points.length === 0) return '';
+
+            if (preselectedPointId) {
+                const byId = points.find(point => {
+                    const pointId = String(point.id || point.pointId || point.code || point.pointCode || '');
+                    return pointId && pointId === preselectedPointId;
+                });
+                if (byId) return String(byId.id || byId.pointId || byId.code || byId.pointCode || '');
+            }
+
+            if (preselectedReceiverId) {
+                const byReceiver = points.find(point => {
+                    const receiverId = String(point.receiverId || point.receiveId || '');
+                    return receiverId && receiverId === preselectedReceiverId;
+                });
+                if (byReceiver) return String(byReceiver.id || byReceiver.pointId || byReceiver.code || byReceiver.pointCode || '');
+            }
+
+            if (preselectedPointName) {
+                const expectedName = normalizeText(preselectedPointName);
+                const byName = points.find(point => {
+                    const pointName = normalizeText(
+                        point.pointName || point.name || point.receiverName || point.description || ''
+                    );
+                    return pointName && pointName === expectedName;
+                });
+                if (byName) return String(byName.id || byName.pointId || byName.code || byName.pointCode || '');
+            }
+
+            return '';
+        }
+
         // 填充点位选择下拉框
         function populatePointSelector(points) {
             const pointSelector = $('#pointSelector');
@@ -1233,6 +1276,11 @@
                 });
             } else {
                 console.warn('点位数据不是数组:', points);
+            }
+
+            const matchedPointId = resolvePreselectedPointId(points);
+            if (matchedPointId) {
+                pointSelector.val(matchedPointId);
             }
         }
         

@@ -1,53 +1,22 @@
 <template>
   <div class="sound-point-container">
-    <SoundPointCharts
-      :deviation-list="deviationList"
-      :point-list="[]"
-      :selected-point-id="receiverId"
-      @chart-init="handleChartInit"
-      ref="chartsComponentRef"
-    />
+    <SoundPointCharts :deviation-list="deviationList" :point-list="[]" :selected-point-id="receiverId"
+      @chart-init="handleChartInit" ref="chartsComponentRef" />
 
     <div class="bottom-section">
-      <SoundDataTable
-        :deviation-list="deviationList"
-        @select-change="handleSelectChange"
-        @view-details="viewDetails"
-        @download-file="downloadFile"
-        @play-audio="playAudio"
-        @row-click="handleRowClick"
-      />
+      <SoundDataTable :deviation-list="deviationList" @select-change="handleSelectChange" @view-details="viewDetails"
+        @download-file="downloadFile" @play-audio="playAudio" @row-click="handleRowClick" />
 
-      <SoundPointInfo
-        :point-name="pointName"
-        :device-name="deviceName"
-        :current-data-time="currentDataTime"
-        :upload-time="currentDataTime"
-        :audio-path="audioPath"
-        :cluster-name="clusterName"
-        :production-equipment="productionEquipment"
-        :sub-component="subComponent"
-        :detection-equipment="detectionEquipment"
-        :microphone="microphone"
-        :deviation-value="currentDeviationValue"
-      />
+      <SoundPointInfo :point-name="pointName" :device-name="deviceName" :current-data-time="currentDataTime"
+        :upload-time="currentDataTime" :audio-path="audioPath" :cluster-name="clusterName"
+        :production-equipment="productionEquipment" :sub-component="subComponent"
+        :detection-equipment="detectionEquipment" :microphone="microphone" :deviation-value="currentDeviationValue" />
     </div>
   </div>
 
-  <el-dialog
-    v-model="voiceVisible"
-    title="详情"
-    :width="detailDialogWidth"
-    align-center
-    class="voice-detail-dialog"
-    destroy-on-close
-    :z-index="3000"
-    :teleported="true"
-    :append-to-body="true"
-    :modal-append-to-body="true"
-    @opened="handleModalOpened"
-    @closed="handleModalClosed"
-  >
+  <el-dialog v-model="voiceVisible" title="详情" :width="detailDialogWidth" align-center class="voice-detail-dialog"
+    destroy-on-close :z-index="3000" :teleported="true" :append-to-body="true" :modal-append-to-body="true"
+    @opened="handleModalOpened" @closed="handleModalClosed">
     <div class="modal-charts">
       <div class="modal-chart-item">
         <div ref="modalEnergyChartRef" class="modal-chart-dom"></div>
@@ -235,7 +204,7 @@ const handleRowClick = (row: any) => {
   handleSelectChange()
 }
 
-const handleChartInit = (charts: any) => {}
+const handleChartInit = (charts: any) => { }
 
 const handleSelectChange = () => {
   syncSelectedColors()
@@ -613,7 +582,7 @@ const playAudio = (row: DeviationListItem) => {
   audioPath.value = getWavByFreqGroupIdUrl(row.id)
   nextTick(() => {
     const el = document.querySelector('.info-section-right audio') as HTMLAudioElement
-    if (el) el.play().catch(() => {})
+    if (el) el.play().catch(() => { })
   })
   ElMessage.success('正在播放音频')
 }

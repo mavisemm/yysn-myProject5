@@ -116,4 +116,22 @@ const goBack = () => {
     min-height: 0;
   }
 }
+
+@media (max-width: 800px) {
+  .vibration-point-page {
+    height: auto;
+    min-height: 0;
+
+    .main-layout {
+      height: auto;
+      min-height: 0;
+    }
+
+    .top-row {
+      height: auto;
+      min-height: 0;
+      flex-direction: column;
+    }
+  }
+}
 </style>

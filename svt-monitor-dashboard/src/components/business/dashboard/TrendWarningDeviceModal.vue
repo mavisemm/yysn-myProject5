@@ -44,8 +44,13 @@
 import { ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDeviceWaringDetailStore } from '@/stores/deviceWaringDetail'
+import { useAlarmBatchStore } from '@/stores/alarmBatch'
+import { useDeviceTreeStore } from '@/stores/deviceTree'
+import { resolveRealtimeDeviceKey } from '@/utils/realtimeAlarmNavigator'
 
 const router = useRouter()
+const alarmBatchStore = useAlarmBatchStore()
+const deviceTreeStore = useDeviceTreeStore()
 
 const props = withDefaults(
   defineProps<{
@@ -141,12 +146,32 @@ const goToDeviceDetail = (row: TableRow) => {
 
 const goToSoundPoint = (row: TableRow) => {
   if (!row.receiverId || !row.equipmentId) return
-  handleClose()
-  router.push({
-    name: 'SoundPoint',
-    params: { receiverId: row.receiverId },
-    query: { equipmentId: row.equipmentId },
+  const match = String(row.pointName ?? '').match(/(\d+)/)
+  const pointNum = match ? Number(match[1]) : 0
+  void alarmBatchStore.ensureDropdowns().then(() => {
+    const deviceId = resolveRealtimeDeviceKey({
+      alarmId: String(row.equipmentId ?? ''),
+      pointNum,
+      pointName: String(row.pointName ?? ''),
+      deviceTreeData: deviceTreeStore.deviceTreeData ?? [],
+      deviceOptions: (alarmBatchStore.deviceNameList ?? []) as any[],
+    })
+
+    if (props.mode === 'trend') {
+      alarmBatchStore.resetRealtime()
+      if (deviceId) {
+        alarmBatchStore.realtimeQuery.deviceId = deviceId
+      }
+      void alarmBatchStore.openRealtime()
+    } else {
+      alarmBatchStore.resetRealtimeAlarm()
+      if (deviceId) {
+        alarmBatchStore.realtimeAlarmQuery.deviceId = deviceId
+      }
+      void alarmBatchStore.openRealtimeAlarm()
+    }
   })
+  handleClose()
 }
 
 const handleClose = () => {
@@ -248,6 +273,7 @@ watch(visible, (val) => {
   }
 
   .warning-table {
+
     .el-table__header th,
     .el-table__body td {
       color: #606266 !important;
