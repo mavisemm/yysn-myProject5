@@ -258,6 +258,15 @@ const buildPreviousItemMap = (list: DeviationListItem[]) => {
   return new Map(list.map((item) => [String(item.id), item]))
 }
 
+const ensureAtLeastOneSelected = (list: DeviationListItem[]) => {
+  const hasSelected = list.some((item) => item.visible)
+  if (!hasSelected && list[0]) {
+    list[0].visible = true
+    return true
+  }
+  return false
+}
+
 const loadDeviationList = async (opts: { mode?: 'init' | 'poll' } = {}) => {
   const { mode = 'poll' } = opts
   try {
@@ -283,6 +292,7 @@ const loadDeviationList = async (opts: { mode?: 'init' | 'poll' } = {}) => {
           : []
     const mapped = normalizeDeviationList(rawList)
 
+    let shouldRefreshChartData = mode !== 'poll'
     if (mode === 'poll') {
       const nextFirstId = mapped[0] ? String(mapped[0].id) : ''
       const hasNewTopData = !!nextFirstId && nextFirstId !== previousFirstId
@@ -297,6 +307,7 @@ const loadDeviationList = async (opts: { mode?: 'init' | 'poll' } = {}) => {
         mapped.forEach((item, index) => {
           item.visible = index === 0
         })
+        shouldRefreshChartData = true
       } else {
         // 非“仅首行勾选”：新数据插到第一行但不勾选，不刷新图表
         const selectedSet = new Set(previousSelectedIds)
@@ -314,6 +325,11 @@ const loadDeviationList = async (opts: { mode?: 'init' | 'poll' } = {}) => {
           }
           item.visible = selectedSet.has(String(item.id))
         })
+        // 兜底：若旧勾选项已被挤出当前列表，则至少选中一条（首条）
+        const autoSelected = ensureAtLeastOneSelected(mapped)
+        if (autoSelected) {
+          shouldRefreshChartData = true
+        }
       }
     } else {
       mapped.forEach((item, index) => {
@@ -355,7 +371,7 @@ const loadDeviationList = async (opts: { mode?: 'init' | 'poll' } = {}) => {
 
     applyStorePointInfo()
 
-    if (mode !== 'poll' || onlyFirstSelected) {
+    if (shouldRefreshChartData) {
       await loadFrequencyData()
     }
   } catch (error) {
