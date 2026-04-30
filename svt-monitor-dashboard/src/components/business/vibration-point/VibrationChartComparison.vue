@@ -113,8 +113,22 @@ import {
   type EchartsPersistentPoint,
 } from '@/utils/echartsPointMarker'
 
+const props = withDefaults(
+  defineProps<{
+    receiverId?: string
+    deviceId?: string
+    alarmTime?: number
+  }>(),
+  {
+    receiverId: '',
+    deviceId: '',
+    alarmTime: 0,
+  },
+)
+
 const route = useRoute()
-const receiverIdFromParams = computed(() => {
+const receiverIdResolved = computed(() => {
+  if (props.receiverId) return String(props.receiverId)
   const rid = route.params.receiverId
   const resolved = Array.isArray(rid) ? rid[0] : rid
   return (typeof resolved === 'string' ? resolved : '') || ''
@@ -135,7 +149,10 @@ const resolvePointDeviceId = (rid: string): string => {
   return ''
 }
 
-const pointDeviceId = computed(() => resolvePointDeviceId(receiverIdFromParams.value))
+const pointDeviceId = computed(() => {
+  if (props.deviceId) return String(props.deviceId)
+  return resolvePointDeviceId(receiverIdResolved.value)
+})
 
 const chartAxisColor = computed(() => '#fff')
 const chartSplitLineColor = computed(() => 'rgba(255,255,255,0.1)')
@@ -827,13 +844,14 @@ const timeOption = computed<EChartsOption>(() => {
 })
 
 const loadFreqData = async () => {
-  if (!pointDeviceId.value || !receiverIdFromParams.value) return
+  if (!pointDeviceId.value || !receiverIdResolved.value) return
 
   try {
     const freqResponse = await getVibrationFrequencyData(
       pointDeviceId.value,
-      receiverIdFromParams.value,
+      receiverIdResolved.value,
       freqAxis.value,
+      props.alarmTime > 0 ? props.alarmTime : undefined,
     )
     if (freqResponse.rc === 0 && freqResponse.ret) {
       const { frequency, freqSpeedData } = freqResponse.ret
@@ -859,12 +877,12 @@ const loadFreqData = async () => {
 }
 
 const loadTimeData = async () => {
-  if (!pointDeviceId.value || !receiverIdFromParams.value) return
+  if (!pointDeviceId.value || !receiverIdResolved.value) return
 
   try {
     const timeResponse = await getVibrationTimeDomainData(
       pointDeviceId.value,
-      receiverIdFromParams.value,
+      receiverIdResolved.value,
       timeAxis.value,
     )
     if (timeResponse.rc === 0 && timeResponse.ret) {
@@ -913,7 +931,7 @@ const loadVibrationChartsData = async () => {
 }
 
 watch(
-  [receiverIdFromParams, pointDeviceId],
+  [receiverIdResolved, pointDeviceId, () => props.alarmTime],
   ([rid, pid]) => {
     if (!rid || !pid) return
     clearAllPinnedPoints()
@@ -923,7 +941,7 @@ watch(
 )
 
 watch(freqAxis, () => {
-  if (!receiverIdFromParams.value || !pointDeviceId.value) return
+  if (!receiverIdResolved.value || !pointDeviceId.value) return
   clearAllPinnedPoints()
   void loadFreqData()
 })
@@ -940,7 +958,7 @@ watch(
 )
 
 watch(timeAxis, () => {
-  if (!receiverIdFromParams.value || !pointDeviceId.value) return
+  if (!receiverIdResolved.value || !pointDeviceId.value) return
   void loadTimeData()
 })
 

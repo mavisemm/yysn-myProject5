@@ -2,7 +2,6 @@
   <div class="login-page">
     <div class="login-container">
       <div class="left-title">
-        <h1 class="main-title">鲁西化工</h1>
         <h2 class="sub-title">声振温在线监测平台</h2>
       </div>
 
@@ -152,8 +151,10 @@ const handleLogin = async () => {
 .login-page {
   width: 100vw;
   height: 100vh;
-  background-image: image-set(url('@/assets/images/background/登录页背景.avif') type('image/avif'),
-      url('@/assets/images/background/登录页背景.webp') type('image/webp'));
+  background:
+    radial-gradient(120% 90% at 18% 12%, rgba(86, 156, 255, 0.4) 0%, rgba(86, 156, 255, 0) 62%),
+    radial-gradient(95% 75% at 82% 82%, rgba(78, 114, 255, 0.32) 0%, rgba(78, 114, 255, 0) 64%),
+    linear-gradient(145deg, #113971 0%, #20408b 46%, #151155 100%);
   background-repeat: no-repeat;
   background-position: center center;
   background-size: cover;
@@ -175,17 +176,6 @@ const handleLogin = async () => {
       justify-content: center;
       align-items: flex-start;
       gap: 30px;
-
-      .main-title {
-        font-size: 4rem;
-        color: #00ffff;
-        font-weight: 500;
-        margin: 0 0 20px 0;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
 
       .sub-title {
         font-size: 3rem;

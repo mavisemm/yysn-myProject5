@@ -70,16 +70,40 @@
       </div>
 
       <div class="voiceContainerItem">
-        <div class="panelTitle">{{ isWarningEvent ? '能量曲线图' : '振动频域图' }}</div>
-        <div ref="energyChartRef" class="chart-dom" />
+        <div class="panelTitle panelTitle--with-actions">
+          <span>{{ isWarningEvent ? '能量曲线图' : '振动频域图' }}</span>
+          <div v-if="!isWarningEvent" class="chartTitleActions">
+            <el-select v-model="freqAxis" size="small" class="axisSelect">
+              <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+            <el-button text size="small" class="fullscreenBtn" @click="openFreqFullscreen">
+              全屏显示
+              <el-icon><FullScreen /></el-icon>
+            </el-button>
+          </div>
+        </div>
+        <div v-if="isWarningEvent" ref="energyChartRef" class="chart-dom" />
+        <div v-else ref="vibrationFreqChartRef" class="chart-dom" />
         <div v-if="showEnergyNoChart" class="no-chart no-chart--overlay">
           {{ isWarningEvent ? '暂无能量曲线' : '暂无振动频域图' }}
         </div>
       </div>
 
       <div class="voiceContainerItem">
-        <div class="panelTitle">{{ isWarningEvent ? '密度曲线图' : '振动时域图' }}</div>
-        <div ref="densityChartRef" class="chart-dom" />
+        <div class="panelTitle panelTitle--with-actions">
+          <span>{{ isWarningEvent ? '密度曲线图' : '振动时域图' }}</span>
+          <div v-if="!isWarningEvent" class="chartTitleActions">
+            <el-select v-model="timeAxis" size="small" class="axisSelect">
+              <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+            </el-select>
+            <el-button text size="small" class="fullscreenBtn" @click="openTimeFullscreen">
+              全屏显示
+              <el-icon><FullScreen /></el-icon>
+            </el-button>
+          </div>
+        </div>
+        <div v-if="isWarningEvent" ref="densityChartRef" class="chart-dom" />
+        <div v-else ref="vibrationTimeChartRef" class="chart-dom" />
         <div v-if="showDensityNoChart" class="no-chart no-chart--overlay">
           {{ isWarningEvent ? '暂无密度曲线' : '暂无振动时域图' }}
         </div>
@@ -166,6 +190,69 @@
         <div v-else class="aiContent" v-html="aiHtmlContent" />
       </div>
     </el-dialog>
+
+    <el-dialog
+      v-model="freqFullscreenVisible"
+      fullscreen
+      append-to-body
+      destroy-on-close
+      class="alarm-vibration-fullscreen-dialog"
+      modal-class="alarm-vibration-fullscreen-modal"
+      @opened="onFreqFullscreenOpened"
+      @closed="onFreqFullscreenClosed">
+      <template #header>
+        <div class="vibrationFullscreenHeader">
+          <span>振动频域图</span>
+          <el-select v-model="freqAxis" size="small" class="axisSelect axisSelect--fullscreen">
+            <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+          </el-select>
+        </div>
+      </template>
+      <div class="freq-fullscreen-top">
+        <span class="freq-fullscreen-divider" aria-hidden="true" />
+        <div class="freq-filter-inline">
+          <span class="freq-filter-label">频率筛选：</span>
+          <el-input-number v-model="fullscreenRangeMin" :min="safeFullscreenRangeDataMin"
+            :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最小"
+            controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />
+          <span class="freq-filter-sep">~</span>
+          <el-input-number v-model="fullscreenRangeMax" :min="safeFullscreenRangeDataMin"
+            :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最大"
+            controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />
+          <el-button size="small" type="primary" @click="confirmFullscreenRange">确认</el-button>
+          <el-button size="small" @click="resetFullscreenRange">重置</el-button>
+          <span class="freq-filter-divider" aria-hidden="true" />
+          <span class="freq-filter-label">打标功能：</span>
+          <el-button size="small" :disabled="!currentPinnedPointId" @click="clearCurrentPinnedPoint">
+            清除当前标记
+          </el-button>
+          <el-button size="small" :disabled="!pinnedFreqPoints.length" @click="clearAllPinnedPoints">
+            清除全部标记
+          </el-button>
+        </div>
+      </div>
+      <div ref="freqFullscreenChartRef" class="vibrationFullscreenChart" />
+    </el-dialog>
+
+    <el-dialog
+      v-model="timeFullscreenVisible"
+      fullscreen
+      append-to-body
+      destroy-on-close
+      class="alarm-vibration-fullscreen-dialog"
+      modal-class="alarm-vibration-fullscreen-modal"
+      @opened="onTimeFullscreenOpened"
+      @closed="onTimeFullscreenClosed">
+      <template #header>
+        <div class="vibrationFullscreenHeader">
+          <span>振动时域图</span>
+          <el-select v-model="timeAxis" size="small" class="axisSelect axisSelect--fullscreen">
+            <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+          </el-select>
+        </div>
+      </template>
+      <div ref="timeFullscreenChartRef" class="vibrationFullscreenChart" />
+    </el-dialog>
   </el-dialog>
 </template>
 
@@ -173,6 +260,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
+import { FullScreen } from '@element-plus/icons-vue'
 
 import { apiConfirmYes } from '@/api/modules/alarmBatch'
 import {
@@ -188,10 +276,17 @@ import {
   getLatestFrequencyByReceiverNoScene,
   getWavByFreqGroupIdUrl,
 } from '@/api/modules/voiceSound'
-import { getVibrationFrequencyData } from '@/api/modules/device'
+import { getVibrationFrequencyData, getVibrationTimeDomainData, type VibrationAxis } from '@/api/modules/device'
 
 import { getTenantId } from '@/api/tenant'
 import { enableMouseWheelZoom } from '@/utils/chart'
+import { useRangeControls } from '@/composables/useRangeControls'
+import {
+  buildPersistentMarkPointData,
+  removeCurrentPersistentPoint,
+  upsertPersistentPoint,
+  type EchartsPersistentPoint,
+} from '@/utils/echartsPointMarker'
 
 const props = defineProps<{
   modelValue: boolean
@@ -209,9 +304,39 @@ const visible = computed({
 
 const energyChartRef = ref<HTMLDivElement | null>(null)
 const densityChartRef = ref<HTMLDivElement | null>(null)
+const vibrationFreqChartRef = ref<HTMLDivElement | null>(null)
+const vibrationTimeChartRef = ref<HTMLDivElement | null>(null)
+const freqFullscreenChartRef = ref<HTMLDivElement | null>(null)
+const timeFullscreenChartRef = ref<HTMLDivElement | null>(null)
 const energyChart = shallowRef<echarts.ECharts | null>(null)
 const densityChart = shallowRef<echarts.ECharts | null>(null)
+const vibrationFreqChart = shallowRef<echarts.ECharts | null>(null)
+const vibrationTimeChart = shallowRef<echarts.ECharts | null>(null)
+const vibrationFreqFullscreenChart = shallowRef<echarts.ECharts | null>(null)
+const vibrationTimeFullscreenChart = shallowRef<echarts.ECharts | null>(null)
 const chartLinkGroup = 'alarm-batch-view-link-group'
+const axisOptions: { label: string; value: VibrationAxis }[] = [
+  { label: 'X轴', value: 'X' },
+  { label: 'Y轴', value: 'Y' },
+  { label: 'Z轴', value: 'Z' },
+]
+const freqAxis = ref<VibrationAxis>('X')
+const timeAxis = ref<VibrationAxis>('X')
+const freqFullscreenVisible = ref(false)
+const timeFullscreenVisible = ref(false)
+const pointerBaseFreq = ref<number | null>(null)
+let markLineRafId: number | null = null
+let lastHarmonicBaseFreq: number | null = null
+const FREQ_FILTER_STEP = 1
+const FREQ_FILTER_PRECISION = 6
+const pinnedFreqPoints = ref<EchartsPersistentPoint[]>([])
+const currentPinnedPointId = ref<string>('')
+const vibrationFreqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({
+  frequency: [],
+  freqSpeedData: [],
+})
+const vibrationTimeData = ref<number[]>([])
+const vibrationTotalTime = ref(0)
 
 const disposeCharts = () => {
   try {
@@ -220,8 +345,30 @@ const disposeCharts = () => {
   try {
     densityChart.value?.dispose()
   } catch { }
+  try {
+    vibrationFreqChart.value?.dispose()
+  } catch { }
+  try {
+    vibrationTimeChart.value?.dispose()
+  } catch { }
+  try {
+    vibrationFreqFullscreenChart.value?.dispose()
+  } catch { }
+  try {
+    vibrationTimeFullscreenChart.value?.dispose()
+  } catch { }
   energyChart.value = null
   densityChart.value = null
+  vibrationFreqChart.value = null
+  vibrationTimeChart.value = null
+  vibrationFreqFullscreenChart.value = null
+  vibrationTimeFullscreenChart.value = null
+  pointerBaseFreq.value = null
+  lastHarmonicBaseFreq = null
+  if (markLineRafId != null) {
+    cancelAnimationFrame(markLineRafId)
+    markLineRafId = null
+  }
 }
 
 // y 轴刻度最多保留小数点后两位（并去掉无意义的尾随 0）
@@ -235,6 +382,202 @@ const formatFreqYAxisTick = (v: number | string) => {
   const n = Number(v)
   if (!Number.isFinite(n)) return ''
   return n.toFixed(5)
+}
+
+const getSortedFreqChartData = () => {
+  return vibrationFreqData.value.frequency
+    .map((freq, index) => [Number(freq), Number(vibrationFreqData.value.freqSpeedData[index] ?? 0)] as [number, number])
+    .filter((it) => Number.isFinite(it[0]) && Number.isFinite(it[1]))
+    .sort((a, b) => a[0] - b[0])
+}
+
+const formatFrequency = (v: number | string) => {
+  const n = Number(v)
+  if (!Number.isFinite(n)) return ''
+  return String(Number(n.toFixed(6)))
+}
+
+const toFreqKey = (v: number) => Number(v).toFixed(6)
+
+const buildHarmonicMarkLineData = (baseFreq: number) => {
+  if (!Number.isFinite(baseFreq) || baseFreq <= 0) return []
+  const chartData = getSortedFreqChartData()
+  const xMax = chartData.length > 0 ? Math.max(...chartData.map((x) => x[0])) : 0
+  const pointMap = new Map<string, [number, number]>()
+  for (const item of chartData) pointMap.set(toFreqKey(item[0]), item)
+  const hasExactPoint = (x: number) => pointMap.has(toFreqKey(x))
+  const candidates: Array<{ x: number; color: string; requirePoint: boolean }> = [
+    { x: baseFreq, color: '#7ecba1', requirePoint: false },
+    { x: baseFreq * 2, color: '#60a5fa', requirePoint: true },
+    { x: baseFreq * 3, color: '#f59e0b', requirePoint: true },
+    { x: baseFreq * 4, color: '#f472b6', requirePoint: true },
+  ]
+  return candidates
+    .filter((item) => item.x > 0 && item.x <= xMax)
+    .filter((item) => (item.requirePoint ? hasExactPoint(item.x) : true))
+    .map((item) => ({
+      xAxis: item.x,
+      lineStyle: { type: 'dashed', width: 1, color: item.color, opacity: 0.9 },
+      label: { show: false },
+    }))
+}
+
+const buildVibrationFreqOption = (theme: 'inline' | 'fullscreen' = 'inline') => {
+  const chartData = getSortedFreqChartData()
+  if (!chartData.length) return {}
+  const axisColor = theme === 'fullscreen' ? '#fff' : '#303133'
+  const splitLineColor = theme === 'fullscreen' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'
+  const xMin = Math.min(...chartData.map((x) => x[0]))
+  const xMax = Math.max(...chartData.map((x) => x[0]))
+  const yValues = chartData.map((item) => item[1])
+  const yMin = yValues.length > 0 ? Math.min(...yValues) : 0
+  const yMax = yValues.length > 0 ? Math.max(...yValues) : 1
+  const yMargin = (yMax - yMin) * 0.1
+  const yMinWithMargin = Math.max(0, yMin - yMargin)
+  const yMaxWithMargin = yMax + yMargin
+  const pointMap = new Map<string, [number, number]>(chartData.map((item) => [toFreqKey(item[0]), item]))
+  return {
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => {
+        if (!params?.length || !params[0]?.value) return ''
+        const value = params[0].value
+        const x = Number(value[0])
+        const y = Number(value[1])
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return ''
+        let text = `${formatFrequency(x)}Hz：${y.toFixed(10)}`
+        const append = (mult: number, label: string) => {
+          const fx = x * mult
+          const p = pointMap.get(toFreqKey(fx))
+          if (p) text += `<br/>${label}：${formatFrequency(fx)}Hz：${p[1].toFixed(10)}`
+        }
+        append(2, '二倍频')
+        append(3, '三倍频')
+        append(4, '四倍频')
+        return text
+      },
+    },
+    grid: { top: 30, left: 40, right: 50, bottom: 35, containLabel: true },
+    xAxis: {
+      type: 'value',
+      name: 'Hz',
+      min: xMin,
+      max: xMax,
+      nameTextStyle: { color: axisColor },
+      axisLabel: { color: axisColor, margin: 8, showMaxLabel: true, hideOverlap: true },
+      axisLine: { lineStyle: { color: axisColor } },
+      splitLine: { show: false },
+    },
+    yAxis: {
+      type: 'value',
+      name: 'mm/s',
+      min: yMinWithMargin,
+      max: yMaxWithMargin,
+      nameTextStyle: { color: axisColor },
+      axisLabel: { color: axisColor, formatter: formatFreqYAxisTick },
+      axisLine: { lineStyle: { color: axisColor } },
+      splitLine: { lineStyle: { color: splitLineColor } },
+    },
+    dataZoom: [
+      { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+      { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' },
+    ],
+    series: [
+      {
+        id: 'freq-series',
+        type: 'line',
+        smooth: false,
+        showSymbol: false,
+        animation: false,
+        data: chartData,
+        lineStyle: { color: '#7ecba1', width: 1 },
+        markLine: { silent: true, symbol: ['none', 'none'], animation: false, data: [] },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(126, 203, 161, 0.8)' },
+            { offset: 1, color: 'rgba(126, 203, 161, 0.2)' },
+          ]),
+        },
+      },
+    ],
+  }
+}
+
+const buildVibrationTimeOption = (theme: 'inline' | 'fullscreen' = 'inline') => {
+  if (vibrationTimeData.value.length === 0 || vibrationTotalTime.value <= 0) return {}
+  const axisColor = theme === 'fullscreen' ? '#fff' : '#303133'
+  const splitLineColor = theme === 'fullscreen' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'
+  const dataPoints = vibrationTimeData.value.length
+  const step = dataPoints > 1 ? vibrationTotalTime.value / (dataPoints - 1) : 0
+  const chartData = vibrationTimeData.value.map((value, index) => [dataPoints > 1 ? index * step : 0, value])
+  return {
+    tooltip: { trigger: 'axis' },
+    grid: { top: 30, left: 40, right: 50, bottom: 35, containLabel: true },
+    xAxis: {
+      type: 'value',
+      name: 's',
+      min: 0,
+      max: vibrationTotalTime.value,
+      nameTextStyle: { color: axisColor },
+      axisLabel: { color: axisColor, margin: 8, showMaxLabel: true, hideOverlap: true },
+      axisLine: { lineStyle: { color: axisColor } },
+      splitLine: { show: false },
+    },
+    yAxis: {
+      type: 'value',
+      name: 'mm/s',
+      nameTextStyle: { color: axisColor },
+      axisLabel: { color: axisColor, formatter: formatYAxisTick },
+      axisLine: { lineStyle: { color: axisColor } },
+      splitLine: { lineStyle: { color: splitLineColor } },
+    },
+    dataZoom: [
+      { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
+      { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'none' },
+    ],
+    series: [
+      {
+        type: 'line',
+        smooth: false,
+        showSymbol: false,
+        sampling: 'lttb',
+        data: chartData,
+        lineStyle: { color: '#7ecba1', width: 1 },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(126, 203, 161, 0.8)' },
+            { offset: 1, color: 'rgba(126, 203, 161, 0.2)' },
+          ]),
+        },
+      },
+    ],
+  }
+}
+
+const getPinnedMarkPointData = () =>
+  buildPersistentMarkPointData(
+    pinnedFreqPoints.value,
+    currentPinnedPointId.value,
+    {
+      formatX: (v) => `${formatFrequency(v)}Hz`,
+      formatY: (v) => Number(v).toFixed(10),
+    },
+    {
+      activeSymbolSize: 9,
+      inactiveSymbolSize: 7,
+      activeColor: '#ffd166',
+      inactiveColor: '#ff6b6b',
+      borderColor: '#fff',
+      borderWidth: 1,
+    },
+  )
+
+const patchPinnedMarkPoints = () => {
+  const patch = {
+    series: [{ id: 'freq-series', markPoint: { animation: false, data: getPinnedMarkPointData() } }],
+  } as any
+  try { vibrationFreqChart.value?.setOption(patch, { notMerge: false, lazyUpdate: true }) } catch { }
+  try { vibrationFreqFullscreenChart.value?.setOption(patch, { notMerge: false, lazyUpdate: true }) } catch { }
 }
 
 function safeParseJson(input: any): any {
@@ -475,6 +818,291 @@ const toSafeNumber = (
   return Number(n.toFixed(opts.fixed))
 }
 
+const openFreqFullscreen = () => {
+  if (isWarningEvent.value) return
+  freqFullscreenVisible.value = true
+}
+
+const openTimeFullscreen = () => {
+  if (isWarningEvent.value) return
+  timeFullscreenVisible.value = true
+}
+
+const applyHarmonicMarkLines = (baseFreq: number) => {
+  const data = buildHarmonicMarkLineData(baseFreq)
+  const patch = { series: [{ id: 'freq-series', markLine: { data } }] } as any
+  try { vibrationFreqChart.value?.setOption(patch, { notMerge: false, lazyUpdate: true }) } catch { }
+  try { vibrationFreqFullscreenChart.value?.setOption(patch, { notMerge: false, lazyUpdate: true }) } catch { }
+}
+
+const scheduleHarmonicMarkLines = (baseFreq: number) => {
+  if (markLineRafId != null) cancelAnimationFrame(markLineRafId)
+  markLineRafId = requestAnimationFrame(() => {
+    markLineRafId = null
+    if (lastHarmonicBaseFreq != null && Math.abs(lastHarmonicBaseFreq - baseFreq) < 1e-6) return
+    lastHarmonicBaseFreq = baseFreq
+    applyHarmonicMarkLines(baseFreq)
+  })
+}
+
+const onFreqUpdateAxisPointer = (params: any) => {
+  const info = Array.isArray(params?.axesInfo) ? params.axesInfo[0] : null
+  const n = Number(info?.value)
+  if (!Number.isFinite(n)) return
+  pointerBaseFreq.value = n
+  scheduleHarmonicMarkLines(n)
+}
+
+const pickNearestFreqPointByX = (x: number): [number, number] | null => {
+  const chartData = getSortedFreqChartData()
+  if (!chartData.length || !Number.isFinite(x)) return null
+  let nearest: [number, number] | null = null
+  let minDist = Number.POSITIVE_INFINITY
+  for (const point of chartData) {
+    const dist = Math.abs(point[0] - x)
+    if (dist < minDist) {
+      minDist = dist
+      nearest = point
+    }
+  }
+  return nearest
+}
+
+const refreshPinnedMarkPoints = () => {
+  patchPinnedMarkPoints()
+  void nextTick(() => patchPinnedMarkPoints())
+}
+
+const addPinnedFreqPoint = (x: number, y: number) => {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return
+  const nextState = upsertPersistentPoint(pinnedFreqPoints.value, x, y, currentPinnedPointId.value)
+  pinnedFreqPoints.value = nextState.points
+  currentPinnedPointId.value = nextState.currentId
+  refreshPinnedMarkPoints()
+}
+
+const addPinnedByPixel = (offsetX: number, offsetY: number) => {
+  const inst = vibrationFreqFullscreenChart.value
+  if (!inst || !Number.isFinite(offsetX) || !Number.isFinite(offsetY)) return
+  if (Number.isFinite(pointerBaseFreq.value)) {
+    const nearestByPointer = pickNearestFreqPointByX(Number(pointerBaseFreq.value))
+    if (nearestByPointer) {
+      addPinnedFreqPoint(nearestByPointer[0], nearestByPointer[1])
+      return
+    }
+  }
+  let axisValue: unknown
+  try {
+    axisValue = inst.convertFromPixel({ xAxisIndex: 0 }, offsetX as any)
+    if (!Number.isFinite(Array.isArray(axisValue) ? Number(axisValue[0]) : Number(axisValue))) {
+      axisValue = inst.convertFromPixel({ xAxisIndex: 0 }, [offsetX, offsetY])
+    }
+  } catch {
+    return
+  }
+  const x = Array.isArray(axisValue) ? Number(axisValue[0]) : Number(axisValue)
+  if (!Number.isFinite(x)) return
+  const nearest = pickNearestFreqPointByX(x)
+  if (!nearest) return
+  addPinnedFreqPoint(nearest[0], nearest[1])
+}
+
+const onFreqFullscreenChartClick = (params: any) => {
+  const value = params?.value
+  if (Array.isArray(value) && value.length >= 2) {
+    const x = Number(value[0])
+    const y = Number(value[1])
+    if (Number.isFinite(x) && Number.isFinite(y)) {
+      addPinnedFreqPoint(x, y)
+      return
+    }
+  }
+  addPinnedByPixel(Number(params?.event?.offsetX), Number(params?.event?.offsetY))
+}
+
+const clearCurrentPinnedPoint = () => {
+  if (!currentPinnedPointId.value) return
+  const nextState = removeCurrentPersistentPoint(pinnedFreqPoints.value, currentPinnedPointId.value)
+  pinnedFreqPoints.value = nextState.points
+  currentPinnedPointId.value = nextState.currentId
+  refreshPinnedMarkPoints()
+}
+
+const clearAllPinnedPoints = () => {
+  pinnedFreqPoints.value = []
+  currentPinnedPointId.value = ''
+  refreshPinnedMarkPoints()
+}
+
+const onFreqFullscreenZrClick = (evt: any) => {
+  addPinnedByPixel(Number(evt?.offsetX), Number(evt?.offsetY))
+}
+
+const renderVibrationCharts = async () => {
+  if (!vibrationFreqChartRef.value || !vibrationTimeChartRef.value) return
+  try { vibrationFreqChart.value?.dispose() } catch { }
+  try { vibrationTimeChart.value?.dispose() } catch { }
+  vibrationFreqChart.value = echarts.init(vibrationFreqChartRef.value)
+  vibrationTimeChart.value = echarts.init(vibrationTimeChartRef.value)
+  vibrationFreqChart.value.setOption(buildVibrationFreqOption('inline'))
+  vibrationTimeChart.value.setOption(buildVibrationTimeOption('inline'))
+  vibrationFreqChart.value.off('updateAxisPointer', onFreqUpdateAxisPointer)
+  vibrationFreqChart.value.on('updateAxisPointer', onFreqUpdateAxisPointer)
+  enableMouseWheelZoom(vibrationFreqChart.value)
+  enableMouseWheelZoom(vibrationTimeChart.value)
+  patchPinnedMarkPoints()
+  if (pointerBaseFreq.value && Number.isFinite(pointerBaseFreq.value)) {
+    applyHarmonicMarkLines(pointerBaseFreq.value)
+  }
+}
+
+const onFreqFullscreenOpened = async () => {
+  await nextTick()
+  if (!freqFullscreenChartRef.value) return
+  try { vibrationFreqFullscreenChart.value?.dispose() } catch { }
+  vibrationFreqFullscreenChart.value = echarts.init(freqFullscreenChartRef.value)
+  vibrationFreqFullscreenChart.value.setOption(buildVibrationFreqOption('fullscreen'))
+  vibrationFreqFullscreenChart.value.off('updateAxisPointer', onFreqUpdateAxisPointer)
+  vibrationFreqFullscreenChart.value.on('updateAxisPointer', onFreqUpdateAxisPointer)
+  vibrationFreqFullscreenChart.value.off('click', onFreqFullscreenChartClick)
+  vibrationFreqFullscreenChart.value.on('click', onFreqFullscreenChartClick)
+  vibrationFreqFullscreenChart.value.off('datazoom', handleFullscreenDataZoom as any)
+  vibrationFreqFullscreenChart.value.on('datazoom', handleFullscreenDataZoom as any)
+  const zr = vibrationFreqFullscreenChart.value.getZr?.()
+  zr?.on?.('click', onFreqFullscreenZrClick)
+  refreshPinnedMarkPoints()
+  if (pointerBaseFreq.value && Number.isFinite(pointerBaseFreq.value)) {
+    applyHarmonicMarkLines(pointerBaseFreq.value)
+  }
+}
+
+const onFreqFullscreenClosed = () => {
+  try { vibrationFreqFullscreenChart.value?.off('click', onFreqFullscreenChartClick) } catch { }
+  try { vibrationFreqFullscreenChart.value?.off('datazoom', handleFullscreenDataZoom as any) } catch { }
+  try { vibrationFreqFullscreenChart.value?.getZr?.().off?.('click', onFreqFullscreenZrClick) } catch { }
+  try { vibrationFreqFullscreenChart.value?.dispose() } catch { }
+  vibrationFreqFullscreenChart.value = null
+  clearAllPinnedPoints()
+}
+
+const onTimeFullscreenOpened = async () => {
+  await nextTick()
+  if (!timeFullscreenChartRef.value) return
+  try { vibrationTimeFullscreenChart.value?.dispose() } catch { }
+  vibrationTimeFullscreenChart.value = echarts.init(timeFullscreenChartRef.value)
+  vibrationTimeFullscreenChart.value.setOption(buildVibrationTimeOption('fullscreen'))
+}
+
+const onTimeFullscreenClosed = () => {
+  try { vibrationTimeFullscreenChart.value?.dispose() } catch { }
+  vibrationTimeFullscreenChart.value = null
+}
+
+const {
+  rangeMin: fullscreenRangeMin,
+  rangeMax: fullscreenRangeMax,
+  rangeDataMin: fullscreenRangeDataMin,
+  rangeDataMax: fullscreenRangeDataMax,
+  applyRange: applyFullscreenRange,
+  resetRange: resetFullscreenRange,
+  handleDataZoom: handleFullscreenDataZoom,
+} = useRangeControls({
+  option: computed(() => buildVibrationFreqOption() as any),
+  showRangeControls: computed(() => true),
+  rangeControlsData: computed(() => vibrationFreqData.value.frequency || []),
+  rangeControlsXAxisIndex: computed(() => 0),
+  rangeControlsMin: computed(() => undefined),
+  rangeControlsMax: computed(() => undefined),
+  rangeControlsStep: computed(() => FREQ_FILTER_STEP),
+  rangeControlsPrecision: computed(() => FREQ_FILTER_PRECISION),
+  rangeControlsDebounceMs: computed(() => 600),
+  preserveDataZoom: computed(() => true),
+  doDataZoom: ({ startValue, endValue }) => {
+    const action: any = { type: 'dataZoom', startValue, endValue, xAxisIndex: 0 }
+    try { vibrationFreqFullscreenChart.value?.dispatchAction(action) } catch { }
+  },
+})
+
+const confirmFullscreenRange = () => {
+  applyFullscreenRange()
+}
+
+const safeFullscreenRangeDataMin = computed(() => {
+  const v = Number(fullscreenRangeDataMin.value)
+  return Number.isFinite(v) ? v : 0
+})
+
+const safeFullscreenRangeDataMax = computed(() => {
+  const v = Number(fullscreenRangeDataMax.value)
+  if (Number.isFinite(v) && v >= safeFullscreenRangeDataMin.value) return v
+  return safeFullscreenRangeDataMin.value
+})
+
+const loadVibrationFrequencyByAxis = async () => {
+  if (!deviceId.value || !receiverId.value) {
+    vibrationFreqData.value = { frequency: [], freqSpeedData: [] }
+    hasVibrationFrequencyData.value = false
+    return
+  }
+  try {
+    const res = await getVibrationFrequencyData(
+      String(deviceId.value),
+      String(receiverId.value),
+      freqAxis.value,
+      alarmTime.value,
+    )
+    const frequency = (res?.ret as any)?.frequency
+    const freqSpeedData = (res?.ret as any)?.freqSpeedData
+    if (res?.rc === 0 && Array.isArray(frequency) && Array.isArray(freqSpeedData) && frequency.length > 0 && freqSpeedData.length > 0) {
+      vibrationFreqData.value = { frequency, freqSpeedData }
+      hasVibrationFrequencyData.value = true
+      await nextTick()
+      await renderVibrationCharts()
+      return
+    }
+  } catch (e) {
+    console.error('load vibration frequency failed:', e)
+  }
+  vibrationFreqData.value = { frequency: [], freqSpeedData: [] }
+  hasVibrationFrequencyData.value = false
+  await nextTick()
+  await renderVibrationCharts()
+}
+
+const loadVibrationTimeByAxis = async () => {
+  if (!deviceId.value || !receiverId.value) {
+    vibrationTimeData.value = []
+    vibrationTotalTime.value = 0
+    hasVibrationTimeData.value = false
+    return
+  }
+  try {
+    const res = await getVibrationTimeDomainData(String(deviceId.value), String(receiverId.value), timeAxis.value)
+    if (res?.rc === 0 && res?.ret) {
+      const raw = (res.ret as any).timedomaindata
+      const parsed: number[] = Array.isArray(raw)
+        ? raw.map((v: any) => (typeof v === 'number' ? v : parseFloat(String(v).trim()))).filter((n) => Number.isFinite(n))
+        : String(raw ?? '').split(',').map((s) => parseFloat(s.trim())).filter((n) => Number.isFinite(n))
+      const total = Number((res.ret as any).time)
+      if (parsed.length > 0 && Number.isFinite(total) && total > 0) {
+        vibrationTimeData.value = parsed
+        vibrationTotalTime.value = total
+        hasVibrationTimeData.value = true
+        await nextTick()
+        await renderVibrationCharts()
+        return
+      }
+    }
+  } catch (e) {
+    console.error('load vibration time failed:', e)
+  }
+  vibrationTimeData.value = []
+  vibrationTotalTime.value = 0
+  hasVibrationTimeData.value = false
+  await nextTick()
+  await renderVibrationCharts()
+}
+
 const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
   if (!energyChartRef.value || !densityChartRef.value) return
   disposeCharts()
@@ -530,119 +1158,6 @@ const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
   enableMouseWheelZoom(energyChart.value)
   enableMouseWheelZoom(densityChart.value)
   hasVibrationFrequencyData.value = false
-  hasVibrationTimeData.value = false
-}
-
-const renderVibrationFrequencyCharts = async (frequency: number[], freqSpeedData: number[]) => {
-  if (!energyChartRef.value || !densityChartRef.value) return
-  disposeCharts()
-  await nextTick()
-  energyChart.value = echarts.init(energyChartRef.value)
-  densityChart.value = echarts.init(densityChartRef.value)
-
-  const chartData = frequency
-    .map((freq, index) => [Number(freq), Number(freqSpeedData[index] ?? 0)] as [number, number])
-    .filter((it) => Number.isFinite(it[0]) && Number.isFinite(it[1]))
-    .sort((a, b) => a[0] - b[0])
-
-  const xMin = chartData.length > 0 ? Math.min(...chartData.map((x) => x[0])) : 0
-  const xMax = chartData.length > 0 ? Math.max(...chartData.map((x) => x[0])) : 0
-  const yValues = chartData.map((item) => item[1])
-  const yMin = yValues.length > 0 ? Math.min(...yValues) : 0
-  const yMax = yValues.length > 0 ? Math.max(...yValues) : 1
-  const yMargin = (yMax - yMin) * 0.1
-  const yMinWithMargin = Math.max(0, yMin - yMargin)
-  const yMaxWithMargin = yMax + yMargin
-
-  const baseGrid = { top: 30, left: 40, right: 50, bottom: 35, containLabel: true }
-  const dataZoom = [
-    { type: 'inside', xAxisIndex: [0], filterMode: 'filter' },
-    {
-      type: 'slider',
-      xAxisIndex: [0],
-      bottom: 10,
-      height: 20,
-      fillerColor: 'rgba(126, 203, 161, 0.3)',
-      borderColor: 'rgba(126, 203, 161, 0.5)',
-      handleStyle: { color: '#7ecba1' },
-      filterMode: 'filter',
-    },
-  ]
-
-  const option = {
-    tooltip: {
-      trigger: 'axis',
-      className: 'echarts-tooltip',
-      backgroundColor: 'rgba(50, 50, 50, 0.9)',
-      borderColor: 'rgba(50, 50, 50, 0.9)',
-      textStyle: { color: '#fff' },
-      appendToBody: true,
-      extraCssText: 'z-index:99999 !important;',
-      formatter: (params: any) => {
-        if (!params?.length || !params[0]?.value) return ''
-        const data = params[0].value
-        const x = Number(data?.[0])
-        const y = Number(data?.[1])
-        if (!Number.isFinite(x) || !Number.isFinite(y)) return ''
-        return `${x}Hz：${y.toFixed(10)}`
-      },
-    },
-    grid: baseGrid,
-    legend: { show: false },
-    xAxis: [{
-      type: 'value',
-      name: 'Hz',
-      min: xMin,
-      max: xMax,
-      axisLabel: { margin: 8, showMaxLabel: true, hideOverlap: true },
-      splitLine: { show: false },
-    }],
-    yAxis: [{
-      type: 'value',
-      name: 'mm/s',
-      min: (v: any) => {
-        const min = Number(v?.min)
-        const max = Number(v?.max)
-        if (!Number.isFinite(min) || !Number.isFinite(max)) return yMinWithMargin
-        // 按当前可见区间自适应；极小区间时给一个很小缓冲避免重合
-        if (min === max) return min - Math.max(Math.abs(min) * 0.01, 1e-6)
-        return min
-      },
-      max: (v: any) => {
-        const min = Number(v?.min)
-        const max = Number(v?.max)
-        if (!Number.isFinite(min) || !Number.isFinite(max)) return yMaxWithMargin
-        if (min === max) return max + Math.max(Math.abs(max) * 0.01, 1e-6)
-        return max
-      },
-      axisLabel: { formatter: formatFreqYAxisTick },
-    }],
-    dataZoom,
-    series: [
-      {
-        name: '振动频谱',
-        type: 'line',
-        smooth: false,
-        showSymbol: false,
-        animation: false,
-        data: chartData,
-        lineStyle: { color: '#7ecba1', width: 1 },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(126, 203, 161, 0.8)' },
-            { offset: 1, color: 'rgba(126, 203, 161, 0.2)' },
-          ]),
-        },
-      },
-    ],
-  }
-
-  energyChart.value.setOption(option)
-  // 右侧保留“振动时域图”占位，后续再对接时域接口
-  densityChart.value.clear()
-
-  enableMouseWheelZoom(energyChart.value)
-  hasVibrationFrequencyData.value = chartData.length > 0
   hasVibrationTimeData.value = false
 }
 
@@ -746,6 +1261,11 @@ const loadEvent = async () => {
   position.value = null
   hasVibrationFrequencyData.value = false
   hasVibrationTimeData.value = false
+  vibrationFreqData.value = { frequency: [], freqSpeedData: [] }
+  vibrationTimeData.value = []
+  vibrationTotalTime.value = 0
+  freqFullscreenVisible.value = false
+  timeFullscreenVisible.value = false
   disposeCharts()
 
   try {
@@ -806,36 +1326,13 @@ const loadEvent = async () => {
     return
   }
 
-  // 振动报警：调用振动页的频域接口，带上 alarmTime
+  // 振动报警：复用振动页频域/时域图数据能力（支持轴向切换与全屏）
   if (deviceId.value && rid) {
-    try {
-      const res = await getVibrationFrequencyData(
-        String(deviceId.value),
-        String(rid),
-        'X',
-        alarmTime.value,
-      )
-      if (res?.rc === 0 && res?.ret) {
-        const { frequency, freqSpeedData } = res.ret as any
-        if (
-          Array.isArray(frequency) &&
-          Array.isArray(freqSpeedData) &&
-          frequency.length > 0 &&
-          freqSpeedData.length > 0
-        ) {
-          await renderVibrationFrequencyCharts(frequency, freqSpeedData)
-        } else {
-          disposeCharts()
-        }
-      } else {
-        disposeCharts()
-      }
-    } catch (e) {
-      console.error('loadEvent vibration frequency failed:', e)
-      disposeCharts()
-    }
+    await Promise.all([loadVibrationFrequencyByAxis(), loadVibrationTimeByAxis()])
   } else {
-    disposeCharts()
+    vibrationFreqData.value = { frequency: [], freqSpeedData: [] }
+    vibrationTimeData.value = []
+    vibrationTotalTime.value = 0
   }
 }
 
@@ -846,6 +1343,11 @@ watch(
       eventDetail.value = null
       dataParse.value = null
       position.value = null
+      vibrationFreqData.value = { frequency: [], freqSpeedData: [] }
+      vibrationTimeData.value = []
+      vibrationTotalTime.value = 0
+      freqFullscreenVisible.value = false
+      timeFullscreenVisible.value = false
       disposeCharts()
       return
     }
@@ -858,6 +1360,16 @@ watch(
   },
   { immediate: false },
 )
+
+watch(freqAxis, async () => {
+  if (!visible.value || isWarningEvent.value) return
+  await loadVibrationFrequencyByAxis()
+})
+
+watch(timeAxis, async () => {
+  if (!visible.value || isWarningEvent.value) return
+  await loadVibrationTimeByAxis()
+})
 
 const resultDtoList = computed(() => {
   const list = dataParse.value?.resultDtoList
@@ -1128,6 +1640,84 @@ onBeforeUnmount(() => {
   font-size: 16px;
 }
 
+.panelTitle--with-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chartTitleActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.axisSelect {
+  width: 74px;
+}
+
+.fullscreenBtn {
+  padding: 0 !important;
+}
+
+.axisSelect--fullscreen {
+  width: 88px;
+}
+
+.vibrationFullscreenHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.vibrationFullscreenChart {
+  width: 100%;
+  height: calc(100vh - 130px);
+  min-height: 300px;
+}
+
+.freq-fullscreen-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.freq-filter-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.freq-filter-label {
+  color: #fff;
+  font-size: 12px;
+}
+
+.freq-filter-num {
+  width: 110px;
+}
+
+.freq-filter-sep {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12px;
+}
+
+.freq-filter-divider,
+.freq-fullscreen-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.28);
+  flex: 0 0 auto;
+}
+
 .panelRow {
   padding: 8px 12px;
   color: rgba(0, 0, 0, 0.78);
@@ -1331,6 +1921,25 @@ onBeforeUnmount(() => {
 .notTypeSelectPopper .el-select-dropdown__item {
   height: 28px;
   line-height: 28px;
+}
+
+.alarm-vibration-fullscreen-modal .el-dialog {
+  background: #142060 !important;
+}
+
+.alarm-vibration-fullscreen-modal .el-dialog__header {
+  background: #142060 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.alarm-vibration-fullscreen-modal .el-dialog__title,
+.alarm-vibration-fullscreen-modal .el-dialog__headerbtn .el-dialog__close {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.alarm-vibration-fullscreen-modal .el-dialog__body {
+  background: #142060 !important;
+  padding: 12px 16px 16px !important;
 }
 
 @media (max-width: 800px) {

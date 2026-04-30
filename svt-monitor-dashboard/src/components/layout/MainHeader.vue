@@ -31,7 +31,7 @@
     </div>
 
     <div class="header-center">
-      <h1 class="title">鲁西化工声振温在线监测平台</h1>
+      <h1 class="title">{{ platformTitle }}</h1>
     </div>
 
     <div class="header-right-clock">
@@ -124,6 +124,14 @@ const showVibrationButton = computed(() => {
 
 const showSoundButton = computed(() => {
   return route.name === 'VibrationPoint'
+})
+
+const platformTitle = computed(() => {
+  const tenantId = (localStorage.getItem('tenantId') || '').trim()
+  if (tenantId === '9eda8d5a0d4e41c38950c1c8b95d92ca') {
+    return '中铁装备声振温在线监测平台'
+  }
+  return '鲁西化工声振温在线监测平台'
 })
 
 const selectBackground = (mode: 'image' | 'navy' | 'solid') => {
