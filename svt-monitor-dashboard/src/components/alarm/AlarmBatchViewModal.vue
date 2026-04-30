@@ -1077,7 +1077,12 @@ const loadVibrationTimeByAxis = async () => {
     return
   }
   try {
-    const res = await getVibrationTimeDomainData(String(deviceId.value), String(receiverId.value), timeAxis.value)
+    const res = await getVibrationTimeDomainData(
+      String(deviceId.value),
+      String(receiverId.value),
+      timeAxis.value,
+      alarmTime.value,
+    )
     if (res?.rc === 0 && res?.ret) {
       const raw = (res.ret as any).timedomaindata
       const parsed: number[] = Array.isArray(raw)

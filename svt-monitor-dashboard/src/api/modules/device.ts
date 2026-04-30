@@ -159,12 +159,17 @@ export interface VibrationTimeDomainData {
 export const getVibrationTimeDomainData = (
   deviceId: string,
   receiverId: string,
-  axis: VibrationAxis = 'X'
+  axis: VibrationAxis = 'X',
+  alarmTime?: number,
 ): Promise<NewApiResponse<VibrationTimeDomainData>> => {
-  return request.post('/device/vibration/data/time', {
+  const payload: any = {
     tenantId: getTenantId(),
     deviceId: deviceId,
     receiverId: receiverId,
-    axis
-  })
+    axis,
+  }
+  if (alarmTime && Number.isFinite(alarmTime)) {
+    payload.alarmTime = alarmTime
+  }
+  return request.post('/device/vibration/data/time', payload)
 }
