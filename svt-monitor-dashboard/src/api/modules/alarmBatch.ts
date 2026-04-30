@@ -123,6 +123,14 @@ export const apiConfirmNot = (idList: string[]) => {
   return request.post<any>('/taicang/event/confirm/not', idList, { showLoading: true })
 }
 
+export const apiConfirmVibrationYes = (idList: string[]) => {
+  return request.post<any>('/device/vibration/data/yes', idList, { showLoading: true })
+}
+
+export const apiConfirmVibrationNot = (idList: string[]) => {
+  return request.post<any>('/device/vibration/data/not', idList, { showLoading: true })
+}
+
 export const apiDeleteEvents = (idList: string[]) => {
   return request.post<any>('/taicang/event/delete', idList, { showLoading: true })
 }

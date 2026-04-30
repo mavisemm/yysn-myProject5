@@ -151,10 +151,8 @@ const handleLogin = async () => {
 .login-page {
   width: 100vw;
   height: 100vh;
-  background:
-    radial-gradient(120% 90% at 18% 12%, rgba(86, 156, 255, 0.4) 0%, rgba(86, 156, 255, 0) 62%),
-    radial-gradient(95% 75% at 82% 82%, rgba(78, 114, 255, 0.32) 0%, rgba(78, 114, 255, 0) 64%),
-    linear-gradient(145deg, #113971 0%, #20408b 46%, #151155 100%);
+  background-color: #132160;
+  background-image: url('@/assets/images/background/登录页.png');
   background-repeat: no-repeat;
   background-position: center center;
   background-size: cover;

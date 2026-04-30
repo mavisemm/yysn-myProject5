@@ -6,6 +6,8 @@ import {
   apiFindVibrationAlarmByCondition,
   apiConfirmNot,
   apiConfirmNotAll,
+  apiConfirmVibrationNot,
+  apiConfirmVibrationYes,
   apiConfirmYes,
   apiConfirmYesAll,
   apiDeleteAllValid,
@@ -823,7 +825,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const batchYesRealtimeAlarm = async () => {
     const ids = realtimeAlarmSelectedRowKeys.value
     if (!ids.length) return
-    await apiConfirmYes(ids)
+    await apiConfirmVibrationYes(ids)
     realtimeAlarmSelectedRowKeys.value = []
     await refreshRealtimeAlarmAfterBatch()
   }
@@ -831,7 +833,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const batchNotRealtimeAlarm = async () => {
     const ids = realtimeAlarmSelectedRowKeys.value
     if (!ids.length) return
-    await apiConfirmNot(ids)
+    await apiConfirmVibrationNot(ids)
     realtimeAlarmSelectedRowKeys.value = []
     await refreshRealtimeAlarmAfterBatch()
   }
@@ -847,7 +849,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const batchYesHistoryAlarm = async () => {
     const ids = historyAlarmSelectedRowKeys.value
     if (!ids.length) return
-    await apiConfirmYes(ids)
+    await apiConfirmVibrationYes(ids)
     historyAlarmSelectedRowKeys.value = []
     await refreshHistoryAlarmAfterBatch()
   }
@@ -855,7 +857,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const batchNotHistoryAlarm = async () => {
     const ids = historyAlarmSelectedRowKeys.value
     if (!ids.length) return
-    await apiConfirmNot(ids)
+    await apiConfirmVibrationNot(ids)
     historyAlarmSelectedRowKeys.value = []
     await refreshHistoryAlarmAfterBatch()
   }

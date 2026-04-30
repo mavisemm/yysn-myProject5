@@ -355,11 +355,11 @@ const getReceiverName = (row: any): string => {
 
 @media (max-width: 800px) {
   .table-wrapper {
-    overflow-x: auto;
+    overflow-x: hidden;
   }
 
   .table-wrapper :deep(.el-table) {
-    min-width: 980px;
+    min-width: 0;
   }
 
 }

@@ -452,10 +452,16 @@ watch(
   flex: 1;
   min-height: 0;
   overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.table-wrapper::-webkit-scrollbar {
+  display: none;
 }
 
 .table-wrapper :deep(.el-table) {
-  min-width: 980px;
+  min-width: 0;
 }
 
 .operation-cell :deep(.operation-link) {
@@ -612,6 +618,20 @@ watch(
 }
 
 @media (max-width: 800px) {
+  .table-wrapper {
+    scrollbar-width: auto;
+    -ms-overflow-style: auto;
+  }
+
+  .table-wrapper::-webkit-scrollbar {
+    display: block;
+    height: 6px;
+  }
+
+  .table-wrapper :deep(.el-table) {
+    min-width: 980px;
+  }
+
   .alarm-batch-dialog.el-dialog {
     width: 100vw !important;
     max-width: 100vw !important;

@@ -56,7 +56,7 @@
               {{ isWarningEvent ? '确认预警' : '确认报警' }}
             </el-button>
             <el-button type="warning" size="large" :disabled="!currentEventId" class="controlBtnLarge"
-              @click="notVisible = true">
+              @click="onClickNot">
               确认误报
             </el-button>
           </div>
@@ -259,10 +259,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import * as echarts from 'echarts'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { FullScreen } from '@element-plus/icons-vue'
 
-import { apiConfirmYes } from '@/api/modules/alarmBatch'
+import { apiConfirmVibrationNot, apiConfirmVibrationYes, apiConfirmYes } from '@/api/modules/alarmBatch'
 import {
   apiConfirmSoundNot,
   apiConfirmSoundYes,
@@ -1386,6 +1386,16 @@ const onConfirmYes = async () => {
   if (!id) return
 
   try {
+    const actionLabel = isWarningEvent.value ? '确认预警' : '确认报警'
+    await ElMessageBox.confirm(`确认要执行【${actionLabel}】吗？`, '提示', { type: 'warning' })
+
+    if (!isWarningEvent.value) {
+      await apiConfirmVibrationYes([id])
+      ElMessage.success('操作成功')
+      visible.value = false
+      return
+    }
+
     if (currentEventTypeCode.value === 'NO_SCENE_SOUND_WARN' && resultDtoList.value.length === 0) {
       yesVisible.value = true
       return
@@ -1395,8 +1405,28 @@ const onConfirmYes = async () => {
     ElMessage.success('操作成功')
     visible.value = false
   } catch (e) {
+    if (e === 'cancel' || e === 'close') return
     console.error(e)
     ElMessage.error(isWarningEvent.value ? '确认预警失败' : '确认报警失败')
+  }
+}
+
+const onClickNot = async () => {
+  if (!currentEventId.value) return
+  if (isWarningEvent.value) {
+    notVisible.value = true
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm('确认要执行【确认误报】吗？', '提示', { type: 'warning' })
+    await apiConfirmVibrationNot([currentEventId.value])
+    ElMessage.success('操作成功')
+    visible.value = false
+  } catch (e) {
+    if (e === 'cancel' || e === 'close') return
+    console.error(e)
+    ElMessage.error('确认误报失败')
   }
 }
 
