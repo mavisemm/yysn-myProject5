@@ -7,20 +7,20 @@
         <div class="title-with-legend">
           <h3 class="app-section-title">预警总览</h3>
         </div>
-      </div>
-      <div class="batch-actions header-controls-desktop">
-        <el-button size="small" class="batch-btn mobile-font-title" @click="openRealtimeBatch">
-          声音实时预警
-        </el-button>
-        <el-button size="small" class="batch-btn mobile-font-title" @click="openHistoryBatch">
-          声音历史预警
-        </el-button>
-        <el-button size="small" class="batch-btn mobile-font-title" @click="openRealtimeAlarmBatch">
-          振动实时报警
-        </el-button>
-        <el-button size="small" class="batch-btn mobile-font-title" @click="openHistoryAlarmBatch">
-          振动历史报警
-        </el-button>
+        <div class="batch-actions header-controls-desktop">
+          <el-button size="small" class="batch-btn mobile-font-title" @click="openRealtimeBatch">
+            声音实时预警
+          </el-button>
+          <el-button size="small" class="batch-btn mobile-font-title" @click="openHistoryBatch">
+            声音历史预警
+          </el-button>
+          <el-button size="small" class="batch-btn mobile-font-title" @click="openRealtimeAlarmBatch">
+            振动实时报警
+          </el-button>
+          <el-button size="small" class="batch-btn mobile-font-title" @click="openHistoryAlarmBatch">
+            振动历史报警
+          </el-button>
+        </div>
       </div>
       <div class="search-section header-controls-desktop">
         <!-- <div class="device-search-wrapper">
@@ -898,6 +898,9 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
     min-width: 0;
 
     .header-section__left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       flex: 1 1 auto;
       min-width: 0;
     }
@@ -906,7 +909,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
       display: flex;
       align-items: center;
       gap: 16px;
-      flex: 1 1 auto;
+      flex: 0 0 auto;
       min-width: 0;
     }
 

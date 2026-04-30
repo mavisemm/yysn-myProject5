@@ -2,28 +2,28 @@
   <header class="main-header">
     <div class="header-left">
       <div v-if="showHomeButton" class="nav-btn" @click="goHome">
-        <el-icon :size="24" color="rgba(153, 240, 255, 1)">
+        <el-icon :size="24" class="nav-icon">
           <House />
         </el-icon>
         <span>首页</span>
       </div>
 
       <div v-if="showReturnDeviceButton" class="nav-btn" @click="goToDevice">
-        <el-icon :size="24" color="rgba(153, 240, 255, 1)">
+        <el-icon :size="24" class="nav-icon">
           <Back />
         </el-icon>
         <span>返回设备</span>
       </div>
 
       <div v-if="showVibrationButton" class="nav-btn" @click="goToVibration">
-        <el-icon :size="24" color="rgba(153, 240, 255, 1)">
+        <el-icon :size="24" class="nav-icon">
           <Lightning />
         </el-icon>
         <span>振动</span>
       </div>
 
       <div v-if="showSoundButton" class="nav-btn" @click="goToSound">
-        <el-icon :size="24" color="rgba(153, 240, 255, 1)">
+        <el-icon :size="24" class="nav-icon">
           <Microphone />
         </el-icon>
         <span>声音</span>
@@ -51,7 +51,7 @@
         </div>
       </div>
       <div class="nav-btn logout-btn" @click="handleLogout">
-        <el-icon :size="26" color="#99f0ff">
+        <el-icon :size="26" class="nav-icon">
           <SwitchButton />
         </el-icon>
       </div>
@@ -245,7 +245,7 @@ const handleLogout = () => {
       padding: 8px 12px;
       cursor: pointer;
       transition: all 0.3s;
-      color: rgba(153, 240, 255, 1);
+      color: #ffffff;
 
       font-size: 1rem;
       font-weight: 500;
@@ -253,7 +253,18 @@ const handleLogout = () => {
 
       &:hover {
         background: rgba(150, 150, 150, 0.2);
-        color: rgba(153, 240, 255, 1);
+        color: #ffffff;
+      }
+
+      .nav-icon {
+        color: #cfe4ff;
+      }
+
+      span {
+        background: linear-gradient(177.37deg, #ffffff 2.19%, #7ea8ff 160.82%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
       }
     }
   }
@@ -393,23 +404,34 @@ const handleLogout = () => {
     padding: 8px 12px;
     cursor: pointer;
     transition: all 0.3s;
-    color: rgba(153, 240, 255, 1);
+    color: #ffffff;
     font-size: 1rem;
     font-weight: 500;
     border-radius: 8px;
 
     &:hover {
       background: rgba(150, 150, 150, 0.2);
-      color: rgba(153, 240, 255, 1);
+      color: #ffffff;
+    }
+
+    .nav-icon {
+      color: #cfe4ff;
+    }
+
+    span {
+      background: linear-gradient(177.37deg, #ffffff 2.19%, #7ea8ff 160.82%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
   }
 
   .logout-btn {
-    color: rgba(153, 240, 255, 1);
+    color: #ffffff;
     font-weight: 700;
 
     &:hover {
-      color: rgba(153, 240, 255, 1);
+      color: #ffffff;
     }
   }
 }

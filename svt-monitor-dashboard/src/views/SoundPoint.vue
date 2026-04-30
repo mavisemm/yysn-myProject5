@@ -172,6 +172,9 @@ interface DeviationListItem {
 }
 
 const deviationList = ref<DeviationListItem[]>([])
+const POLL_INTERVAL_MS = 60 * 1000
+const refreshTimer = ref<number | null>(null)
+const refreshing = ref(false)
 
 const syncSelectedColors = () => {
   const selected = deviationList.value.filter((item) => item.visible)
@@ -247,8 +250,27 @@ const normalizeDeviationList = (list: SoundDeviationItem[]): DeviationListItem[]
   })
 }
 
-const loadDeviationList = async () => {
+const getSelectedIds = (list: DeviationListItem[]) => {
+  return list.filter((item) => item.visible).map((item) => String(item.id))
+}
+
+const buildPreviousItemMap = (list: DeviationListItem[]) => {
+  return new Map(list.map((item) => [String(item.id), item]))
+}
+
+const loadDeviationList = async (opts: { mode?: 'init' | 'poll' } = {}) => {
+  const { mode = 'poll' } = opts
   try {
+    if (refreshing.value) return
+    refreshing.value = true
+    const previousList = deviationList.value
+    const previousItemMap = buildPreviousItemMap(previousList)
+    const previousFirstId = previousList[0] ? String(previousList[0].id) : ''
+    const previousSelectedIds = getSelectedIds(previousList)
+    const onlyFirstSelected =
+      previousList.length > 0 &&
+      previousSelectedIds.length === 1 &&
+      previousSelectedIds[0] === previousFirstId
     const res = await getLatestDeviationByReceiver({
       receiverId: receiverId.value || undefined,
     })
@@ -260,16 +282,55 @@ const loadDeviationList = async () => {
           ? (res as any).ret
           : []
     const mapped = normalizeDeviationList(rawList)
+
+    if (mode === 'poll') {
+      const nextFirstId = mapped[0] ? String(mapped[0].id) : ''
+      const hasNewTopData = !!nextFirstId && nextFirstId !== previousFirstId
+
+      // 轮询但没有新数据：保持表格勾选和图表完全不变
+      if (!hasNewTopData) {
+        return
+      }
+
+      if (onlyFirstSelected) {
+        // 仅首行被勾选：切换到新首行并刷新图表
+        mapped.forEach((item, index) => {
+          item.visible = index === 0
+        })
+      } else {
+        // 非“仅首行勾选”：新数据插到第一行但不勾选，不刷新图表
+        const selectedSet = new Set(previousSelectedIds)
+        mapped.forEach((item, index) => {
+          const previousItem = previousItemMap.get(String(item.id))
+          if (previousItem) {
+            // 保留旧行已加载的频谱数据，避免图表在“不刷新”分支下变空
+            item.dbArr = previousItem.dbArr
+            item.densityArr = previousItem.densityArr
+            item.freqs = previousItem.freqs
+          }
+          if (index === 0) {
+            item.visible = false
+            return
+          }
+          item.visible = selectedSet.has(String(item.id))
+        })
+      }
+    } else {
+      mapped.forEach((item, index) => {
+        item.visible = index === 0
+      })
+    }
+
     deviationList.value = mapped
     syncSelectedColors()
 
     const firstRaw = rawList[0] as any
     const firstItem = mapped[0]
-    if (firstItem) {
+    if (firstItem && (mode !== 'poll' || onlyFirstSelected)) {
       currentDataTime.value = firstItem.time
       currentDeviationValue.value = firstItem.deviationValue.toFixed(2)
     }
-    if (firstRaw && typeof firstRaw === 'object') {
+    if (firstRaw && typeof firstRaw === 'object' && (mode !== 'poll' || onlyFirstSelected)) {
       pointName.value = firstRaw.pointName ?? ''
       deviceName.value = firstRaw.deviceName ?? ''
       clusterName.value = firstRaw.sceneName ?? ''
@@ -294,11 +355,30 @@ const loadDeviationList = async () => {
 
     applyStorePointInfo()
 
-    await loadFrequencyData()
+    if (mode !== 'poll' || onlyFirstSelected) {
+      await loadFrequencyData()
+    }
   } catch (error) {
     console.error('加载声音偏差数据失败:', error)
     ElMessage.error('声音偏差数据加载失败，请稍后重试')
+  } finally {
+    refreshing.value = false
   }
+}
+
+const stopRefreshTimer = () => {
+  if (refreshTimer.value != null) {
+    window.clearInterval(refreshTimer.value)
+    refreshTimer.value = null
+  }
+}
+
+const startRefreshTimer = () => {
+  stopRefreshTimer()
+  if (!receiverId.value) return
+  refreshTimer.value = window.setInterval(() => {
+    loadDeviationList({ mode: 'poll' })
+  }, POLL_INTERVAL_MS)
 }
 
 const applyFrequencyResponse = (
@@ -641,7 +721,8 @@ watch(
     if (newId !== oldId) {
       syncTreeSelectionFromRoute()
       applyStorePointInfo()
-      loadDeviationList()
+      loadDeviationList({ mode: 'init' })
+      startRefreshTimer()
     }
   },
 )
@@ -671,11 +752,13 @@ watch(
 onMounted(() => {
   syncTreeSelectionFromRoute()
   applyStorePointInfo()
-  loadDeviationList()
+  loadDeviationList({ mode: 'init' })
+  startRefreshTimer()
   window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
+  stopRefreshTimer()
   window.removeEventListener('resize', handleResize)
   echarts.disconnect(modalChartLinkGroup)
   modalEnergyChartInstance.value?.dispose()
