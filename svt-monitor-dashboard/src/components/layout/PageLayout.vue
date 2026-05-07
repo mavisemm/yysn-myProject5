@@ -560,8 +560,8 @@ onUnmounted(() => {
 
       .mobile-top-actions {
         position: fixed;
-        left: 6px;
-        top: 68px;
+        left: 8px;
+        top: 66px;
         z-index: 1200;
         display: inline-flex;
         align-items: center;

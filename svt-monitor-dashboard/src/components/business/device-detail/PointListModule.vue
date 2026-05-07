@@ -37,7 +37,7 @@
 
 <script setup lang="ts">
 import { ElTable, ElTableColumn, ElPagination } from 'element-plus'
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 
 interface PointInfo {
@@ -75,10 +75,39 @@ const pointTableRef = ref<any>(null)
 
 const onRowClick = (row: PointInfo) => {
   emit('point-selected', row.id)
+  const idx = props.pointList.findIndex((p) => p.id === row.id)
+  void scrollRowAtIndexIntoBodyView(idx >= 0 ? idx : 0)
 }
 
 const onCurrentChange = (pageNum: number) => {
   emit('page-change', pageNum)
+}
+
+/** 将指定行滚入表格纵向滚动区域内（底部/顶部被裁切时调整 scrollTop） */
+const scrollRowAtIndexIntoBodyView = async (rowIndex: number) => {
+  await nextTick()
+  await nextTick()
+  const tableInst = pointTableRef.value as { $el?: HTMLElement } | null
+  const root = tableInst?.$el
+  if (!root || rowIndex < 0) return
+
+  const wrap =
+    (root.querySelector('.el-table__body-wrapper .el-scrollbar__wrap') as HTMLElement | null) ??
+    (root.querySelector('.el-table__body-wrapper') as HTMLElement | null)
+  if (!wrap) return
+
+  const rows = root.querySelectorAll('.el-table__body-wrapper tbody tr')
+  const row = rows[rowIndex] as HTMLElement | undefined
+  if (!row) return
+
+  const wrapRect = wrap.getBoundingClientRect()
+  const rowRect = row.getBoundingClientRect()
+  const pad = 6
+  if (rowRect.top < wrapRect.top + pad) {
+    wrap.scrollTop += rowRect.top - wrapRect.top - pad
+  } else if (rowRect.bottom > wrapRect.bottom - pad) {
+    wrap.scrollTop += rowRect.bottom - wrapRect.bottom + pad
+  }
 }
 
 const setCurrentRow = (rowIndex: number = 0) => {
@@ -88,6 +117,7 @@ const setCurrentRow = (rowIndex: number = 0) => {
       pointTableRef.value.setCurrentRow(selectedRow)
 
       emit('point-selected', selectedRow.id)
+      void scrollRowAtIndexIntoBodyView(rowIndex)
     }
   }
 }

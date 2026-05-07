@@ -1,47 +1,50 @@
 <template>
-  <el-dialog v-model="visible" :title="props.title" :width="dialogWidth" :close-on-click-modal="true" draggable
-    class="trend-warning-modal" @close="handleClose">
+  <el-dialog v-model="visible" :title="props.title" :width="dialogWidth" :close-on-click-modal="true"
+    :draggable="!isNarrowScreen" align-center append-to-body class="trend-warning-modal" @close="handleClose">
     <div class="modal-body">
-      <el-table :data="tableData" stripe class="warning-table" max-height="400" v-loading="store.loading">
-        <template #empty>
-          <div class="table-empty">暂无数据</div>
-        </template>
-        <el-table-column prop="equipmentName" label="设备名称" min-width="120">
-          <template #default="{ row }">
-            <template v-if="row.showEquipmentName">
-              <span v-if="row.equipmentId" class="link-cell" @click.stop="goToDeviceDetail(row)">{{
-                row.equipmentName
-              }}</span>
-              <span v-else>{{ row.equipmentName }}</span>
+      <div ref="tableScrollAreaRef" class="table-scroll-wrap">
+        <el-table :data="tableData" stripe class="warning-table" :max-height="tableMaxHeight"
+          v-loading="store.loading">
+          <template #empty>
+            <div class="table-empty">暂无数据</div>
+          </template>
+          <el-table-column prop="equipmentName" label="设备名称" min-width="120">
+            <template #default="{ row }">
+              <template v-if="row.showEquipmentName">
+                <span v-if="row.equipmentId" class="link-cell" @click.stop="goToDeviceDetail(row)">{{
+                  row.equipmentName
+                }}</span>
+                <span v-else>{{ row.equipmentName }}</span>
+              </template>
+              <span v-else class="equipment-empty-cell"></span>
             </template>
-            <span v-else class="equipment-empty-cell"></span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="pointName" label="点位名称" min-width="120">
-          <template #default="{ row }">
-            <span v-if="row.receiverId && row.equipmentId" class="link-cell" @click.stop="goToSoundPoint(row)">
-              {{ row.pointName }}
-            </span>
-            <span v-else>{{ row.pointName }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="value" :label="props.mode === 'trend' ? '预警值' : '报警值'" min-width="100">
-          <template #default="{ row }">
-            <span>{{ row.value ?? '—' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="报警时间" min-width="180">
-          <template #default="{ row }">
-            <span>{{ formatLocalDateTime(row.alarmTime) }}</span>
-          </template>
-        </el-table-column>
-      </el-table>
+          </el-table-column>
+          <el-table-column prop="pointName" label="点位名称" min-width="120">
+            <template #default="{ row }">
+              <span v-if="row.receiverId && row.equipmentId" class="link-cell" @click.stop="goToSoundPoint(row)">
+                {{ row.pointName }}
+              </span>
+              <span v-else>{{ row.pointName }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="value" :label="props.mode === 'trend' ? '预警值' : '报警值'" min-width="100">
+            <template #default="{ row }">
+              <span>{{ row.value ?? '—' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="报警时间" min-width="180">
+            <template #default="{ row }">
+              <span>{{ formatLocalDateTime(row.alarmTime) }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
     </div>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDeviceWaringDetailStore } from '@/stores/deviceWaringDetail'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
@@ -72,8 +75,67 @@ const emit = defineEmits<{
 
 const visible = ref(props.modelValue)
 const store = useDeviceWaringDetailStore()
-const isMobile = computed(() => window.innerWidth <= 800)
-const dialogWidth = computed(() => (isMobile.value ? '100vw' : '900px'))
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1200)
+const isNarrowScreen = computed(() => windowWidth.value <= 800)
+const dialogWidth = computed(() => (isNarrowScreen.value ? '100vw' : '900px'))
+
+/** 仅窄屏：弹窗 60vh + flex 后，用 ResizeObserver 把表格 max-height 对齐滚动区 */
+const tableScrollAreaRef = ref<HTMLElement | null>(null)
+const tableMaxHeight = ref(400)
+let tableAreaResizeObserver: ResizeObserver | null = null
+
+function measureTableScrollAreaHeight() {
+  const el = tableScrollAreaRef.value
+  if (!el) return
+  const h = Math.floor(el.getBoundingClientRect().height)
+  if (h >= 48) tableMaxHeight.value = h
+}
+
+function disconnectTableAreaObserver() {
+  if (tableAreaResizeObserver && tableScrollAreaRef.value) {
+    tableAreaResizeObserver.unobserve(tableScrollAreaRef.value)
+  }
+  tableAreaResizeObserver?.disconnect()
+  tableAreaResizeObserver = null
+}
+
+function bindTableAreaResizeObserver() {
+  disconnectTableAreaObserver()
+  const el = tableScrollAreaRef.value
+  if (!el || typeof ResizeObserver === 'undefined') return
+  tableAreaResizeObserver = new ResizeObserver(() => measureTableScrollAreaHeight())
+  tableAreaResizeObserver.observe(el)
+  measureTableScrollAreaHeight()
+}
+
+async function syncTableLayoutForViewport() {
+  if (!visible.value) return
+  if (isNarrowScreen.value) {
+    await nextTick()
+    await nextTick()
+    bindTableAreaResizeObserver()
+  } else {
+    disconnectTableAreaObserver()
+    tableMaxHeight.value = 400
+  }
+}
+
+let windowWidthResizeListener: (() => void) | null = null
+
+onMounted(() => {
+  windowWidthResizeListener = () => {
+    windowWidth.value = window.innerWidth
+  }
+  window.addEventListener('resize', windowWidthResizeListener)
+})
+
+onUnmounted(() => {
+  if (windowWidthResizeListener) {
+    window.removeEventListener('resize', windowWidthResizeListener)
+    windowWidthResizeListener = null
+  }
+  disconnectTableAreaObserver()
+})
 
 interface TableRow {
   equipmentName: string
@@ -185,30 +247,52 @@ watch(
   },
 )
 
-watch(visible, (val) => {
+watch(visible, async (val) => {
   if (!val) {
+    disconnectTableAreaObserver()
     emit('update:modelValue', false)
     return
   }
   void store.fetch(props.mode, true)
+  await syncTableLayoutForViewport()
+})
+
+watch(isNarrowScreen, () => {
+  void syncTableLayoutForViewport()
 })
 </script>
 
 <style lang="scss" scoped>
 .trend-warning-modal {
-  :deep(.el-dialog__body) {
-    padding: 12px 20px;
-    max-height: 480px;
-    overflow-y: auto;
-  }
-
   :deep(.el-dialog__header .el-dialog__title) {
     color: #606266 !important;
   }
 }
 
+/* 网页端：保持原先块级布局，不受手机端 flex 影响 */
 .modal-body {
   min-height: 120px;
+}
+
+.table-scroll-wrap {
+  min-width: 0;
+}
+
+@media (max-width: 800px) {
+  .modal-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .table-scroll-wrap {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
 }
 
 .warning-table {
@@ -242,31 +326,17 @@ watch(visible, (val) => {
     color: #606266 !important;
   }
 }
-
-@media (max-width: 800px) {
-  .trend-warning-modal {
-    :deep(.el-dialog) {
-      width: 100vw !important;
-      max-width: 100vw;
-      margin: 0 !important;
-    }
-
-    :deep(.el-dialog__body) {
-      padding: 12px;
-    }
-  }
-
-  .modal-body {
-    overflow-x: auto;
-  }
-
-  .warning-table {
-    min-width: 620px;
-  }
-}
 </style>
 
 <style lang="scss">
+/* 仅本组件 .el-dialog 根带 class，不污染全局；网页端与原先一致 */
+.trend-warning-modal .el-dialog__body {
+  padding: 12px 20px;
+  box-sizing: border-box;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
 .trend-warning-modal {
   .el-dialog__header .el-dialog__title {
     color: #606266 !important;
@@ -278,6 +348,56 @@ watch(visible, (val) => {
     .el-table__body td {
       color: #606266 !important;
     }
+  }
+}
+
+/* 手机端：100vw、整体 ≤60vh、内部表格占满剩余高度 + 横向滚动 */
+@media (max-width: 800px) {
+  .trend-warning-modal.el-dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: 60vh;
+    margin: 0 !important;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    overflow-x: hidden;
+  }
+
+  .trend-warning-modal .el-dialog__header {
+    flex-shrink: 0;
+  }
+
+  .trend-warning-modal .el-dialog__body {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 12px;
+    max-width: 100%;
+  }
+
+  .trend-warning-modal .modal-body {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .trend-warning-modal .table-scroll-wrap {
+    width: 100%;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .trend-warning-modal .warning-table {
+    width: 620px !important;
+    min-width: 620px;
+    max-width: none;
   }
 }
 </style>

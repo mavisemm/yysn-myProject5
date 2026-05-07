@@ -1071,17 +1071,20 @@ onMounted(() => {
   .charts-grid .chart-item--wide .temp-fullscreen-btn {
     align-items: center !important;
     line-height: 1 !important;
+    font-size: 0.9rem !important;
   }
 
   .charts-grid .chart-item--wide .temp-fullscreen-btn {
     :deep(.el-button__content),
     :deep(.el-button__text) {
       line-height: 1 !important;
+      font-size: 0.9rem !important;
     }
 
     :deep(.el-icon) {
       align-self: center !important;
       line-height: 1 !important;
+      font-size: 0.9rem !important;
     }
   }
 

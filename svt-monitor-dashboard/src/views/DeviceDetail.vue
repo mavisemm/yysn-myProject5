@@ -100,19 +100,6 @@ const initDeviceData = async () => {
   if (!equipmentId.value) return
 
   try {
-    const resolvePointDeviceId = (rid: string): string | undefined => {
-      for (const factory of deviceTreeStore.deviceTreeData) {
-        for (const workshop of factory.children ?? []) {
-          for (const device of workshop.children ?? []) {
-            if (device.type !== 'device') continue
-            const hit = (device.children ?? []).find((p) => p.type === 'point' && p.id === rid)
-            if (hit && hit.deviceId) return hit.deviceId
-          }
-        }
-      }
-      return undefined
-    }
-
     const res = await getSelectCheckPointIn(
       equipmentId.value,
       pagination.value.pageSize,

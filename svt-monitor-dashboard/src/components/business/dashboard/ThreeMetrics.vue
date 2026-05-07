@@ -23,8 +23,10 @@
         </div>
         <template v-else>
           <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex" class="ranking-item mobile-font-body"
-            :class="{ 'ranking-item--with-bg': rankIndex % 2 === 0 }" @click="goToRankTarget(rank, index)"
-            style="cursor: pointer">
+            :class="{
+              'ranking-item--with-bg': rankIndex % 2 === 0,
+              'ranking-item--no-nav': index === 2,
+            }" @click="goToRankTarget(rank, index)">
             <span class="col-seq">
               <img class="seq-icon" src="@/assets/images/background/首页-排名序标.webp" alt="" />
               <span class="seq-num">{{ rankIndex + 1 }}</span>
@@ -52,8 +54,9 @@
         </span>
       </template>
       <div class="dialog-rankings">
-        <div v-for="(rank, rankIndex) in dialogRankings" :key="rankIndex" class="dialog-ranking-item"
-          @click="goToRankTarget(rank, rankDialogMetricIndex)">
+        <div v-for="(rank, rankIndex) in dialogRankings" :key="rankIndex" class="dialog-ranking-item" :class="{
+          'dialog-ranking-item--no-nav': rankDialogMetricIndex === 2,
+        }" @click="goToRankTarget(rank, rankDialogMetricIndex)">
           <span class="rank-num special-font-color">{{ rankIndex + 1 }}.</span>
           <span class="rank-device special-font-color">{{ rank.pointName }}
             <span v-if="rank.equipmentName" class="workshop-info">（{{ rank.equipmentName }}）</span>
@@ -129,7 +132,9 @@ const isValidDevice = (deviceId: string): boolean => {
 }
 
 const goToRankTarget = (rank: RankingItem, metricIndex: number) => {
-  // 0: 振动排名 -> 振动点位页；1: 声音排名 -> 声音点位页；2: 温度排名 -> 设备详情页
+  // 温度排名不跳转
+  if (metricIndex === 2) return
+  // 0: 振动排名 -> 振动点位页；1: 声音排名 -> 声音点位页
   if ((metricIndex === 0 || metricIndex === 1) && rank.receiverId && rank.equipmentId) {
     rankDialogVisible.value = false
     const rid = String(rank.receiverId).trim()
@@ -474,6 +479,14 @@ watch(
           background-color: transparent;
         }
 
+        &.ranking-item--no-nav {
+          cursor: default;
+
+          &:hover {
+            background-color: transparent;
+          }
+        }
+
         &:hover {
           background-color: rgba(255, 255, 255, 0.15);
         }
@@ -583,6 +596,14 @@ watch(
 
     &:hover {
       background: #ecf5ff;
+    }
+
+    &.dialog-ranking-item--no-nav {
+      cursor: default;
+
+      &:hover {
+        background: #f5f7fa;
+      }
     }
 
     .rank-num {
