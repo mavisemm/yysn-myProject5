@@ -3,8 +3,7 @@
     :draggable="!isNarrowScreen" align-center append-to-body class="trend-warning-modal" @close="handleClose">
     <div class="modal-body">
       <div ref="tableScrollAreaRef" class="table-scroll-wrap">
-        <el-table :data="tableData" stripe class="warning-table" :max-height="tableMaxHeight"
-          v-loading="store.loading">
+        <el-table :data="tableData" stripe class="warning-table" :max-height="tableMaxHeight" v-loading="store.loading">
           <template #empty>
             <div class="table-empty">暂无数据</div>
           </template>
@@ -13,7 +12,7 @@
               <template v-if="row.showEquipmentName">
                 <span v-if="row.equipmentId" class="link-cell" @click.stop="goToDeviceDetail(row)">{{
                   row.equipmentName
-                }}</span>
+                  }}</span>
                 <span v-else>{{ row.equipmentName }}</span>
               </template>
               <span v-else class="equipment-empty-cell"></span>
@@ -32,7 +31,7 @@
               <span>{{ row.value ?? '—' }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="报警时间" min-width="180">
+          <el-table-column :label="props.mode === 'trend' ? '预警时间' : '报警时间'" min-width="180">
             <template #default="{ row }">
               <span>{{ formatLocalDateTime(row.alarmTime) }}</span>
             </template>

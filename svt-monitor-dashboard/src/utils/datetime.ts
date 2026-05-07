@@ -33,6 +33,12 @@ export function getDefaultDateRange(): [string, string] {
     start.setHours(0, 0, 0, 0);
     return [formatDateTime(start), formatDateTime(end)];
 }
+/** 近一周：以当前时刻为终点，起点为连续 7×24 小时之前（振动频域瀑布图等默认范围） */
+export function getRollingWeekDateRange(): [string, string] {
+    const end = new Date();
+    const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return [formatDateTime(start), formatDateTime(end)];
+}
 export function disabledFutureDate(time: Date): boolean {
     return time.getTime() > Date.now();
 }

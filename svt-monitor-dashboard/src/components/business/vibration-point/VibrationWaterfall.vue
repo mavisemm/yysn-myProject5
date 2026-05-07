@@ -68,7 +68,7 @@
 import { ref, onUnmounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { EChartsOption } from 'echarts'
-import { getLast24HoursRange } from '@/utils/datetime'
+import { getRollingWeekDateRange } from '@/utils/datetime'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
 import { CommonEcharts } from '@/components/common/chart'
 import { FullScreen } from '@element-plus/icons-vue'
@@ -82,8 +82,8 @@ const deviceTreeStore = useDeviceTreeStore()
 const chartAxisColor = computed(() => '#ffffff')
 const chartGridLineColor = computed(() => '#999999')
 
-const intervalHours = ref(1)
-const dateRange = ref<[string, string] | null>(getLast24HoursRange())
+const intervalHours = ref(12)
+const dateRange = ref<[string, string] | null>(getRollingWeekDateRange())
 /** 频率筛选输入（点击「应用」后写入 freqDisplayRange） */
 const freqFilterMin = ref<number | undefined>(undefined)
 const freqFilterMax = ref<number | undefined>(undefined)
@@ -212,7 +212,7 @@ const loadWaterfallData = async () => {
   const [startStr, endStr] =
     dateRange.value && dateRange.value[0] && dateRange.value[1]
       ? dateRange.value
-      : getLast24HoursRange()
+      : getRollingWeekDateRange()
   try {
     const res = await getVibrationFrequencyWaterfallData(
       pointDeviceId.value,
