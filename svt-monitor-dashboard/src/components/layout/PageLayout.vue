@@ -13,8 +13,7 @@
         </div>
         <div v-if="showHomeButton" class="mobile-nav-btn mobile-font-nav" @click="goHome">首页</div>
         <div v-if="showReturnDeviceButton" class="mobile-nav-btn mobile-font-nav" @click="goToDevice">返回设备</div>
-        <div v-if="showVibrationButton" class="mobile-nav-btn mobile-font-nav" @click="goToVibration">振动</div>
-        <div v-if="showSoundButton" class="mobile-nav-btn mobile-font-nav" @click="goToSound">声音</div>
+        <SoundVibrationSegment v-if="showPointTypeSwitch" variant="mobile" class="mobile-sound-vib-segment" />
       </div>
       <el-drawer v-if="isMobile" v-model="mobileDeviceDrawerVisible" direction="ltr" size="82vw" :with-header="false"
         :append-to-body="true" class="device-sidebar-drawer">
@@ -38,6 +37,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import MainHeader from './MainHeader.vue'
+import SoundVibrationSegment from './SoundVibrationSegment.vue'
 import DeviceSidebar from './DeviceSidebar.vue'
 import { RouterView } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
@@ -74,12 +74,8 @@ const showReturnDeviceButton = computed(() => {
   return route.name === 'SoundPoint' || route.name === 'VibrationPoint'
 })
 
-const showVibrationButton = computed(() => {
-  return route.name === 'SoundPoint'
-})
-
-const showSoundButton = computed(() => {
-  return route.name === 'VibrationPoint'
+const showPointTypeSwitch = computed(() => {
+  return route.name === 'SoundPoint' || route.name === 'VibrationPoint'
 })
 
 const goHome = () => {
@@ -119,20 +115,6 @@ const goToDevice = () => {
   } else {
     router.push('/dashboard')
   }
-}
-
-const goToVibration = () => {
-  const receiverIdParam = route.params.receiverId
-  const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
-  if (typeof receiverId !== 'string' || !receiverId) return
-  router.push({ name: 'VibrationPoint', params: { receiverId }, query: route.query })
-}
-
-const goToSound = () => {
-  const receiverIdParam = route.params.receiverId
-  const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
-  if (typeof receiverId !== 'string' || !receiverId) return
-  router.push({ name: 'SoundPoint', params: { receiverId }, query: route.query })
 }
 
 const handleChangeBackground = (mode: 'image' | 'navy' | 'solid') => {
@@ -584,6 +566,11 @@ onUnmounted(() => {
         user-select: none;
         cursor: pointer;
         line-height: 1;
+      }
+
+      .mobile-sound-vib-segment {
+        backdrop-filter: blur(8px);
+        align-self: center;
       }
 
       .content-wrapper {

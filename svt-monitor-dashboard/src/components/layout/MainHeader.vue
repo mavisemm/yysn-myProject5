@@ -15,19 +15,7 @@
         <span>返回设备</span>
       </div>
 
-      <div v-if="showVibrationButton" class="nav-btn" @click="goToVibration">
-        <el-icon :size="24" class="nav-icon">
-          <Lightning />
-        </el-icon>
-        <span>振动</span>
-      </div>
-
-      <div v-if="showSoundButton" class="nav-btn" @click="goToSound">
-        <el-icon :size="24" class="nav-icon">
-          <Microphone />
-        </el-icon>
-        <span>声音</span>
-      </div>
+      <SoundVibrationSegment v-if="showPointTypeSwitch" variant="header" />
     </div>
 
     <div class="header-center">
@@ -67,8 +55,9 @@ import { useDeviceTreeStore } from '@/stores/deviceTree'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
 import { useAlarmOverviewStore } from '@/stores/alarmOverview'
 import HeaderClock from './HeaderClock.vue'
+import SoundVibrationSegment from './SoundVibrationSegment.vue'
 
-import { SwitchButton, House, Back, Lightning, Microphone } from '@element-plus/icons-vue'
+import { SwitchButton, House, Back } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -118,12 +107,8 @@ const showReturnDeviceButton = computed(() => {
   return route.name === 'SoundPoint' || route.name === 'VibrationPoint'
 })
 
-const showVibrationButton = computed(() => {
-  return route.name === 'SoundPoint'
-})
-
-const showSoundButton = computed(() => {
-  return route.name === 'VibrationPoint'
+const showPointTypeSwitch = computed(() => {
+  return route.name === 'SoundPoint' || route.name === 'VibrationPoint'
 })
 
 const platformTitle = computed(() => {
@@ -185,20 +170,6 @@ const goToDevice = () => {
   } else {
     router.push('/dashboard')
   }
-}
-
-const goToVibration = () => {
-  const receiverIdParam = route.params.receiverId
-  const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
-  if (typeof receiverId !== 'string' || !receiverId) return
-  router.push({ name: 'VibrationPoint', params: { receiverId }, query: route.query })
-}
-
-const goToSound = () => {
-  const receiverIdParam = route.params.receiverId
-  const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
-  if (typeof receiverId !== 'string' || !receiverId) return
-  router.push({ name: 'SoundPoint', params: { receiverId }, query: route.query })
 }
 
 const handleLogout = () => {

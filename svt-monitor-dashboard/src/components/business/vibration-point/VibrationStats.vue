@@ -1,10 +1,27 @@
 <template>
   <div class="card-item stats-card">
     <div class="card-header">
-      <div class="card-title app-section-title">基本指标</div>
-      <div class="collect-time">采集时间：{{ vibrationCollectTime || '--' }}</div>
+      <div class="card-header-row card-header-row--top">
+        <div class="card-title app-section-title">基本指标</div>
+        <div class="collect-time">数据采集时间：{{ vibrationCollectTime || '--' }}</div>
+      </div>
+      <div class="card-header-row card-header-row--toggle">
+        <div class="metric-toggle" role="group" aria-label="速度或加速度指标">
+          <button type="button" class="metric-toggle__btn" :class="{ 'metric-toggle__btn--active': metricKind === 'velocity' }"
+            @click="metricKind = 'velocity'">
+            速度
+          </button>
+          <span class="metric-toggle__divider" aria-hidden="true" />
+          <button type="button" class="metric-toggle__btn"
+            :class="{ 'metric-toggle__btn--active': metricKind === 'acceleration' }"
+            @click="metricKind = 'acceleration'">
+            加速度
+          </button>
+        </div>
+      </div>
     </div>
     <div class="stats-grid">
+      <template v-if="metricKind === 'velocity'">
       <div class="stat-box">
         <div class="stat-label">
           速度有效值
@@ -45,6 +62,8 @@
           </div>
         </div>
       </div>
+      </template>
+      <template v-if="metricKind === 'acceleration'">
       <div class="stat-box">
         <div class="stat-label">
           加速度有效值
@@ -85,6 +104,7 @@
           </div>
         </div>
       </div>
+      </template>
     </div>
   </div>
 </template>
@@ -138,6 +158,9 @@ const emptyMetric = (): VibrationMetricData => ({
 
 const vibrationData = ref<VibrationMetricData>(emptyMetric())
 const vibrationCollectTime = ref('')
+
+/** 基本指标默认仅展示速度；标题下方可切换查看加速度 */
+const metricKind = ref<'velocity' | 'acceleration'>('velocity')
 
 const formatValue = (value: number | undefined): string => (value ?? 0).toFixed(2)
 
@@ -195,12 +218,66 @@ watch(
 
   .card-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
     padding: 10px 10px 0 20px;
+
+    .card-header-row--top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+    }
+
+    .card-header-row--toggle {
+      display: flex;
+      align-items: center;
+    }
 
     .card-title {
       color: #fff;
+    }
+
+    .metric-toggle {
+      display: inline-flex;
+      align-items: stretch;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .metric-toggle__divider {
+      align-self: stretch;
+      width: 1px;
+      margin: 6px 0;
+      background: rgba(255, 255, 255, 0.22);
+      flex-shrink: 0;
+    }
+
+    .metric-toggle__btn {
+      margin: 0;
+      padding: 6px 12px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: #ffffff;
+      border: none;
+      background: transparent;
+      transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+
+      &:hover {
+        background: rgba(150, 150, 150, 0.2);
+      }
+
+      &--active {
+        background: rgba(80, 140, 255, 0.28);
+        box-shadow: inset 0 0 0 1px rgba(190, 220, 255, 0.45);
+        color: #00f2fe;
+      }
     }
 
     .collect-time {
@@ -216,8 +293,8 @@ watch(
 
   .stats-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
     gap: 10px;
     flex: 1;
     padding: 10px 10px 20px 20px;

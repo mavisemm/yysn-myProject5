@@ -18,8 +18,8 @@
       </ThreeMetrics>
     </div>
 
-    <TrendWarningDeviceModal v-model="showTrendWarningModal" title="趋势预警设备详情" mode="trend" :count="trendWarningCount" />
-    <TrendWarningDeviceModal v-model="showFaultWarningModal" title="故障报警设备详情" mode="fault" :count="faultAlertCount" />
+    <TrendWarningDeviceModal v-model="showTrendWarningModal" title="声音趋势预警详情" mode="trend" :count="trendWarningCount" />
+    <TrendWarningDeviceModal v-model="showFaultWarningModal" title="振动烈度报警详情" mode="fault" :count="faultAlertCount" />
   </div>
 </template>
 
@@ -52,19 +52,19 @@ const showFaultWarningModal = ref(false)
 const DEFAULT_STATS = [
   { title: '监控总设备', number: 0 },
   { title: '健康设备', number: 0 },
-  { title: '趋势预警设备', number: 0 },
-  { title: '故障报警设备', number: 0 },
+  { title: '声音趋势预警', number: 0 },
+  { title: '振动烈度报警', number: 0 },
 ]
 
 const statsData = ref([...DEFAULT_STATS])
 
 const faultAlertCount = computed(() => {
-  const item = statsData.value.find((s) => s.title === '故障报警设备')
+  const item = statsData.value.find((s) => s.title === '振动烈度报警')
   return Number(item?.number ?? 0)
 })
 
 const trendWarningCount = computed(() => {
-  const item = statsData.value.find((s) => s.title === '趋势预警设备')
+  const item = statsData.value.find((s) => s.title === '声音趋势预警')
   return Number(item?.number ?? 0)
 })
 
@@ -150,8 +150,8 @@ const fetchStatsData = async () => {
     statsData.value = [
       { title: '监控总设备', number: Number(stats.totalDeviceCount ?? 0) },
       { title: '健康设备', number: Number(stats.healthyDeviceCount ?? 0) },
-      { title: '趋势预警设备', number: Number(stats.totalPointCount ?? 0) },
-      { title: '故障报警设备', number: Number(stats.alertDeviceCount ?? 0) },
+      { title: '声音趋势预警', number: Number(stats.totalPointCount ?? 0) },
+      { title: '振动烈度报警', number: Number(stats.alertDeviceCount ?? 0) },
     ]
   } catch (error) {
     console.error('获取统计数据失败:', error)

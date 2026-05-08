@@ -11,7 +11,7 @@
     <div class="stats-grid">
       <div v-for="(stat, index) in stats" :key="index" class="stat-card" :class="[
         `stat-card-${index}`,
-        stat.title === '趋势预警设备' || stat.title === '故障报警设备' ? 'stat-card-trend' : '',
+        stat.title === '声音趋势预警' || stat.title === '振动烈度报警' ? 'stat-card-trend' : '',
       ]" @click="handleCardClick(stat.title)">
         <div class="stat-content">
           <div class="stat-icon" :class="{ 'stat-icon-blink': isAlertOrWarning(stat) }">
@@ -55,8 +55,8 @@ const emit = defineEmits<{
 const ICON_BY_TITLE: Record<string, string> = {
   健康设备: new URL('@/assets/images/background/首页-健康设备.webp', import.meta.url).href,
   监控总设备: new URL('@/assets/images/background/首页-监控总设备.webp', import.meta.url).href,
-  趋势预警设备: new URL('@/assets/images/background/首页-趋势预警设备.webp', import.meta.url).href,
-  故障报警设备: new URL('@/assets/images/background/首页-故障报警设备.webp', import.meta.url).href,
+  声音趋势预警: new URL('@/assets/images/background/首页-声音趋势预警.webp', import.meta.url).href,
+  振动烈度报警: new URL('@/assets/images/background/首页-振动烈度报警.webp', import.meta.url).href,
 }
 
 const getIconSrc = (title: string) => {
@@ -73,16 +73,16 @@ const isSingleDigit = (ch: string): boolean => {
 }
 
 const handleCardClick = (title: string) => {
-  if (title === '趋势预警设备') {
+  if (title === '声音趋势预警') {
     emit('clickTrendWarning')
-  } else if (title === '故障报警设备') {
+  } else if (title === '振动烈度报警') {
     emit('clickFaultWarning')
   }
 }
 
 function isAlertOrWarning(stat: StatItem) {
   return (
-    (stat.title === '故障报警设备' || stat.title === '趋势预警设备') && Number(stat.number ?? 0) > 0
+    (stat.title === '振动烈度报警' || stat.title === '声音趋势预警') && Number(stat.number ?? 0) > 0
   )
 }
 </script>
