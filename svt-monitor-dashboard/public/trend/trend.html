@@ -2388,6 +2388,34 @@
             syncSliderFromChart(chart, canvasId);
         }
 
+        /** 听筒曲线 tooltip：仅在光标左侧或右侧显示，避免在曲线上方/下方遮挡 */
+        if (typeof Chart !== 'undefined' && Chart.Tooltip && Chart.Tooltip.positioners) {
+            Chart.Tooltip.positioners.receiverCurveHorizontal = function(elements, eventPosition) {
+                if (!elements || !elements.length) {
+                    return false;
+                }
+                const chart = this.chart;
+                const area = chart.chartArea;
+                const nearest = Chart.Tooltip.positioners.nearest.call(this, elements, eventPosition);
+                if (!nearest) {
+                    return false;
+                }
+                let x = (eventPosition && eventPosition.x != null) ? eventPosition.x : nearest.x;
+                let y = (eventPosition && eventPosition.y != null) ? eventPosition.y : nearest.y;
+                x = Math.max(area.left, Math.min(x, area.right));
+                y = Math.max(area.top, Math.min(y, area.bottom));
+                const gap = 12;
+                const minSpace = 100;
+                const spaceRight = area.right - x;
+                const spaceLeft = x - area.left;
+                const placeOnRight = spaceRight >= minSpace && (spaceRight >= spaceLeft || spaceLeft < minSpace);
+                if (placeOnRight) {
+                    return { x: x + gap, y: y, xAlign: 'left', yAlign: 'center' };
+                }
+                return { x: x - gap, y: y, xAlign: 'right', yAlign: 'center' };
+            };
+        }
+
         const chartZoomPluginOptions = {
             pan: {
                 enabled: true,
@@ -2849,6 +2877,9 @@
                         tooltip: {
                             mode: 'index',
                             intersect: false,
+                            position: 'receiverCurveHorizontal',
+                            caretPadding: 10,
+                            caretSize: 5
                         },
                         zoom: chartZoomPluginOptions
                     },
