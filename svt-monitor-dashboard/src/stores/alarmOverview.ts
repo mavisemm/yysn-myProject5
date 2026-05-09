@@ -8,6 +8,34 @@ import { apiSoundAlarmFind, type EventRow } from '@/api/modules/alarmBatch'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import type { DeviceNode } from '@/types/device'
 
+/**
+ * 设备树下「point」子节点数量优先于接口 `pointCount`（后者常偏大或与真实挂接不一致）。
+ */
+export function resolvePointCountForDeviceNode(d: DeviceNode): number | undefined {
+  const fromChildren = (d.children ?? []).filter((c) => c.type === 'point').length
+  if (fromChildren > 0) return fromChildren
+  const n = Number(d.pointCount ?? 0)
+  if (Number.isFinite(n) && n > 0) return Math.floor(n)
+  return undefined
+}
+
+export function resolveDevicePointCountFromTree(deviceId: string): number | undefined {
+  const id = String(deviceId ?? '').trim()
+  if (!id) return undefined
+  const norm = (v: unknown) => String(v ?? '').trim()
+  const stack: DeviceNode[] = [...(useDeviceTreeStore().deviceTreeData ?? [])]
+  while (stack.length) {
+    const node = stack.pop()
+    if (!node) continue
+    if (node.type === 'device') {
+      const match = norm(node.equipmentId) === id || norm(node.id) === id
+      if (match) return resolvePointCountForDeviceNode(node)
+    }
+    if (node.children?.length) stack.push(...node.children)
+  }
+  return undefined
+}
+
 export interface MeasurementPoint {
   name: string
   status: 'healthy' | 'warning' | 'alarm' | 'offline'
@@ -36,6 +64,8 @@ export interface AlarmItem {
    * 以避免进入首页时先显示健康(绿)再被真实告警覆盖(红)的闪烁。
    */
   prefilled?: boolean
+  /** 设备真实测点个数：卡片上多于 8 个时只展示 8 个，≤8 时展示全部（缺省则仍按占位数组长度参与排序截取） */
+  devicePointCount?: number
 }
 
 function makeHealthyPoint(i: number): MeasurementPoint {
@@ -483,6 +513,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       statusText: '健康',
       time: '',
       measurementPoints,
+      devicePointCount: resolvePointCountForDeviceNode(deviceNode),
       prefilled: true,
     }
   }
@@ -716,6 +747,7 @@ export const useAlarmOverviewStore = defineStore('alarmOverview', () => {
       measurementPoints,
       latestPointNum,
       latestOrderKey,
+      devicePointCount: resolveDevicePointCountFromTree(deviceId) ?? prev?.devicePointCount,
       prefilled: false,
     })
 

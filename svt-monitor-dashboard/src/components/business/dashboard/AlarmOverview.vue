@@ -98,7 +98,9 @@
       <div v-for="alarm in displayedAlarms" :key="alarm.cardId" class="alarm-card"
         :class="`alarm-card--${getDeviceDisplayStatus(alarm)}`" @click="goToDeviceDetail(alarm)">
         <div class="card-header">
-          <span class="device-name" :title="alarm.deviceName">{{ alarm.deviceName }}</span>
+          <span class="device-name" :title="alarm.deviceName">{{
+            formatAlarmCardDeviceName(alarm.deviceName)
+          }}</span>
           <span :class="['status-dot', getDeviceDisplayStatus(alarm)]"></span>
         </div>
 
@@ -122,11 +124,13 @@
             alarm.latestPointNum,
             alarm.cardType,
             getDeviceDisplayStatus(alarm),
+            alarm.devicePointCount,
+            alarm.id,
           )" :key="item.pointNum" :class="[
             'point-item',
             getPointStyleClass(item.point.status, getDeviceDisplayStatus(alarm)),
           ]" @click.stop="handlePointItemClick(alarm, item)">
-            {{ item.pointNum }}
+            {{ formatAlarmCardPointLabel(item.point, item.pointNum) }}
           </div>
         </div>
       </div>
@@ -155,8 +159,41 @@ import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vu
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 import type { VibrationEventPayload } from '@/services/vibrationWs'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
-import { useAlarmOverviewStore } from '@/stores/alarmOverview'
+import {
+  useAlarmOverviewStore,
+  resolveDevicePointCountFromTree,
+} from '@/stores/alarmOverview'
+import { getTenantId } from '@/api/tenant'
 import { resolveRealtimeDeviceKey } from '@/utils/realtimeAlarmNavigator'
+
+/** 该租户下预警总览：设备名展示末尾连续数字的末 1～2 位；点位名展示「最后一个数字段」的末 1～2 位（见业务约定） */
+const TENANT_DEVICE_CARD_SUFFIX_DIGITS = '2b410e834b4b4ae49ab8d52f6d49e967'
+
+function extractTrailingDigitLabel(deviceName: string): string | null {
+  const m = String(deviceName ?? '').match(/(\d+)$/)
+  if (!m?.[1]) return null
+  const run = m[1]
+  return run.length >= 2 ? run.slice(-2) : run
+}
+
+/** 取名称中「最后一个连续数字段」的末 1～2 位（如 ...5602cmdk → 02；仅一段个位数则显示该位） */
+function extractLastDigitRunSuffixForPoint(pointName: string): string | null {
+  const matches = String(pointName ?? '').match(/\d+/g)
+  if (!matches?.length) return null
+  const run = matches[matches.length - 1]
+  if (run == null || run === '') return null
+  return run.length >= 2 ? run.slice(-2) : run
+}
+
+function formatAlarmCardDeviceName(deviceName: string): string {
+  if (getTenantId() !== TENANT_DEVICE_CARD_SUFFIX_DIGITS) return deviceName
+  return extractTrailingDigitLabel(deviceName) ?? deviceName
+}
+
+function formatAlarmCardPointLabel(point: MeasurementPoint, pointNum: number): string {
+  if (getTenantId() !== TENANT_DEVICE_CARD_SUFFIX_DIGITS) return String(pointNum)
+  return extractLastDigitRunSuffixForPoint(point.name) ?? String(pointNum)
+}
 
 const { t } = useLocale()
 
@@ -197,6 +234,7 @@ interface AlarmItem {
   statusText: string
   time: string
   measurementPoints: MeasurementPoint[]
+  devicePointCount?: number
   latestPointNum?: number
   latestOrderKey?: number
   statusPriority?: number
@@ -603,6 +641,17 @@ const filteredAlarms = computed(() => {
     })
   }
 
+  // 同一 equipmentId 上只要已有声音预警或振动报警，就不再展示该设备下的「健康」卡片（振动/声音两侧任一均可）。
+  const deviceIdsWithAlarmOrWarning = new Set<string>()
+  for (const row of result) {
+    const st = getDeviceDisplayStatus(row)
+    if (st === 'alarm' || st === 'warning') deviceIdsWithAlarmOrWarning.add(row.id)
+  }
+  result = result.filter((alarm) => {
+    if (getDeviceDisplayStatus(alarm) !== 'healthy') return true
+    return !deviceIdsWithAlarmOrWarning.has(alarm.id)
+  })
+
   result.sort((a, b) => {
     const aStatus = Number(a.statusPriority ?? 9)
     const bStatus = Number(b.statusPriority ?? 9)
@@ -775,11 +824,34 @@ function getDisplayPoints(
   latestPointNum?: number,
   cardType?: 'vibration' | 'sound',
   deviceStatus?: 'alarm' | 'warning' | 'offline' | 'healthy',
+  devicePointCount?: number,
+  deviceId?: string,
 ): { point: MeasurementPoint; pointNum: number }[] {
-  const cacheKey = `${cardType ?? 'all'}|${deviceStatus ?? 'unknown'}|${latestPointNum ?? 'none'}|${(points ?? []).map((p, i) => `${i + 1}:${p.status}:${p.lastAlarmTime ?? 0}`).join(',')}`
+  const raw = points ?? []
+  const fromTree = deviceId ? resolveDevicePointCountFromTree(deviceId) : undefined
+  const fromItem =
+    devicePointCount != null && devicePointCount > 0 ? Math.floor(devicePointCount) : undefined
+  const effective = fromTree ?? fromItem
+  let cap =
+    effective != null && effective > 0 ? Math.min(raw.length, effective) : raw.length
+  // 按设备点数截断后，若「预警/报警」落在截断范围之外（常见于 channel/名称解析出较大序号），
+  // 声音卡只展示 warning、振动卡只展示 alarm，会导致过滤结果为空但卡片仍为预警态。
+  if (latestPointNum != null && latestPointNum > cap) {
+    cap = Math.min(raw.length, latestPointNum)
+  }
+  if (cardType === 'sound') {
+    for (let i = 0; i < raw.length; i++) {
+      if (raw[i]?.status === 'warning') cap = Math.min(raw.length, Math.max(cap, i + 1))
+    }
+  } else if (cardType === 'vibration') {
+    for (let i = 0; i < raw.length; i++) {
+      if (raw[i]?.status === 'alarm') cap = Math.min(raw.length, Math.max(cap, i + 1))
+    }
+  }
+  const list = raw.slice(0, cap)
+  const cacheKey = `${cardType ?? 'all'}|${deviceStatus ?? 'unknown'}|${latestPointNum ?? 'none'}|dpc:${effective ?? 'na'}|${list.map((p, i) => `${i + 1}:${p.status}:${p.lastAlarmTime ?? 0}`).join(',')}`
   const cached = displayPointsCache.get(cacheKey)
   if (cached) return cached
-  const list = points ?? []
   const withNum = list
     .map((p, i) => ({ point: p, pointNum: i + 1 }))
     .filter((item) => {
