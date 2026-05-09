@@ -43,6 +43,12 @@
                 <el-button size="small" type="primary" @click="confirmFullscreenRange">确认</el-button>
                 <el-button size="small" @click="resetFullscreenRange"> 重置 </el-button>
                 <span class="freq-filter-divider" aria-hidden="true" />
+                <span class="freq-filter-label">倍频最高阶：</span>
+                <el-input-number v-model="freqHarmonicMaxOrderInput" :min="HARMONIC_ORDER_MIN" :max="HARMONIC_ORDER_MAX"
+                  :precision="0" :step="1" size="small" controls-position="right"
+                  class="freq-filter-num freq-harmonic-order-input" @blur="commitFreqHarmonicMaxOrder" />
+                <el-button size="small" type="primary" @click="commitFreqHarmonicMaxOrder">确认</el-button>
+                <span class="freq-filter-divider" aria-hidden="true" />
                 <span class="freq-filter-label">打标功能：</span>
                 <el-button size="small" :disabled="!currentPinnedPointId" @click="clearCurrentPinnedPoint">
                   清除当前标记
@@ -194,6 +200,20 @@ const freqAxis = ref<VibrationAxis>('X')
 const timeAxis = ref<VibrationAxis>('X')
 
 const pointerBaseFreq = ref<number | null>(null)
+const HARMONIC_ORDER_MIN = 1
+const HARMONIC_ORDER_MAX = 100
+const FREQ_HARMONIC_DEBOUNCE_MS = 400
+const freqHarmonicMaxOrderCommitted = ref(4)
+const freqHarmonicMaxOrderInput = ref(4)
+let freqHarmonicDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const clearFreqHarmonicDebounce = () => {
+  if (freqHarmonicDebounceTimer != null) {
+    clearTimeout(freqHarmonicDebounceTimer)
+    freqHarmonicDebounceTimer = null
+  }
+}
+
 const FREQ_MATCH_DECIMALS = 6
 const FREQ_FILTER_PRECISION = 6
 const FREQ_FILTER_STEP = 1
@@ -226,6 +246,20 @@ const formatPinnedY = (v: number | string) => {
 
 const toFreqKey = (v: number) => v.toFixed(FREQ_MATCH_DECIMALS)
 
+const clampHarmonicMaxOrder = (raw: unknown) => {
+  const v = Math.round(Number(raw))
+  if (!Number.isFinite(v)) return 4
+  return Math.min(HARMONIC_ORDER_MAX, Math.max(HARMONIC_ORDER_MIN, v))
+}
+
+const harmonicOrderLabel = (order: number) => `${order}倍频`
+
+const harmonicMarkLineColor = (order: number) => {
+  if (order === 1) return '#7ecba1'
+  const hue = ((order - 2) * 37 + 210) % 360
+  return `hsl(${hue}, 68%, 58%)`
+}
+
 const getSortedFreqChartData = () => {
   const chartData = freqData.value.frequency
     .map((freq, index) => [freq, freqData.value.freqSpeedData[index] ?? 0] as [number, number])
@@ -243,13 +277,16 @@ const buildHarmonicMarkLineData = (baseFreq: number) => {
   if (!Number.isFinite(baseFreq) || baseFreq <= 0) return []
   const { xMax, pointMap } = getSortedFreqChartData()
   const hasExactPoint = (x: number) => pointMap.has(toFreqKey(x))
-
-  const candidates: Array<{ name: string; x: number; color: string; requirePoint: boolean }> = [
-    { name: '', x: baseFreq, color: '#7ecba1', requirePoint: false },
-    { name: '', x: baseFreq * 2, color: '#60a5fa', requirePoint: true },
-    { name: '', x: baseFreq * 3, color: '#f59e0b', requirePoint: true },
-    { name: '', x: baseFreq * 4, color: '#f472b6', requirePoint: true },
-  ]
+  const maxOrder = clampHarmonicMaxOrder(freqHarmonicMaxOrderCommitted.value)
+  const candidates: Array<{ name: string; x: number; color: string; requirePoint: boolean }> = []
+  for (let k = 1; k <= maxOrder; k++) {
+    candidates.push({
+      name: '',
+      x: baseFreq * k,
+      color: harmonicMarkLineColor(k),
+      requirePoint: k !== 1,
+    })
+  }
 
   return candidates
     .filter((item) => item.x > 0 && item.x <= xMax)
@@ -295,7 +332,7 @@ const freqOption = computed<EChartsOption>(() => {
       borderColor: 'rgba(50, 50, 50, 0.9)',
       textStyle: { color: '#fff' },
 
-      confine: false,
+      confine: true,
       position: function (pos: any, _params: any, _el: any, _elRect: any, size: any) {
         const [mouseX, mouseY] = pos as [number, number]
         const [contentWidth, contentHeight] = size.contentSize as [number, number]
@@ -328,28 +365,42 @@ const freqOption = computed<EChartsOption>(() => {
           )
         }
 
-        const candidatesRaw = [
-          { x0: mouseX + gap, y0: mouseY - contentHeight / 2 },
-          { x0: mouseX - contentWidth - gap, y0: mouseY - contentHeight / 2 },
-          { x0: mouseX - contentWidth / 2, y0: mouseY - contentHeight - gap },
-          { x0: mouseX - contentWidth / 2, y0: mouseY + gap },
-        ]
-        const candidates = candidatesRaw.map((c) => {
-          const x = c.x0
-          const y = c.y0
-          const dx = x + contentWidth / 2 - mouseX
-          const dy = y + contentHeight / 2 - mouseY
-          return {
-            x,
-            y,
-            overlaps: overlapCount(x),
-            dist2: dx * dx + dy * dy,
-          }
-        })
+        const pad = 8
+        const vw = typeof size?.viewSize?.[0] === 'number' ? size.viewSize[0] : 0
+        const vh = typeof size?.viewSize?.[1] === 'number' ? size.viewSize[1] : 0
 
-        candidates.sort((a, b) => a.overlaps - b.overlaps || a.dist2 - b.dist2)
-        const best = candidates[0] ?? { x: mouseX + gap, y: mouseY - contentHeight / 2 }
-        return [best.x, best.y]
+        const clampTx = (t: number) => {
+          if (vw <= 0 || contentWidth <= 0) return t
+          const maxTx = Math.max(pad, vw - contentWidth - pad)
+          return Math.min(Math.max(t, pad), maxTx)
+        }
+        const overlapMouseX = (tx: number) => mouseX > tx && mouseX < tx + contentWidth
+
+        const txRightIdeal = mouseX + gap
+        const txLeftIdeal = mouseX - contentWidth - gap
+        const r = clampTx(txRightIdeal)
+        const l = clampTx(txLeftIdeal)
+
+        const mouseInLeftHalf = vw <= 0 || mouseX * 2 <= vw
+        let tx: number
+        if (mouseInLeftHalf) {
+          if (!overlapMouseX(r) && !overlapMouseX(l)) tx = overlapCount(r) <= overlapCount(l) ? r : l
+          else if (!overlapMouseX(r)) tx = r
+          else if (!overlapMouseX(l)) tx = l
+          else tx = overlapCount(r) <= overlapCount(l) ? r : l
+        } else {
+          if (!overlapMouseX(l) && !overlapMouseX(r)) tx = overlapCount(l) <= overlapCount(r) ? l : r
+          else if (!overlapMouseX(l)) tx = l
+          else if (!overlapMouseX(r)) tx = r
+          else tx = overlapCount(l) <= overlapCount(r) ? l : r
+        }
+
+        let ty = mouseY - contentHeight / 2
+        if (vh > 0 && contentHeight > 0) {
+          const maxY = Math.max(pad, vh - contentHeight - pad)
+          ty = Math.min(Math.max(ty, pad), maxY)
+        }
+        return [tx, ty]
       },
       formatter: function (params: any) {
         if (!params?.length || !params[0]?.value) return ''
@@ -364,28 +415,13 @@ const freqOption = computed<EChartsOption>(() => {
         const findExactPoint = (x: number) => pointMap.get(toFreqKey(x))
 
         let tooltipContent = `${formatFrequency(currentX)}Hz：${currentY.toFixed(10)}`
-
-        const doubleFreq = currentX * 2
-        if (doubleFreq >= minX && doubleFreq <= maxX) {
-          const doublePoint = findExactPoint(doubleFreq)
-          if (doublePoint) {
-            tooltipContent += `<br/>二倍频：${formatFrequency(doubleFreq)}Hz：${doublePoint[1].toFixed(10)}`
-          }
-        }
-
-        const tripleFreq = currentX * 3
-        if (tripleFreq >= minX && tripleFreq <= maxX) {
-          const triplePoint = findExactPoint(tripleFreq)
-          if (triplePoint) {
-            tooltipContent += `<br/>三倍频：${formatFrequency(tripleFreq)}Hz：${triplePoint[1].toFixed(10)}`
-          }
-        }
-
-        const quadrupleFreq = currentX * 4
-        if (quadrupleFreq >= minX && quadrupleFreq <= maxX) {
-          const quadruplePoint = findExactPoint(quadrupleFreq)
-          if (quadruplePoint) {
-            tooltipContent += `<br/>四倍频：${formatFrequency(quadrupleFreq)}Hz：${quadruplePoint[1].toFixed(10)}`
+        const maxOrder = clampHarmonicMaxOrder(freqHarmonicMaxOrderCommitted.value)
+        for (let mult = 2; mult <= maxOrder; mult++) {
+          const hf = currentX * mult
+          if (hf < minX || hf > maxX) continue
+          const pt = findExactPoint(hf)
+          if (pt) {
+            tooltipContent += `<br/>${harmonicOrderLabel(mult)}：${formatFrequency(hf)}Hz：${pt[1].toFixed(10)}`
           }
         }
 
@@ -485,6 +521,42 @@ const scheduleHarmonicMarkLines = (baseFreq: number) => {
     } catch { }
   })
 }
+
+const commitFreqHarmonicMaxOrder = () => {
+  clearFreqHarmonicDebounce()
+  const next = clampHarmonicMaxOrder(freqHarmonicMaxOrderInput.value)
+  freqHarmonicMaxOrderInput.value = next
+  const prev = freqHarmonicMaxOrderCommitted.value
+  freqHarmonicMaxOrderCommitted.value = next
+  if (prev === next) return
+  lastHarmonicBaseFreq = null
+  const base = pointerBaseFreq.value
+  if (base == null || !Number.isFinite(base)) return
+  const data = buildHarmonicMarkLineData(base)
+  try {
+    if (freqChartInstance.value) {
+      freqChartInstance.value.setOption(
+        { series: [{ id: 'freq-series', markLine: { data } }] } as any,
+        { notMerge: false, lazyUpdate: true },
+      )
+    }
+    freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', data)
+  } catch { }
+  lastHarmonicBaseFreq = base
+}
+
+const scheduleFreqHarmonicDebouncedCommit = () => {
+  clearFreqHarmonicDebounce()
+  freqHarmonicDebounceTimer = setTimeout(() => {
+    freqHarmonicDebounceTimer = null
+    commitFreqHarmonicMaxOrder()
+  }, FREQ_HARMONIC_DEBOUNCE_MS)
+}
+
+watch(freqHarmonicMaxOrderInput, (_v, oldVal) => {
+  if (oldVal === undefined) return
+  scheduleFreqHarmonicDebouncedCommit()
+})
 
 const onUpdateAxisPointer = (params: any) => {
   const axesInfo = Array.isArray(params?.axesInfo) ? params.axesInfo : []
@@ -688,6 +760,8 @@ const onFreqChartReady = (instance: echarts.ECharts) => {
 
 const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   console.log('[freq-pin] fullscreen chart ready')
+  clearFreqHarmonicDebounce()
+  freqHarmonicMaxOrderInput.value = freqHarmonicMaxOrderCommitted.value
   fullscreenFreqChartInstance.value = inst
   if (fullscreenFreqPointerCleanup) {
     fullscreenFreqPointerCleanup()
@@ -979,6 +1053,7 @@ onUnmounted(() => {
     fullscreenFreqZrClickCleanup()
     fullscreenFreqZrClickCleanup = null
   }
+  clearFreqHarmonicDebounce()
   disposeInlineRangeControls()
   disposeFullscreenRangeControls()
 })
@@ -1277,8 +1352,8 @@ $vibration-axis-font-size: 12px;
   font-size: 0.8rem;
 }
 
-.freq-filter-inline .freq-filter-num {
-  width: 110px;
+.freq-fullscreen-top .freq-filter-num {
+  width: 90px;
 }
 
 .freq-filter-inline .freq-filter-sep {

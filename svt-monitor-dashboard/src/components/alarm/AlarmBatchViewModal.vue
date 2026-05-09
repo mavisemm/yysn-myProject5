@@ -1,12 +1,6 @@
 <template>
-  <el-dialog
-    v-model="visible"
-    :title="isWarningEvent ? '预警详情' : '报警详情'"
-    width="1100px"
-    height="90vh"
-    align-center
-    class="alarm-batch-view-dialog"
-    destroy-on-close>
+  <el-dialog v-model="visible" :title="isWarningEvent ? '预警详情' : '报警详情'" width="1100px" height="90vh" align-center
+    class="alarm-batch-view-dialog" destroy-on-close>
     <div class="voiceContainer">
       <div class="voiceContainerItem">
         <div class="panelTitle">
@@ -46,13 +40,8 @@
         <div class="panelTitle">操作</div>
         <div class="controlsBox">
           <div class="controlsRow">
-            <el-button
-              type="danger"
-              size="large"
-              :disabled="!currentEventId"
-              class="controlBtnLarge"
-              @click="onConfirmYes"
-            >
+            <el-button type="danger" size="large" :disabled="!currentEventId" class="controlBtnLarge"
+              @click="onConfirmYes">
               {{ isWarningEvent ? '确认预警' : '确认报警' }}
             </el-button>
             <el-button type="warning" size="large" :disabled="!currentEventId" class="controlBtnLarge"
@@ -78,7 +67,9 @@
             </el-select>
             <el-button text size="small" class="fullscreenBtn" @click="openFreqFullscreen">
               全屏显示
-              <el-icon><FullScreen /></el-icon>
+              <el-icon>
+                <FullScreen />
+              </el-icon>
             </el-button>
           </div>
         </div>
@@ -98,7 +89,9 @@
             </el-select>
             <el-button text size="small" class="fullscreenBtn" @click="openTimeFullscreen">
               全屏显示
-              <el-icon><FullScreen /></el-icon>
+              <el-icon>
+                <FullScreen />
+              </el-icon>
             </el-button>
           </div>
         </div>
@@ -191,15 +184,9 @@
       </div>
     </el-dialog>
 
-    <el-dialog
-      v-model="freqFullscreenVisible"
-      fullscreen
-      append-to-body
-      destroy-on-close
-      class="alarm-vibration-fullscreen-dialog"
-      modal-class="alarm-vibration-fullscreen-modal"
-      @opened="onFreqFullscreenOpened"
-      @closed="onFreqFullscreenClosed">
+    <el-dialog v-model="freqFullscreenVisible" fullscreen append-to-body destroy-on-close
+      class="alarm-vibration-fullscreen-dialog" modal-class="alarm-vibration-fullscreen-modal"
+      @opened="onFreqFullscreenOpened" @closed="onFreqFullscreenClosed">
       <template #header>
         <div class="vibrationFullscreenHeader">
           <span>振动频域图</span>
@@ -222,6 +209,12 @@
           <el-button size="small" type="primary" @click="confirmFullscreenRange">确认</el-button>
           <el-button size="small" @click="resetFullscreenRange">重置</el-button>
           <span class="freq-filter-divider" aria-hidden="true" />
+          <span class="freq-filter-label">倍频最高阶：</span>
+          <el-input-number v-model="freqHarmonicMaxOrderInput" :min="HARMONIC_ORDER_MIN" :max="HARMONIC_ORDER_MAX"
+            :precision="0" :step="1" size="small" controls-position="right"
+            class="freq-filter-num freq-harmonic-order-input" @blur="commitFreqHarmonicMaxOrder" />
+          <el-button size="small" type="primary" @click="commitFreqHarmonicMaxOrder">确认</el-button>
+          <span class="freq-filter-divider" aria-hidden="true" />
           <span class="freq-filter-label">打标功能：</span>
           <el-button size="small" :disabled="!currentPinnedPointId" @click="clearCurrentPinnedPoint">
             清除当前标记
@@ -234,15 +227,9 @@
       <div ref="freqFullscreenChartRef" class="vibrationFullscreenChart" />
     </el-dialog>
 
-    <el-dialog
-      v-model="timeFullscreenVisible"
-      fullscreen
-      append-to-body
-      destroy-on-close
-      class="alarm-vibration-fullscreen-dialog"
-      modal-class="alarm-vibration-fullscreen-modal"
-      @opened="onTimeFullscreenOpened"
-      @closed="onTimeFullscreenClosed">
+    <el-dialog v-model="timeFullscreenVisible" fullscreen append-to-body destroy-on-close
+      class="alarm-vibration-fullscreen-dialog" modal-class="alarm-vibration-fullscreen-modal"
+      @opened="onTimeFullscreenOpened" @closed="onTimeFullscreenClosed">
       <template #header>
         <div class="vibrationFullscreenHeader">
           <span>振动时域图</span>
@@ -327,6 +314,20 @@ const timeFullscreenVisible = ref(false)
 const pointerBaseFreq = ref<number | null>(null)
 let markLineRafId: number | null = null
 let lastHarmonicBaseFreq: number | null = null
+const HARMONIC_ORDER_MIN = 1
+const HARMONIC_ORDER_MAX = 100
+const FREQ_HARMONIC_DEBOUNCE_MS = 400
+const freqHarmonicMaxOrderCommitted = ref(4)
+const freqHarmonicMaxOrderInput = ref(4)
+let freqHarmonicDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const clearFreqHarmonicDebounce = () => {
+  if (freqHarmonicDebounceTimer != null) {
+    clearTimeout(freqHarmonicDebounceTimer)
+    freqHarmonicDebounceTimer = null
+  }
+}
+
 const FREQ_FILTER_STEP = 1
 const FREQ_FILTER_PRECISION = 6
 const pinnedFreqPoints = ref<EchartsPersistentPoint[]>([])
@@ -369,6 +370,7 @@ const disposeCharts = () => {
     cancelAnimationFrame(markLineRafId)
     markLineRafId = null
   }
+  clearFreqHarmonicDebounce()
 }
 
 // y 轴刻度最多保留小数点后两位（并去掉无意义的尾随 0）
@@ -399,6 +401,20 @@ const formatFrequency = (v: number | string) => {
 
 const toFreqKey = (v: number) => Number(v).toFixed(6)
 
+const clampHarmonicMaxOrder = (raw: unknown) => {
+  const v = Math.round(Number(raw))
+  if (!Number.isFinite(v)) return 4
+  return Math.min(HARMONIC_ORDER_MAX, Math.max(HARMONIC_ORDER_MIN, v))
+}
+
+const harmonicOrderLabel = (order: number) => `${order}倍频`
+
+const harmonicMarkLineColor = (order: number) => {
+  if (order === 1) return '#7ecba1'
+  const hue = ((order - 2) * 37 + 210) % 360
+  return `hsl(${hue}, 68%, 58%)`
+}
+
 const buildHarmonicMarkLineData = (baseFreq: number) => {
   if (!Number.isFinite(baseFreq) || baseFreq <= 0) return []
   const chartData = getSortedFreqChartData()
@@ -406,12 +422,15 @@ const buildHarmonicMarkLineData = (baseFreq: number) => {
   const pointMap = new Map<string, [number, number]>()
   for (const item of chartData) pointMap.set(toFreqKey(item[0]), item)
   const hasExactPoint = (x: number) => pointMap.has(toFreqKey(x))
-  const candidates: Array<{ x: number; color: string; requirePoint: boolean }> = [
-    { x: baseFreq, color: '#7ecba1', requirePoint: false },
-    { x: baseFreq * 2, color: '#60a5fa', requirePoint: true },
-    { x: baseFreq * 3, color: '#f59e0b', requirePoint: true },
-    { x: baseFreq * 4, color: '#f472b6', requirePoint: true },
-  ]
+  const maxOrder = clampHarmonicMaxOrder(freqHarmonicMaxOrderCommitted.value)
+  const candidates: Array<{ x: number; color: string; requirePoint: boolean }> = []
+  for (let k = 1; k <= maxOrder; k++) {
+    candidates.push({
+      x: baseFreq * k,
+      color: harmonicMarkLineColor(k),
+      requirePoint: k !== 1,
+    })
+  }
   return candidates
     .filter((item) => item.x > 0 && item.x <= xMax)
     .filter((item) => (item.requirePoint ? hasExactPoint(item.x) : true))
@@ -439,6 +458,47 @@ const buildVibrationFreqOption = (theme: 'inline' | 'fullscreen' = 'inline') => 
   return {
     tooltip: {
       trigger: 'axis',
+      confine: true,
+      position: (pos: number[], _params: unknown, _el: unknown, _rect: unknown, size: any) => {
+        const [mouseX, mouseY] = pos as [number, number]
+        const [cw, ch] = size.contentSize as [number, number]
+        const gap = 18
+        const pad = 8
+        const vw = typeof size?.viewSize?.[0] === 'number' ? size.viewSize[0] : 0
+        const vh = typeof size?.viewSize?.[1] === 'number' ? size.viewSize[1] : 0
+
+        const clampTx = (t: number) => {
+          if (vw <= 0 || cw <= 0) return t
+          const maxTx = Math.max(pad, vw - cw - pad)
+          return Math.min(Math.max(t, pad), maxTx)
+        }
+        /** tooltip 横向是否盖住指针竖线 */
+        const overlapMouseX = (tx: number) => mouseX > tx && mouseX < tx + cw
+
+        const txRightIdeal = mouseX + gap
+        const txLeftIdeal = mouseX - cw - gap
+        const r = clampTx(txRightIdeal)
+        const l = clampTx(txLeftIdeal)
+
+        const mouseInLeftHalf = vw <= 0 || mouseX * 2 <= vw
+        let tx: number
+        if (mouseInLeftHalf) {
+          if (!overlapMouseX(r)) tx = r
+          else if (!overlapMouseX(l)) tx = l
+          else tx = r
+        } else {
+          if (!overlapMouseX(l)) tx = l
+          else if (!overlapMouseX(r)) tx = r
+          else tx = l
+        }
+
+        let ty = mouseY - ch / 2
+        if (vh > 0 && ch > 0) {
+          const maxY = Math.max(pad, vh - ch - pad)
+          ty = Math.min(Math.max(ty, pad), maxY)
+        }
+        return [tx, ty]
+      },
       formatter: (params: any) => {
         if (!params?.length || !params[0]?.value) return ''
         const value = params[0].value
@@ -451,9 +511,10 @@ const buildVibrationFreqOption = (theme: 'inline' | 'fullscreen' = 'inline') => 
           const p = pointMap.get(toFreqKey(fx))
           if (p) text += `<br/>${label}：${formatFrequency(fx)}Hz：${p[1].toFixed(10)}`
         }
-        append(2, '二倍频')
-        append(3, '三倍频')
-        append(4, '四倍频')
+        const maxOrder = clampHarmonicMaxOrder(freqHarmonicMaxOrderCommitted.value)
+        for (let mult = 2; mult <= maxOrder; mult++) {
+          append(mult, harmonicOrderLabel(mult))
+        }
         return text
       },
     },
@@ -835,6 +896,33 @@ const applyHarmonicMarkLines = (baseFreq: number) => {
   try { vibrationFreqFullscreenChart.value?.setOption(patch, { notMerge: false, lazyUpdate: true }) } catch { }
 }
 
+const commitFreqHarmonicMaxOrder = () => {
+  clearFreqHarmonicDebounce()
+  const next = clampHarmonicMaxOrder(freqHarmonicMaxOrderInput.value)
+  freqHarmonicMaxOrderInput.value = next
+  const prev = freqHarmonicMaxOrderCommitted.value
+  freqHarmonicMaxOrderCommitted.value = next
+  if (prev === next) return
+  lastHarmonicBaseFreq = null
+  if (pointerBaseFreq.value != null && Number.isFinite(pointerBaseFreq.value)) {
+    applyHarmonicMarkLines(pointerBaseFreq.value)
+    lastHarmonicBaseFreq = pointerBaseFreq.value
+  }
+}
+
+const scheduleFreqHarmonicDebouncedCommit = () => {
+  clearFreqHarmonicDebounce()
+  freqHarmonicDebounceTimer = setTimeout(() => {
+    freqHarmonicDebounceTimer = null
+    commitFreqHarmonicMaxOrder()
+  }, FREQ_HARMONIC_DEBOUNCE_MS)
+}
+
+watch(freqHarmonicMaxOrderInput, (_v, oldVal) => {
+  if (oldVal === undefined) return
+  scheduleFreqHarmonicDebouncedCommit()
+})
+
 const scheduleHarmonicMarkLines = (baseFreq: number) => {
   if (markLineRafId != null) cancelAnimationFrame(markLineRafId)
   markLineRafId = requestAnimationFrame(() => {
@@ -957,6 +1045,8 @@ const renderVibrationCharts = async () => {
 }
 
 const onFreqFullscreenOpened = async () => {
+  clearFreqHarmonicDebounce()
+  freqHarmonicMaxOrderInput.value = freqHarmonicMaxOrderCommitted.value
   await nextTick()
   if (!freqFullscreenChartRef.value) return
   try { vibrationFreqFullscreenChart.value?.dispose() } catch { }
@@ -1735,8 +1825,8 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
-.freq-filter-num {
-  width: 110px;
+.freq-fullscreen-top .freq-filter-num {
+  width: 90px;
 }
 
 .freq-filter-sep {
