@@ -553,9 +553,6 @@ const waterfallData = ref<{
   freqSpeedData: [],
 })
 let waterfallReloadTimer: ReturnType<typeof setTimeout> | null = null
-const isMobileViewport =
-  typeof window !== 'undefined' ? window.matchMedia('(max-width: 800px)').matches : false
-const mobileLegendExtraHeight = 82
 
 const receiverIdFromParams = computed(() => {
   const rid = route.params.receiverId
@@ -768,6 +765,10 @@ const waterfallOption = computed<EChartsOption>(() => {
     tooltip: {
       show: true,
       trigger: 'item',
+      /** 指针离开图表后仍保留一段时间，避免轻微抖动即消失 */
+      hideDelay: 600,
+      /** 允许鼠标移入 tooltip 本身，便于读完内容 */
+      enterable: true,
       className: 'echarts-tooltip',
       backgroundColor: 'rgba(50, 50, 50, 0.9)',
       borderColor: 'rgba(50, 50, 50, 0.9)',
@@ -788,10 +789,11 @@ const waterfallOption = computed<EChartsOption>(() => {
         ].join('<br/>')
       },
     },
+    /** 与全屏 3D 图共用同一套盒体与视角参数（内嵌不再单独走移动端 grid/图例布局） */
     grid3D: {
-      left: isMobileViewport ? '-2%' : '-10%',
-      top: isMobileViewport ? '-8%' : '-2%',
-      bottom: isMobileViewport ? mobileLegendExtraHeight : 0,
+      left: '-10%',
+      top: '-2%',
+      bottom: 0,
       viewControl: {
         projection: 'orthographic',
         alpha: 15,
@@ -871,13 +873,12 @@ const waterfallOption = computed<EChartsOption>(() => {
       pageTextStyle: { color: c },
       pageIconColor: '#ffffff',
       pageIconInactiveColor: 'rgba(255,255,255,0.5)',
-      left: isMobileViewport ? 0 : undefined,
-      right: isMobileViewport ? 0 : 10,
-      top: isMobileViewport ? 'bottom' : 'middle',
-      orient: isMobileViewport ? 'horizontal' : 'vertical',
+      right: 10,
+      top: 'middle',
+      orient: 'vertical',
       type: 'scroll',
-      itemWidth: isMobileViewport ? 10 : 14,
-      itemHeight: isMobileViewport ? 7 : 10,
+      itemWidth: 14,
+      itemHeight: 10,
     },
     zAxis3D: {
       name: '速\n度\n有\n效\n值\n(mm/s)',
