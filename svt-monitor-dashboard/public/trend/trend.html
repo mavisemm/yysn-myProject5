@@ -132,54 +132,71 @@
             color: #475569;
         }
 
-        .chart-datazoom .range-wrap {
+        /* ECharts 风格 slider dataZoom：轨道 + 可拖窗口 */
+        .dz-echarts-track {
             position: relative;
-            height: 20px;
+            height: 22px;
+            margin: 4px 0 2px;
+            border-radius: 4px;
+            background: #e5e7eb;
+            border: 1px solid #d1d5db;
+            cursor: pointer;
+            user-select: none;
+            touch-action: none;
         }
 
-        .chart-datazoom input[type="range"] {
+        .dz-echarts-window {
             position: absolute;
-            left: 0;
             top: 0;
-            width: 100%;
-            pointer-events: none;
-            margin: 0;
-            appearance: none;
-            -webkit-appearance: none;
-            background: transparent;
+            height: 100%;
+            min-width: 8px;
+            box-sizing: border-box;
+            background: rgba(59, 130, 246, 0.18);
+            border: 1px solid rgba(37, 99, 235, 0.85);
+            border-radius: 3px;
+            cursor: grab;
         }
 
-        .chart-datazoom input[type="range"]::-webkit-slider-thumb {
-            pointer-events: auto;
-            -webkit-appearance: none;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #3b82f6;
-            border: 1px solid #1d4ed8;
-            cursor: pointer;
+        .dz-echarts-window.is-dragging {
+            cursor: grabbing;
         }
 
-        .chart-datazoom input[type="range"]::-webkit-slider-runnable-track {
-            height: 4px;
-            border-radius: 2px;
-            background: #cbd5e1;
+        .dz-echarts-handle {
+            position: absolute;
+            top: 0;
+            width: 8px;
+            height: 100%;
+            margin-left: -4px;
+            z-index: 2;
+            cursor: ew-resize;
+            background: rgba(37, 99, 235, 0.35);
+            border-radius: 2px 0 0 2px;
         }
 
-        .chart-datazoom input[type="range"]::-moz-range-thumb {
-            pointer-events: auto;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #3b82f6;
-            border: 1px solid #1d4ed8;
-            cursor: pointer;
+        .dz-echarts-handle-left {
+            left: 0;
         }
 
-        .chart-datazoom input[type="range"]::-moz-range-track {
-            height: 4px;
-            border-radius: 2px;
-            background: #cbd5e1;
+        .dz-echarts-handle-right {
+            left: auto;
+            right: 0;
+            margin-left: 0;
+            margin-right: -4px;
+            border-radius: 0 2px 2px 0;
+        }
+
+        .dz-echarts-handle:hover {
+            background: rgba(37, 99, 235, 0.55);
+        }
+
+        .dz-echarts-body {
+            display: block;
+            position: absolute;
+            left: 8px;
+            right: 8px;
+            top: 0;
+            height: 100%;
+            cursor: grab;
         }
         
         .trend-indicator {
@@ -1962,6 +1979,36 @@
             }
         }
 
+        function pixelToDataZoomIndex(clientX, trackEl, maxIndex) {
+            const rect = trackEl.getBoundingClientRect();
+            if (rect.width <= 0) {
+                return 0;
+            }
+            const ratio = (clientX - rect.left) / rect.width;
+            const clamped = Math.max(0, Math.min(1, ratio));
+            return Math.round(clamped * maxIndex);
+        }
+
+        function renderDataZoomWindow(state) {
+            if (!state.windowEl || !state.trackEl) {
+                return;
+            }
+            const maxIndex = state.maxIndex;
+            const i0 = state.i0;
+            const i1 = state.i1;
+            if (maxIndex <= 0) {
+                state.windowEl.style.left = '0%';
+                state.windowEl.style.width = '100%';
+                return;
+            }
+            const leftPct = (i0 / maxIndex) * 100;
+            let widthPct = ((i1 - i0) / maxIndex) * 100;
+            const minPct = (1 / maxIndex) * 100;
+            widthPct = Math.max(widthPct, minPct);
+            state.windowEl.style.left = `${leftPct}%`;
+            state.windowEl.style.width = `${Math.min(widthPct, 100 - leftPct)}%`;
+        }
+
         function applyDataZoomFromSlider(chart, canvasId) {
             const state = dataZoomStateMap[canvasId];
             const xScaleId = getXAxisScaleId(chart);
@@ -1974,15 +2021,17 @@
             }
 
             const maxIndex = labels.length - 1;
-            let start = Math.max(0, Math.min(parseInt(state.startInput.value, 10), maxIndex));
-            let end = Math.max(0, Math.min(parseInt(state.endInput.value, 10), maxIndex));
+            state.maxIndex = maxIndex;
+            let start = Math.max(0, Math.min(parseInt(state.i0, 10), maxIndex));
+            let end = Math.max(0, Math.min(parseInt(state.i1, 10), maxIndex));
             if (start > end) {
-                const mid = start;
+                const t = start;
                 start = end;
-                end = mid;
-                state.startInput.value = String(start);
-                state.endInput.value = String(end);
+                end = t;
             }
+            state.i0 = start;
+            state.i1 = end;
+            renderDataZoomWindow(state);
 
             chart.options.scales[xScaleId].min = start;
             chart.options.scales[xScaleId].max = end;
@@ -2004,7 +2053,6 @@
             const scaleConfig = chart.options.scales[xScaleId] || {};
             const startRaw = scaleConfig.min !== undefined ? scaleConfig.min : 0;
             const endRaw = scaleConfig.max !== undefined ? scaleConfig.max : maxIndex;
-            // 缩放插件会给出小数边界；显示区间时按可见范围取整，避免 endLabel 偏移
             let start = Math.ceil(Number(startRaw));
             let end = Math.floor(Number(endRaw));
             if (!Number.isFinite(start)) {
@@ -2020,17 +2068,239 @@
                 end = Math.max(0, Math.min(Math.ceil(Number(endRaw)), maxIndex));
             }
 
-            state.startInput.max = String(maxIndex);
-            state.endInput.max = String(maxIndex);
-            state.startInput.value = String(start);
-            state.endInput.value = String(end);
-            updateDataZoomInfo(
-                chart,
-                state,
-                labels,
-                Number(state.startInput.value),
-                Number(state.endInput.value)
-            );
+            state.maxIndex = maxIndex;
+            state.i0 = start;
+            state.i1 = end;
+            renderDataZoomWindow(state);
+            updateDataZoomInfo(chart, state, labels, start, end);
+        }
+
+        function setupDataZoomSliderInteractions(canvasId) {
+            const state = dataZoomStateMap[canvasId];
+            if (!state || state._dzInteractionsInstalled || !state.trackEl || !state.windowEl) {
+                return;
+            }
+            state._dzInteractionsInstalled = true;
+
+            const handleLeft = state.windowEl.querySelector('.dz-echarts-handle-left');
+            const handleRight = state.windowEl.querySelector('.dz-echarts-handle-right');
+            const bodyEl = state.windowEl.querySelector('.dz-echarts-body');
+
+            function getChartOrNull() {
+                return state.getChart ? state.getChart() : null;
+            }
+
+            function clientXFromEvent(ev) {
+                if (ev.touches && ev.touches.length) {
+                    return ev.touches[0].clientX;
+                }
+                if (ev.changedTouches && ev.changedTouches.length) {
+                    return ev.changedTouches[0].clientX;
+                }
+                return ev.clientX;
+            }
+
+            function commitIndices(start, end) {
+                const chart = getChartOrNull();
+                if (!chart) {
+                    return;
+                }
+                const labels = chart.data && chart.data.labels ? chart.data.labels : [];
+                const maxIndex = Math.max(0, labels.length - 1);
+                let s = Math.max(0, Math.min(parseInt(start, 10), maxIndex));
+                let e = Math.max(0, Math.min(parseInt(end, 10), maxIndex));
+                if (s > e) {
+                    const t = s;
+                    s = e;
+                    e = t;
+                }
+                state.maxIndex = maxIndex;
+                state.i0 = s;
+                state.i1 = e;
+                applyDataZoomFromSlider(chart, canvasId);
+            }
+
+            let drag = null;
+
+            function onMove(ev) {
+                if (!drag) {
+                    return;
+                }
+                if (ev.type === 'touchmove') {
+                    ev.preventDefault();
+                }
+                const cx = clientXFromEvent(ev);
+                const chart = getChartOrNull();
+                if (!chart || !state.trackEl) {
+                    return;
+                }
+                const labels = chart.data && chart.data.labels ? chart.data.labels : [];
+                const maxIndex = Math.max(0, labels.length - 1);
+                const idx = pixelToDataZoomIndex(cx, state.trackEl, maxIndex);
+
+                if (drag.type === 'left') {
+                    let newStart = idx;
+                    const end = drag.fixEnd;
+                    if (newStart >= end) {
+                        newStart = Math.max(0, end - 1);
+                    }
+                    commitIndices(newStart, end);
+                } else if (drag.type === 'right') {
+                    let newEnd = idx;
+                    const start = drag.fixStart;
+                    if (newEnd <= start) {
+                        newEnd = Math.min(maxIndex, start + 1);
+                    }
+                    commitIndices(start, newEnd);
+                } else if (drag.type === 'pan') {
+                    const rect = state.trackEl.getBoundingClientRect();
+                    const deltaIdx = rect.width > 0 ? Math.round(((cx - drag.panStartX) / rect.width) * maxIndex) : 0;
+                    const span = drag.span;
+                    let s = drag.origStart + deltaIdx;
+                    let e = s + span;
+                    if (s < 0) {
+                        s = 0;
+                        e = Math.min(maxIndex, span);
+                    }
+                    if (e > maxIndex) {
+                        e = maxIndex;
+                        s = Math.max(0, maxIndex - span);
+                    }
+                    commitIndices(s, e);
+                }
+            }
+
+            function onUp() {
+                if (drag) {
+                    state.windowEl.classList.remove('is-dragging');
+                }
+                drag = null;
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('touchend', onUp);
+            }
+
+            function startDrag(type, ev, clientX) {
+                if (ev.preventDefault) {
+                    ev.preventDefault();
+                }
+                const cx = clientX !== undefined ? clientX : ev.clientX;
+                if (type === 'left') {
+                    drag = {
+                        type: 'left',
+                        fixEnd: state.i1
+                    };
+                } else if (type === 'right') {
+                    drag = {
+                        type: 'right',
+                        fixStart: state.i0
+                    };
+                } else {
+                    drag = {
+                        type: 'pan',
+                        panStartX: cx,
+                        origStart: state.i0,
+                        span: Math.max(1, state.i1 - state.i0)
+                    };
+                }
+                state.windowEl.classList.add('is-dragging');
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+                document.addEventListener('touchmove', onMove, { passive: false });
+                document.addEventListener('touchend', onUp);
+            }
+
+            if (handleLeft) {
+                handleLeft.addEventListener('mousedown', function(e) {
+                    e.stopPropagation();
+                    startDrag('left', e);
+                });
+                handleLeft.addEventListener('touchstart', function(e) {
+                    if (e.touches.length !== 1) {
+                        return;
+                    }
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const te = e.touches[0];
+                    startDrag('left', e, te.clientX);
+                }, { passive: false });
+            }
+
+            if (handleRight) {
+                handleRight.addEventListener('mousedown', function(e) {
+                    e.stopPropagation();
+                    startDrag('right', e);
+                });
+                handleRight.addEventListener('touchstart', function(e) {
+                    if (e.touches.length !== 1) {
+                        return;
+                    }
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const te = e.touches[0];
+                    startDrag('right', e, te.clientX);
+                }, { passive: false });
+            }
+
+            function onBodyDown(e) {
+                if (e.target === handleLeft || e.target === handleRight) {
+                    return;
+                }
+                e.stopPropagation();
+                startDrag('pan', e);
+            }
+
+            if (bodyEl) {
+                bodyEl.addEventListener('mousedown', onBodyDown);
+                bodyEl.addEventListener('touchstart', function(e) {
+                    if (e.touches.length !== 1) {
+                        return;
+                    }
+                    const te = e.touches[0];
+                    if (e.target === handleLeft || e.target === handleRight) {
+                        return;
+                    }
+                    e.stopPropagation();
+                    e.preventDefault();
+                    startDrag('pan', e, te.clientX);
+                }, { passive: false });
+            }
+
+            state.trackEl.addEventListener('mousedown', function(e) {
+                if (e.target !== state.trackEl) {
+                    return;
+                }
+                const chart = getChartOrNull();
+                if (!chart) {
+                    return;
+                }
+                const labels = chart.data && chart.data.labels ? chart.data.labels : [];
+                const maxIndex = Math.max(0, labels.length - 1);
+                const clickIdx = pixelToDataZoomIndex(e.clientX, state.trackEl, maxIndex);
+                let span = state.i1 - state.i0;
+                if (span < 1) {
+                    span = 1;
+                }
+                let newStart = clickIdx - Math.floor(span / 2);
+                let newEnd = newStart + span;
+                if (newStart < 0) {
+                    newStart = 0;
+                    newEnd = Math.min(maxIndex, newStart + span);
+                }
+                if (newEnd > maxIndex) {
+                    newEnd = maxIndex;
+                    newStart = Math.max(0, newEnd - span);
+                }
+                commitIndices(newStart, newEnd);
+            });
+
+            state.trackEl.addEventListener('dblclick', function() {
+                const chart = getChartOrNull();
+                if (chart) {
+                    resetChartViewport(chart, canvasId);
+                }
+            });
         }
 
         function bindDataZoomSlider(chart, canvasId) {
@@ -2048,17 +2318,26 @@
             }
 
             let state = dataZoomStateMap[canvasId];
+            if (state && state.startInput && !state.trackEl) {
+                state.control.remove();
+                delete dataZoomStateMap[canvasId];
+                state = null;
+            }
+
             if (!state) {
                 const control = document.createElement('div');
                 control.className = 'chart-datazoom';
                 control.innerHTML = `
                     <div class="chart-datazoom-header">
-                        <span>dataZoom (横向拖拽)</span>
+                        <span>区域缩放（仿 ECharts · 拖框平移 / 拉两边 / 点轨道跳转）</span>
                         <button type="button" class="btn btn-sm btn-outline-secondary dz-reset-btn">重置</button>
                     </div>
-                    <div class="range-wrap">
-                        <input type="range" class="dz-start" min="0" value="0" step="1">
-                        <input type="range" class="dz-end" min="0" value="0" step="1">
+                    <div class="dz-echarts-track" title="单击轨道空白：视野居中到此处 · 双击轨道：重置缩放">
+                        <div class="dz-echarts-window">
+                            <span class="dz-echarts-handle dz-echarts-handle-left" title="调整起点"></span>
+                            <span class="dz-echarts-body" title="拖动平移"></span>
+                            <span class="dz-echarts-handle dz-echarts-handle-right" title="调整终点"></span>
+                        </div>
                     </div>
                     <div class="mt-1 text-muted dz-info"></div>
                 `;
@@ -2066,10 +2345,13 @@
 
                 state = {
                     control,
-                    startInput: control.querySelector('.dz-start'),
-                    endInput: control.querySelector('.dz-end'),
+                    trackEl: control.querySelector('.dz-echarts-track'),
+                    windowEl: control.querySelector('.dz-echarts-window'),
                     infoEl: control.querySelector('.dz-info'),
-                    getChart: null
+                    getChart: null,
+                    maxIndex: 0,
+                    i0: 0,
+                    i1: 0
                 };
                 dataZoomStateMap[canvasId] = state;
 
@@ -2087,12 +2369,6 @@
                 canvas.addEventListener('touchend', syncFromCanvasEvent);
                 canvas.addEventListener('mouseleave', syncFromCanvasEvent);
 
-                state.startInput.addEventListener('input', function() {
-                    applyDataZoomFromSlider(chart, canvasId);
-                });
-                state.endInput.addEventListener('input', function() {
-                    applyDataZoomFromSlider(chart, canvasId);
-                });
                 control.querySelector('.dz-reset-btn').addEventListener('click', function() {
                     const activeChart = state.getChart ? state.getChart() : chart;
                     if (!activeChart) {
@@ -2104,16 +2380,12 @@
                     }
                     resetChartViewport(activeChart, canvasId);
                 });
+
+                setupDataZoomSliderInteractions(canvasId);
             }
 
             state.getChart = () => chart;
             syncSliderFromChart(chart, canvasId);
-            state.startInput.oninput = function() {
-                applyDataZoomFromSlider(chart, canvasId);
-            };
-            state.endInput.oninput = function() {
-                applyDataZoomFromSlider(chart, canvasId);
-            };
         }
 
         const chartZoomPluginOptions = {
@@ -2269,7 +2541,6 @@
                     }
                 }
             });
-            bindDataZoomSlider(currentOverallTrendChart, 'overallTrendChart');
         }
         
         // 创建趋势分布图表
@@ -2419,7 +2690,6 @@
                     }
                 }
             });
-            bindDataZoomSlider(currentIntervalChart, 'intervalTrendChart');
         }
         
         // 绘制听筒曲线
@@ -2617,6 +2887,7 @@
                     }
                 }
             });
+            // 仅听筒曲线图挂载底部区域缩放条（其它图表不走 bindDataZoomSlider）
             bindDataZoomSlider(currentReceiverChart, 'receiverCurveChart');
             
             // 存储当前接收器数据，供点击事件使用
@@ -2749,7 +3020,6 @@
                     }
                 }
             });
-            bindDataZoomSlider(currentStrengthChart, 'strengthTrendChart');
             
             // 创建趋势强度变化图
             const trendCtx = document.getElementById('trendStrengthChart').getContext('2d');
@@ -2827,7 +3097,6 @@
                     }
                 }
             });
-            bindDataZoomSlider(currentTrendStrengthChart, 'trendStrengthChart');
             
             // 更新信息面板
             document.getElementById('strengthTrendInfo').innerHTML = 
@@ -2958,7 +3227,6 @@
                     }
                 }
             });
-            bindDataZoomSlider(currentGroupChart, 'groupTrendChart');
         }
         
         // 应用间隔筛选

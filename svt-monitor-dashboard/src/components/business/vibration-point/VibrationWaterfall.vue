@@ -28,7 +28,8 @@
     </div>
     <div class="chart-container">
       <CommonEcharts ref="waterfallChartRef" :option="waterfallOption" :enable-data-zoom="false" :not-merge="true"
-        @fullscreen-chart-ready="onWaterfallFullscreenChartReady" use-gl enable-fullscreen fullscreen-title="频域瀑布图"
+        @chart-ready="onWaterfallChartReady" @fullscreen-chart-ready="onWaterfallFullscreenChartReady"
+        @fullscreen-closed="onWaterfallFullscreenClosed" use-gl enable-fullscreen fullscreen-title="频域瀑布图"
         fullscreen-background="#142060">
         <template #fullscreen-body-top>
           <div class="waterfall-fullscreen-filters">
@@ -68,6 +69,7 @@
 import { ref, onUnmounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { EChartsOption } from 'echarts'
+import type { ECharts } from 'echarts'
 import { getRollingWeekDateRange } from '@/utils/datetime'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
 import { CommonEcharts } from '@/components/common/chart'
@@ -77,6 +79,168 @@ import { useDeviceTreeStore } from '@/stores/deviceTree'
 
 const waterfallChartRef = ref<InstanceType<typeof CommonEcharts>>()
 const route = useRoute()
+
+/** 悬停频率时沿时间轴连成的 3D 折线（独立 series，用局部 setOption 更新，避免整图重配影响视角） */
+const FREQ_SLICE_SERIES_ID = 'waterfall-freq-slice'
+const freqSliceHandlers = new WeakMap<
+  ECharts,
+  { onPointer: (params: unknown) => void; onGlobalOut: () => void }
+>()
+const lastFreqSliceIndex = new WeakMap<ECharts, number>()
+
+const nearestFreqIndex = (freqs: number[], x: number) => {
+  let best = 0
+  let bestD = Infinity
+  for (let i = 0; i < freqs.length; i++) {
+    const fi = Number(freqs[i])
+    if (!Number.isFinite(fi)) continue
+    const d = Math.abs(fi - x)
+    if (d < bestD) {
+      bestD = d
+      best = i
+    }
+  }
+  return best
+}
+
+/**
+ * echarts-gl：Grid3DView 里 `setFromViewControlModel(model, 0)` 的第二个参数 0 会变成 `{}`，
+ * OrbitControl 默认 `baseOrthoSize = 1`，即内部真实 orthographic 尺寸 = option.viewControl.orthographicSize + 1。
+ * 若把 `getOrthographicSize()` 直接写回 option，每次 setOption 都会 +1，表现为「动一下鼠标缩放就挪一点」。
+ */
+const GRID3D_VIEWCONTROL_ORTHO_BASE = 1
+
+/**
+ * 正交投影下滚轮缩放改的是 OrbitControl 内部尺寸，但 grid3DChangeCamera 写回 option 时往往不带 orthographicSize；
+ * setOption 触发 render 会按过期 option 拉回相机。这里只从内部视图读「当前相机」写回 viewControl，且正交时对 orthographicSize 做 -base 换算。
+ */
+const readLiveGrid3DViewControlPatch = (chart: ECharts): Record<string, unknown> | undefined => {
+  try {
+    const views = (chart as unknown as { _componentsViews?: unknown[] })._componentsViews
+    if (!Array.isArray(views)) return undefined
+    for (const raw of views) {
+      if (!raw || typeof raw !== 'object') continue
+      const v = raw as {
+        type?: string
+        _control?: {
+          _projection?: string
+          getAlpha: () => number
+          getBeta: () => number
+          getDistance: () => number
+          getCenter: () => number[]
+          getOrthographicSize: () => number
+        }
+      }
+      if (v.type !== 'grid3D' || !v._control) continue
+      const c = v._control
+      const projection = c._projection
+      const patch: Record<string, unknown> = {
+        alpha: c.getAlpha(),
+        beta: c.getBeta(),
+        distance: c.getDistance(),
+        center: [...c.getCenter()],
+      }
+      if (projection) patch.projection = projection
+      if (projection === 'orthographic') {
+        const internal = c.getOrthographicSize()
+        patch.orthographicSize = internal - GRID3D_VIEWCONTROL_ORTHO_BASE
+      }
+      return patch
+    }
+  } catch {
+    return undefined
+  }
+  return undefined
+}
+
+const patchWaterfallFreqSliceSeries = (chart: ECharts, data: [number, number, number][]) => {
+  if (typeof chart.isDisposed === 'function' && chart.isDisposed()) return
+  const viewControl = readLiveGrid3DViewControlPatch(chart)
+  const patch = {
+    series: [{ id: FREQ_SLICE_SERIES_ID, data }],
+    ...(viewControl ? { grid3D: { viewControl } } : {}),
+  } as EChartsOption
+  try {
+    chart.setOption(patch, { notMerge: false, lazyUpdate: true })
+  } catch {
+    // ignore
+  }
+}
+
+const clearWaterfallFreqSlice = (chart: ECharts) => {
+  lastFreqSliceIndex.delete(chart)
+  patchWaterfallFreqSliceSeries(chart, [])
+}
+
+const updateWaterfallFreqSlice = (chart: ECharts) => {
+  const { frequencies, speedMatrix } = filteredWaterfallDisplay.value
+  if (!frequencies.length || !speedMatrix.length) {
+    clearWaterfallFreqSlice(chart)
+    return
+  }
+  const idx = lastFreqSliceIndex.get(chart)
+  if (idx === undefined) return
+  const f = frequencies[idx]
+  if (f === undefined) {
+    clearWaterfallFreqSlice(chart)
+    return
+  }
+  const data: [number, number, number][] = []
+  for (let t = 0; t < speedMatrix.length; t++) {
+    const row = speedMatrix[t]
+    data.push([Number(f), t, Number(row?.[idx] ?? 0)])
+  }
+  patchWaterfallFreqSliceSeries(chart, data)
+}
+
+const detachWaterfallFreqSliceHandlers = (chart: ECharts) => {
+  const h = freqSliceHandlers.get(chart)
+  if (!h) return
+  chart.off('mouseover', h.onPointer)
+  chart.off('mousemove', h.onPointer)
+  chart.off('globalout', h.onGlobalOut)
+  freqSliceHandlers.delete(chart)
+  lastFreqSliceIndex.delete(chart)
+}
+
+const attachWaterfallFreqSliceHandlers = (chart: ECharts) => {
+  if (freqSliceHandlers.has(chart)) return
+  const onPointer = (raw: unknown) => {
+    const params = raw as {
+      componentType?: string
+      seriesType?: string
+      seriesId?: string
+      value?: unknown
+    }
+    if (params.componentType !== 'series' || params.seriesType !== 'line3D') return
+    if (params.seriesId === FREQ_SLICE_SERIES_ID) return
+    const v = params.value
+    if (!Array.isArray(v) || v.length < 2) return
+    const fx = Number(v[0])
+    if (!Number.isFinite(fx)) return
+    const { frequencies, speedMatrix } = filteredWaterfallDisplay.value
+    if (!frequencies.length || !speedMatrix.length) return
+    const idx = nearestFreqIndex(frequencies, fx)
+    if (lastFreqSliceIndex.get(chart) === idx) return
+    lastFreqSliceIndex.set(chart, idx)
+    updateWaterfallFreqSlice(chart)
+  }
+  const onGlobalOut = () => {
+    clearWaterfallFreqSlice(chart)
+  }
+  chart.on('mouseover', onPointer)
+  chart.on('mousemove', onPointer)
+  chart.on('globalout', onGlobalOut)
+  freqSliceHandlers.set(chart, { onPointer, onGlobalOut })
+}
+
+const onWaterfallChartReady = (chart: ECharts) => {
+  attachWaterfallFreqSliceHandlers(chart)
+}
+
+/** 全屏弹窗内的实例（与内嵌 chart 分离），用于数据刷新时同步清掉频率切片缓存 */
+let waterfallFullscreenEcharts: ECharts | null = null
+
 const deviceTreeStore = useDeviceTreeStore()
 
 const chartAxisColor = computed(() => '#ffffff')
@@ -184,10 +348,16 @@ const freqAxisDomain = computed(() => {
   return { min: Math.min(...nums), max: Math.max(...nums) }
 })
 
-const onWaterfallFullscreenChartReady = () => {
+const onWaterfallFullscreenChartReady = (chart: ECharts) => {
+  waterfallFullscreenEcharts = chart
   // 全屏打开后：把输入框回填为当前坐标轴频率范围，确保“数字与轴绑定”
   freqFilterMin.value = freqAxisDomain.value.min
   freqFilterMax.value = freqAxisDomain.value.max
+  attachWaterfallFreqSliceHandlers(chart)
+}
+
+const onWaterfallFullscreenClosed = () => {
+  waterfallFullscreenEcharts = null
 }
 
 const resetFreqFilter = () => {
@@ -437,7 +607,24 @@ const waterfallOption = computed<EChartsOption>(() => {
         margin: 8,
       },
     },
-    series: seriesList,
+    series: [
+      ...seriesList,
+      {
+        id: FREQ_SLICE_SERIES_ID,
+        name: '',
+        type: 'line3D' as const,
+        data: [] as [number, number, number][],
+        silent: true,
+        legendHoverLink: false,
+        tooltip: { show: false },
+        lineStyle: {
+          width: 2.5,
+          color: '#ffeb3b',
+        },
+        itemStyle: { opacity: 0 },
+        emphasis: { disabled: true },
+      },
+    ],
   } as EChartsOption
 })
 
@@ -472,11 +659,23 @@ watch(
   { deep: true },
 )
 
+watch(
+  () => [waterfallData.value, freqDisplayRange.value] as const,
+  () => {
+    const inline = waterfallChartRef.value?.chartInstance as ECharts | undefined
+    if (inline) clearWaterfallFreqSlice(inline)
+    if (waterfallFullscreenEcharts) clearWaterfallFreqSlice(waterfallFullscreenEcharts)
+  },
+  { deep: true },
+)
+
 onUnmounted(() => {
   if (waterfallReloadTimer) {
     clearTimeout(waterfallReloadTimer)
     waterfallReloadTimer = null
   }
+  const inst = waterfallChartRef.value?.chartInstance as ECharts | undefined
+  if (inst) detachWaterfallFreqSliceHandlers(inst)
 })
 </script>
 
