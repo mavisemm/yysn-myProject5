@@ -76,44 +76,76 @@ import { CommonEcharts } from '@/components/common/chart'
 import { FullScreen } from '@element-plus/icons-vue'
 import { getVibrationFrequencyWaterfallData, type VibrationAxis } from '@/api/modules/device'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
+// 与 echarts-gl Grid3DView 一致：底面射线求交 + pointToData（仅类型外依赖，运行时用 chart 内部视图）
+import graphicGL from 'echarts-gl/lib/util/graphicGL.js'
 
 const waterfallChartRef = ref<InstanceType<typeof CommonEcharts>>()
 const route = useRoute()
 
 /** 悬停频率时沿时间轴连成的 3D 折线（独立 series，用局部 setOption 更新，避免整图重配影响视角） */
 const FREQ_SLICE_SERIES_ID = 'waterfall-freq-slice'
+/** 与 echarts-gl/lib/component/grid3D/Grid3DView.js 中 dimIndicesMap 一致 */
+const GRID3D_DIM_INDICES = { x: 0, y: 2, z: 1 } as const
+
+/** echarts-gl ViewGL（clay Eventful），仅用于绑定/解绑 mousemove */
+type EcViewGLEventHost = {
+  on: (ev: string, fn: (e: { offsetX: number; offsetY: number }) => void) => void
+  off: (ev: string, fn: (e: { offsetX: number; offsetY: number }) => void) => void
+}
+
+/** 仅声明本文件射线拾取所需的 grid3D 组件内部字段（非 echarts 公开 API） */
+type EcGrid3DFace = {
+  rootNode: { invisible?: boolean }
+  plane: { normal: { dot: (v: unknown) => number; negate: () => void } }
+  faceInfo: [keyof typeof GRID3D_DIM_INDICES, keyof typeof GRID3D_DIM_INDICES, string, number, string]
+}
+
+type EcGrid3DCartesian = {
+  viewGL: EcViewGLEventHost & {
+    containPoint: (x: number, y: number) => boolean
+    castRay: (x: number, y: number, out: unknown) => { intersectPlane: (p: unknown) => unknown }
+    camera: { worldTransform: { z: unknown } }
+  }
+  getAxis: (dim: string) => { contain: (v: number) => boolean }
+  pointToData: (point: number[], out: number[] | undefined, clamp: boolean) => number[]
+}
+
+type EcGrid3DComponentView = {
+  _faces?: EcGrid3DFace[]
+  _model?: { coordinateSystem?: EcGrid3DCartesian }
+}
+
 const freqSliceHandlers = new WeakMap<
   ECharts,
-  { onPointer: (params: unknown) => void; onGlobalOut: () => void }
+  {
+    onViewGLMouseMove: (e: { offsetX: number; offsetY: number }) => void
+    /** 命中 line3D 数据点时的后备更新（viewGL 未就绪或射线未打到盒面时仍可用） */
+    onSeriesPointer: (raw: unknown) => void
+    onGlobalOut: () => void
+    viewGLBound: EcViewGLEventHost | null
+    onFinishedBind: (() => void) | null
+  }
 >()
 const lastFreqSliceIndex = new WeakMap<ECharts, number>()
 
-const nearestFreqIndex = (freqs: number[], x: number) => {
-  let best = 0
-  let bestD = Infinity
-  for (let i = 0; i < freqs.length; i++) {
-    const fi = Number(freqs[i])
-    if (!Number.isFinite(fi)) continue
-    const d = Math.abs(fi - x)
-    if (d < bestD) {
-      bestD = d
-      best = i
-    }
-  }
-  return best
-}
+/** 切片 setOption 合并到 rAF，减少同一帧内多次 setOption */
+const freqSlicePatchRafId = new WeakMap<ECharts, number>()
+const freqSlicePatchPending = new WeakMap<ECharts, [number, number, number][]>()
+/** 上次已通过 setOption 写入 option 的相机快照；未变化时只改 series，避免反复 merge grid3D 导致刻度闪烁 */
+const freqSliceLastViewControlKey = new WeakMap<ECharts, string>()
+/** 上次已下发的切片数据，避免同数据重复 setOption（仍会触发 GL 重绘） */
+const freqSliceLastDataKey = new WeakMap<ECharts, string>()
+/** 限制切片 setOption 频率：mousemove 换频过快会密集触发 GL 重绘，Grid3D 轴标签贴图反复 clear → 刻度闪 */
+const FREQ_SLICE_SETOPTION_MIN_MS = 52
+const freqSliceLastSetOptionTs = new WeakMap<ECharts, number>()
+const freqSliceThrottleTimer = new WeakMap<ECharts, ReturnType<typeof setTimeout>>()
 
 /**
- * echarts-gl：Grid3DView 里 `setFromViewControlModel(model, 0)` 的第二个参数 0 会变成 `{}`，
- * OrbitControl 默认 `baseOrthoSize = 1`，即内部真实 orthographic 尺寸 = option.viewControl.orthographicSize + 1。
- * 若把 `getOrthographicSize()` 直接写回 option，每次 setOption 都会 +1，表现为「动一下鼠标缩放就挪一点」。
+ * echarts-gl：OrbitControl 内部 orthographic 尺寸 = option.viewControl.orthographicSize + 1（base）。
+ * 写回 option 时需减 base，避免每次 setOption 叠加 +1。
  */
 const GRID3D_VIEWCONTROL_ORTHO_BASE = 1
 
-/**
- * 正交投影下滚轮缩放改的是 OrbitControl 内部尺寸，但 grid3DChangeCamera 写回 option 时往往不带 orthographicSize；
- * setOption 触发 render 会按过期 option 拉回相机。这里只从内部视图读「当前相机」写回 viewControl，且正交时对 orthographicSize 做 -base 换算。
- */
 const readLiveGrid3DViewControlPatch = (chart: ECharts): Record<string, unknown> | undefined => {
   try {
     const views = (chart as unknown as { _componentsViews?: unknown[] })._componentsViews
@@ -153,18 +185,213 @@ const readLiveGrid3DViewControlPatch = (chart: ECharts): Record<string, unknown>
   return undefined
 }
 
-const patchWaterfallFreqSliceSeries = (chart: ECharts, data: [number, number, number][]) => {
+/**
+ * 粗粒度量化相机再比较：OrbitControl 读出的 float 在 5 位小数下仍可能帧间微抖，
+ * 导致 needMergeViewControl 长期为 true → 反复 merge grid3D → 轴标签贴图每次 clear（全屏尤其明显）。
+ */
+const snapNum = (n: number, decimals: number) => {
+  if (!Number.isFinite(n)) return n
+  const p = 10 ** decimals
+  return Math.round(n * p) / p
+}
+
+const viewControlStableKey = (patch: Record<string, unknown>): string => {
+  const center = Array.isArray(patch.center)
+    ? (patch.center as unknown[]).map((x) => snapNum(Number(x), 2))
+    : patch.center
+  return JSON.stringify({
+    projection: patch.projection,
+    alpha: snapNum(Number(patch.alpha), 2),
+    beta: snapNum(Number(patch.beta), 2),
+    distance: snapNum(Number(patch.distance), 1),
+    orthographicSize:
+      patch.orthographicSize !== undefined
+        ? snapNum(Number(patch.orthographicSize), 3)
+        : undefined,
+    center,
+  })
+}
+
+const forgetFreqSliceViewControlCache = (chart: ECharts) => {
+  freqSliceLastViewControlKey.delete(chart)
+  freqSliceLastDataKey.delete(chart)
+  freqSliceLastSetOptionTs.delete(chart)
+}
+
+const cancelFreqSliceThrottleTimer = (chart: ECharts) => {
+  const tid = freqSliceThrottleTimer.get(chart)
+  if (tid != null) {
+    clearTimeout(tid)
+    freqSliceThrottleTimer.delete(chart)
+  }
+}
+
+const cancelFreqSlicePatchRaf = (chart: ECharts) => {
+  const id = freqSlicePatchRafId.get(chart)
+  if (id != null) {
+    cancelAnimationFrame(id)
+    freqSlicePatchRafId.delete(chart)
+  }
+  cancelFreqSliceThrottleTimer(chart)
+  freqSlicePatchPending.delete(chart)
+}
+
+/**
+ * @param forceImmediate 清空切片等场景立即下发（跳过节流）
+ */
+const flushFreqSlicePatch = (chart: ECharts, forceImmediate = false) => {
+  freqSlicePatchRafId.delete(chart)
+  const data = freqSlicePatchPending.get(chart)
+  if (data === undefined) return
   if (typeof chart.isDisposed === 'function' && chart.isDisposed()) return
+
   const viewControl = readLiveGrid3DViewControlPatch(chart)
-  const patch = {
-    series: [{ id: FREQ_SLICE_SERIES_ID, data }],
-    ...(viewControl ? { grid3D: { viewControl } } : {}),
-  } as EChartsOption
+  const vcKey = viewControl ? viewControlStableKey(viewControl) : ''
+  const prevKey = freqSliceLastViewControlKey.get(chart)
+  const needMergeViewControl =
+    viewControl != null && (prevKey === undefined || vcKey !== prevKey)
+
+  const isClearSlice = data.length === 0
+  /** 合并相机时必须立刻 setOption，否则节流会把「缩放/旋转后的 viewControl」写回推迟 → 视角被旧 option 拉回 */
+  const bypassSliceThrottle = forceImmediate || isClearSlice || needMergeViewControl
+
+  if (!bypassSliceThrottle) {
+    const now = performance.now()
+    const last = freqSliceLastSetOptionTs.get(chart) ?? 0
+    if (last > 0 && now - last < FREQ_SLICE_SETOPTION_MIN_MS) {
+      if (!freqSliceThrottleTimer.has(chart)) {
+        const tid = setTimeout(() => {
+          freqSliceThrottleTimer.delete(chart)
+          requestAnimationFrame(() => flushFreqSlicePatch(chart, false))
+        }, FREQ_SLICE_SETOPTION_MIN_MS - (now - last))
+        freqSliceThrottleTimer.set(chart, tid)
+      }
+      return
+    }
+  }
+
+  cancelFreqSliceThrottleTimer(chart)
+  freqSlicePatchPending.delete(chart)
+
+  const dataKey = JSON.stringify(data)
+  if (!needMergeViewControl && dataKey === freqSliceLastDataKey.get(chart)) {
+    return
+  }
+
+  const patch = (
+    needMergeViewControl
+      ? {
+        series: [{ id: FREQ_SLICE_SERIES_ID, data }],
+        grid3D: { viewControl },
+      }
+      : { series: [{ id: FREQ_SLICE_SERIES_ID, data }] }
+  ) as EChartsOption
+
   try {
-    chart.setOption(patch, { notMerge: false, lazyUpdate: true })
+    chart.setOption(patch, { notMerge: false, lazyUpdate: true, silent: true })
   } catch {
     // ignore
   }
+
+  freqSliceLastSetOptionTs.set(chart, performance.now())
+  freqSliceLastDataKey.set(chart, dataKey)
+  if (needMergeViewControl && vcKey !== '') {
+    freqSliceLastViewControlKey.set(chart, vcKey)
+  }
+}
+
+const nearestFreqIndex = (freqs: number[], x: number) => {
+  let best = 0
+  let bestD = Infinity
+  for (let i = 0; i < freqs.length; i++) {
+    const fi = Number(freqs[i])
+    if (!Number.isFinite(fi)) continue
+    const d = Math.abs(fi - x)
+    if (d < bestD) {
+      bestD = d
+      best = i
+    }
+  }
+  return best
+}
+
+const findGrid3DComponentView = (chart: ECharts): EcGrid3DComponentView | null => {
+  const views = (chart as unknown as { _componentsViews?: unknown[] })._componentsViews
+  if (!Array.isArray(views)) return null
+  for (const raw of views) {
+    if (raw && typeof raw === 'object' && (raw as { type?: string }).type === 'grid3D') {
+      return raw as EcGrid3DComponentView
+    }
+  }
+  return null
+}
+
+/**
+ * 鼠标射线与 grid 六个面相交，取落在面范围内的交点并换算为数据空间频率（与 Grid3DView._updateAxisPointerOnMousePosition 同源）。
+ */
+const pickWaterfallFreqByBasePlaneRaycast = (
+  chart: ECharts,
+  offsetX: number,
+  offsetY: number,
+): number | null => {
+  const gridView = findGrid3DComponentView(chart)
+  const faces = gridView?._faces
+  const gridModel = gridView?._model
+  if (!faces?.length || !gridModel?.coordinateSystem) return null
+  const cartesian = gridModel.coordinateSystem
+  const viewGL = cartesian.viewGL
+  if (!viewGL?.containPoint?.(offsetX, offsetY)) return null
+
+  const ray = viewGL.castRay(offsetX, offsetY, new graphicGL.Ray())
+  let nearestIntersectPoint: { array: number[] } | null = null
+
+  for (let i = 0; i < faces.length; i++) {
+    const face = faces[i]
+    if (!face) continue
+    if (face.rootNode.invisible) continue
+    if (face.plane.normal.dot(viewGL.camera.worldTransform.z) < 0) {
+      face.plane.normal.negate()
+    }
+    const point = ray.intersectPlane(face.plane) as { array: number[] } | null
+    if (!point) continue
+    const axis0 = cartesian.getAxis(face.faceInfo[0])
+    const axis1 = cartesian.getAxis(face.faceInfo[1])
+    const idx0 = GRID3D_DIM_INDICES[face.faceInfo[0]]
+    const idx1 = GRID3D_DIM_INDICES[face.faceInfo[1]]
+    const v0 = point.array[idx0]
+    const v1 = point.array[idx1]
+    if (v0 !== undefined && v1 !== undefined && axis0.contain(v0) && axis1.contain(v1)) {
+      nearestIntersectPoint = point
+    }
+  }
+
+  if (!nearestIntersectPoint) return null
+  const data = cartesian.pointToData(nearestIntersectPoint.array, [], true)
+  const fx = Number(data[0])
+  return Number.isFinite(fx) ? fx : null
+}
+
+/**
+ * 局部更新频率切片：相机合并策略见 flushFreqSlicePatch；刻度闪烁主要靠「切片 setOption 最小间隔」压低频率。
+ */
+const patchWaterfallFreqSliceSeries = (chart: ECharts, data: [number, number, number][]) => {
+  if (typeof chart.isDisposed === 'function' && chart.isDisposed()) return
+  freqSlicePatchPending.set(chart, data)
+  if (data.length === 0) {
+    cancelFreqSliceThrottleTimer(chart)
+    const id = freqSlicePatchRafId.get(chart)
+    if (id != null) {
+      cancelAnimationFrame(id)
+      freqSlicePatchRafId.delete(chart)
+    }
+    flushFreqSlicePatch(chart, true)
+    return
+  }
+  if (freqSlicePatchRafId.has(chart)) return
+  const rafId = requestAnimationFrame(() => {
+    flushFreqSlicePatch(chart)
+  })
+  freqSlicePatchRafId.set(chart, rafId)
 }
 
 const clearWaterfallFreqSlice = (chart: ECharts) => {
@@ -196,16 +423,41 @@ const updateWaterfallFreqSlice = (chart: ECharts) => {
 const detachWaterfallFreqSliceHandlers = (chart: ECharts) => {
   const h = freqSliceHandlers.get(chart)
   if (!h) return
-  chart.off('mouseover', h.onPointer)
-  chart.off('mousemove', h.onPointer)
+  cancelFreqSlicePatchRaf(chart)
+  forgetFreqSliceViewControlCache(chart)
+  if (h.viewGLBound) {
+    h.viewGLBound.off('mousemove', h.onViewGLMouseMove)
+  }
+  if (h.onFinishedBind) {
+    chart.off('finished', h.onFinishedBind)
+  }
+  chart.off('mouseover', h.onSeriesPointer)
+  chart.off('mousemove', h.onSeriesPointer)
   chart.off('globalout', h.onGlobalOut)
   freqSliceHandlers.delete(chart)
   lastFreqSliceIndex.delete(chart)
 }
 
+const applyWaterfallFreqSliceFromHz = (chart: ECharts, fx: number) => {
+  if (!Number.isFinite(fx)) return
+  const { frequencies, speedMatrix } = filteredWaterfallDisplay.value
+  if (!frequencies.length || !speedMatrix.length) return
+  const idx = nearestFreqIndex(frequencies, fx)
+  if (lastFreqSliceIndex.get(chart) === idx) return
+  lastFreqSliceIndex.set(chart, idx)
+  updateWaterfallFreqSlice(chart)
+}
+
 const attachWaterfallFreqSliceHandlers = (chart: ECharts) => {
   if (freqSliceHandlers.has(chart)) return
-  const onPointer = (raw: unknown) => {
+
+  const onViewGLMouseMove = (e: { offsetX: number; offsetY: number }) => {
+    const fx = pickWaterfallFreqByBasePlaneRaycast(chart, e.offsetX, e.offsetY)
+    if (fx == null) return
+    applyWaterfallFreqSliceFromHz(chart, fx)
+  }
+
+  const onSeriesPointer = (raw: unknown) => {
     const params = raw as {
       componentType?: string
       seriesType?: string
@@ -217,21 +469,51 @@ const attachWaterfallFreqSliceHandlers = (chart: ECharts) => {
     const v = params.value
     if (!Array.isArray(v) || v.length < 2) return
     const fx = Number(v[0])
-    if (!Number.isFinite(fx)) return
-    const { frequencies, speedMatrix } = filteredWaterfallDisplay.value
-    if (!frequencies.length || !speedMatrix.length) return
-    const idx = nearestFreqIndex(frequencies, fx)
-    if (lastFreqSliceIndex.get(chart) === idx) return
-    lastFreqSliceIndex.set(chart, idx)
-    updateWaterfallFreqSlice(chart)
+    applyWaterfallFreqSliceFromHz(chart, fx)
   }
+
   const onGlobalOut = () => {
     clearWaterfallFreqSlice(chart)
   }
-  chart.on('mouseover', onPointer)
-  chart.on('mousemove', onPointer)
+
+  const handlerState = {
+    onViewGLMouseMove,
+    onSeriesPointer,
+    onGlobalOut,
+    viewGLBound: null as EcViewGLEventHost | null,
+    onFinishedBind: null as (() => void) | null,
+  }
+
+  const tryBindViewGL = (): boolean => {
+    if (handlerState.viewGLBound) return true
+    const gridView = findGrid3DComponentView(chart)
+    const viewGL = gridView?._model?.coordinateSystem?.viewGL as EcViewGLEventHost | undefined
+    if (!viewGL?.on) return false
+    viewGL.on('mousemove', onViewGLMouseMove)
+    handlerState.viewGLBound = viewGL
+    return true
+  }
+
+  if (!tryBindViewGL()) {
+    const onFinished = () => {
+      if (tryBindViewGL()) {
+        chart.off('finished', onFinished)
+        handlerState.onFinishedBind = null
+      }
+    }
+    handlerState.onFinishedBind = onFinished
+    chart.on('finished', onFinished)
+  }
+
+  // GL 组件视图有时晚一帧就绪，避免仅依赖 finished 时小图永远绑不上 viewGL
+  requestAnimationFrame(() => {
+    tryBindViewGL()
+  })
+
+  chart.on('mouseover', onSeriesPointer)
+  chart.on('mousemove', onSeriesPointer)
   chart.on('globalout', onGlobalOut)
-  freqSliceHandlers.set(chart, { onPointer, onGlobalOut })
+  freqSliceHandlers.set(chart, handlerState)
 }
 
 const onWaterfallChartReady = (chart: ECharts) => {
@@ -298,7 +580,7 @@ const resolvePointDeviceId = (rid: string): string => {
 const pointDeviceId = computed(() => resolvePointDeviceId(receiverIdFromParams.value))
 
 const openWaterfallFullscreen = () => {
-  ; (waterfallChartRef.value as any)?.openFullscreen?.()
+  void (waterfallChartRef.value as { openFullscreen?: () => void } | undefined)?.openFullscreen?.()
 }
 
 const applyFreqFilter = () => {
@@ -357,6 +639,8 @@ const onWaterfallFullscreenChartReady = (chart: ECharts) => {
 }
 
 const onWaterfallFullscreenClosed = () => {
+  const inst = waterfallFullscreenEcharts
+  if (inst) detachWaterfallFreqSliceHandlers(inst)
   waterfallFullscreenEcharts = null
 }
 
@@ -458,7 +742,8 @@ const waterfallOption = computed<EChartsOption>(() => {
       emphasis: {
         label: {
           show: true,
-          formatter: (params: any) => `${(params.value[2] || 0).toFixed(3)} mm/s`,
+          formatter: (params: { value?: unknown[] }) =>
+            `${(Number((params.value ?? [])[2]) || 0).toFixed(3)} mm/s`,
           fontSize: 12,
           color: '#ffffff',
         },
@@ -478,6 +763,8 @@ const waterfallOption = computed<EChartsOption>(() => {
   // 仍保持刻度线每 20Hz，但坐标轴文字每隔若干个刻度显示一次，避免全屏文字过密
   const freqAxisLabelEveryTicks = 5 // 10Hz * 5 = 50Hz 显示一条文字
   return {
+    // 切片局部 setOption 时缩短更新动画，减轻视觉上的「整图闪一下」
+    animationDurationUpdate: 0,
     tooltip: {
       show: true,
       trigger: 'item',
@@ -485,13 +772,14 @@ const waterfallOption = computed<EChartsOption>(() => {
       backgroundColor: 'rgba(50, 50, 50, 0.9)',
       borderColor: 'rgba(50, 50, 50, 0.9)',
       textStyle: { color: '#fff' },
-      formatter: (params: any) => {
-        const freq = params.value?.[0] ?? 0
+      formatter: (params: { value?: unknown[]; seriesName?: string }) => {
+        const vals = params.value ?? []
+        const freq = Number(vals[0]) || 0
         const seriesName = params.seriesName || ''
-        const value = params.value?.[2] ?? 0
+        const value = Number(vals[2]) || 0
         const timeLabel =
           seriesName ||
-          (typeof params.value?.[1] === 'number' ? (times[params.value[1]] ?? '') : '')
+          (typeof vals[1] === 'number' ? (times[vals[1]] ?? '') : '')
 
         return [
           `时间：${timeLabel}`,
@@ -516,6 +804,7 @@ const waterfallOption = computed<EChartsOption>(() => {
       boxWidth: 100,
       boxHeight: 100,
       boxDepth: 100,
+      /** 三个坐标面上的十字参考线（随鼠标在盒面上投影）；刻度闪烁已通过 viewControl 量化 / 去重 setOption 等方式减轻，勿随意 show:false */
       axisPointer: {
         lineStyle: { color: '#063c83' },
       },
@@ -663,8 +952,14 @@ watch(
   () => [waterfallData.value, freqDisplayRange.value] as const,
   () => {
     const inline = waterfallChartRef.value?.chartInstance as ECharts | undefined
-    if (inline) clearWaterfallFreqSlice(inline)
-    if (waterfallFullscreenEcharts) clearWaterfallFreqSlice(waterfallFullscreenEcharts)
+    if (inline) {
+      forgetFreqSliceViewControlCache(inline)
+      clearWaterfallFreqSlice(inline)
+    }
+    if (waterfallFullscreenEcharts) {
+      forgetFreqSliceViewControlCache(waterfallFullscreenEcharts)
+      clearWaterfallFreqSlice(waterfallFullscreenEcharts)
+    }
   },
   { deep: true },
 )
