@@ -559,7 +559,9 @@ const applyAutoYAxisRange = () => {
   }
 
   try {
-    chartInstance.value.setOption({ yAxis: { min, max } } as any, {
+    const yAxisArr = Array.isArray(opt?.yAxis) ? opt.yAxis : null
+    const yAxisPatch = yAxisArr && yAxisArr.length > 1 ? yAxisArr.map(() => ({ min, max })) : { min, max }
+    chartInstance.value.setOption({ yAxis: yAxisPatch } as any, {
       notMerge: false,
       lazyUpdate: true,
     })
@@ -630,7 +632,9 @@ const applyAutoYAxisRangeFor = (inst: echarts.ECharts) => {
   }
 
   try {
-    inst.setOption({ yAxis: { min, max } } as any, { notMerge: false, lazyUpdate: true })
+    const yAxisArr = Array.isArray(opt?.yAxis) ? opt.yAxis : null
+    const yAxisPatch = yAxisArr && yAxisArr.length > 1 ? yAxisArr.map(() => ({ min, max })) : { min, max }
+    inst.setOption({ yAxis: yAxisPatch } as any, { notMerge: false, lazyUpdate: true })
   } catch {
     // ignore
   }

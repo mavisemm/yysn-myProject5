@@ -127,8 +127,10 @@ import { CommonEcharts } from '@/components/common/chart'
 import { useRangeControls } from '@/composables/useRangeControls'
 import {
   getVibrationFrequencyData,
+  getVibrationMetricData,
   getVibrationTimeDomainData,
   type VibrationAxis,
+  type VibrationMetricData,
 } from '@/api/modules/device'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import { FullScreen } from '@element-plus/icons-vue'
@@ -199,6 +201,9 @@ let freqChartCleanup: (() => void) | null = null
 let fullscreenFreqPointerCleanup: (() => void) | null = null
 let fullscreenFreqClickCleanup: (() => void) | null = null
 let fullscreenFreqZrClickCleanup: (() => void) | null = null
+let fullscreenFreqFinishedCleanup: (() => void) | null = null
+/** 仅在全屏切轴/初次打开后做一次有效值上界兜底，避免每次缩放都强制改 y 轴 */
+let pendingFullscreenRmsYClamp = false
 /** 全屏频域：mousemove 将轴线指针吸附到局部谱峰（下一帧 dispatch，避免与默认轴指针抢帧） */
 let fullscreenFreqPeakSnapRafId: number | null = null
 /** 晚于 CommonEcharts 全屏 autoY debounce（默认 120ms）再读 yAxis，用于同步 Y 输入框 */
@@ -224,6 +229,7 @@ const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({
 })
 const timeDomainData = ref<number[]>([])
 const totalTime = ref<number>(0)
+const metricData = ref<VibrationMetricData>({})
 
 const axisOptions: { label: string; value: VibrationAxis }[] = [
   { label: 'X轴', value: 'X' },
@@ -283,6 +289,12 @@ const formatPinnedY = (v: number | string) => {
   const n = Number(v)
   if (!Number.isFinite(n)) return ''
   return n.toFixed(10)
+}
+
+const formatRmsBarValue = (v: number | undefined) => {
+  const n = Number(v ?? 0)
+  if (!Number.isFinite(n)) return '0.00000'
+  return n.toFixed(5)
 }
 
 const toFreqKey = (v: number) => v.toFixed(FREQ_MATCH_DECIMALS)
@@ -363,7 +375,37 @@ const patchFullscreenFreqYAxisRange = (min: number, max: number) => {
   if (!inst || !freqFullscreenUiActive.value) return
   if (!Number.isFinite(min) || !Number.isFinite(max)) return
   try {
-    inst.setOption({ yAxis: { min, max } } as any, { notMerge: false, lazyUpdate: true })
+    // 全屏右侧有效值柱状图使用第二条 yAxis（与主 yAxis 同尺度），这里需一并更新
+    inst.setOption({ yAxis: [{ min, max }, { min, max }] } as any, { notMerge: false, lazyUpdate: true })
+  } catch {
+    // ignore
+  }
+}
+
+const getCurrentAxisVelocityRms = () => {
+  const axisLabel = freqAxis.value
+  return axisLabel === 'X'
+    ? Number(metricData.value.xvelocityRms ?? 0)
+    : axisLabel === 'Y'
+      ? Number(metricData.value.yvelocityRms ?? 0)
+      : Number(metricData.value.zvelocityRms ?? 0)
+}
+
+/** 全屏自动 Y 轴兜底：确保上界至少覆盖当前轴有效值，避免切轴后上界被自动计算压小 */
+const ensureFullscreenFreqYAxisIncludesRms = () => {
+  if (freqFullscreenYUseCustom.value) return
+  const inst = fullscreenFreqChartInstance.value
+  if (!inst || !freqFullscreenUiActive.value) return
+  try {
+    if (typeof inst.isDisposed === 'function' && inst.isDisposed()) return
+    const opt = inst.getOption() as any
+    const y0 = Array.isArray(opt?.yAxis) ? opt.yAxis[0] : opt?.yAxis
+    const mn = Number(y0?.min)
+    const mx = Number(y0?.max)
+    const rms = getCurrentAxisVelocityRms()
+    if (!Number.isFinite(mn) || !Number.isFinite(mx) || !Number.isFinite(rms)) return
+    if (mx + FREQ_Y_AXIS_STEP >= rms) return
+    patchFullscreenFreqYAxisRange(mn, rms)
   } catch {
     // ignore
   }
@@ -675,13 +717,21 @@ const freqOption = computed<EChartsOption>(() => {
 
   const { chartData, xMin, xMax } = getSortedFreqChartData()
   const { yMinWithMargin, yMaxWithMargin } = getFreqAutoYBounds(chartData)
+  const axisLabel = freqAxis.value
+  const currentAxisRms = getCurrentAxisVelocityRms()
+  // 自动范围下，全屏才取「频谱上界 vs 当前轴有效值」较大者，避免影响小图
   // 注意：频域图内嵌与全屏共用一套 option。全屏手动 Y 轴范围不要写进 option，
   // 否则会同步影响外面小图；全屏手动范围由 fullscreen 实例 setOption 局部 patch。
   const yAxisMin = yMinWithMargin
-  const yAxisMax = yMaxWithMargin
+  const yAxisMax = freqFullscreenUiActive.value
+    ? Math.max(yMaxWithMargin, currentAxisRms)
+    : yMaxWithMargin
 
   const c = chartAxisColor.value
   const s = chartSplitLineColor.value
+
+  const showRmsBars = freqFullscreenUiActive.value
+  const axisColor = axisLabel === 'X' ? '#7ecba1' : axisLabel === 'Y' ? '#ffd166' : '#ff6b6b'
 
   const fullscreenTooltipExtra =
     freqFullscreenUiActive.value &&
@@ -807,35 +857,93 @@ const freqOption = computed<EChartsOption>(() => {
         )
       },
     },
-    grid: { top: 30, left: 40, right: 50, bottom: 35, containLabel: true },
-    xAxis: {
-      type: 'value',
-      name: 'Hz',
-      min: xMin,
-      max: xMax,
-      nameTextStyle: { color: c },
-      axisLabel: {
-        color: c,
-        margin: 8,
-        showMaxLabel: true,
-        hideOverlap: true,
+    grid: showRmsBars
+      ? [
+        { top: 30, left: 40, right: 110, bottom: 35, containLabel: true },
+        { top: 30, right: 16, width: 70, bottom: 35, containLabel: true },
+      ]
+      : { top: 30, left: 40, right: 50, bottom: 35, containLabel: true },
+    xAxis: showRmsBars
+      ? [
+        {
+          type: 'value',
+          name: 'Hz',
+          min: xMin,
+          max: xMax,
+          nameTextStyle: { color: c },
+          axisLabel: {
+            color: c,
+            margin: 8,
+            showMaxLabel: true,
+            hideOverlap: true,
+          },
+          axisLine: { lineStyle: { color: c } },
+          splitLine: { show: false },
+        },
+        {
+          type: 'category',
+          gridIndex: 1,
+          data: [axisLabel],
+          axisTick: { show: false },
+          axisLine: { lineStyle: { color: c } },
+          axisLabel: { color: c, fontSize: 12 },
+          splitLine: { show: false },
+        },
+      ]
+      : {
+        type: 'value',
+        name: 'Hz',
+        min: xMin,
+        max: xMax,
+        nameTextStyle: { color: c },
+        axisLabel: {
+          color: c,
+          margin: 8,
+          showMaxLabel: true,
+          hideOverlap: true,
+        },
+        axisLine: { lineStyle: { color: c } },
+        splitLine: { show: false },
       },
-      axisLine: { lineStyle: { color: c } },
-      splitLine: { show: false },
-    },
-    yAxis: {
-      type: 'value',
-      name: 'mm/s',
-      min: yAxisMin,
-      max: yAxisMax,
-      nameTextStyle: { color: c },
-      axisLabel: {
-        color: c,
-        formatter: formatFreqYAxisTick,
+    yAxis: showRmsBars
+      ? [
+        {
+          type: 'value',
+          name: 'mm/s',
+          min: yAxisMin,
+          max: yAxisMax,
+          nameTextStyle: { color: c },
+          axisLabel: {
+            color: c,
+            formatter: formatFreqYAxisTick,
+          },
+          axisLine: { lineStyle: { color: c } },
+          splitLine: { lineStyle: { color: s } },
+        },
+        {
+          type: 'value',
+          gridIndex: 1,
+          min: yAxisMin,
+          max: yAxisMax,
+          axisLabel: { show: false },
+          axisTick: { show: false },
+          axisLine: { show: false },
+          splitLine: { show: false },
+        },
+      ]
+      : {
+        type: 'value',
+        name: 'mm/s',
+        min: yAxisMin,
+        max: yAxisMax,
+        nameTextStyle: { color: c },
+        axisLabel: {
+          color: c,
+          formatter: formatFreqYAxisTick,
+        },
+        axisLine: { lineStyle: { color: c } },
+        splitLine: { lineStyle: { color: s } },
       },
-      axisLine: { lineStyle: { color: c } },
-      splitLine: { lineStyle: { color: s } },
-    },
     dataZoom: [
       { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
       {
@@ -878,6 +986,37 @@ const freqOption = computed<EChartsOption>(() => {
           ]),
         },
       },
+      ...(showRmsBars
+        ? [
+          {
+            id: 'freq-rms-bars',
+            type: 'bar',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            tooltip: {
+              trigger: 'item',
+              formatter: (p: any) => {
+                const name = String(p?.name ?? '')
+                const v = Number(p?.value ?? 0)
+                return `${name}轴有效值：${formatRmsBarValue(v)} mm/s`
+              },
+            },
+            barWidth: 18,
+            itemStyle: {
+              borderRadius: [4, 4, 0, 0],
+              color: axisColor,
+            },
+            label: {
+              show: true,
+              position: 'top',
+              color: '#fff',
+              fontSize: 11,
+              formatter: (p: any) => formatRmsBarValue(p?.value),
+            },
+            data: [currentAxisRms],
+          },
+        ]
+        : []),
     ],
   } as EChartsOption
 })
@@ -1208,6 +1347,7 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   freqHarmonicMaxOrderInput.value = freqHarmonicMaxOrderCommitted.value
   resetFreqFullscreenTooltipLock()
   fullscreenFreqChartInstance.value = inst
+  pendingFullscreenRmsYClamp = true
   if (fullscreenFreqPointerCleanup) {
     fullscreenFreqPointerCleanup()
     fullscreenFreqPointerCleanup = null
@@ -1219,6 +1359,10 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   if (fullscreenFreqZrClickCleanup) {
     fullscreenFreqZrClickCleanup()
     fullscreenFreqZrClickCleanup = null
+  }
+  if (fullscreenFreqFinishedCleanup) {
+    fullscreenFreqFinishedCleanup()
+    fullscreenFreqFinishedCleanup = null
   }
   inst.on('updateAxisPointer', onUpdateAxisPointer)
   const onFreqFullscreenDataZoom = (params: any) => {
@@ -1235,6 +1379,16 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
     }
   }
   inst.on('datazoom', onFreqFullscreenDataZoom)
+  const onFreqFullscreenFinished = () => {
+    if (!freqFullscreenYUseCustom.value) {
+      if (pendingFullscreenRmsYClamp) {
+        ensureFullscreenFreqYAxisIncludesRms()
+        pendingFullscreenRmsYClamp = false
+      }
+      syncFreqFullscreenYInputsFromChartOption()
+    }
+  }
+  inst.on('finished', onFreqFullscreenFinished)
   inst.on('click', onFreqFullscreenChartClick)
   const zr = inst.getZr?.()
   const onZrClick = (evt: any) => {
@@ -1256,6 +1410,11 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
     try {
       inst.off('updateAxisPointer', onUpdateAxisPointer)
       inst.off('datazoom', onFreqFullscreenDataZoom)
+    } catch { }
+  }
+  fullscreenFreqFinishedCleanup = () => {
+    try {
+      inst.off('finished', onFreqFullscreenFinished)
     } catch { }
   }
   fullscreenFreqClickCleanup = () => {
@@ -1293,10 +1452,15 @@ const onFreqFullscreenClosed = () => {
   resetFreqFullscreenTooltipLock()
   freqFullscreenYUseCustom.value = false
   freqFullscreenUiActive.value = false
+  pendingFullscreenRmsYClamp = false
   fullscreenFreqChartInstance.value = null
   if (fullscreenFreqPointerCleanup) {
     fullscreenFreqPointerCleanup()
     fullscreenFreqPointerCleanup = null
+  }
+  if (fullscreenFreqFinishedCleanup) {
+    fullscreenFreqFinishedCleanup()
+    fullscreenFreqFinishedCleanup = null
   }
   if (fullscreenFreqClickCleanup) {
     fullscreenFreqClickCleanup()
@@ -1433,6 +1597,20 @@ const loadFreqData = async () => {
   }
 }
 
+const loadMetricData = async () => {
+  if (!pointDeviceId.value || !receiverIdResolved.value) return
+  try {
+    const res = await getVibrationMetricData(pointDeviceId.value, receiverIdResolved.value)
+    if (res.rc === 0 && res.ret) {
+      metricData.value = res.ret
+    } else {
+      metricData.value = {}
+    }
+  } catch {
+    metricData.value = {}
+  }
+}
+
 const loadTimeData = async () => {
   if (!pointDeviceId.value || !receiverIdResolved.value) return
 
@@ -1484,7 +1662,7 @@ const loadTimeData = async () => {
 }
 
 const loadVibrationChartsData = async () => {
-  await Promise.all([loadFreqData(), loadTimeData()])
+  await Promise.all([loadFreqData(), loadTimeData(), loadMetricData()])
 }
 
 watch(
@@ -1500,6 +1678,9 @@ watch(
 watch(freqAxis, () => {
   if (!receiverIdResolved.value || !pointDeviceId.value) return
   clearAllPinnedPoints()
+  if (freqFullscreenUiActive.value && !freqFullscreenYUseCustom.value) {
+    pendingFullscreenRmsYClamp = true
+  }
   void loadFreqData()
 })
 
@@ -1528,6 +1709,10 @@ onUnmounted(() => {
   if (fullscreenFreqPointerCleanup) {
     fullscreenFreqPointerCleanup()
     fullscreenFreqPointerCleanup = null
+  }
+  if (fullscreenFreqFinishedCleanup) {
+    fullscreenFreqFinishedCleanup()
+    fullscreenFreqFinishedCleanup = null
   }
   if (fullscreenFreqClickCleanup) {
     fullscreenFreqClickCleanup()
