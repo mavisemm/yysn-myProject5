@@ -50,6 +50,12 @@
                 <el-button size="small" type="primary" @click="commitFreqHarmonicMaxOrder">确认</el-button>
                 <span class="freq-filter-divider" aria-hidden="true" />
                 <span class="freq-filter-label">打标功能：</span>
+                <span class="freq-filter-label">阈值：</span>
+                <el-input-number v-model="autoPinThresholdInput" :min="0" :step="0.0001" :precision="6" size="small"
+                  controls-position="right" class="freq-filter-num" />
+                <el-button size="small" type="primary" @click="autoPinFreqPeaksAboveThreshold">
+                  一键打标
+                </el-button>
                 <el-button size="small" :disabled="!currentPinnedPointId" @click="clearCurrentPinnedPoint">
                   清除当前标记
                 </el-button>
@@ -173,10 +179,13 @@ let freqChartCleanup: (() => void) | null = null
 let fullscreenFreqPointerCleanup: (() => void) | null = null
 let fullscreenFreqClickCleanup: (() => void) | null = null
 let fullscreenFreqZrClickCleanup: (() => void) | null = null
+/** 全屏频域：mousemove 将轴线指针吸附到局部谱峰（下一帧 dispatch，避免与默认轴指针抢帧） */
+let fullscreenFreqPeakSnapRafId: number | null = null
 let markLineRafId: number | null = null
 let lastHarmonicBaseFreq: number | null = null
 const pinnedFreqPoints = ref<EchartsPersistentPoint[]>([])
 const currentPinnedPointId = ref<string>('')
+const autoPinThresholdInput = ref<number>(0.005)
 
 const openFreqFullscreen = () => {
   ; (freqChartRef.value as any)?.openFullscreen?.()
@@ -329,6 +338,91 @@ const pickNearestFreqPointByX = (x: number): [number, number] | null => {
   return nearest
 }
 
+/** 打标吸附：根据谱线间距与频段宽度自适应窗口，在参考频率附近取 Y 最大的点（对准谱峰顶） */
+const getFreqPinSnapHalfWidthHz = (): number => {
+  const { chartData, xMin, xMax } = getSortedFreqChartData()
+  const span = Math.max(xMax - xMin, 1e-9)
+  if (chartData.length < 2) {
+    return Number.isFinite(span) && span > 0 ? Math.min(span * 0.05, 50) : 15
+  }
+  const spacings: number[] = []
+  for (let i = 1; i < chartData.length; i++) {
+    const hi = chartData[i]
+    const lo = chartData[i - 1]
+    if (!hi || !lo) continue
+    spacings.push(hi[0] - lo[0])
+  }
+  spacings.sort((a, b) => a - b)
+  const median = spacings[Math.floor(spacings.length / 2)] ?? 1
+  return Math.min(span * 0.04, Math.max(median * 10, median * 4, 3))
+}
+
+/** 在参考频率±半窗内选幅值最大的谱线点；窗内无点时退回最近 X 点 */
+const pickPeakSnapFreqPoint = (refX: number): [number, number] | null => {
+  const { chartData } = getSortedFreqChartData()
+  if (!chartData.length || !Number.isFinite(refX)) return null
+  const halfW = getFreqPinSnapHalfWidthHz()
+  let best: [number, number] | null = null
+  let bestY = Number.NEGATIVE_INFINITY
+  let bestDx = Number.POSITIVE_INFINITY
+  for (const pt of chartData) {
+    const dx = Math.abs(pt[0] - refX)
+    if (dx > halfW) continue
+    const y = pt[1]
+    if (y > bestY || (y === bestY && dx < bestDx)) {
+      bestY = y
+      bestDx = dx
+      best = pt
+    }
+  }
+  return best ?? pickNearestFreqPointByX(refX)
+}
+
+const cancelFreqFullscreenPeakSnapRaf = () => {
+  if (fullscreenFreqPeakSnapRafId != null) {
+    cancelAnimationFrame(fullscreenFreqPeakSnapRafId)
+    fullscreenFreqPeakSnapRafId = null
+  }
+}
+
+/** 鼠标所在频率附近将轴线指针拉到谱峰顶（视觉上竖线与 tooltip 对齐峰顶，便于再打标点） */
+const scheduleFreqFullscreenPeakSnapPointer = (offsetX: number, offsetY: number) => {
+  if (!freqFullscreenUiActive.value || freqFullscreenTooltipLocked.value) return
+  const inst = fullscreenFreqChartInstance.value
+  if (!inst || !Number.isFinite(offsetX) || !Number.isFinite(offsetY)) return
+  cancelFreqFullscreenPeakSnapRaf()
+  fullscreenFreqPeakSnapRafId = requestAnimationFrame(() => {
+    fullscreenFreqPeakSnapRafId = null
+    if (!freqFullscreenUiActive.value || freqFullscreenTooltipLocked.value) return
+    const inner = fullscreenFreqChartInstance.value
+    if (!inner) return
+    let axisValue: unknown
+    try {
+      axisValue = inner.convertFromPixel({ xAxisIndex: 0 }, offsetX as any)
+      if (!Number.isFinite(Array.isArray(axisValue) ? Number(axisValue[0]) : Number(axisValue))) {
+        axisValue = inner.convertFromPixel({ xAxisIndex: 0 }, [offsetX, offsetY])
+      }
+      if (!Number.isFinite(Array.isArray(axisValue) ? Number(axisValue[0]) : Number(axisValue))) {
+        axisValue = inner.convertFromPixel({ gridIndex: 0 }, [offsetX, offsetY])
+      }
+    } catch {
+      return
+    }
+    const rawX = Array.isArray(axisValue) ? Number(axisValue[0]) : Number(axisValue)
+    if (!Number.isFinite(rawX)) return
+    const snapped = pickPeakSnapFreqPoint(rawX)
+    if (!snapped) return
+    const sx = snapped[0]
+    const cur = pointerBaseFreq.value
+    if (typeof cur === 'number' && Number.isFinite(cur) && toFreqKey(sx) === toFreqKey(cur)) {
+      return
+    }
+    try {
+      inner.dispatchAction({ type: 'updateAxisPointer', xAxisIndex: 0, value: sx } as any)
+    } catch { }
+  })
+}
+
 /** 全屏：移入 tooltip 锁定文案；指针停留 ≥90ms 的稳定频点优先作为快照 */
 const freqFullscreenTooltipLocked = ref(false)
 /** 与锁定 tooltip 一致的频率（Hz），用于轴线与倍频竖线 */
@@ -382,7 +476,7 @@ const resolveVcFullscreenPinnedFreqPair = (): [number, number] | null =>
   freqFullscreenStablePair.value ??
   freqFullscreenLastFormatterPair.value ??
   (pointerBaseFreq.value != null && Number.isFinite(pointerBaseFreq.value)
-    ? pickNearestFreqPointByX(Number(pointerBaseFreq.value))
+    ? pickPeakSnapFreqPoint(Number(pointerBaseFreq.value))
     : null)
 
 const buildVcFullscreenPinnedTooltipHtmlFromStable = (): string => {
@@ -402,7 +496,7 @@ watch(pointerBaseFreq, (v) => {
   freqFullscreenStablePairTimer = setTimeout(() => {
     freqFullscreenStablePairTimer = null
     const pt =
-      v != null && Number.isFinite(Number(v)) ? pickNearestFreqPointByX(Number(v)) : null
+      v != null && Number.isFinite(Number(v)) ? pickPeakSnapFreqPoint(Number(v)) : null
     freqFullscreenStablePair.value = pt
   }, FREQ_FULLSCREEN_STABLE_MS)
 })
@@ -864,18 +958,55 @@ const addPinnedFreqPoint = (x: number, y: number) => {
   refreshFullscreenPinnedMarkPoints()
 }
 
+/** 一键打标：标出所有超过阈值的局部峰值点 */
+const autoPinFreqPeaksAboveThreshold = () => {
+  const threshold = Number(autoPinThresholdInput.value)
+  if (!Number.isFinite(threshold) || threshold < 0) return
+  autoPinThresholdInput.value = threshold
+  const { chartData } = getSortedFreqChartData()
+  if (!chartData.length) return
+
+  let nextPoints = pinnedFreqPoints.value
+  let currentId = currentPinnedPointId.value
+  const lastIndex = chartData.length - 1
+  for (let i = 0; i < chartData.length; i++) {
+    const cur = chartData[i]
+    if (!cur) continue
+    const x = cur[0]
+    const y = cur[1]
+    if (!Number.isFinite(x) || !Number.isFinite(y) || y <= threshold) continue
+    const leftY = i > 0 ? (chartData[i - 1]?.[1] ?? Number.NEGATIVE_INFINITY) : Number.NEGATIVE_INFINITY
+    const rightY = i < lastIndex
+      ? (chartData[i + 1]?.[1] ?? Number.NEGATIVE_INFINITY)
+      : Number.NEGATIVE_INFINITY
+    const isPeak =
+      i === 0
+        ? y > rightY
+        : i === lastIndex
+          ? y > leftY
+          : y >= leftY && y >= rightY && (y > leftY || y > rightY)
+    if (!isPeak) continue
+    const state = upsertPersistentPoint(nextPoints, x, y, currentId)
+    nextPoints = state.points
+    currentId = state.currentId
+  }
+  pinnedFreqPoints.value = nextPoints
+  currentPinnedPointId.value = currentId
+  refreshFullscreenPinnedMarkPoints()
+}
+
 const addPinnedByPixel = (offsetX: number, offsetY: number) => {
   const inst = fullscreenFreqChartInstance.value
   if (!inst || !Number.isFinite(offsetX) || !Number.isFinite(offsetY)) return
-  // 优先使用轴指针的 x（不依赖点击的 y），满足“按 x 轴打标”
+  // 优先使用轴指针的 x（不依赖点击的 y），满足“按 x 轴打标”；吸附到附近窗口内 Y 最大点（谱峰顶）
   if (Number.isFinite(pointerBaseFreq.value)) {
-    const nearestByPointer = pickNearestFreqPointByX(Number(pointerBaseFreq.value))
+    const snapped = pickPeakSnapFreqPoint(Number(pointerBaseFreq.value))
     console.log('[freq-pin] use pointerBaseFreq', {
       pointerBaseFreq: pointerBaseFreq.value,
-      nearestByPointer,
+      snapped,
     })
-    if (nearestByPointer) {
-      addPinnedFreqPoint(nearestByPointer[0], nearestByPointer[1])
+    if (snapped) {
+      addPinnedFreqPoint(snapped[0], snapped[1])
       return
     }
   }
@@ -897,10 +1028,10 @@ const addPinnedByPixel = (offsetX: number, offsetY: number) => {
   }
   const x = Array.isArray(axisValue) ? Number(axisValue[0]) : Number(axisValue)
   if (!Number.isFinite(x)) return
-  const nearest = pickNearestFreqPointByX(x)
-  console.log('[freq-pin] nearest point by x', { x, nearest })
-  if (!nearest) return
-  addPinnedFreqPoint(nearest[0], nearest[1])
+  const snapped = pickPeakSnapFreqPoint(x)
+  console.log('[freq-pin] snap from pixel x', { x, snapped })
+  if (!snapped) return
+  addPinnedFreqPoint(snapped[0], snapped[1])
 }
 
 const onFreqFullscreenChartClick = (params: any) => {
@@ -916,7 +1047,12 @@ const onFreqFullscreenChartClick = (params: any) => {
     const x = Number(value[0])
     const y = Number(value[1])
     if (Number.isFinite(x) && Number.isFinite(y)) {
-      console.log('[freq-pin] use direct series value', { x, y })
+      const snapped = pickPeakSnapFreqPoint(x)
+      console.log('[freq-pin] use direct series value + peak snap', { x, y, snapped })
+      if (snapped) {
+        addPinnedFreqPoint(snapped[0], snapped[1])
+        return
+      }
       addPinnedFreqPoint(x, y)
       return
     }
@@ -976,7 +1112,11 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
     console.log('[freq-pin] zr click', { offsetX, offsetY })
     addPinnedByPixel(offsetX, offsetY)
   }
+  const onZrMouseMove = (evt: any) => {
+    scheduleFreqFullscreenPeakSnapPointer(Number(evt?.offsetX), Number(evt?.offsetY))
+  }
   zr?.on?.('click', onZrClick)
+  zr?.on?.('mousemove', onZrMouseMove)
   fullscreenFreqPointerCleanup = () => {
     try {
       inst.off('updateAxisPointer', onUpdateAxisPointer)
@@ -991,6 +1131,7 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   fullscreenFreqZrClickCleanup = () => {
     try {
       zr?.off?.('click', onZrClick)
+      zr?.off?.('mousemove', onZrMouseMove)
     } catch { }
   }
   console.log('[freq-pin] fullscreen click handlers attached')
@@ -1008,6 +1149,7 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
 }
 
 const onFreqFullscreenClosed = () => {
+  cancelFreqFullscreenPeakSnapRaf()
   detachFreqFullscreenTooltipLockHandlers()
   resetFreqFullscreenTooltipLock()
   freqFullscreenUiActive.value = false
@@ -1232,6 +1374,7 @@ watch(timeAxis, () => {
 })
 
 onUnmounted(() => {
+  cancelFreqFullscreenPeakSnapRaf()
   if (freqChartCleanup) {
     freqChartCleanup()
     freqChartCleanup = null
