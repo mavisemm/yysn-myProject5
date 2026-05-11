@@ -198,7 +198,7 @@
       <div class="freq-fullscreen-top">
         <span class="freq-fullscreen-divider" aria-hidden="true" />
         <div class="freq-filter-inline">
-          <span class="freq-filter-label">频率筛选：</span>
+          <span class="freq-filter-label">频率范围：</span>
           <el-input-number v-model="fullscreenRangeMin" :min="safeFullscreenRangeDataMin"
             :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最小"
             controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />

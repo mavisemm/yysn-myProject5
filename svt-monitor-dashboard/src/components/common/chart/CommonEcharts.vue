@@ -96,6 +96,8 @@ const props = withDefaults(
     enableFullscreen?: boolean
     fullscreenTitle?: string
     fullscreenBackground?: string
+    /** 未传时与 autoYAxisOnZoom 一致；为 false 时全屏图不在 X 缩放后自动改 Y（避免覆盖业务侧手写 Y 轴） */
+    fullscreenAutoYAxisOnZoom?: boolean
   }>(),
   {
     option: () => ({}),
@@ -145,6 +147,11 @@ const emit = defineEmits<{
   (e: 'fullscreen-closing'): void
   (e: 'fullscreen-closed'): void
 }>()
+
+const resolveFullscreenAutoYAxisOnZoom = () =>
+  typeof props.fullscreenAutoYAxisOnZoom === 'boolean'
+    ? props.fullscreenAutoYAxisOnZoom
+    : !!props.autoYAxisOnZoom
 
 const containerRef = ref<HTMLElement>()
 const chartRef = ref<HTMLElement>()
@@ -262,6 +269,56 @@ const getDataZoomForXAxis = (opt: any, xAxisIndex: number): any | null => {
     dzList[0] ??
     null
   )
+}
+
+type DataZoomActionPayload = {
+  start?: number
+  end?: number
+  startValue?: unknown
+  endValue?: unknown
+  dataZoomIndex?: number
+}
+
+/**
+ * 部分图表会在交互缩放后，通过业务侧更新 option（例如设置 yAxis.min/max）。
+ * 如果直接 setOption，echarts 可能把 dataZoom 重置回默认（全频段）。
+ * 这里从当前实例 option 抓一份 zoom 快照，在 setOption 后补发一次 dispatchAction 恢复视窗。
+ */
+const captureCurrentDataZoomAction = (
+  inst: echarts.ECharts,
+  xAxisIndex: number,
+): DataZoomActionPayload | null => {
+  try {
+    const opt = inst.getOption?.() as any
+    const dz = getDataZoomForXAxis(opt, xAxisIndex)
+    if (!dz) return null
+
+    const hasValue = typeof dz.startValue !== 'undefined' || typeof dz.endValue !== 'undefined'
+    const hasPct = typeof dz.start !== 'undefined' || typeof dz.end !== 'undefined'
+    if (!hasValue && !hasPct) return null
+
+    const payload: DataZoomActionPayload = {}
+    if (typeof dz.dataZoomIndex === 'number') payload.dataZoomIndex = dz.dataZoomIndex
+
+    if (typeof dz.startValue !== 'undefined') payload.startValue = dz.startValue
+    if (typeof dz.endValue !== 'undefined') payload.endValue = dz.endValue
+    if (typeof dz.start !== 'undefined') payload.start = dz.start
+    if (typeof dz.end !== 'undefined') payload.end = dz.end
+
+    // 若是默认全范围，则无需恢复（避免数据刷新时“锁死”旧 zoom）
+    const s = asFiniteNumber(payload.start)
+    const e = asFiniteNumber(payload.end)
+    const isDefaultPct = s !== null && e !== null && Math.abs(s - 0) < 1e-9 && Math.abs(e - 100) < 1e-9
+    if (isDefaultPct) {
+      // 注意：value 轴默认全范围无法可靠判断；这里只做最保守的去噪
+      // 若业务确需强制保留，请通过 preserveDataZoom 机制走业务侧 doDataZoom。
+      return null
+    }
+
+    return payload
+  } catch {
+    return null
+  }
 }
 const getXAxis = (opt: any, xAxisIndex: number): any | null => {
   const xAxes = pickArray(opt?.xAxis)
@@ -494,7 +551,8 @@ const applyAutoYAxisRange = () => {
   const paddingRatio = Math.max(0, Number(props.autoYAxisOnZoomPaddingRatio ?? 0.05))
   const span = y.max - y.min
   const padding = span === 0 ? (Math.abs(y.max) || 1) * paddingRatio : span * paddingRatio
-  const min = y.min - padding
+  // y 轴值本身非负（如幅值/强度）时，不要因为 padding 把下界扩到负数
+  const min = y.min >= 0 ? Math.max(0, y.min - padding) : y.min - padding
   let max = y.max + padding
   if (min === max) {
     max = min + 1
@@ -542,7 +600,7 @@ const attachAutoYAxisListener = () => {
 }
 
 const applyAutoYAxisRangeFor = (inst: echarts.ECharts) => {
-  if (!props.autoYAxisOnZoom) return
+  if (!resolveFullscreenAutoYAxisOnZoom()) return
   if (!props.option) return
 
   const opt = inst.getOption?.() as any
@@ -564,7 +622,8 @@ const applyAutoYAxisRangeFor = (inst: echarts.ECharts) => {
   const paddingRatio = Math.max(0, Number(props.autoYAxisOnZoomPaddingRatio ?? 0.05))
   const span = y.max - y.min
   const padding = span === 0 ? (Math.abs(y.max) || 1) * paddingRatio : span * paddingRatio
-  const min = y.min - padding
+  // y 轴值本身非负（如幅值/强度）时，不要因为 padding 把下界扩到负数
+  const min = y.min >= 0 ? Math.max(0, y.min - padding) : y.min - padding
   let max = y.max + padding
   if (min === max) {
     max = min + 1
@@ -587,7 +646,7 @@ const attachAutoYAxisListenerForFullscreen = () => {
     fullscreenAutoYAxisTimer = null
   }
   if (!fullscreenChartInstance.value) return
-  if (!props.autoYAxisOnZoom) return
+  if (!resolveFullscreenAutoYAxisOnZoom()) return
 
   const inst = fullscreenChartInstance.value
   const handler = () => {
@@ -903,12 +962,24 @@ const buildResolvedOption = () => {
 const applyFullscreenOption = () => {
   if (!fullscreenChartInstance.value) return
   if (!props.option) return
+  const xAxisIndex = (props.rangeControlsXAxisIndex ?? 0) as number
+  const zoomSnapshot = captureCurrentDataZoomAction(fullscreenChartInstance.value, xAxisIndex)
   const opt = buildResolvedOption()
   try {
     fullscreenChartInstance.value.setOption(opt, {
       notMerge: props.notMerge,
       replaceMerge: props.replaceMerge.length > 0 ? props.replaceMerge : undefined,
     })
+    if (zoomSnapshot) {
+      // 下一帧再恢复更稳，避免与 setOption 内部流程抢时序
+      requestAnimationFrame(() => {
+        try {
+          fullscreenChartInstance.value?.dispatchAction({ type: 'dataZoom', ...zoomSnapshot } as any)
+        } catch {
+          // ignore
+        }
+      })
+    }
   } catch {
     // ignore
   }
@@ -1040,6 +1111,29 @@ watch(
     }
   },
   { deep: true },
+)
+
+watch(
+  () => [
+    fullscreenVisible.value,
+    fullscreenChartInstance.value,
+    props.fullscreenAutoYAxisOnZoom,
+    props.autoYAxisOnZoom,
+  ],
+  () => {
+    if (!fullscreenVisible.value || !fullscreenChartInstance.value) return
+    if (fullscreenAutoYAxisCleanup) {
+      fullscreenAutoYAxisCleanup()
+      fullscreenAutoYAxisCleanup = null
+    }
+    if (!resolveFullscreenAutoYAxisOnZoom()) return
+    attachAutoYAxisListenerForFullscreen()
+    void nextTick(() => {
+      if (fullscreenChartInstance.value) {
+        applyAutoYAxisRangeFor(fullscreenChartInstance.value)
+      }
+    })
+  },
 )
 
 watch(
@@ -1289,16 +1383,25 @@ defineExpose({
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
   height: 100%;
   box-sizing: border-box;
 }
 
 .common-echarts-fullscreen-body-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 10px;
-  flex-wrap: nowrap;
+  row-gap: 10px;
   margin-bottom: 10px;
+  width: 100%;
+  min-width: 0;
+  flex-shrink: 0;
+  max-height: min(52vh, 520px);
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .common-echarts-fullscreen-header-inner {
@@ -1340,15 +1443,18 @@ defineExpose({
 .common-echarts-fullscreen-wrap {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
   box-sizing: border-box;
 }
 
 .common-echarts-fullscreen-inner {
   width: 100%;
-  flex: 1;
-  min-height: 0;
+  min-width: 0;
+  flex: 1 1 0;
+  min-height: min(240px, 35vh);
 }
 
 /* append-to-body 下用 modal-class + :global 保证能命中 */

@@ -7,8 +7,8 @@
       </div>
       <div class="card-header-row card-header-row--toggle">
         <div class="metric-toggle" role="group" aria-label="速度或加速度指标">
-          <button type="button" class="metric-toggle__btn" :class="{ 'metric-toggle__btn--active': metricKind === 'velocity' }"
-            @click="metricKind = 'velocity'">
+          <button type="button" class="metric-toggle__btn"
+            :class="{ 'metric-toggle__btn--active': metricKind === 'velocity' }" @click="metricKind = 'velocity'">
             速度
           </button>
           <span class="metric-toggle__divider" aria-hidden="true" />
@@ -22,88 +22,88 @@
     </div>
     <div class="stats-grid">
       <template v-if="metricKind === 'velocity'">
-      <div class="stat-box">
-        <div class="stat-label">
-          速度有效值
-          <div class="stat-unit">（单位：mm/s）</div>
-        </div>
-        <div class="stat-axes">
-          <div class="axis-row">
-            <span class="axis-name">x轴：</span><span class="stat-value">{{ formatValue(vibrationData.xvelocityRms)
-              }}</span>
+        <div class="stat-box">
+          <div class="stat-label">
+            速度有效值
+            <div class="stat-unit">（单位：mm/s）</div>
           </div>
-          <div class="axis-row">
-            <span class="axis-name">y轴：</span><span class="stat-value">{{ formatValue(vibrationData.yvelocityRms)
+          <div class="stat-axes">
+            <div class="axis-row">
+              <span class="axis-name">X轴：</span><span class="stat-value">{{ formatValue(vibrationData.xvelocityRms)
               }}</span>
-          </div>
-          <div class="axis-row">
-            <span class="axis-name">z轴：</span><span class="stat-value">{{ formatValue(vibrationData.zvelocityRms)
+            </div>
+            <div class="axis-row">
+              <span class="axis-name">Y轴：</span><span class="stat-value">{{ formatValue(vibrationData.yvelocityRms)
               }}</span>
-          </div>
-        </div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">
-          速度最大值
-          <div class="stat-unit">（单位：mm/s）</div>
-        </div>
-        <div class="stat-axes">
-          <div class="axis-row">
-            <span class="axis-name">x轴：</span><span class="stat-value">{{ formatValue(vibrationData.xvelocityMax)
+            </div>
+            <div class="axis-row">
+              <span class="axis-name">Z轴：</span><span class="stat-value">{{ formatValue(vibrationData.zvelocityRms)
               }}</span>
-          </div>
-          <div class="axis-row">
-            <span class="axis-name">y轴：</span><span class="stat-value">{{ formatValue(vibrationData.yvelocityMax)
-              }}</span>
-          </div>
-          <div class="axis-row">
-            <span class="axis-name">z轴：</span><span class="stat-value">{{ formatValue(vibrationData.zvelocityMax)
-              }}</span>
+            </div>
           </div>
         </div>
-      </div>
+        <div class="stat-box">
+          <div class="stat-label">
+            速度最大值
+            <div class="stat-unit">（单位：mm/s）</div>
+          </div>
+          <div class="stat-axes">
+            <div class="axis-row">
+              <span class="axis-name">X轴：</span><span class="stat-value">{{ formatValue(vibrationData.xvelocityMax)
+              }}</span>
+            </div>
+            <div class="axis-row">
+              <span class="axis-name">Y轴：</span><span class="stat-value">{{ formatValue(vibrationData.yvelocityMax)
+              }}</span>
+            </div>
+            <div class="axis-row">
+              <span class="axis-name">Z轴：</span><span class="stat-value">{{ formatValue(vibrationData.zvelocityMax)
+              }}</span>
+            </div>
+          </div>
+        </div>
       </template>
       <template v-if="metricKind === 'acceleration'">
-      <div class="stat-box">
-        <div class="stat-label">
-          加速度有效值
-          <div class="stat-unit">（单位：m/s²）</div>
-        </div>
-        <div class="stat-axes">
-          <div class="axis-row">
-            <span class="axis-name">x轴：</span><span class="stat-value">{{ formatValue(vibrationData.xaccelerationRms)
-              }}</span>
+        <div class="stat-box">
+          <div class="stat-label">
+            加速度有效值
+            <div class="stat-unit">（单位：m/s²）</div>
           </div>
-          <div class="axis-row">
-            <span class="axis-name">y轴：</span><span class="stat-value">{{ formatValue(vibrationData.yaccelerationRms)
+          <div class="stat-axes">
+            <div class="axis-row">
+              <span class="axis-name">X轴：</span><span class="stat-value">{{ formatValue(vibrationData.xaccelerationRms)
               }}</span>
-          </div>
-          <div class="axis-row">
-            <span class="axis-name">z轴：</span><span class="stat-value">{{ formatValue(vibrationData.zaccelerationRms)
+            </div>
+            <div class="axis-row">
+              <span class="axis-name">Y轴：</span><span class="stat-value">{{ formatValue(vibrationData.yaccelerationRms)
               }}</span>
-          </div>
-        </div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">
-          加速度最大值
-          <div class="stat-unit">（单位：m/s²）</div>
-        </div>
-        <div class="stat-axes">
-          <div class="axis-row">
-            <span class="axis-name">x轴：</span><span class="stat-value">{{ formatValue(vibrationData.xaccelerationMax)
+            </div>
+            <div class="axis-row">
+              <span class="axis-name">Z轴：</span><span class="stat-value">{{ formatValue(vibrationData.zaccelerationRms)
               }}</span>
-          </div>
-          <div class="axis-row">
-            <span class="axis-name">y轴：</span><span class="stat-value">{{ formatValue(vibrationData.yaccelerationMax)
-              }}</span>
-          </div>
-          <div class="axis-row">
-            <span class="axis-name">z轴：</span><span class="stat-value">{{ formatValue(vibrationData.zaccelerationMax)
-              }}</span>
+            </div>
           </div>
         </div>
-      </div>
+        <div class="stat-box">
+          <div class="stat-label">
+            加速度最大值
+            <div class="stat-unit">（单位：m/s²）</div>
+          </div>
+          <div class="stat-axes">
+            <div class="axis-row">
+              <span class="axis-name">X轴：</span><span class="stat-value">{{ formatValue(vibrationData.xaccelerationMax)
+              }}</span>
+            </div>
+            <div class="axis-row">
+              <span class="axis-name">Y轴：</span><span class="stat-value">{{ formatValue(vibrationData.yaccelerationMax)
+              }}</span>
+            </div>
+            <div class="axis-row">
+              <span class="axis-name">Z轴：</span><span class="stat-value">{{ formatValue(vibrationData.zaccelerationMax)
+              }}</span>
+            </div>
+          </div>
+        </div>
       </template>
     </div>
   </div>

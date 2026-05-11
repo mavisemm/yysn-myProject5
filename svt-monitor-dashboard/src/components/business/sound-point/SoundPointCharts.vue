@@ -31,7 +31,7 @@
     </div>
 
     <div v-if="true" class="range-controls-bar" @mousedown.stop @wheel.stop>
-      <span class="controls-label">频率筛选：</span>
+      <span class="controls-label">频率范围：</span>
       <el-input-number v-model="rangeMin" class="range-input" size="small" :min="safeRangeDataMin"
         :max="safeRangeDataMax" :step="0.1" :precision="1" controls-position="right" :disabled="rangeControlsDisabled"
         @change="applyRangeIfEnabled" />
@@ -54,7 +54,7 @@
     @closed="onEnergyFsClosed">
     <div class="energy-fs-dialog-inner">
       <div class="energy-fs-controls-top" @mousedown.stop @wheel.stop>
-        <span class="controls-label">频率筛选：</span>
+        <span class="controls-label">频率范围：</span>
         <el-input-number v-model="fullscreenRangeMin" class="range-input" size="small" :min="safeFullscreenRangeDataMin"
           :max="safeFullscreenRangeDataMax" :step="0.1" :precision="1" controls-position="right"
           :disabled="fullscreenRangeControlsDisabled" @change="applyFullscreenRangeIfEnabled" />
@@ -103,9 +103,9 @@ const handleTrendAnalysisClick = () => {
   const tenantId = getTenantId()
   const activeReceiverName = String(
     props.deviationList?.[0]?.receiverName ??
-      props.deviationList?.[0]?.microphone ??
-      props.deviationList?.[0]?.pointName ??
-      '',
+    props.deviationList?.[0]?.microphone ??
+    props.deviationList?.[0]?.pointName ??
+    '',
   ).trim()
   const activeReceiverId = String(selectedPointId.value ?? '').trim()
 

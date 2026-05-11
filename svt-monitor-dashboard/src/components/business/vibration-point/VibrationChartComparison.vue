@@ -21,48 +21,62 @@
       </div>
       <div class="chart-container">
         <CommonEcharts ref="freqChartRef" :option="freqOption" :enable-data-zoom="false" :not-merge="true"
-          enable-fullscreen fullscreen-title="振动速度频域图" fullscreen-background="#142060" @chart-ready="onFreqChartReady"
+          :fullscreen-auto-y-axis-on-zoom="!freqFullscreenYUseCustom" enable-fullscreen fullscreen-title="振动速度频域图"
+          fullscreen-background="#142060" @chart-ready="onFreqChartReady"
           @fullscreen-chart-ready="onFreqFullscreenChartReady" @fullscreen-closing="onFreqFullscreenClosing"
           @fullscreen-closed="onFreqFullscreenClosed">
           <template #fullscreen-body-top>
-            <div class="freq-fullscreen-top">
+            <div class="freq-fullscreen-top freq-filter-inline">
               <el-select v-model="freqAxis" class="vibration-axis-select" size="small" teleported :show-arrow="false"
                 popper-class="vibration-axis-select-dropdown">
                 <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
               </el-select>
-              <span class="freq-fullscreen-divider" aria-hidden="true" />
-              <div class="freq-filter-inline">
-                <span class="freq-filter-label">频率筛选：</span>
-                <el-input-number v-model="fullscreenRangeMin" :min="safeFullscreenRangeDataMin"
-                  :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最小"
-                  controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />
-                <span class="freq-filter-sep">~</span>
-                <el-input-number v-model="fullscreenRangeMax" :min="safeFullscreenRangeDataMin"
-                  :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最大"
-                  controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />
-                <el-button size="small" type="primary" @click="confirmFullscreenRange">确认</el-button>
-                <el-button size="small" @click="resetFullscreenRange"> 重置 </el-button>
-                <span class="freq-filter-divider" aria-hidden="true" />
-                <span class="freq-filter-label">倍频最高阶：</span>
-                <el-input-number v-model="freqHarmonicMaxOrderInput" :min="HARMONIC_ORDER_MIN" :max="HARMONIC_ORDER_MAX"
-                  :precision="0" :step="1" size="small" controls-position="right"
-                  class="freq-filter-num freq-harmonic-order-input" @blur="commitFreqHarmonicMaxOrder" />
-                <el-button size="small" type="primary" @click="commitFreqHarmonicMaxOrder">确认</el-button>
-                <span class="freq-filter-divider" aria-hidden="true" />
-                <span class="freq-filter-label">打标功能：</span>
-                <span class="freq-filter-label">阈值：</span>
-                <el-input-number v-model="autoPinThresholdInput" :min="0" :step="0.0001" :precision="6" size="small"
-                  controls-position="right" class="freq-filter-num" />
-                <el-button size="small" type="primary" @click="autoPinFreqPeaksAboveThreshold">
-                  一键打标
-                </el-button>
-                <el-button size="small" :disabled="!currentPinnedPointId" @click="clearCurrentPinnedPoint">
-                  清除当前标记
-                </el-button>
-                <el-button size="small" :disabled="!pinnedFreqPoints.length" @click="clearAllPinnedPoints">
-                  清除全部标记
-                </el-button>
-              </div>
+              <span class="freq-filter-divider" aria-hidden="true" />
+              <span class="freq-filter-label">频率范围：</span>
+              <el-input-number v-model="fullscreenRangeMin" :min="safeFullscreenRangeDataMin"
+                :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最小"
+                controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />
+              <span class="freq-filter-sep">~</span>
+              <el-input-number v-model="fullscreenRangeMax" :min="safeFullscreenRangeDataMin"
+                :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最大"
+                controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />
+              <el-button size="small" type="primary" @click="confirmFullscreenRange">确认</el-button>
+              <el-button size="small" @click="resetFullscreenRange"> 重置 </el-button>
+              <span class="freq-filter-divider" aria-hidden="true" />
+              <span class="freq-filter-label">Y 轴范围：</span>
+              <el-input-number v-model="freqFullscreenYMinInput" :step="FREQ_Y_AXIS_STEP"
+                :precision="FREQ_Y_AXIS_PRECISION" size="small" controls-position="right"
+                class="freq-filter-num freq-y-axis-num" />
+              <span class="freq-filter-sep">~</span>
+              <el-input-number v-model="freqFullscreenYMaxInput" :step="FREQ_Y_AXIS_STEP"
+                :precision="FREQ_Y_AXIS_PRECISION" size="small" controls-position="right"
+                class="freq-filter-num freq-y-axis-num" />
+              <el-button size="small" type="primary" @click="confirmFreqFullscreenYAxisRange">确认</el-button>
+              <el-button size="small" @click="resetFreqFullscreenYAxisRange">恢复自动</el-button>
+              <span class="freq-filter-divider" aria-hidden="true" />
+              <span class="freq-filter-label">倍频最高阶：</span>
+              <el-input-number v-model="freqHarmonicMaxOrderInput" :min="HARMONIC_ORDER_MIN" :max="HARMONIC_ORDER_MAX"
+                :precision="0" :step="1" size="small" controls-position="right"
+                class="freq-filter-num freq-harmonic-order-input" @blur="commitFreqHarmonicMaxOrder" />
+              <el-button size="small" type="primary" @click="commitFreqHarmonicMaxOrder">确认</el-button>
+              <span class="freq-filter-divider" aria-hidden="true" />
+              <span class="freq-filter-label">打标功能：</span>
+              <el-tooltip content="开启：指针附近按算法吸附到局部幅值最大的谱点。关闭：打到离指针频率最近的采样点，适合双峰挨得很近时要标「旁边」那个点。" placement="top">
+                <span class="freq-filter-label freq-pin-snap-switch-wrap">吸附功能</span>
+              </el-tooltip>
+              <el-switch v-model="freqPinUsePeakSnap" size="small" class="freq-pin-snap-switch" />
+              <span class="freq-filter-label">阈值：</span>
+              <el-input-number v-model="autoPinThresholdInput" :min="0" :step="0.0001" :precision="6" size="small"
+                controls-position="right" class="freq-filter-num" />
+              <el-button size="small" type="primary" @click="autoPinFreqPeaksAboveThreshold">
+                一键打标
+              </el-button>
+              <el-button size="small" :disabled="!currentPinnedPointId" @click="clearCurrentPinnedPoint">
+                清除当前标记
+              </el-button>
+              <el-button size="small" :disabled="!pinnedFreqPoints.length" @click="clearAllPinnedPoints">
+                清除全部标记
+              </el-button>
             </div>
           </template>
         </CommonEcharts>
@@ -173,6 +187,12 @@ const freqChartRef = ref<InstanceType<typeof CommonEcharts>>()
 const timeChartRef = ref<InstanceType<typeof CommonEcharts>>()
 /** CommonEcharts 频域全屏打开时为 true，用于同一套 option 下区分 tooltip 倍频行数 */
 const freqFullscreenUiActive = ref(false)
+/** 全屏下用户锁定 Y 轴 (mm/s)，切换 X/Y/Z 时保持同尺度便于对比 */
+const freqFullscreenYUseCustom = ref(false)
+const freqFullscreenYMinInput = ref(0)
+const freqFullscreenYMaxInput = ref(1)
+const freqFullscreenYMinCommitted = ref(0)
+const freqFullscreenYMaxCommitted = ref(1)
 const freqChartInstance = shallowRef<echarts.ECharts | null>(null)
 const fullscreenFreqChartInstance = shallowRef<echarts.ECharts | null>(null)
 let freqChartCleanup: (() => void) | null = null
@@ -181,11 +201,15 @@ let fullscreenFreqClickCleanup: (() => void) | null = null
 let fullscreenFreqZrClickCleanup: (() => void) | null = null
 /** 全屏频域：mousemove 将轴线指针吸附到局部谱峰（下一帧 dispatch，避免与默认轴指针抢帧） */
 let fullscreenFreqPeakSnapRafId: number | null = null
+/** 晚于 CommonEcharts 全屏 autoY debounce（默认 120ms）再读 yAxis，用于同步 Y 输入框 */
+let freqFullscreenYInputSyncTimer: ReturnType<typeof setTimeout> | null = null
 let markLineRafId: number | null = null
 let lastHarmonicBaseFreq: number | null = null
 const pinnedFreqPoints = ref<EchartsPersistentPoint[]>([])
 const currentPinnedPointId = ref<string>('')
 const autoPinThresholdInput = ref<number>(0.005)
+/** 打标：开启则在参考频率附近窗口内吸附到幅值最大的谱点；关闭则打到离参考频率最近的采样点（便于邻峰、密集谱线时选对点） */
+const freqPinUsePeakSnap = ref(true)
 
 const openFreqFullscreen = () => {
   ; (freqChartRef.value as any)?.openFullscreen?.()
@@ -230,6 +254,10 @@ const clearFreqHarmonicDebounce = () => {
 const FREQ_MATCH_DECIMALS = 6
 const FREQ_FILTER_PRECISION = 6
 const FREQ_FILTER_STEP = 1
+
+/** 全屏手动 Y 轴 (mm/s)，与频域图刻度精度一致 */
+const FREQ_Y_AXIS_PRECISION = 5
+const FREQ_Y_AXIS_STEP = 0.00001
 
 // y 轴刻度：最多保留小数点后两位（并去掉无意义的尾随 0）
 const formatYAxisTick = (v: number | string) => {
@@ -284,6 +312,87 @@ const getSortedFreqChartData = () => {
     pointMap.set(toFreqKey(item[0]), item)
   }
   return { chartData, xMin, xMax, pointMap }
+}
+
+/** 全屏：与图表一致的自动 Y 轴上下界（含 10% 边距，下界不低于 0） */
+const getFreqAutoYBounds = (chartDataArg?: [number, number][]) => {
+  const chartData = chartDataArg ?? getSortedFreqChartData().chartData
+  const yValues = chartData.map((item) => item[1])
+  const yMin = yValues.length > 0 ? Math.min(...yValues) : 0
+  const yMax = yValues.length > 0 ? Math.max(...yValues) : 1
+  const yMargin = (yMax - yMin) * 0.1
+  return {
+    yMinWithMargin: Math.max(0, yMin - yMargin),
+    yMaxWithMargin: yMax + yMargin,
+  }
+}
+
+const initFreqFullscreenYInputsFromData = () => {
+  if (!freqData.value.frequency.length) return
+  const { yMinWithMargin, yMaxWithMargin } = getFreqAutoYBounds()
+  const lo = Number(yMinWithMargin.toFixed(FREQ_Y_AXIS_PRECISION))
+  const hi = Number(yMaxWithMargin.toFixed(FREQ_Y_AXIS_PRECISION))
+  freqFullscreenYMinInput.value = lo
+  freqFullscreenYMaxInput.value = hi
+  freqFullscreenYMinCommitted.value = lo
+  freqFullscreenYMaxCommitted.value = hi
+}
+
+/** 自动 Y 时：把输入框同步为当前全屏图上的 Y 轴（含 X 缩放后的局部自适应），便于在放大后直接点「确认」锁定当前视窗尺度 */
+const syncFreqFullscreenYInputsFromChartOption = () => {
+  if (freqFullscreenYUseCustom.value) return
+  const inst = fullscreenFreqChartInstance.value
+  if (!inst || !freqFullscreenUiActive.value) return
+  try {
+    if (typeof inst.isDisposed === 'function' && inst.isDisposed()) return
+    const opt = inst.getOption() as any
+    const y = Array.isArray(opt.yAxis) ? opt.yAxis[0] : opt.yAxis
+    const mn = Number(y?.min)
+    const mx = Number(y?.max)
+    if (Number.isFinite(mn) && Number.isFinite(mx)) {
+      freqFullscreenYMinInput.value = Number(mn.toFixed(FREQ_Y_AXIS_PRECISION))
+      freqFullscreenYMaxInput.value = Number(mx.toFixed(FREQ_Y_AXIS_PRECISION))
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+const patchFullscreenFreqYAxisRange = (min: number, max: number) => {
+  const inst = fullscreenFreqChartInstance.value
+  if (!inst || !freqFullscreenUiActive.value) return
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return
+  try {
+    inst.setOption({ yAxis: { min, max } } as any, { notMerge: false, lazyUpdate: true })
+  } catch {
+    // ignore
+  }
+}
+
+const confirmFreqFullscreenYAxisRange = () => {
+  let lo = Number(freqFullscreenYMinInput.value)
+  let hi = Number(freqFullscreenYMaxInput.value)
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return
+  if (lo > hi) [lo, hi] = [hi, lo]
+  if (Math.abs(hi - lo) < FREQ_Y_AXIS_STEP) hi = lo + FREQ_Y_AXIS_STEP
+  freqFullscreenYMinCommitted.value = lo
+  freqFullscreenYMaxCommitted.value = hi
+  freqFullscreenYMinInput.value = lo
+  freqFullscreenYMaxInput.value = hi
+  freqFullscreenYUseCustom.value = true
+  patchFullscreenFreqYAxisRange(lo, hi)
+}
+
+const resetFreqFullscreenYAxisRange = () => {
+  freqFullscreenYUseCustom.value = false
+  initFreqFullscreenYInputsFromData()
+  // 解除自定义后，立即按当前“可见频段”重新走一次自动 Y（不会影响外面小图）
+  const inst = fullscreenFreqChartInstance.value
+  if (inst && freqFullscreenUiActive.value) {
+    requestAnimationFrame(() => {
+      syncFreqFullscreenYInputsFromChartOption()
+    })
+  }
 }
 
 const buildHarmonicMarkLineData = (baseFreq: number, maxOrder: number) => {
@@ -378,6 +487,9 @@ const pickPeakSnapFreqPoint = (refX: number): [number, number] | null => {
   return best ?? pickNearestFreqPointByX(refX)
 }
 
+const resolveFreqPinPointByRefX = (refX: number): [number, number] | null =>
+  freqPinUsePeakSnap.value ? pickPeakSnapFreqPoint(refX) : pickNearestFreqPointByX(refX)
+
 const cancelFreqFullscreenPeakSnapRaf = () => {
   if (fullscreenFreqPeakSnapRafId != null) {
     cancelAnimationFrame(fullscreenFreqPeakSnapRafId)
@@ -410,7 +522,7 @@ const scheduleFreqFullscreenPeakSnapPointer = (offsetX: number, offsetY: number)
     }
     const rawX = Array.isArray(axisValue) ? Number(axisValue[0]) : Number(axisValue)
     if (!Number.isFinite(rawX)) return
-    const snapped = pickPeakSnapFreqPoint(rawX)
+    const snapped = resolveFreqPinPointByRefX(rawX)
     if (!snapped) return
     const sx = snapped[0]
     const cur = pointerBaseFreq.value
@@ -476,7 +588,7 @@ const resolveVcFullscreenPinnedFreqPair = (): [number, number] | null =>
   freqFullscreenStablePair.value ??
   freqFullscreenLastFormatterPair.value ??
   (pointerBaseFreq.value != null && Number.isFinite(pointerBaseFreq.value)
-    ? pickPeakSnapFreqPoint(Number(pointerBaseFreq.value))
+    ? resolveFreqPinPointByRefX(Number(pointerBaseFreq.value))
     : null)
 
 const buildVcFullscreenPinnedTooltipHtmlFromStable = (): string => {
@@ -496,7 +608,7 @@ watch(pointerBaseFreq, (v) => {
   freqFullscreenStablePairTimer = setTimeout(() => {
     freqFullscreenStablePairTimer = null
     const pt =
-      v != null && Number.isFinite(Number(v)) ? pickPeakSnapFreqPoint(Number(v)) : null
+      v != null && Number.isFinite(Number(v)) ? resolveFreqPinPointByRefX(Number(v)) : null
     freqFullscreenStablePair.value = pt
   }, FREQ_FULLSCREEN_STABLE_MS)
 })
@@ -562,12 +674,11 @@ const freqOption = computed<EChartsOption>(() => {
     : INLINE_HARMONIC_MAX_ORDER
 
   const { chartData, xMin, xMax } = getSortedFreqChartData()
-  const yValues = chartData.map((item) => item[1])
-  const yMin = yValues.length > 0 ? Math.min(...yValues) : 0
-  const yMax = yValues.length > 0 ? Math.max(...yValues) : 1
-  const yMargin = (yMax - yMin) * 0.1
-  const yMinWithMargin = Math.max(0, yMin - yMargin)
-  const yMaxWithMargin = yMax + yMargin
+  const { yMinWithMargin, yMaxWithMargin } = getFreqAutoYBounds(chartData)
+  // 注意：频域图内嵌与全屏共用一套 option。全屏手动 Y 轴范围不要写进 option，
+  // 否则会同步影响外面小图；全屏手动范围由 fullscreen 实例 setOption 局部 patch。
+  const yAxisMin = yMinWithMargin
+  const yAxisMax = yMaxWithMargin
 
   const c = chartAxisColor.value
   const s = chartSplitLineColor.value
@@ -715,8 +826,8 @@ const freqOption = computed<EChartsOption>(() => {
     yAxis: {
       type: 'value',
       name: 'mm/s',
-      min: yMinWithMargin,
-      max: yMaxWithMargin,
+      min: yAxisMin,
+      max: yAxisMax,
       nameTextStyle: { color: c },
       axisLabel: {
         color: c,
@@ -1000,7 +1111,7 @@ const addPinnedByPixel = (offsetX: number, offsetY: number) => {
   if (!inst || !Number.isFinite(offsetX) || !Number.isFinite(offsetY)) return
   // 优先使用轴指针的 x（不依赖点击的 y），满足“按 x 轴打标”；吸附到附近窗口内 Y 最大点（谱峰顶）
   if (Number.isFinite(pointerBaseFreq.value)) {
-    const snapped = pickPeakSnapFreqPoint(Number(pointerBaseFreq.value))
+    const snapped = resolveFreqPinPointByRefX(Number(pointerBaseFreq.value))
     console.log('[freq-pin] use pointerBaseFreq', {
       pointerBaseFreq: pointerBaseFreq.value,
       snapped,
@@ -1028,7 +1139,7 @@ const addPinnedByPixel = (offsetX: number, offsetY: number) => {
   }
   const x = Array.isArray(axisValue) ? Number(axisValue[0]) : Number(axisValue)
   if (!Number.isFinite(x)) return
-  const snapped = pickPeakSnapFreqPoint(x)
+  const snapped = resolveFreqPinPointByRefX(x)
   console.log('[freq-pin] snap from pixel x', { x, snapped })
   if (!snapped) return
   addPinnedFreqPoint(snapped[0], snapped[1])
@@ -1047,6 +1158,10 @@ const onFreqFullscreenChartClick = (params: any) => {
     const x = Number(value[0])
     const y = Number(value[1])
     if (Number.isFinite(x) && Number.isFinite(y)) {
+      if (!freqPinUsePeakSnap.value) {
+        addPinnedFreqPoint(x, y)
+        return
+      }
       const snapped = pickPeakSnapFreqPoint(x)
       console.log('[freq-pin] use direct series value + peak snap', { x, y, snapped })
       if (snapped) {
@@ -1086,6 +1201,9 @@ const onFreqChartReady = (instance: echarts.ECharts) => {
 const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   console.log('[freq-pin] fullscreen chart ready')
   freqFullscreenUiActive.value = true
+  if (!freqFullscreenYUseCustom.value) {
+    initFreqFullscreenYInputsFromData()
+  }
   clearFreqHarmonicDebounce()
   freqHarmonicMaxOrderInput.value = freqHarmonicMaxOrderCommitted.value
   resetFreqFullscreenTooltipLock()
@@ -1103,7 +1221,20 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
     fullscreenFreqZrClickCleanup = null
   }
   inst.on('updateAxisPointer', onUpdateAxisPointer)
-  inst.on('datazoom', handleFullscreenDataZoom)
+  const onFreqFullscreenDataZoom = (params: any) => {
+    handleFullscreenDataZoom(params)
+    if (!freqFullscreenYUseCustom.value) {
+      if (freqFullscreenYInputSyncTimer != null) {
+        clearTimeout(freqFullscreenYInputSyncTimer)
+        freqFullscreenYInputSyncTimer = null
+      }
+      freqFullscreenYInputSyncTimer = setTimeout(() => {
+        freqFullscreenYInputSyncTimer = null
+        syncFreqFullscreenYInputsFromChartOption()
+      }, 160)
+    }
+  }
+  inst.on('datazoom', onFreqFullscreenDataZoom)
   inst.on('click', onFreqFullscreenChartClick)
   const zr = inst.getZr?.()
   const onZrClick = (evt: any) => {
@@ -1118,9 +1249,13 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   zr?.on?.('click', onZrClick)
   zr?.on?.('mousemove', onZrMouseMove)
   fullscreenFreqPointerCleanup = () => {
+    if (freqFullscreenYInputSyncTimer != null) {
+      clearTimeout(freqFullscreenYInputSyncTimer)
+      freqFullscreenYInputSyncTimer = null
+    }
     try {
       inst.off('updateAxisPointer', onUpdateAxisPointer)
-      inst.off('datazoom', handleFullscreenDataZoom)
+      inst.off('datazoom', onFreqFullscreenDataZoom)
     } catch { }
   }
   fullscreenFreqClickCleanup = () => {
@@ -1149,9 +1284,14 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
 }
 
 const onFreqFullscreenClosed = () => {
+  if (freqFullscreenYInputSyncTimer != null) {
+    clearTimeout(freqFullscreenYInputSyncTimer)
+    freqFullscreenYInputSyncTimer = null
+  }
   cancelFreqFullscreenPeakSnapRaf()
   detachFreqFullscreenTooltipLockHandlers()
   resetFreqFullscreenTooltipLock()
+  freqFullscreenYUseCustom.value = false
   freqFullscreenUiActive.value = false
   fullscreenFreqChartInstance.value = null
   if (fullscreenFreqPointerCleanup) {
@@ -1281,9 +1421,15 @@ const loadFreqData = async () => {
       console.warn('频域图接口返回错误或无数据:', freqResponse)
       freqData.value = { frequency: [], freqSpeedData: [] }
     }
+    if (freqFullscreenUiActive.value && !freqFullscreenYUseCustom.value) {
+      void nextTick(() => initFreqFullscreenYInputsFromData())
+    }
   } catch (error) {
     console.error('获取振动频域数据失败:', error)
     freqData.value = { frequency: [], freqSpeedData: [] }
+    if (freqFullscreenUiActive.value && !freqFullscreenYUseCustom.value) {
+      void nextTick(() => initFreqFullscreenYInputsFromData())
+    }
   }
 }
 
@@ -1661,13 +1807,19 @@ $vibration-axis-font-size: 12px;
   color: rgba(255, 255, 255, 0.65);
 }
 
-.freq-fullscreen-top {
+/* 全屏顶栏：测点轴与各筛选/打标配置同一 flex 行内并列，统一换行 */
+.freq-fullscreen-top.freq-filter-inline {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  gap: 6px;
+  row-gap: 8px;
+  column-gap: 10px;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  justify-content: flex-start;
 }
 
 .time-fullscreen-top {
@@ -1677,14 +1829,6 @@ $vibration-axis-font-size: 12px;
   width: 100%;
 }
 
-.freq-filter-inline {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
-
 .freq-filter-inline .freq-filter-label {
   color: #fff;
   font-size: 0.8rem;
@@ -1692,6 +1836,10 @@ $vibration-axis-font-size: 12px;
 
 .freq-fullscreen-top .freq-filter-num {
   width: 90px;
+}
+
+.freq-fullscreen-top .freq-y-axis-num {
+  width: 108px;
 }
 
 .freq-filter-inline .freq-filter-sep {
@@ -1707,15 +1855,7 @@ $vibration-axis-font-size: 12px;
   flex: 0 0 auto;
 }
 
-.freq-fullscreen-divider {
-  width: 1px;
-  height: 20px;
-  margin: 0 2px;
-  background: rgba(255, 255, 255, 0.28);
-  flex: 0 0 auto;
-}
-
-.freq-fullscreen-top .freq-filter-inline .el-button+.el-button {
+.freq-fullscreen-top.freq-filter-inline .el-button+.el-button {
   margin-left: 0;
 }
 
@@ -1743,12 +1883,8 @@ $vibration-axis-font-size: 12px;
     max-height: 500px !important;
   }
 
-  .freq-fullscreen-top {
+  .freq-fullscreen-top.freq-filter-inline {
     justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .freq-filter-inline {
     flex-wrap: wrap;
     white-space: normal;
   }

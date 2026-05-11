@@ -47,14 +47,14 @@
             <CommonDateTimePicker v-model="dateRange" width="320px" />
             <span class="waterfall-filter-divider" aria-hidden="true" />
             <div class="freq-filter">
-              <span class="freq-filter-label">频率筛选：</span>
+              <span class="freq-filter-label">频率范围：</span>
               <el-input-number v-model="freqFilterMin" :min="freqAxisDomain.min" :max="freqAxisDomain.max"
                 :precision="0" :step="1" size="small" placeholder="最小" controls-position="right" class="freq-num" />
               <span class="freq-sep">~</span>
               <el-input-number v-model="freqFilterMax" :min="freqAxisDomain.min" :max="freqAxisDomain.max"
                 :precision="0" :step="1" size="small" placeholder="最大" controls-position="right" class="freq-num" />
               <el-button type="primary" size="small" class="freq-apply-btn" @click="applyFreqFilter">
-                应用
+                确认
               </el-button>
               <el-button size="small" @click="resetFreqFilter"> 重置 </el-button>
             </div>
@@ -530,7 +530,7 @@ const chartGridLineColor = computed(() => '#999999')
 
 const intervalHours = ref(12)
 const dateRange = ref<[string, string] | null>(getRollingWeekDateRange())
-/** 频率筛选输入（点击「应用」后写入 freqDisplayRange） */
+/** 频率范围输入（点击确认」后写入 freqDisplayRange） */
 const freqFilterMin = ref<number | undefined>(undefined)
 const freqFilterMax = ref<number | undefined>(undefined)
 /** null 表示不过滤，使用接口返回全量频率；否则为闭区间 [min,max]（已与输入对齐） */
