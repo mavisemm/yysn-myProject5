@@ -165,6 +165,8 @@ const chartSplitLineColor = computed(() => 'rgba(255,255,255,0.1)')
 
 const freqChartRef = ref<InstanceType<typeof CommonEcharts>>()
 const timeChartRef = ref<InstanceType<typeof CommonEcharts>>()
+/** CommonEcharts 频域全屏打开时为 true，用于同一套 option 下区分 tooltip 倍频行数 */
+const freqFullscreenUiActive = ref(false)
 const freqChartInstance = shallowRef<echarts.ECharts | null>(null)
 const fullscreenFreqChartInstance = shallowRef<echarts.ECharts | null>(null)
 let freqChartCleanup: (() => void) | null = null
@@ -202,6 +204,8 @@ const timeAxis = ref<VibrationAxis>('X')
 const pointerBaseFreq = ref<number | null>(null)
 const HARMONIC_ORDER_MIN = 1
 const HARMONIC_ORDER_MAX = 100
+/** 非全屏小图倍频竖线固定为默认 4 阶，不与全屏自定义倍频同步 */
+const INLINE_HARMONIC_MAX_ORDER = 4
 const FREQ_HARMONIC_DEBOUNCE_MS = 400
 const freqHarmonicMaxOrderCommitted = ref(4)
 const freqHarmonicMaxOrderInput = ref(4)
@@ -273,13 +277,13 @@ const getSortedFreqChartData = () => {
   return { chartData, xMin, xMax, pointMap }
 }
 
-const buildHarmonicMarkLineData = (baseFreq: number) => {
+const buildHarmonicMarkLineData = (baseFreq: number, maxOrder: number) => {
   if (!Number.isFinite(baseFreq) || baseFreq <= 0) return []
   const { xMax, pointMap } = getSortedFreqChartData()
   const hasExactPoint = (x: number) => pointMap.has(toFreqKey(x))
-  const maxOrder = clampHarmonicMaxOrder(freqHarmonicMaxOrderCommitted.value)
+  const maxOrderClamped = clampHarmonicMaxOrder(maxOrder)
   const candidates: Array<{ name: string; x: number; color: string; requirePoint: boolean }> = []
-  for (let k = 1; k <= maxOrder; k++) {
+  for (let k = 1; k <= maxOrderClamped; k++) {
     candidates.push({
       name: '',
       x: baseFreq * k,
@@ -310,8 +314,158 @@ const buildHarmonicMarkLineData = (baseFreq: number) => {
     }))
 }
 
+const pickNearestFreqPointByX = (x: number): [number, number] | null => {
+  const { chartData } = getSortedFreqChartData()
+  if (!chartData.length || !Number.isFinite(x)) return null
+  let nearest: [number, number] | null = null
+  let minDist = Number.POSITIVE_INFINITY
+  for (const point of chartData) {
+    const dist = Math.abs(point[0] - x)
+    if (dist < minDist) {
+      minDist = dist
+      nearest = point
+    }
+  }
+  return nearest
+}
+
+/** 全屏：移入 tooltip 锁定文案；指针停留 ≥90ms 的稳定频点优先作为快照 */
+const freqFullscreenTooltipLocked = ref(false)
+/** 与锁定 tooltip 一致的频率（Hz），用于轴线与倍频竖线 */
+const freqFullscreenLockedAxisX = ref<number | null>(null)
+const freqFullscreenTooltipPinnedHtml = ref('')
+const freqFullscreenStablePair = ref<[number, number] | null>(null)
+const freqFullscreenLastFormatterPair = ref<[number, number] | null>(null)
+let freqFullscreenStablePairTimer: ReturnType<typeof setTimeout> | null = null
+const FREQ_FULLSCREEN_STABLE_MS = 90
+let freqFullscreenTooltipDocHandlersCleanup: (() => void) | null = null
+
+const clearFreqFullscreenStablePairTimer = () => {
+  if (freqFullscreenStablePairTimer != null) {
+    clearTimeout(freqFullscreenStablePairTimer)
+    freqFullscreenStablePairTimer = null
+  }
+}
+
+const resetFreqFullscreenTooltipLock = () => {
+  freqFullscreenTooltipLocked.value = false
+  freqFullscreenLockedAxisX.value = null
+  freqFullscreenTooltipPinnedHtml.value = ''
+  freqFullscreenStablePair.value = null
+  freqFullscreenLastFormatterPair.value = null
+  clearFreqFullscreenStablePairTimer()
+}
+
+const formatVcFreqTooltipHtmlFromXY = (
+  currentX: number,
+  currentY: number,
+  minX: number,
+  maxX: number,
+  pointMap: Map<string, [number, number]>,
+  harmonicMaxOrder: number,
+): string => {
+  const mo = clampHarmonicMaxOrder(harmonicMaxOrder)
+  let tooltipContent = `${formatFrequency(currentX)}Hz：${currentY.toFixed(10)}`
+  const findExactPoint = (x: number) => pointMap.get(toFreqKey(x))
+  for (let mult = 2; mult <= mo; mult++) {
+    const hf = currentX * mult
+    if (hf < minX || hf > maxX) continue
+    const pt = findExactPoint(hf)
+    if (pt) {
+      tooltipContent += `<br/>${harmonicOrderLabel(mult)}：${formatFrequency(hf)}Hz：${pt[1].toFixed(10)}`
+    }
+  }
+  return tooltipContent
+}
+
+const resolveVcFullscreenPinnedFreqPair = (): [number, number] | null =>
+  freqFullscreenStablePair.value ??
+  freqFullscreenLastFormatterPair.value ??
+  (pointerBaseFreq.value != null && Number.isFinite(pointerBaseFreq.value)
+    ? pickNearestFreqPointByX(Number(pointerBaseFreq.value))
+    : null)
+
+const buildVcFullscreenPinnedTooltipHtmlFromStable = (): string => {
+  const xy = resolveVcFullscreenPinnedFreqPair()
+  if (!xy) return ''
+  const { chartData, xMin, xMax } = getSortedFreqChartData()
+  const pointMap = new Map<string, [number, number]>(
+    chartData.map((item) => [toFreqKey(item[0]), item] as [string, [number, number]]),
+  )
+  const mo = clampHarmonicMaxOrder(freqHarmonicMaxOrderCommitted.value)
+  return formatVcFreqTooltipHtmlFromXY(xy[0], xy[1], xMin, xMax, pointMap, mo)
+}
+
+watch(pointerBaseFreq, (v) => {
+  if (!freqFullscreenUiActive.value || freqFullscreenTooltipLocked.value) return
+  clearFreqFullscreenStablePairTimer()
+  freqFullscreenStablePairTimer = setTimeout(() => {
+    freqFullscreenStablePairTimer = null
+    const pt =
+      v != null && Number.isFinite(Number(v)) ? pickNearestFreqPointByX(Number(v)) : null
+    freqFullscreenStablePair.value = pt
+  }, FREQ_FULLSCREEN_STABLE_MS)
+})
+
+const detachFreqFullscreenTooltipLockHandlers = () => {
+  freqFullscreenTooltipDocHandlersCleanup?.()
+  freqFullscreenTooltipDocHandlersCleanup = null
+}
+
+const refreshVcFullscreenFreqTooltipOption = () => {
+  void nextTick(() => {
+    const inst = fullscreenFreqChartInstance.value
+    if (!inst) return
+    try {
+      const opt = freqOption.value as { tooltip?: unknown }
+      if (!opt?.tooltip) return
+      inst.setOption({ tooltip: opt.tooltip }, { replaceMerge: ['tooltip'] })
+    } catch { }
+  })
+}
+
+const attachFreqFullscreenTooltipLockHandlers = () => {
+  detachFreqFullscreenTooltipLockHandlers()
+  const onMouseOver = (e: MouseEvent) => {
+    if (!freqFullscreenUiActive.value || freqFullscreenTooltipLocked.value) return
+    const el = e.target as HTMLElement
+    if (!el?.closest?.('.echarts-tooltip')) return
+    const xy = resolveVcFullscreenPinnedFreqPair()
+    if (!xy) return
+    const html = buildVcFullscreenPinnedTooltipHtmlFromStable()
+    if (!html) return
+    freqFullscreenLockedAxisX.value = xy[0]
+    freqFullscreenTooltipPinnedHtml.value = html
+    freqFullscreenTooltipLocked.value = true
+    pointerBaseFreq.value = xy[0]
+    lastHarmonicBaseFreq = null
+    scheduleHarmonicMarkLines(xy[0])
+    syncVcFreqChartsAxisPointerToValue(xy[0])
+    refreshVcFullscreenFreqTooltipOption()
+  }
+  const onMouseOut = (e: MouseEvent) => {
+    if (!freqFullscreenUiActive.value || !freqFullscreenTooltipLocked.value) return
+    const from = (e.target as HTMLElement | null)?.closest?.('.echarts-tooltip')
+    if (!from) return
+    const to = e.relatedTarget as Node | null
+    if (to && from.contains(to)) return
+    resetFreqFullscreenTooltipLock()
+    refreshVcFullscreenFreqTooltipOption()
+  }
+  document.addEventListener('mouseover', onMouseOver, true)
+  document.addEventListener('mouseout', onMouseOut, true)
+  freqFullscreenTooltipDocHandlersCleanup = () => {
+    document.removeEventListener('mouseover', onMouseOver, true)
+    document.removeEventListener('mouseout', onMouseOut, true)
+  }
+}
+
 const freqOption = computed<EChartsOption>(() => {
   if (!freqData.value.frequency.length) return {}
+
+  const tooltipHarmonicMaxOrder = freqFullscreenUiActive.value
+    ? clampHarmonicMaxOrder(freqHarmonicMaxOrderCommitted.value)
+    : INLINE_HARMONIC_MAX_ORDER
 
   const { chartData, xMin, xMax } = getSortedFreqChartData()
   const yValues = chartData.map((item) => item[1])
@@ -324,6 +478,10 @@ const freqOption = computed<EChartsOption>(() => {
   const c = chartAxisColor.value
   const s = chartSplitLineColor.value
 
+  const fullscreenTooltipExtra =
+    freqFullscreenUiActive.value &&
+    'max-height:calc(100vh - 140px);overflow-y:auto;overflow-x:hidden;box-sizing:border-box;padding:8px 12px;pointer-events:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;'
+
   return {
     tooltip: {
       trigger: 'axis',
@@ -333,6 +491,10 @@ const freqOption = computed<EChartsOption>(() => {
       textStyle: { color: '#fff' },
 
       confine: true,
+      ...(fullscreenTooltipExtra ? { extraCssText: fullscreenTooltipExtra } : {}),
+      ...(freqFullscreenUiActive.value
+        ? { appendToBody: true, enterable: true, hideDelay: 3000 }
+        : {}),
       position: function (pos: any, _params: any, _el: any, _elRect: any, size: any) {
         const [mouseX, mouseY] = pos as [number, number]
         const [contentWidth, contentHeight] = size.contentSize as [number, number]
@@ -344,7 +506,7 @@ const freqOption = computed<EChartsOption>(() => {
         const base = pointerBaseFreq.value
         const avoidPixels: number[] = []
         if (inst && typeof base === 'number' && Number.isFinite(base) && base > 0) {
-          const lines = buildHarmonicMarkLineData(base)
+          const lines = buildHarmonicMarkLineData(base, INLINE_HARMONIC_MAX_ORDER)
           for (const l of lines as any[]) {
             const v = (l as any)?.xAxis
             const n = typeof v === 'number' ? v : Number(v)
@@ -368,6 +530,14 @@ const freqOption = computed<EChartsOption>(() => {
         const pad = 8
         const vw = typeof size?.viewSize?.[0] === 'number' ? size.viewSize[0] : 0
         const vh = typeof size?.viewSize?.[1] === 'number' ? size.viewSize[1] : 0
+
+        const viewportCap =
+          freqFullscreenUiActive.value && typeof window !== 'undefined'
+            ? Math.max(80, window.innerHeight - 140)
+            : Number.POSITIVE_INFINITY
+        const chartCap = vh > 0 ? Math.max(pad * 2, vh - 2 * pad) : Number.POSITIVE_INFINITY
+        const contentHeightEff =
+          contentHeight > 0 ? Math.min(contentHeight, viewportCap, chartCap) : contentHeight
 
         const clampTx = (t: number) => {
           if (vw <= 0 || contentWidth <= 0) return t
@@ -395,14 +565,21 @@ const freqOption = computed<EChartsOption>(() => {
           else tx = overlapCount(l) <= overlapCount(r) ? l : r
         }
 
-        let ty = mouseY - contentHeight / 2
-        if (vh > 0 && contentHeight > 0) {
-          const maxY = Math.max(pad, vh - contentHeight - pad)
+        let ty = mouseY - contentHeightEff / 2
+        if (vh > 0 && contentHeightEff > 0) {
+          const maxY = Math.max(pad, vh - contentHeightEff - pad)
           ty = Math.min(Math.max(ty, pad), maxY)
         }
         return [tx, ty]
       },
       formatter: function (params: any) {
+        if (
+          freqFullscreenUiActive.value &&
+          freqFullscreenTooltipLocked.value &&
+          freqFullscreenTooltipPinnedHtml.value
+        ) {
+          return freqFullscreenTooltipPinnedHtml.value
+        }
         if (!params?.length || !params[0]?.value) return ''
         const data = params[0]
         const currentX = data.value[0]
@@ -412,20 +589,17 @@ const freqOption = computed<EChartsOption>(() => {
         const pointMap = new Map<string, [number, number]>(
           chartData.map((item) => [toFreqKey(item[0]), item] as [string, [number, number]]),
         )
-        const findExactPoint = (x: number) => pointMap.get(toFreqKey(x))
-
-        let tooltipContent = `${formatFrequency(currentX)}Hz：${currentY.toFixed(10)}`
-        const maxOrder = clampHarmonicMaxOrder(freqHarmonicMaxOrderCommitted.value)
-        for (let mult = 2; mult <= maxOrder; mult++) {
-          const hf = currentX * mult
-          if (hf < minX || hf > maxX) continue
-          const pt = findExactPoint(hf)
-          if (pt) {
-            tooltipContent += `<br/>${harmonicOrderLabel(mult)}：${formatFrequency(hf)}Hz：${pt[1].toFixed(10)}`
-          }
+        if (freqFullscreenUiActive.value && !freqFullscreenTooltipLocked.value) {
+          freqFullscreenLastFormatterPair.value = [currentX, currentY]
         }
-
-        return tooltipContent
+        return formatVcFreqTooltipHtmlFromXY(
+          currentX,
+          currentY,
+          minX,
+          maxX,
+          pointMap,
+          tooltipHarmonicMaxOrder,
+        )
       },
     },
     grid: { top: 30, left: 40, right: 50, bottom: 35, containLabel: true },
@@ -509,15 +683,16 @@ const scheduleHarmonicMarkLines = (baseFreq: number) => {
     markLineRafId = null
     if (lastHarmonicBaseFreq !== null && Math.abs(lastHarmonicBaseFreq - baseFreq) < 1e-6) return
     lastHarmonicBaseFreq = baseFreq
-    const data = buildHarmonicMarkLineData(baseFreq)
+    const dataInline = buildHarmonicMarkLineData(baseFreq, INLINE_HARMONIC_MAX_ORDER)
+    const dataFullscreen = buildHarmonicMarkLineData(baseFreq, freqHarmonicMaxOrderCommitted.value)
     try {
       if (freqChartInstance.value) {
         freqChartInstance.value.setOption(
-          { series: [{ id: 'freq-series', markLine: { data } }] } as any,
+          { series: [{ id: 'freq-series', markLine: { data: dataInline } }] } as any,
           { notMerge: false, lazyUpdate: true },
         )
       }
-      freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', data)
+      freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', dataFullscreen)
     } catch { }
   })
 }
@@ -529,18 +704,23 @@ const commitFreqHarmonicMaxOrder = () => {
   const prev = freqHarmonicMaxOrderCommitted.value
   freqHarmonicMaxOrderCommitted.value = next
   if (prev === next) return
+  resetFreqFullscreenTooltipLock()
+  if (freqFullscreenUiActive.value) {
+    refreshVcFullscreenFreqTooltipOption()
+  }
   lastHarmonicBaseFreq = null
   const base = pointerBaseFreq.value
   if (base == null || !Number.isFinite(base)) return
-  const data = buildHarmonicMarkLineData(base)
+  const dataInline = buildHarmonicMarkLineData(base, INLINE_HARMONIC_MAX_ORDER)
+  const dataFullscreen = buildHarmonicMarkLineData(base, freqHarmonicMaxOrderCommitted.value)
   try {
     if (freqChartInstance.value) {
       freqChartInstance.value.setOption(
-        { series: [{ id: 'freq-series', markLine: { data } }] } as any,
+        { series: [{ id: 'freq-series', markLine: { data: dataInline } }] } as any,
         { notMerge: false, lazyUpdate: true },
       )
     }
-    freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', data)
+    freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', dataFullscreen)
   } catch { }
   lastHarmonicBaseFreq = base
 }
@@ -558,15 +738,39 @@ watch(freqHarmonicMaxOrderInput, (_v, oldVal) => {
   scheduleFreqHarmonicDebouncedCommit()
 })
 
+/** tooltip 锁定时轴线与倍频竖线与锁定频率对齐 */
+const syncVcFreqChartsAxisPointerToValue = (value: number) => {
+  if (!Number.isFinite(value)) return
+  const action = { type: 'updateAxisPointer', xAxisIndex: 0, value } as const
+  requestAnimationFrame(() => {
+    try {
+      fullscreenFreqChartInstance.value?.dispatchAction(action as any)
+    } catch { }
+    try {
+      freqChartInstance.value?.dispatchAction(action as any)
+    } catch { }
+  })
+}
+
 const onUpdateAxisPointer = (params: any) => {
   const axesInfo = Array.isArray(params?.axesInfo) ? params.axesInfo : []
   const info0 = axesInfo[0]
   const v = info0?.value
   const n = typeof v === 'number' ? v : Number(v)
-  if (Number.isFinite(n)) {
-    pointerBaseFreq.value = n
-    scheduleHarmonicMarkLines(n)
+  if (!Number.isFinite(n)) return
+
+  if (freqFullscreenTooltipLocked.value && freqFullscreenLockedAxisX.value != null) {
+    const locked = freqFullscreenLockedAxisX.value
+    pointerBaseFreq.value = locked
+    scheduleHarmonicMarkLines(locked)
+    if (Math.abs(n - locked) > 1e-9) {
+      syncVcFreqChartsAxisPointerToValue(locked)
+    }
+    return
   }
+
+  pointerBaseFreq.value = n
+  scheduleHarmonicMarkLines(n)
 }
 
 const getPinnedMarkPointData = () =>
@@ -660,21 +864,6 @@ const addPinnedFreqPoint = (x: number, y: number) => {
   refreshFullscreenPinnedMarkPoints()
 }
 
-const pickNearestFreqPointByX = (x: number): [number, number] | null => {
-  const { chartData } = getSortedFreqChartData()
-  if (!chartData.length || !Number.isFinite(x)) return null
-  let nearest: [number, number] | null = null
-  let minDist = Number.POSITIVE_INFINITY
-  for (const point of chartData) {
-    const dist = Math.abs(point[0] - x)
-    if (dist < minDist) {
-      minDist = dist
-      nearest = point
-    }
-  }
-  return nearest
-}
-
 const addPinnedByPixel = (offsetX: number, offsetY: number) => {
   const inst = fullscreenFreqChartInstance.value
   if (!inst || !Number.isFinite(offsetX) || !Number.isFinite(offsetY)) return
@@ -760,8 +949,10 @@ const onFreqChartReady = (instance: echarts.ECharts) => {
 
 const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   console.log('[freq-pin] fullscreen chart ready')
+  freqFullscreenUiActive.value = true
   clearFreqHarmonicDebounce()
   freqHarmonicMaxOrderInput.value = freqHarmonicMaxOrderCommitted.value
+  resetFreqFullscreenTooltipLock()
   fullscreenFreqChartInstance.value = inst
   if (fullscreenFreqPointerCleanup) {
     fullscreenFreqPointerCleanup()
@@ -806,16 +997,20 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
 
   const base = pointerBaseFreq.value
   if (typeof base === 'number' && Number.isFinite(base) && base > 0) {
-    const data = buildHarmonicMarkLineData(base)
+    const dataFullscreen = buildHarmonicMarkLineData(base, freqHarmonicMaxOrderCommitted.value)
     try {
-      freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', data)
+      freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', dataFullscreen)
     } catch { }
   }
 
   patchFullscreenPinnedMarkPoints()
+  attachFreqFullscreenTooltipLockHandlers()
 }
 
 const onFreqFullscreenClosed = () => {
+  detachFreqFullscreenTooltipLockHandlers()
+  resetFreqFullscreenTooltipLock()
+  freqFullscreenUiActive.value = false
   fullscreenFreqChartInstance.value = null
   if (fullscreenFreqPointerCleanup) {
     fullscreenFreqPointerCleanup()
