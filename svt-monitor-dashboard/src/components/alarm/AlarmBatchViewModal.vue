@@ -215,6 +215,22 @@
             class="freq-filter-num freq-harmonic-order-input" @blur="commitFreqHarmonicMaxOrder" />
           <el-button size="small" type="primary" @click="commitFreqHarmonicMaxOrder">确认</el-button>
           <span class="freq-filter-divider" aria-hidden="true" />
+          <el-tooltip placement="top" teleported>
+            <template #content>
+              <div class="freq-mouse-mode-tooltip">
+                默认「打标」：图表可点击打点；Tooltip 不可移入、较快消失。<br />
+                按 <b>R</b> 切到「阅读数据」：Tooltip 可移入并延长显示、支持锁定；此时点击图表不会新增标记。再按 <b>R</b> 切回打标。
+              </div>
+            </template>
+            <span class="freq-filter-label freq-mouse-mode-label">全屏鼠标</span>
+          </el-tooltip>
+          <span class="freq-fullscreen-mouse-mode-hint" aria-live="polite">
+            <span class="freq-fullscreen-mouse-mode-hint__state">{{
+              freqFullscreenMouseMode === 'read' ? '阅读数据' : '打标'
+            }}</span>
+            <span class="freq-fullscreen-mouse-mode-hint__kbd">按 R 切换</span>
+          </span>
+          <span class="freq-filter-divider" aria-hidden="true" />
           <span class="freq-filter-label">打标功能：</span>
           <span class="freq-filter-label">阈值：</span>
           <el-input-number v-model="autoPinThresholdInput" :min="0" :step="0.0001" :precision="6" size="small"
@@ -252,6 +268,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import * as echarts from 'echarts'
+import type { EChartsOption } from 'echarts'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { FullScreen } from '@element-plus/icons-vue'
 
@@ -317,6 +334,42 @@ const freqAxis = ref<VibrationAxis>('X')
 const timeAxis = ref<VibrationAxis>('X')
 const freqFullscreenVisible = ref(false)
 const timeFullscreenVisible = ref(false)
+/** 全屏频域：打标与 Tooltip 阅读互斥；默认打标，按 R 切换（与振动点位页一致） */
+const freqFullscreenMouseMode = ref<'pin' | 'read'>('pin')
+let freqFullscreenMouseModeKeydownCleanup: (() => void) | null = null
+
+const isFreqFullscreenEditableKeyTarget = (target: EventTarget | null): boolean => {
+  const el = target as HTMLElement | null
+  if (!el?.closest) return false
+  const tag = el.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true
+  if (el.isContentEditable) return true
+  if (el.closest('.el-input__inner, .el-textarea__inner, [contenteditable="true"]')) return true
+  return false
+}
+
+const onFreqFullscreenMouseModeKeydown = (e: KeyboardEvent) => {
+  if (e.key !== 'r' && e.key !== 'R') return
+  if (e.ctrlKey || e.metaKey || e.altKey) return
+  if (!freqFullscreenVisible.value) return
+  if (isFreqFullscreenEditableKeyTarget(e.target)) return
+  e.preventDefault()
+  freqFullscreenMouseMode.value = freqFullscreenMouseMode.value === 'pin' ? 'read' : 'pin'
+}
+
+const detachFreqFullscreenMouseModeHotkey = () => {
+  freqFullscreenMouseModeKeydownCleanup?.()
+  freqFullscreenMouseModeKeydownCleanup = null
+}
+
+const attachFreqFullscreenMouseModeHotkey = () => {
+  detachFreqFullscreenMouseModeHotkey()
+  window.addEventListener('keydown', onFreqFullscreenMouseModeKeydown, true)
+  freqFullscreenMouseModeKeydownCleanup = () => {
+    window.removeEventListener('keydown', onFreqFullscreenMouseModeKeydown, true)
+    freqFullscreenMouseModeKeydownCleanup = null
+  }
+}
 const pointerBaseFreq = ref<number | null>(null)
 let markLineRafId: number | null = null
 /** 全屏频域：mousemove 轴线吸附谱峰的 rAF */
@@ -386,6 +439,7 @@ const disposeCharts = () => {
     markLineRafId = null
   }
   clearFreqHarmonicDebounce()
+  detachFreqFullscreenMouseModeHotkey()
   detachFreqFullscreenTooltipLockHandlers()
   resetFreqFullscreenTooltipLock()
 }
@@ -487,7 +541,7 @@ const buildVibrationFreqOption = (theme: 'inline' | 'fullscreen' = 'inline') => 
       confine: true,
       ...(fullscreenTooltipMaxCss ? { extraCssText: fullscreenTooltipMaxCss } : {}),
       ...(theme === 'fullscreen'
-        ? { appendToBody: true, enterable: true, hideDelay: 3000 }
+        ? { appendToBody: true, enterable: false, hideDelay: 180, className: 'echarts-tooltip' }
         : {}),
       position: (pos: number[], _params: unknown, _el: unknown, _rect: unknown, size: any) => {
         const [mouseX, mouseY] = pos as [number, number]
@@ -1196,6 +1250,16 @@ const detachFreqFullscreenTooltipLockHandlers = () => {
   freqFullscreenTooltipDocHandlersCleanup = null
 }
 
+const applyFullscreenTooltipPointerModeToInst = (inst: echarts.ECharts) => {
+  const read = freqFullscreenMouseMode.value === 'read'
+  try {
+    inst.setOption(
+      { tooltip: { enterable: read, hideDelay: read ? 3000 : 180 } } as EChartsOption,
+      { lazyUpdate: true },
+    )
+  } catch { }
+}
+
 const refreshFullscreenFreqTooltipOption = () => {
   void nextTick(() => {
     const inst = vibrationFreqFullscreenChart.value
@@ -1203,15 +1267,44 @@ const refreshFullscreenFreqTooltipOption = () => {
     try {
       const opt = buildVibrationFreqOption('fullscreen') as { tooltip?: unknown }
       if (!opt?.tooltip) return
-      inst.setOption({ tooltip: opt.tooltip }, { replaceMerge: ['tooltip'] })
+      inst.setOption({ tooltip: opt.tooltip }, { replaceMerge: ['tooltip'], lazyUpdate: true })
+      applyFullscreenTooltipPointerModeToInst(inst)
     } catch { }
   })
 }
 
+const patchFullscreenTooltipPointerModeOnly = () => {
+  void nextTick(() => {
+    const inst = vibrationFreqFullscreenChart.value
+    if (!inst) return
+    applyFullscreenTooltipPointerModeToInst(inst)
+  })
+}
+
+const syncFreqFullscreenTooltipLockHandlers = (opts?: { pointerModeOnly?: boolean }) => {
+  if (!freqFullscreenVisible.value) return
+  resetFreqFullscreenTooltipLock()
+  if (freqFullscreenMouseMode.value === 'read') {
+    attachFreqFullscreenTooltipLockHandlers()
+  } else {
+    detachFreqFullscreenTooltipLockHandlers()
+  }
+  if (opts?.pointerModeOnly) {
+    patchFullscreenTooltipPointerModeOnly()
+  } else {
+    refreshFullscreenFreqTooltipOption()
+  }
+}
+
+watch(freqFullscreenMouseMode, () => {
+  syncFreqFullscreenTooltipLockHandlers({ pointerModeOnly: true })
+})
+
 const attachFreqFullscreenTooltipLockHandlers = () => {
   detachFreqFullscreenTooltipLockHandlers()
   const onMouseOver = (e: MouseEvent) => {
-    if (!freqFullscreenVisible.value || freqFullscreenTooltipLocked.value) return
+    if (!freqFullscreenVisible.value || freqFullscreenMouseMode.value !== 'read') return
+    if (freqFullscreenTooltipLocked.value) return
     const el = e.target as HTMLElement
     if (!el?.closest?.('.echarts-tooltip')) return
     const xy = resolveFullscreenPinnedFreqPair()
@@ -1228,7 +1321,8 @@ const attachFreqFullscreenTooltipLockHandlers = () => {
     refreshFullscreenFreqTooltipOption()
   }
   const onMouseOut = (e: MouseEvent) => {
-    if (!freqFullscreenVisible.value || !freqFullscreenTooltipLocked.value) return
+    if (!freqFullscreenVisible.value || freqFullscreenMouseMode.value !== 'read') return
+    if (!freqFullscreenTooltipLocked.value) return
     const from = (e.target as HTMLElement | null)?.closest?.('.echarts-tooltip')
     if (!from) return
     const to = e.relatedTarget as Node | null
@@ -1295,6 +1389,7 @@ const autoPinFreqPeaksAboveThreshold = () => {
 }
 
 const addPinnedByPixel = (offsetX: number, offsetY: number) => {
+  if (freqFullscreenMouseMode.value === 'read') return
   const inst = vibrationFreqFullscreenChart.value
   if (!inst || !Number.isFinite(offsetX) || !Number.isFinite(offsetY)) return
   if (Number.isFinite(pointerBaseFreq.value)) {
@@ -1324,6 +1419,7 @@ const addPinnedByPixel = (offsetX: number, offsetY: number) => {
 }
 
 const onFreqFullscreenChartClick = (params: any) => {
+  if (freqFullscreenMouseMode.value === 'read') return
   const value = params?.value
   if (Array.isArray(value) && value.length >= 2) {
     const x = Number(value[0])
@@ -1356,6 +1452,7 @@ const clearAllPinnedPoints = () => {
 }
 
 const onFreqFullscreenZrClick = (evt: any) => {
+  if (freqFullscreenMouseMode.value === 'read') return
   addPinnedByPixel(Number(evt?.offsetX), Number(evt?.offsetY))
 }
 
@@ -1384,6 +1481,7 @@ const renderVibrationCharts = async () => {
 const onFreqFullscreenOpened = async () => {
   clearFreqHarmonicDebounce()
   freqHarmonicMaxOrderInput.value = freqHarmonicMaxOrderCommitted.value
+  freqFullscreenMouseMode.value = 'pin'
   resetFreqFullscreenTooltipLock()
   await nextTick()
   if (!freqFullscreenChartRef.value) return
@@ -1403,11 +1501,13 @@ const onFreqFullscreenOpened = async () => {
   if (pointerBaseFreq.value && Number.isFinite(pointerBaseFreq.value)) {
     applyHarmonicMarkLines(pointerBaseFreq.value)
   }
-  attachFreqFullscreenTooltipLockHandlers()
+  syncFreqFullscreenTooltipLockHandlers()
+  attachFreqFullscreenMouseModeHotkey()
 }
 
 const onFreqFullscreenClosed = () => {
   cancelFreqFullscreenPeakSnapRaf()
+  detachFreqFullscreenMouseModeHotkey()
   detachFreqFullscreenTooltipLockHandlers()
   resetFreqFullscreenTooltipLock()
   try { vibrationFreqFullscreenChart.value?.off('click', onFreqFullscreenChartClick) } catch { }
@@ -1418,7 +1518,9 @@ const onFreqFullscreenClosed = () => {
   } catch { }
   try { vibrationFreqFullscreenChart.value?.dispose() } catch { }
   vibrationFreqFullscreenChart.value = null
-  clearAllPinnedPoints()
+  void nextTick(() => {
+    patchPinnedMarkPoints()
+  })
 }
 
 const onTimeFullscreenOpened = async () => {
@@ -2187,6 +2289,26 @@ onBeforeUnmount(() => {
   margin: 0 4px;
   background: rgba(255, 255, 255, 0.28);
   flex: 0 0 auto;
+}
+
+.freq-fullscreen-mouse-mode-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.92);
+  flex-shrink: 0;
+}
+
+.freq-fullscreen-mouse-mode-hint__state {
+  min-width: 3.5em;
+  font-weight: 600;
+  color: #7ee8ff;
+}
+
+.freq-fullscreen-mouse-mode-hint__kbd {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
 }
 
 .panelRow {

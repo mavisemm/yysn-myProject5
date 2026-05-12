@@ -144,6 +144,8 @@ const emit = defineEmits<{
   (e: 'range-change', payload: { min: number; max: number; startValue: any; endValue: any }): void
   (e: 'range-reset'): void
   (e: 'fullscreen-chart-ready', instance: echarts.ECharts): void
+  /** 全屏实例已 setOption（notMerge 整表替换）之后；父组件可在此合并右侧有效值等 overlay */
+  (e: 'fullscreen-after-set-option'): void
   (e: 'fullscreen-closing'): void
   (e: 'fullscreen-closed'): void
 }>()
@@ -634,7 +636,7 @@ const applyAutoYAxisRangeFor = (inst: echarts.ECharts) => {
   try {
     const yAxisArr = Array.isArray(opt?.yAxis) ? opt.yAxis : null
     const yAxisPatch = yAxisArr && yAxisArr.length > 1 ? yAxisArr.map(() => ({ min, max })) : { min, max }
-    inst.setOption({ yAxis: yAxisPatch } as any, { notMerge: false, lazyUpdate: true })
+    inst.setOption({ yAxis: yAxisPatch } as any, { notMerge: false, lazyUpdate: false })
   } catch {
     // ignore
   }
@@ -969,20 +971,30 @@ const applyFullscreenOption = () => {
   const xAxisIndex = (props.rangeControlsXAxisIndex ?? 0) as number
   const zoomSnapshot = captureCurrentDataZoomAction(fullscreenChartInstance.value, xAxisIndex)
   const opt = buildResolvedOption()
+  const notifyAfterSetOption = () => {
+    try {
+      emit('fullscreen-after-set-option')
+    } catch {
+      // ignore
+    }
+  }
   try {
     fullscreenChartInstance.value.setOption(opt, {
       notMerge: props.notMerge,
       replaceMerge: props.replaceMerge.length > 0 ? props.replaceMerge : undefined,
     })
     if (zoomSnapshot) {
-      // 下一帧再恢复更稳，避免与 setOption 内部流程抢时序
+      // 下一帧再恢复更稳，避免与 setOption 内部流程抢时序；再通知父级合并 overlay（如有效值柱）
       requestAnimationFrame(() => {
         try {
           fullscreenChartInstance.value?.dispatchAction({ type: 'dataZoom', ...zoomSnapshot } as any)
         } catch {
           // ignore
         }
+        notifyAfterSetOption()
       })
+    } else {
+      notifyAfterSetOption()
     }
   } catch {
     // ignore
@@ -1187,7 +1199,7 @@ const patchFullscreenSeriesMarkLine = (seriesId: string, data: unknown[]) => {
   try {
     fullscreenChartInstance.value.setOption(
       { series: [{ id: seriesId, markLine: { data } }] } as EChartsOption,
-      { notMerge: false, lazyUpdate: true },
+      { notMerge: false, lazyUpdate: false },
     )
   } catch {
     // ignore
