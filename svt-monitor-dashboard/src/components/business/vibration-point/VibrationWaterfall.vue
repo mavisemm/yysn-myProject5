@@ -84,6 +84,8 @@ const route = useRoute()
 
 /** 悬停频率时沿时间轴连成的 3D 折线（独立 series，用局部 setOption 更新，避免整图重配影响视角） */
 const FREQ_SLICE_SERIES_ID = 'waterfall-freq-slice'
+/** 按需求：瀑布图小图/全屏去掉指示线，仅保留黄色 3D 折线指示线 */
+const WATERFALL_INDICATOR_LINE_ENABLED = true
 /** 与 echarts-gl/lib/component/grid3D/Grid3DView.js 中 dimIndicesMap 一致 */
 const GRID3D_DIM_INDICES = { x: 0, y: 2, z: 1 } as const
 
@@ -395,6 +397,7 @@ const patchWaterfallFreqSliceSeries = (chart: ECharts, data: [number, number, nu
 }
 
 const clearWaterfallFreqSlice = (chart: ECharts) => {
+  if (!WATERFALL_INDICATOR_LINE_ENABLED) return
   lastFreqSliceIndex.delete(chart)
   patchWaterfallFreqSliceSeries(chart, [])
 }
@@ -421,6 +424,7 @@ const updateWaterfallFreqSlice = (chart: ECharts) => {
 }
 
 const detachWaterfallFreqSliceHandlers = (chart: ECharts) => {
+  if (!WATERFALL_INDICATOR_LINE_ENABLED) return
   const h = freqSliceHandlers.get(chart)
   if (!h) return
   cancelFreqSlicePatchRaf(chart)
@@ -449,6 +453,7 @@ const applyWaterfallFreqSliceFromHz = (chart: ECharts, fx: number) => {
 }
 
 const attachWaterfallFreqSliceHandlers = (chart: ECharts) => {
+  if (!WATERFALL_INDICATOR_LINE_ENABLED) return
   if (freqSliceHandlers.has(chart)) return
 
   const onViewGLMouseMove = (e: { offsetX: number; offsetY: number }) => {
@@ -806,10 +811,8 @@ const waterfallOption = computed<EChartsOption>(() => {
       boxWidth: 100,
       boxHeight: 100,
       boxDepth: 100,
-      /** 三个坐标面上的十字参考线（随鼠标在盒面上投影）；刻度闪烁已通过 viewControl 量化 / 去重 setOption 等方式减轻，勿随意 show:false */
-      axisPointer: {
-        lineStyle: { color: '#063c83' },
-      },
+      /** 按需求：去掉瀑布图指示线（axisPointer 那根线） */
+      axisPointer: { show: false },
       splitLine: {
         lineStyle: { color: gridColor },
       },
@@ -830,7 +833,17 @@ const waterfallOption = computed<EChartsOption>(() => {
       },
       nameGap: 40,
       axisLine: { lineStyle: { color: c } },
-      axisTick: { lineStyle: { color: c } },
+      // 仅让“会显示刻度数字”的刻度线伸出来，避免 10Hz 一根短刻度线造成干扰
+      axisTick: {
+        show: true,
+        lineStyle: { color: c },
+        interval: (_index: number, value: number) => {
+          const n = Number(value)
+          if (!Number.isFinite(n)) return false
+          const tickIndex = Math.round((n - freqMin) / freqAxisTickInterval)
+          return tickIndex % freqAxisLabelEveryTicks === 0
+        },
+      } as any,
       axisLabel: {
         color: c,
         fontSize: '0.8rem',
@@ -899,21 +912,25 @@ const waterfallOption = computed<EChartsOption>(() => {
     },
     series: [
       ...seriesList,
-      {
-        id: FREQ_SLICE_SERIES_ID,
-        name: '',
-        type: 'line3D' as const,
-        data: [] as [number, number, number][],
-        silent: true,
-        legendHoverLink: false,
-        tooltip: { show: false },
-        lineStyle: {
-          width: 2.5,
-          color: '#ffeb3b',
-        },
-        itemStyle: { opacity: 0 },
-        emphasis: { disabled: true },
-      },
+      ...(WATERFALL_INDICATOR_LINE_ENABLED
+        ? [
+          {
+            id: FREQ_SLICE_SERIES_ID,
+            name: '',
+            type: 'line3D' as const,
+            data: [] as [number, number, number][],
+            silent: true,
+            legendHoverLink: false,
+            tooltip: { show: false },
+            lineStyle: {
+              width: 2.5,
+              color: '#ffeb3b',
+            },
+            itemStyle: { opacity: 0 },
+            emphasis: { disabled: true },
+          },
+        ]
+        : []),
     ],
   } as EChartsOption
 })

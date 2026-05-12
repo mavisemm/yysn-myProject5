@@ -54,7 +54,7 @@
               <el-button size="small" type="primary" @click="confirmFreqFullscreenYAxisRange">锁定范围</el-button>
               <el-button size="small" @click="resetFreqFullscreenYAxisRange">取消锁定</el-button>
               <span class="freq-filter-divider" aria-hidden="true" />
-              <span class="freq-filter-label">倍频最高阶：</span>
+              <span class="freq-filter-label">倍频数量：</span>
               <el-input-number v-model="freqHarmonicMaxOrderInput" :min="HARMONIC_ORDER_MIN" :max="HARMONIC_ORDER_MAX"
                 :precision="0" :step="1" size="small" controls-position="right"
                 class="freq-filter-num freq-harmonic-order-input" @blur="commitFreqHarmonicMaxOrder" />
@@ -83,7 +83,8 @@
                 <el-icon class="freq-fullscreen-mouse-mode-hint__icon">
                   <WarningFilled />
                 </el-icon>
-                <span class="freq-fullscreen-mouse-mode-hint__text">按 R 可以取消打标模式进入提示条阅读模式</span>
+                <span class="freq-fullscreen-mouse-mode-hint__text">
+                  按 R 切换到提示条阅读模式（取消打标）。阅读模式下，点击图面可固定当前鼠标位置的提示条；未固定的提示条将显示 3 秒后自动隐藏。</span>
               </span>
             </div>
           </template>
@@ -2165,6 +2166,7 @@ $vibration-axis-font-size: 12px;
 }
 
 .freq-fullscreen-mouse-mode-hint__text {
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.75);
 }
 
