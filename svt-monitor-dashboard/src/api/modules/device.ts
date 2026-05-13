@@ -95,8 +95,9 @@ export const getVibrationFrequencyData = (
     receiverId,
     axis,
   }
-  if (alarmTime && Number.isFinite(alarmTime)) {
-    payload.alarmTime = alarmTime
+  const at = alarmTime == null ? NaN : Number(alarmTime)
+  if (Number.isFinite(at) && at > 0) {
+    payload.alarmTime = at
   }
   return request.post('/device/vibration/data/frequency', payload)
 }
@@ -168,8 +169,9 @@ export const getVibrationTimeDomainData = (
     receiverId: receiverId,
     axis,
   }
-  if (alarmTime && Number.isFinite(alarmTime)) {
-    payload.alarmTime = alarmTime
+  const at = alarmTime == null ? NaN : Number(alarmTime)
+  if (Number.isFinite(at) && at > 0) {
+    payload.alarmTime = at
   }
   return request.post('/device/vibration/data/time', payload)
 }
