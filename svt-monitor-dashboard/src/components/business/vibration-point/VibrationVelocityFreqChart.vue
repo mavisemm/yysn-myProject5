@@ -303,7 +303,7 @@ const clampHarmonicMaxOrder = (raw: unknown) => {
 const harmonicOrderLabel = (order: number) => `${order}倍频`
 
 const harmonicMarkLineColor = (order: number) => {
-  if (order === 1) return '#7ecba1'
+  if (order === 1) return '#ffffff'
   const hue = ((order - 2) * 37 + 210) % 360
   return `hsl(${hue}, 68%, 58%)`
 }

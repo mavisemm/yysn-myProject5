@@ -659,14 +659,20 @@ const loadEvent = async () => {
   hasVibrationTimeData.value = false
   disposeCharts()
 
-  try {
-    const res = await apiGetEventById({ id: props.row.id })
-    if (res?.rc === 0 && res?.ret) {
-      eventDetail.value = res.ret
-    } else {
+  const rowEventTypeCode = String((props.row as any)?.eventTypeCode ?? '')
+  const shouldFetchEventById = rowEventTypeCode.endsWith('_WARN')
+  if (shouldFetchEventById) {
+    try {
+      const res = await apiGetEventById({ id: props.row.id })
+      if (res?.rc === 0 && res?.ret) {
+        eventDetail.value = res.ret
+      } else {
+        eventDetail.value = props.row
+      }
+    } catch {
       eventDetail.value = props.row
     }
-  } catch {
+  } else {
     eventDetail.value = props.row
   }
 
