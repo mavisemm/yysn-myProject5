@@ -82,7 +82,7 @@
                 <WarningFilled />
               </el-icon>
               <span class="freq-fullscreen-mouse-mode-hint__text">
-                按 R 切换到提示条阅读模式（默认打开打标功能，按 R 关闭打标功能）。阅读模式下，点击图面可固定当前鼠标位置的提示条和倍频线。</span>
+                按 R 可以在打标功能和提示条阅读模式切换（默认打开打标功能）。提示条阅读模式下，点击图表可固定当前提示条和倍频线。</span>
             </span>
           </div>
         </template>
