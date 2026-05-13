@@ -314,7 +314,7 @@ watch(timeAxis, () => {
   .card-header {
     display: flex;
     align-items: center;
-    padding: 10px 10px 0 10px;
+    padding: 10px 10px 0 20px;
     gap: 0;
     min-height: 40px;
 
@@ -369,8 +369,19 @@ watch(timeAxis, () => {
     flex: 1;
     width: 100%;
     min-height: 0;
-    padding: 10px 10px 10px 10px;
+    padding: 10px 10px 20px 20px;
     position: relative;
+  }
+}
+
+/* 振动实时报警弹窗内嵌小图：更紧凑边距 */
+.card-item.alarm-vibration-time-chart {
+  .card-header {
+    padding: 10px 10px 0 10px;
+  }
+
+  .chart-container {
+    padding: 10px 10px 10px 10px;
   }
 }
 
