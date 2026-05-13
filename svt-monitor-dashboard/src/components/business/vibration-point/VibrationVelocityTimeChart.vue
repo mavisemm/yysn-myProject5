@@ -314,7 +314,7 @@ watch(timeAxis, () => {
   .card-header {
     display: flex;
     align-items: center;
-    padding: 10px 10px 0 20px;
+    padding: 10px 10px 0 10px;
     gap: 0;
     min-height: 40px;
 
@@ -369,7 +369,7 @@ watch(timeAxis, () => {
     flex: 1;
     width: 100%;
     min-height: 0;
-    padding: 10px 10px 20px 20px;
+    padding: 10px 10px 10px 10px;
     position: relative;
   }
 }
