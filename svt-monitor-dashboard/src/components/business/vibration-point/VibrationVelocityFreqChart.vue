@@ -181,6 +181,151 @@ let fullscreenFreqPeakSnapRafId: number | null = null
 let freqFullscreenYInputSyncTimer: ReturnType<typeof setTimeout> | null = null
 let markLineRafId: number | null = null
 let lastHarmonicBaseFreq: number | null = null
+/** 全屏倍频竖线箭头（graphic，仅全屏实例；每条线：数据值略上方 + x 轴各一） */
+const FREQ_HARMONIC_ARROW_GRAPHIC_PREFIX = 'freq-harmonic-arrow-'
+const FREQ_FULLSCREEN_AXIS_POINTER_LINE_COLOR = '#7ecba1'
+const FREQ_HARMONIC_ARROW_W = 5
+const FREQ_HARMONIC_ARROW_H = 7
+/** 数据点上方箭头尖端相对幅值的抬高量（mm/s），尽量小以免挡谱线 */
+const FREQ_HARMONIC_DATA_ARROW_Y_OFFSET_RATIO = 0.01
+const FREQ_HARMONIC_DATA_ARROW_Y_OFFSET_MIN = 0.001
+
+const resolveFreqFullscreenPointerFreqHz = (): number | null => {
+  if (freqFullscreenTooltipLocked.value && freqFullscreenLockedAxisX.value != null) {
+    return freqFullscreenLockedAxisX.value
+  }
+  const v = pointerBaseFreq.value
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null
+}
+
+const buildDownArrowGraphicPolygon = (id: string, px: number, tipY: number, color: string) => {
+  const w = FREQ_HARMONIC_ARROW_W
+  const h = FREQ_HARMONIC_ARROW_H
+  const baseY = tipY - h
+  return {
+    id,
+    type: 'polygon',
+    silent: true,
+    z: 20,
+    shape: {
+      points: [
+        [px, tipY],
+        [px - w, baseY],
+        [px + w, baseY],
+      ],
+    },
+    style: {
+      fill: color,
+      stroke: 'rgba(255, 255, 255, 0.22)',
+      lineWidth: 0.5,
+    },
+  }
+}
+
+const getHarmonicSpectrumYAtX = (
+  x: number,
+  pointMap: Map<string, [number, number]>,
+): number | null => {
+  const exact = pointMap.get(toFreqKey(x))
+  if (exact) return exact[1]
+  const nearest = pickNearestFreqPointByX(x)
+  return nearest ? nearest[1] : null
+}
+
+const buildFreqFullscreenHarmonicArrowGraphics = (baseFreq: number, maxOrder: number) => {
+  if (!Number.isFinite(baseFreq) || baseFreq <= 0) return []
+  const inst = fullscreenFreqChartInstance.value
+  if (!inst) return []
+
+  const { xMax, pointMap } = getSortedFreqChartData()
+  const maxOrderClamped = clampHarmonicMaxOrder(maxOrder)
+
+  let yMin = 0
+  try {
+    const opt = inst.getOption() as any
+    const yAxes = opt?.yAxis
+    const y0 = Array.isArray(yAxes) ? yAxes[0] : yAxes
+    yMin = Number(y0?.min)
+    if (!Number.isFinite(yMin)) yMin = 0
+  } catch { }
+
+  const graphics: ReturnType<typeof buildDownArrowGraphicPolygon>[] = []
+
+  for (let k = 1; k <= maxOrderClamped; k++) {
+    const x = baseFreq * k
+    if (!(x > 0 && x <= xMax)) continue
+    const requirePoint = k !== 1
+    if (requirePoint && !pointMap.has(toFreqKey(x))) continue
+
+    const color = harmonicMarkLineColor(k)
+    const dataY = getHarmonicSpectrumYAtX(x, pointMap)
+
+    let px: number
+    let pyAxis: number
+    try {
+      px = inst.convertToPixel({ xAxisIndex: 0 }, x) as number
+      pyAxis = inst.convertToPixel({ yAxisIndex: 0 }, yMin) as number
+    } catch {
+      continue
+    }
+    if (!Number.isFinite(px) || !Number.isFinite(pyAxis)) continue
+
+    graphics.push(
+      buildDownArrowGraphicPolygon(`${FREQ_HARMONIC_ARROW_GRAPHIC_PREFIX}${k}-axis`, px, pyAxis, color),
+    )
+
+    if (dataY != null && Number.isFinite(dataY)) {
+      const dataYOffset = Math.max(
+        Math.abs(dataY) * FREQ_HARMONIC_DATA_ARROW_Y_OFFSET_RATIO,
+        FREQ_HARMONIC_DATA_ARROW_Y_OFFSET_MIN,
+      )
+      const yArrowTip = dataY + dataYOffset
+      let pyData: number
+      try {
+        pyData = inst.convertToPixel({ yAxisIndex: 0 }, yArrowTip) as number
+      } catch {
+        continue
+      }
+      if (!Number.isFinite(pyData)) continue
+      if (Math.abs(pyData - pyAxis) < FREQ_HARMONIC_ARROW_H * 2.5) continue
+
+      graphics.push(
+        buildDownArrowGraphicPolygon(
+          `${FREQ_HARMONIC_ARROW_GRAPHIC_PREFIX}${k}-data`,
+          px,
+          pyData,
+          color,
+        ),
+      )
+    }
+  }
+
+  return graphics
+}
+
+const removeFreqFullscreenHarmonicLineArrows = (inst: echarts.ECharts | null) => {
+  if (!inst) return
+  try {
+    inst.setOption({ graphic: [] } as any, { lazyUpdate: true, replaceMerge: ['graphic'] })
+  } catch { }
+}
+
+const updateFreqFullscreenHarmonicLineArrows = (baseFreq?: number | null) => {
+  const inst = fullscreenFreqChartInstance.value
+  if (!inst || !freqFullscreenUiActive.value) return
+  const base = baseFreq === undefined ? resolveFreqFullscreenPointerFreqHz() : baseFreq
+  if (base == null || !Number.isFinite(base) || base <= 0) {
+    removeFreqFullscreenHarmonicLineArrows(inst)
+    return
+  }
+  const graphics = buildFreqFullscreenHarmonicArrowGraphics(
+    base,
+    freqHarmonicMaxOrderCommitted.value,
+  )
+  try {
+    inst.setOption({ graphic: graphics } as any, { lazyUpdate: true, replaceMerge: ['graphic'] })
+  } catch { }
+}
 const pinnedFreqPoints = ref<EchartsPersistentPoint[]>([])
 const currentPinnedPointId = ref<string>('')
 const autoPinThresholdInput = ref<number>(0.005)
@@ -372,6 +517,7 @@ const patchFullscreenFreqYAxisRange = (min: number, max: number) => {
   try {
     // 全屏右侧有效值柱状图使用第二条 yAxis（与主 yAxis 同尺度），这里需一并更新
     inst.setOption({ yAxis: [{ min, max }, { min, max }] } as any, { notMerge: false, lazyUpdate: true })
+    requestAnimationFrame(() => updateFreqFullscreenHarmonicLineArrows())
   } catch {
     // ignore
   }
@@ -682,6 +828,7 @@ const lockFreqFullscreenTooltipByFreqPair = (xy: [number, number]) => {
   lastHarmonicBaseFreq = null
   scheduleHarmonicMarkLines(xy[0])
   syncVcFreqChartsAxisPointerToValue(xy[0])
+  updateFreqFullscreenHarmonicLineArrows(xy[0])
 
   const html = buildVcFullscreenPinnedTooltipHtmlFromStable()
   freqFullscreenTooltipPinnedHtml.value = html
@@ -885,7 +1032,17 @@ const freqOption = computed<EChartsOption>(() => {
       // 全屏下 enterable/hideDelay 仅通过 patchVcFullscreenTooltipPointerModeOnly 打到实例上，
       // 避免写入此处导致 freqOption 随 R 键变化、CommonEcharts 整 option 重绘闪屏。
       ...(freqFullscreenUiActive.value
-        ? { appendToBody: true, enterable: false, hideDelay: 2000 }
+        ? {
+            appendToBody: true,
+            enterable: false,
+            hideDelay: 2000,
+            axisPointer: {
+              type: 'line',
+              axis: 'x',
+              label: { show: false },
+              lineStyle: { color: FREQ_FULLSCREEN_AXIS_POINTER_LINE_COLOR, width: 1 },
+            },
+          }
         : {}),
       position: function (pos: any, _params: any, _el: any, _elRect: any, size: any) {
         const [mouseX, mouseY] = pos as [number, number]
@@ -1182,6 +1339,9 @@ const scheduleHarmonicMarkLines = (baseFreq: number) => {
       }
       freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', dataFullscreen)
     } catch { }
+    if (freqFullscreenUiActive.value) {
+      updateFreqFullscreenHarmonicLineArrows(baseFreq)
+    }
   })
 }
 
@@ -1211,6 +1371,9 @@ const commitFreqHarmonicMaxOrder = () => {
     freqChartRef.value?.patchFullscreenSeriesMarkLine?.('freq-series', dataFullscreen)
   } catch { }
   lastHarmonicBaseFreq = base
+  if (freqFullscreenUiActive.value) {
+    updateFreqFullscreenHarmonicLineArrows(base)
+  }
 }
 
 const scheduleFreqHarmonicDebouncedCommit = () => {
@@ -1254,11 +1417,17 @@ const onUpdateAxisPointer = (params: any) => {
     if (Math.abs(n - locked) > 1e-9) {
       syncVcFreqChartsAxisPointerToValue(locked)
     }
+    if (freqFullscreenUiActive.value) {
+      updateFreqFullscreenHarmonicLineArrows(locked)
+    }
     return
   }
 
   pointerBaseFreq.value = n
   scheduleHarmonicMarkLines(n)
+  if (freqFullscreenUiActive.value) {
+    updateFreqFullscreenHarmonicLineArrows(n)
+  }
 }
 
 const getPinnedMarkPointData = () =>
@@ -1543,6 +1712,7 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   inst.on('updateAxisPointer', onUpdateAxisPointer)
   const onFreqFullscreenDataZoom = (params: any) => {
     handleFullscreenDataZoom(params)
+    updateFreqFullscreenHarmonicLineArrows()
     if (!freqFullscreenYUseCustom.value) {
       if (freqFullscreenYInputSyncTimer != null) {
         clearTimeout(freqFullscreenYInputSyncTimer)
@@ -1563,6 +1733,7 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
       }
       syncFreqFullscreenYInputsFromChartOption()
     }
+    updateFreqFullscreenHarmonicLineArrows()
   }
   inst.on('finished', onFreqFullscreenFinished)
   inst.on('click', onFreqFullscreenChartClick)
@@ -1637,6 +1808,7 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   patchFullscreenPinnedMarkPoints()
   syncFreqFullscreenTooltipLockHandlers()
   attachFreqFullscreenMouseModeHotkey()
+  requestAnimationFrame(() => updateFreqFullscreenHarmonicLineArrows())
 }
 
 const onFreqFullscreenClosed = () => {
@@ -1770,6 +1942,9 @@ watch(
     // CommonEcharts 会在下一帧对全屏图 applyOption，这里再延后一帧补写 markPoint，防止被覆盖
     requestAnimationFrame(() => {
       refreshFullscreenPinnedMarkPoints()
+      if (freqFullscreenUiActive.value) {
+        updateFreqFullscreenHarmonicLineArrows()
+      }
     })
   },
   { deep: false },
