@@ -75,6 +75,7 @@
         <el-table-column label="报警类型" min-width="160">
           <template #default="{ row }">{{ row?.eventType?.name || '-' }}</template>
         </el-table-column>
+        <el-table-column prop="warningAxis" label="报警轴向" min-width="100" />
         <el-table-column prop="statusText" label="状态" min-width="120" />
         <el-table-column label="报警时间" min-width="180">
           <template #default="{ row }">{{ row._timeText || '-' }}</template>

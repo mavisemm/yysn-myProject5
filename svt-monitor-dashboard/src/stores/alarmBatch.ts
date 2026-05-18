@@ -70,6 +70,15 @@ function formatTimeText(time: any): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
+function pickWarningAxis(row: any, parsed?: any): string {
+  const data = parsed?.data ?? row?.data
+  const raw =
+    row?.warningAxis ??
+    parsed?.warningAxis ??
+    (typeof data === 'object' && data != null ? (data as any).warningAxis : undefined)
+  return String(raw ?? '').trim()
+}
+
 function splitDeviceName(rawName: any): { main: string; sub: string } {
   const raw = String(rawName || '-')
   const idxCn = raw.indexOf('（')
@@ -198,6 +207,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     const statusText =
       row.statusText ||
       (statusCode.trim().toUpperCase() === 'VALID' ? '未处理' : '')
+    const warningAxis = pickWarningAxis(row, parsed)
     return normalizeOneRowLight({
       ...row,
       id: String(row.id ?? ''),
@@ -206,6 +216,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
       shopName,
       pointName,
       receiverName,
+      warningAxis,
       eventTypeCode: eventTypeName,
       eventType: { name: eventTypeName || 'MACHINE_VIBRATION' },
       statusCode,

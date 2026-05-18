@@ -39,6 +39,8 @@ export interface EventRow {
   statusCode?: string
   time?: number | string
   dataJson?: any
+  /** 振动报警测量轴向（如 X / Y / Z） */
+  warningAxis?: string
   [k: string]: any
 }
 

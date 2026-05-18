@@ -360,12 +360,17 @@ const currentReceiverName = computed(
   () => eventDetail.value?.receiverName ?? props.row?.receiverName ?? '-',
 )
 
-const currentDeviationValueText = computed(() => {
+function pickWarningAxisFromSources(): string {
+  const data = dataParse.value?.data
   const raw =
-    dataParse.value?.deviationValue ??
-    eventDetail.value?.deviationValue ??
-    (props.row as any)?.deviationValue
+    (props.row as any)?.warningAxis ??
+    dataParse.value?.warningAxis ??
+    eventDetail.value?.warningAxis ??
+    (typeof data === 'object' && data != null ? (data as any).warningAxis : undefined)
+  return String(raw ?? '').trim()
+}
 
+function formatAlarmValueText(raw: unknown): string {
   if (raw == null || raw === '') return '-'
   if (typeof raw === 'string') return raw.trim() || '-'
   const num = Number(raw)
@@ -374,6 +379,20 @@ const currentDeviationValueText = computed(() => {
   let s = num.toFixed(4)
   s = s.replace(/\.?0+$/, '')
   return s || '-'
+}
+
+const currentDeviationValueText = computed(() => {
+  const raw =
+    dataParse.value?.deviationValue ??
+    eventDetail.value?.deviationValue ??
+    (props.row as any)?.deviationValue
+
+  const base = formatAlarmValueText(raw)
+  if (isWarningEvent.value) return base
+
+  const axis = pickWarningAxisFromSources()
+  if (!axis || base === '-') return base
+  return `${base} (${axis})`
 })
 
 const currentFreqGroupId = computed<string>(() => {
