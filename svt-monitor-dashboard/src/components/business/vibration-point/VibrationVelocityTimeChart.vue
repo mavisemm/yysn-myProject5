@@ -78,9 +78,9 @@ const timeDomainData = ref<number[]>([])
 const totalTime = ref<number>(0)
 
 const axisOptions: { label: string; value: VibrationAxis }[] = [
-  { label: 'X轴(a)', value: 'X' },
-  { label: 'Y轴(h)', value: 'Y' },
-  { label: 'Z轴(v)', value: 'Z' },
+  { label: 'X轴(A)', value: 'X' },
+  { label: 'Y轴(H)', value: 'Y' },
+  { label: 'Z轴(V)', value: 'Z' },
 ]
 
 const timeAxis = ref<VibrationAxis>('X')

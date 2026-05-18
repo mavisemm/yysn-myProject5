@@ -389,10 +389,14 @@ const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({
 const metricData = ref<VibrationMetricData>({})
 
 const axisOptions: { label: string; value: VibrationAxis }[] = [
-  { label: 'X轴(a)', value: 'X' },
-  { label: 'Y轴(h)', value: 'Y' },
-  { label: 'Z轴(v)', value: 'Z' },
+  { label: 'X轴(A)', value: 'X' },
+  { label: 'Y轴(H)', value: 'Y' },
+  { label: 'Z轴(V)', value: 'Z' },
 ]
+
+function getVibrationAxisDisplayLabel(axis: VibrationAxis): string {
+  return axisOptions.find((o) => o.value === axis)?.label ?? `${axis}轴`
+}
 
 const freqAxis = ref<VibrationAxis>('X')
 
@@ -1188,7 +1192,7 @@ const freqOption = computed<EChartsOption>(() => {
         {
           type: 'category',
           gridIndex: 1,
-          data: [`${axisLabel}轴的速度有效值`],
+          data: [`${getVibrationAxisDisplayLabel(axisLabel)}的速度有效值`],
           axisTick: { show: false },
           axisLine: { show: false },
           axisLabel: {
@@ -1309,7 +1313,7 @@ const freqOption = computed<EChartsOption>(() => {
               trigger: 'item',
               formatter: (p: any) => {
                 const v = Number(p?.value ?? 0)
-                return `${axisLabel}轴速度有效值：${formatRmsBarValue(v)} mm/s`
+                return `${getVibrationAxisDisplayLabel(axisLabel)}轴速度有效值：${formatRmsBarValue(v)} mm/s`
               },
             },
             barWidth: 36,
@@ -2280,7 +2284,7 @@ $vibration-axis-font-size: 12px;
   flex: 0 0 auto;
 }
 
-.freq-filter-inline > .freq-filter-group:last-child .freq-filter-divider {
+.freq-filter-inline>.freq-filter-group:last-child .freq-filter-divider {
   display: none;
 }
 
