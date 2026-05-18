@@ -4,7 +4,7 @@
       <div class="card-header-leading">
         <div class="card-title app-section-title">{{ chartTitle }}</div>
         <el-select v-model="freqAxis" class="vibration-axis-select" size="small" teleported :show-arrow="false"
-          popper-class="vibration-axis-select-dropdown">
+          popper-class="vibration-axis-select-dropdown vibration-axis-select-dropdown--inline">
           <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
         </el-select>
       </div>
@@ -26,63 +26,73 @@
         @fullscreen-closed="onFreqFullscreenClosed">
         <template #fullscreen-body-top>
           <div class="freq-fullscreen-top freq-filter-inline">
-            <el-select v-model="freqAxis" class="vibration-axis-select" size="small" teleported :show-arrow="false"
-              popper-class="vibration-axis-select-dropdown">
-              <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
-            </el-select>
-            <span class="freq-filter-divider" aria-hidden="true" />
-            <span class="freq-filter-label">频率范围：</span>
-            <el-input-number v-model="fullscreenRangeMin" :min="safeFullscreenRangeDataMin"
-              :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最小"
-              controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />
-            <span class="freq-filter-sep">~</span>
-            <el-input-number v-model="fullscreenRangeMax" :min="safeFullscreenRangeDataMin"
-              :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最大"
-              controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />
-            <el-button size="small" type="primary" @click="confirmFullscreenRange">确认</el-button>
-            <el-button size="small" @click="resetFullscreenRange"> 重置 </el-button>
-            <span class="freq-filter-divider" aria-hidden="true" />
-            <span class="freq-filter-label">Y 轴范围：</span>
-            <el-input-number v-model="freqFullscreenYMinInput" :step="FREQ_Y_AXIS_STEP"
-              :precision="FREQ_Y_AXIS_PRECISION" size="small" controls-position="right"
-              class="freq-filter-num freq-y-axis-num" />
-            <span class="freq-filter-sep">~</span>
-            <el-input-number v-model="freqFullscreenYMaxInput" :step="FREQ_Y_AXIS_STEP"
-              :precision="FREQ_Y_AXIS_PRECISION" size="small" controls-position="right"
-              class="freq-filter-num freq-y-axis-num" />
-            <el-button size="small" type="primary" @click="confirmFreqFullscreenYAxisRange">锁定范围</el-button>
-            <el-button size="small" @click="resetFreqFullscreenYAxisRange">取消锁定</el-button>
-            <span class="freq-filter-divider" aria-hidden="true" />
-            <span class="freq-filter-label">倍频数量：</span>
-            <el-input-number v-model="freqHarmonicMaxOrderInput" :min="HARMONIC_ORDER_MIN" :max="HARMONIC_ORDER_MAX"
-              :precision="0" :step="1" size="small" controls-position="right"
-              class="freq-filter-num freq-harmonic-order-input" @blur="commitFreqHarmonicMaxOrder" />
-            <el-button size="small" type="primary" @click="commitFreqHarmonicMaxOrder">确认</el-button>
-            <span class="freq-filter-divider" aria-hidden="true" />
-            <span class="freq-filter-label">打标功能：</span>
-            <el-tooltip content="开启：指针附近按算法吸附到局部幅值最大的谱点。关闭：打到离指针频率最近的采样点，适合双峰挨得很近时要标「旁边」那个点。" placement="top">
-              <span class="freq-filter-label freq-pin-snap-switch-wrap">吸附功能</span>
-            </el-tooltip>
-            <el-switch v-model="freqPinUsePeakSnap" size="small" class="freq-pin-snap-switch" />
-            <span class="freq-filter-label">阈值：</span>
-            <el-input-number v-model="autoPinThresholdInput" :min="0" :step="0.0001" :precision="6" size="small"
-              controls-position="right" class="freq-filter-num" />
-            <el-button size="small" type="primary" @click="autoPinFreqPeaksAboveThreshold">
-              一键打标
-            </el-button>
-            <el-button size="small" :disabled="!currentPinnedPointId" @click="clearCurrentPinnedPoint">
-              清除当前标记
-            </el-button>
-            <el-button size="small" :disabled="!pinnedFreqPoints.length" @click="clearAllPinnedPoints">
-              清除全部标记
-            </el-button>
-            <span class="freq-filter-divider" aria-hidden="true" />
-            <span class="freq-fullscreen-mouse-mode-hint">
-              <el-icon class="freq-fullscreen-mouse-mode-hint__icon">
-                <WarningFilled />
-              </el-icon>
-              <span class="freq-fullscreen-mouse-mode-hint__text">
-                按 R 可以在打标功能和提示条阅读模式切换（默认打开打标功能）。提示条阅读模式下，点击图表可固定当前提示条和倍频线。</span>
+            <span class="freq-filter-group">
+              <el-select v-model="freqAxis" class="vibration-axis-select" size="small" teleported :show-arrow="false"
+                popper-class="vibration-axis-select-dropdown vibration-axis-select-dropdown--fullscreen">
+                <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+              </el-select>
+              <span class="freq-filter-divider" aria-hidden="true" />
+            </span>
+            <!-- <span class="freq-filter-group">
+              <span class="freq-filter-label">频率范围：</span>
+              <el-input-number v-model="fullscreenRangeMin" :min="safeFullscreenRangeDataMin"
+                :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最小"
+                controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />
+              <span class="freq-filter-sep">~</span>
+              <el-input-number v-model="fullscreenRangeMax" :min="safeFullscreenRangeDataMin"
+                :max="safeFullscreenRangeDataMax" :step="FREQ_FILTER_STEP" size="small" placeholder="最大"
+                controls-position="right" class="freq-filter-num" @blur="confirmFullscreenRange" />
+              <el-button size="small" type="primary" @click="confirmFullscreenRange">确认</el-button>
+              <el-button size="small" @click="resetFullscreenRange"> 重置 </el-button>
+              <span class="freq-filter-divider" aria-hidden="true" />
+            </span> -->
+            <span class="freq-filter-group">
+              <span class="freq-filter-label freq-pin-mode-label">
+                打标功能
+                <el-tooltip content="按 R 可以在打标功能和提示条阅读模式切换（默认打开打标功能）。提示条阅读模式下，点击图表可固定当前提示条和倍频线。" placement="top">
+                  <el-icon class="freq-pin-mode-hint-icon" aria-label="打标与提示条阅读模式说明">
+                    <WarningFilled />
+                  </el-icon>
+                </el-tooltip>
+                ：
+              </span>
+              <el-tooltip content="开启：指针附近按算法吸附到局部幅值最大的谱点。关闭：打到离指针频率最近的采样点，适合双峰挨得很近时要标「旁边」那个点。" placement="top">
+                <span class="freq-filter-label freq-pin-snap-switch-wrap">吸附功能</span>
+              </el-tooltip>
+              <el-switch v-model="freqPinUsePeakSnap" size="small" class="freq-pin-snap-switch" />
+              <span class="freq-filter-label">阈值：</span>
+              <el-input-number v-model="autoPinThresholdInput" :min="0" :step="0.0001" :precision="6" size="small"
+                controls-position="right" class="freq-filter-num" />
+              <el-button size="small" type="primary" @click="autoPinFreqPeaksAboveThreshold">
+                一键打标
+              </el-button>
+              <el-button size="small" :disabled="!currentPinnedPointId" @click="clearCurrentPinnedPoint">
+                清除当前标记
+              </el-button>
+              <el-button size="small" :disabled="!pinnedFreqPoints.length" @click="clearAllPinnedPoints">
+                清除全部标记
+              </el-button>
+              <span class="freq-filter-divider" aria-hidden="true" />
+            </span>
+            <span class="freq-filter-group">
+              <span class="freq-filter-label">倍频数量：</span>
+              <el-input-number v-model="freqHarmonicMaxOrderInput" :min="HARMONIC_ORDER_MIN" :max="HARMONIC_ORDER_MAX"
+                :precision="0" :step="1" size="small" controls-position="right"
+                class="freq-filter-num freq-harmonic-order-input" @blur="commitFreqHarmonicMaxOrder" />
+              <el-button size="small" type="primary" @click="commitFreqHarmonicMaxOrder">确认</el-button>
+              <span class="freq-filter-divider" aria-hidden="true" />
+            </span>
+            <span class="freq-filter-group">
+              <span class="freq-filter-label">Y 轴范围：</span>
+              <el-input-number v-model="freqFullscreenYMinInput" :step="FREQ_Y_AXIS_STEP"
+                :precision="FREQ_Y_AXIS_PRECISION" size="small" controls-position="right"
+                class="freq-filter-num freq-y-axis-num" />
+              <span class="freq-filter-sep">~</span>
+              <el-input-number v-model="freqFullscreenYMaxInput" :step="FREQ_Y_AXIS_STEP"
+                :precision="FREQ_Y_AXIS_PRECISION" size="small" controls-position="right"
+                class="freq-filter-num freq-y-axis-num" />
+              <el-button size="small" type="primary" @click="confirmFreqFullscreenYAxisRange">锁定范围</el-button>
+              <el-button size="small" @click="resetFreqFullscreenYAxisRange">取消锁定</el-button>
             </span>
           </div>
         </template>
@@ -379,9 +389,9 @@ const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({
 const metricData = ref<VibrationMetricData>({})
 
 const axisOptions: { label: string; value: VibrationAxis }[] = [
-  { label: 'X轴', value: 'X' },
-  { label: 'Y轴', value: 'Y' },
-  { label: 'Z轴', value: 'Z' },
+  { label: 'X轴(a)', value: 'X' },
+  { label: 'Y轴(h)', value: 'Y' },
+  { label: 'Z轴(v)', value: 'Z' },
 ]
 
 const freqAxis = ref<VibrationAxis>('X')
@@ -1033,16 +1043,16 @@ const freqOption = computed<EChartsOption>(() => {
       // 避免写入此处导致 freqOption 随 R 键变化、CommonEcharts 整 option 重绘闪屏。
       ...(freqFullscreenUiActive.value
         ? {
-            appendToBody: true,
-            enterable: false,
-            hideDelay: 2000,
-            axisPointer: {
-              type: 'line',
-              axis: 'x',
-              label: { show: false },
-              lineStyle: { color: FREQ_FULLSCREEN_AXIS_POINTER_LINE_COLOR, width: 1 },
-            },
-          }
+          appendToBody: true,
+          enterable: false,
+          hideDelay: 2000,
+          axisPointer: {
+            type: 'line',
+            axis: 'x',
+            label: { show: false },
+            lineStyle: { color: FREQ_FULLSCREEN_AXIS_POINTER_LINE_COLOR, width: 1 },
+          },
+        }
         : {}),
       position: function (pos: any, _params: any, _el: any, _elRect: any, size: any) {
         const [mouseX, mouseY] = pos as [number, number]
@@ -2183,7 +2193,7 @@ const safeFullscreenRangeDataMax = computed(() => {
 $vibration-axis-font-size: 12px;
 
 .vibration-axis-select {
-  width: 72px;
+  width: 90px;
   vertical-align: middle;
 }
 
@@ -2221,19 +2231,27 @@ $vibration-axis-font-size: 12px;
   color: rgba(0, 0, 0, 0.45);
 }
 
-/* 全屏顶栏：测点轴与各筛选/打标配置同一 flex 行内并列，统一换行 */
+/* 全屏顶栏：以竖线分隔的功能组整体换行，避免组内控件被拆到不同行 */
 .freq-fullscreen-top.freq-filter-inline {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 6px 10px;
   row-gap: 8px;
-  column-gap: 10px;
   width: 100%;
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
   justify-content: flex-start;
+}
+
+.freq-filter-inline .freq-filter-group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  flex: 0 0 auto;
+  max-width: 100%;
 }
 
 .freq-filter-inline .freq-filter-label {
@@ -2262,44 +2280,60 @@ $vibration-axis-font-size: 12px;
   flex: 0 0 auto;
 }
 
-.freq-fullscreen-mouse-mode-hint {
+.freq-filter-inline > .freq-filter-group:last-child .freq-filter-divider {
+  display: none;
+}
+
+.freq-pin-mode-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.86);
-  flex-shrink: 0;
+  gap: 2px;
 }
 
-.freq-fullscreen-mouse-mode-hint__icon {
+.freq-pin-mode-hint-icon {
   color: #f7c948;
   font-size: 14px;
-}
-
-.freq-fullscreen-mouse-mode-hint__text {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.75);
+  cursor: help;
+  vertical-align: middle;
 }
 
 .freq-fullscreen-top.freq-filter-inline .el-button+.el-button {
   margin-left: 0;
 }
 
-/* teleported 到 body 时必须高于全屏 Dialog，否则展开列表被挡在弹窗后面 */
+/* teleported 到 body：小图浅色下拉 / 全屏深色下拉 */
 .vibration-axis-select-dropdown.el-popper {
-  background: #1a2a6e !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   font-size: $vibration-axis-font-size;
   z-index: 10000 !important;
 }
 
-.vibration-axis-select-dropdown .el-select-dropdown__item {
+.vibration-axis-select-dropdown--inline.el-popper {
+  background: #f5f5f5 !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+
+.vibration-axis-select-dropdown--inline .el-select-dropdown__item {
+  color: #000;
+  font-size: $vibration-axis-font-size;
+}
+
+.vibration-axis-select-dropdown--inline .el-select-dropdown__item.is-hovering,
+.vibration-axis-select-dropdown--inline .el-select-dropdown__item:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.vibration-axis-select-dropdown--fullscreen.el-popper {
+  background: #1a2a6e !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.vibration-axis-select-dropdown--fullscreen .el-select-dropdown__item {
   color: rgba(255, 255, 255, 0.9);
   font-size: $vibration-axis-font-size;
 }
 
-.vibration-axis-select-dropdown .el-select-dropdown__item.is-hovering,
-.vibration-axis-select-dropdown .el-select-dropdown__item:hover {
+.vibration-axis-select-dropdown--fullscreen .el-select-dropdown__item.is-hovering,
+.vibration-axis-select-dropdown--fullscreen .el-select-dropdown__item:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 

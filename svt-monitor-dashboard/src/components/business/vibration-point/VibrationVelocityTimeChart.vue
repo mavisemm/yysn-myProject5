@@ -4,7 +4,7 @@
       <div class="card-header-leading">
         <div class="card-title app-section-title">{{ chartTitle }}</div>
         <el-select v-model="timeAxis" class="vibration-axis-select" size="small" teleported :show-arrow="false"
-          popper-class="vibration-axis-select-dropdown">
+          popper-class="vibration-axis-select-dropdown vibration-axis-select-dropdown--inline">
           <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
         </el-select>
       </div>
@@ -26,7 +26,7 @@
         <template #fullscreen-body-top>
           <div class="time-fullscreen-top">
             <el-select v-model="timeAxis" class="vibration-axis-select" size="small" teleported :show-arrow="false"
-              popper-class="vibration-axis-select-dropdown">
+              popper-class="vibration-axis-select-dropdown vibration-axis-select-dropdown--fullscreen">
               <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
             </el-select>
           </div>
@@ -78,9 +78,9 @@ const timeDomainData = ref<number[]>([])
 const totalTime = ref<number>(0)
 
 const axisOptions: { label: string; value: VibrationAxis }[] = [
-  { label: 'X轴', value: 'X' },
-  { label: 'Y轴', value: 'Y' },
-  { label: 'Z轴', value: 'Z' },
+  { label: 'X轴(a)', value: 'X' },
+  { label: 'Y轴(h)', value: 'Y' },
+  { label: 'Z轴(v)', value: 'Z' },
 ]
 
 const timeAxis = ref<VibrationAxis>('X')
@@ -403,7 +403,7 @@ watch(timeAxis, () => {
 $vibration-axis-font-size: 12px;
 
 .vibration-axis-select {
-  width: 72px;
+  width: 90px;
   vertical-align: middle;
 }
 
@@ -449,19 +449,37 @@ $vibration-axis-font-size: 12px;
 }
 
 .vibration-axis-select-dropdown.el-popper {
-  background: #1a2a6e !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   font-size: $vibration-axis-font-size;
   z-index: 10000 !important;
 }
 
-.vibration-axis-select-dropdown .el-select-dropdown__item {
+.vibration-axis-select-dropdown--inline.el-popper {
+  background: #f5f5f5 !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+
+.vibration-axis-select-dropdown--inline .el-select-dropdown__item {
+  color: #000000e0;
+  font-size: $vibration-axis-font-size;
+}
+
+.vibration-axis-select-dropdown--inline .el-select-dropdown__item.is-hovering,
+.vibration-axis-select-dropdown--inline .el-select-dropdown__item:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.vibration-axis-select-dropdown--fullscreen.el-popper {
+  background: #1a2a6e !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.vibration-axis-select-dropdown--fullscreen .el-select-dropdown__item {
   color: rgba(255, 255, 255, 0.9);
   font-size: $vibration-axis-font-size;
 }
 
-.vibration-axis-select-dropdown .el-select-dropdown__item.is-hovering,
-.vibration-axis-select-dropdown .el-select-dropdown__item:hover {
+.vibration-axis-select-dropdown--fullscreen .el-select-dropdown__item.is-hovering,
+.vibration-axis-select-dropdown--fullscreen .el-select-dropdown__item:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 
