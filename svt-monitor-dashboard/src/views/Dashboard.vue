@@ -39,7 +39,8 @@ import { useDeviceTreeStore } from '@/stores/deviceTree'
 interface RankingItem {
   equipmentId?: string
   equipmentName: string
-  pointName: string
+  workshopId?: string
+  workshopName?: string
   receiverId?: string
   value?: number
 }
@@ -108,7 +109,8 @@ const fetchTop5Data = async () => {
       rankings.value[0] = vibrationData.ret.map((item: any) => ({
         equipmentId: item.equipmentId,
         equipmentName: item.equipmentName ?? '',
-        pointName: item.pointName ?? '',
+        workshopId: item.workshopId ?? undefined,
+        workshopName: item.workshopName ?? '',
         receiverId: item.receiverId ?? undefined,
         value: item.value,
       }))
@@ -118,7 +120,8 @@ const fetchTop5Data = async () => {
       rankings.value[1] = soundData.ret.map((item: any) => ({
         equipmentId: item.equipmentId,
         equipmentName: item.equipmentName ?? '',
-        pointName: item.pointName ?? '',
+        workshopId: item.workshopId ?? undefined,
+        workshopName: item.workshopName ?? '',
         receiverId: item.receiverId ?? undefined,
         value: item.value,
       }))
@@ -128,7 +131,8 @@ const fetchTop5Data = async () => {
       rankings.value[2] = temperatureData.ret.map((item: any) => ({
         equipmentId: item.equipmentId,
         equipmentName: item.equipmentName ?? '',
-        pointName: item.pointName ?? '',
+        workshopId: item.workshopId ?? undefined,
+        workshopName: item.workshopName ?? '',
         receiverId: item.receiverId ?? undefined,
         value: item.value,
       }))

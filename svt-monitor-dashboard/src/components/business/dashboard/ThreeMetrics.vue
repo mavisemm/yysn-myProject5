@@ -11,7 +11,7 @@
 
         <div class="metric-columns-header mobile-font-title">
           <span class="metric-col metric-col--seq">序号</span>
-          <span class="metric-col metric-col--device">点位名称</span>
+          <span class="metric-col metric-col--device">设备名称</span>
           <span class="metric-col metric-col--value">
             <template v-if="metric.unit">单位：{{ getUnitShort(metric.unit) }}</template>
           </span>
@@ -23,17 +23,14 @@
         </div>
         <template v-else>
           <div v-for="(rank, rankIndex) in displayRankings(index)" :key="rankIndex" class="ranking-item mobile-font-body"
-            :class="{
-              'ranking-item--with-bg': rankIndex % 2 === 0,
-              'ranking-item--no-nav': index === 2,
-            }" @click="goToRankTarget(rank, index)">
+            :class="{ 'ranking-item--with-bg': rankIndex % 2 === 0 }" @click="goToRankTarget(rank)">
             <span class="col-seq">
               <img class="seq-icon" src="@/assets/images/background/首页-排名序标.webp" alt="" />
               <span class="seq-num">{{ rankIndex + 1 }}</span>
             </span>
             <span class="col-device special-font-color" :title="getRankDeviceTooltip(rank)">
-              {{ rank.pointName }}
-              <span v-if="rank.equipmentName" class="workshop-info">（{{ rank.equipmentName }}）</span>
+              {{ rank.equipmentName }}
+              <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
             </span>
             <span v-if="rank.value !== undefined" class="col-value special-font-color">{{
               rank.value
@@ -54,12 +51,11 @@
         </span>
       </template>
       <div class="dialog-rankings">
-        <div v-for="(rank, rankIndex) in dialogRankings" :key="rankIndex" class="dialog-ranking-item" :class="{
-          'dialog-ranking-item--no-nav': rankDialogMetricIndex === 2,
-        }" @click="goToRankTarget(rank, rankDialogMetricIndex)">
+        <div v-for="(rank, rankIndex) in dialogRankings" :key="rankIndex" class="dialog-ranking-item"
+          @click="goToRankTarget(rank)">
           <span class="rank-num special-font-color">{{ rankIndex + 1 }}.</span>
-          <span class="rank-device special-font-color">{{ rank.pointName }}
-            <span v-if="rank.equipmentName" class="workshop-info">（{{ rank.equipmentName }}）</span>
+          <span class="rank-device special-font-color">{{ rank.equipmentName }}
+            <span v-if="rank.workshopName" class="workshop-info">（{{ rank.workshopName }}）</span>
           </span>
           <span v-if="rank.value !== undefined" class="rank-value special-font-color">{{
             rank.value
@@ -79,9 +75,10 @@ import type { DeviceNode } from '@/types/device'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 
 interface RankingItem {
-  equipmentName: string
-  pointName: string
   equipmentId?: string
+  equipmentName: string
+  workshopId?: string
+  workshopName?: string
   receiverId?: string
   value?: number
 }
@@ -131,55 +128,24 @@ const isValidDevice = (deviceId: string): boolean => {
   return findDeviceInTree(deviceTreeStoreInstance.deviceTreeData)
 }
 
-const goToRankTarget = (rank: RankingItem, metricIndex: number) => {
-  // 温度排名不跳转
-  if (metricIndex === 2) return
-  // 0: 振动排名 -> 振动点位页；1: 声音排名 -> 声音点位页
-  if ((metricIndex === 0 || metricIndex === 1) && rank.receiverId && rank.equipmentId) {
-    rankDialogVisible.value = false
-    const rid = String(rank.receiverId).trim()
-    const eid = String(rank.equipmentId).trim()
-    const pname = (rank.pointName ?? '').trim()
-    const treeKey = deviceTreeStore.resolveTreeKeyForPoint(rid, eid, {
-      pointName: pname || undefined,
-    })
-    if (treeKey) deviceTreeStore.setSelectedDeviceId(treeKey)
-    router
-      .push({
-        name: metricIndex === 0 ? 'VibrationPoint' : 'SoundPoint',
-        params: {
-          receiverId: rid,
-        },
-        query: {
-          equipmentId: eid,
-          ...(pname ? { pointName: pname } : {}),
-        },
-      })
-      .catch(() => { })
-    return
-  }
+const goToRankTarget = (rank: RankingItem) => {
+  const fromApi = String(rank.equipmentId ?? '').trim()
+  let equipmentId = fromApi || deviceNameToIdMap[String(rank.equipmentName ?? '').trim()]
+  if (!equipmentId) return
+  if (!fromApi && !isValidDevice(equipmentId)) return
 
-  let equipmentId = rank.equipmentId
-  if (!equipmentId) {
-    equipmentId = deviceNameToIdMap[rank.equipmentName]
-  }
-  if (equipmentId && isValidDevice(equipmentId)) {
-    rankDialogVisible.value = false
-    deviceTreeStore.setSelectedDeviceId(equipmentId)
-    router
-      .push({
-        name: 'DeviceDetail',
-        params: {
-          id: equipmentId,
-        },
-        query: {
-          equipmentId: equipmentId,
-          equipmentName: rank.equipmentName,
-          pointName: rank.pointName || '',
-        },
-      })
-      .catch(() => { })
-  }
+  rankDialogVisible.value = false
+  deviceTreeStore.setSelectedDeviceId(equipmentId)
+  router
+    .push({
+      name: 'DeviceDetail',
+      params: { id: equipmentId },
+      query: {
+        equipmentId,
+        ...(rank.equipmentName ? { equipmentName: rank.equipmentName } : {}),
+      },
+    })
+    .catch(() => { })
 }
 
 const rankingData = props.rankings
@@ -196,7 +162,6 @@ const getRankings = (index: number): RankingItem[] => {
         if (node.type === 'device') {
           devices.push({
             equipmentName: node.name,
-            pointName: node.name,
             equipmentId: node.id,
           })
         }
@@ -230,8 +195,10 @@ const getUnitShort = (unit?: string) => {
 }
 
 const getRankDeviceTooltip = (rank: RankingItem): string => {
-  if (rank.equipmentName) return `${rank.pointName}（${rank.equipmentName}）`
-  return rank.pointName
+  const name = (rank.equipmentName ?? '').trim()
+  const workshop = (rank.workshopName ?? '').trim()
+  if (name && workshop) return `${name}（${workshop}）`
+  return name || workshop
 }
 
 const measureAndUpdateVisibleRows = () => {
