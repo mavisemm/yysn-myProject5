@@ -1,33 +1,18 @@
 <template>
-  <el-dialog
-    v-model="visible"
-    :title="dialogTitle"
-    width="80vw"
-    class="device-info-dlg device-info-dlg--main"
-    :close-on-click-modal="false"
-    destroy-on-close
-    append-to-body
-    @closed="reset"
-  >
+  <el-dialog v-model="visible" :title="dialogTitle" width="80vw" class="device-info-dlg device-info-dlg--main"
+    :close-on-click-modal="false" destroy-on-close append-to-body @closed="reset">
     <div class="layout">
       <aside class="cat">
         <ul class="cat-list">
-          <li
-            v-for="c in categories"
-            :key="c.id"
-            :class="{ on: c.id === activeId }"
-            @click="nav(c.id)"
-          >
-            <el-checkbox
-              v-if="L === 'del' && !c.isDefault"
-              :model-value="delIds.includes(c.id)"
-              @click.stop
-              @update:model-value="(v: boolean) => toggleDel(c.id, v)"
-            >
+          <li v-for="c in categories" :key="c.id" :class="{ on: c.id === activeId }" @click="nav(c.id)">
+            <el-checkbox v-if="L === 'del' && !c.isDefault" :model-value="delIds.includes(c.id)" @click.stop
+              @update:model-value="(v: boolean) => toggleDel(c.id, v)">
               <span class="cat-txt">{{ c.name }}</span>
             </el-checkbox>
             <template v-else-if="L === 'del' && c.isDefault">
-              <el-icon class="lock"><Lock /></el-icon>
+              <el-icon class="lock">
+                <Lock />
+              </el-icon>
               <span class="cat-txt">{{ c.name }}</span>
             </template>
             <el-input v-else-if="L === 'edit' && !c.isDefault" v-model="editNames[c.id]" size="small" @click.stop />
@@ -35,16 +20,12 @@
           </li>
           <li v-if="L === 'view' && addingCat" class="cat-inline-add-wrap" @click.stop>
             <div class="cat-inline-add">
-              <el-input
-                v-model="nameCat"
-                size="small"
-                placeholder="新类别名称，例如：报警信息"
-                @keyup.enter="saveCat"
-              />
+              <el-input v-model="nameCat" size="small" placeholder="新类别名称，例如：报警信息" @keyup.enter="saveCat" />
             </div>
           </li>
         </ul>
         <div class="foot">
+          <div class="foot-label">类别功能：</div>
           <template v-if="addingCat && L === 'view'">
             <el-button size="small" type="primary" :loading="saving" @click="saveCat">确定</el-button>
             <el-button size="small" @click="cancelAddCat">取消</el-button>
@@ -63,22 +44,13 @@
 
       <section class="main">
         <div ref="scrollEl" class="scroll">
-          <section
-            v-for="s in sections"
-            :key="s.cat.id"
-            :id="secId(s.cat.id)"
-            class="sec"
-          >
+          <section v-for="s in sections" :key="s.cat.id" :id="secId(s.cat.id)" class="sec">
             <h4 class="sec-h">{{ s.cat.name }}</h4>
             <p v-if="!s.rows.length && !(R === 'view' && infoAddMode)" class="empty">该类别下暂无信息</p>
             <div v-if="s.rows.length || (R === 'view' && infoAddMode)" class="grid">
               <div v-for="r in s.rows" :key="r.k" class="row" :class="{ chk: R === 'del' || R === 'edit' }">
-                <el-checkbox
-                  v-if="R === 'del' || R === 'edit'"
-                  :model-value="chk.has(r.k)"
-                  :disabled="r.sys"
-                  @update:model-value="(v: boolean) => toggleChk(r.k, v)"
-                />
+                <el-checkbox v-if="R === 'del' || R === 'edit'" :model-value="chk.has(r.k)" :disabled="r.sys"
+                  @update:model-value="(v: boolean) => toggleChk(r.k, v)" />
                 <div class="card" :class="{ ed: R === 'edit', sys: r.sys }">
                   <template v-if="R === 'edit'">
                     <template v-if="r.sys">
@@ -97,21 +69,13 @@
                 </div>
               </div>
               <div v-if="R === 'view' && infoAddMode" class="row row--add">
-                <button
-                  type="button"
-                  class="add-plus"
-                  :class="{ on: addingFieldCatId === s.cat.id }"
-                  title="在此类别添加信息"
-                  @click="onClickFieldPlus(s.cat.id)"
-                >
+                <button type="button" class="add-plus" :class="{ on: addingFieldCatId === s.cat.id }" title="在此类别添加信息"
+                  @click="onClickFieldPlus(s.cat.id)">
                   +
                 </button>
               </div>
             </div>
-            <div
-              v-if="R === 'view' && infoAddMode && addingFieldCatId === s.cat.id"
-              class="field-inline-add"
-            >
+            <div v-if="R === 'view' && infoAddMode && addingFieldCatId === s.cat.id" class="field-inline-add">
               <el-input v-model="nf.lb" size="small" class="inp" placeholder="名称" />
               <el-input v-model="nf.v" size="small" class="inp" placeholder="值" />
               <div class="field-inline-add__btns">
@@ -130,6 +94,7 @@
         </div>
 
         <div class="foot">
+          <div class="foot-label">信息功能：</div>
           <template v-if="infoAddMode && R === 'view'">
             <el-button size="small" type="primary" @click="exitInfoAddMode">确定</el-button>
             <el-button size="small" @click="exitInfoAddMode">取消</el-button>
@@ -263,9 +228,9 @@ function sync() {
   categories.value = loadTenantCategories()
   fields.value = props.customFields.map((f) => ({ ...f }))
   const d = props.deviceInfo
-  ;(Object.keys(sys) as SystemFieldKey[]).forEach((k) => {
-    sys[k] = String((d as any)[k] ?? '')
-  })
+    ; (Object.keys(sys) as SystemFieldKey[]).forEach((k) => {
+      sys[k] = String((d as any)[k] ?? '')
+    })
   if (!categories.value.some((c) => c.id === activeId.value)) activeId.value = DEFAULT_CATEGORY_ID
 }
 
@@ -524,7 +489,7 @@ async function persist() {
       designFlow: Number(sys.designFlow) || 0,
       onlineStatus: props.deviceInfo.onlineStatus,
     }
-    ;(dto as any).deviceNewInfo = buildDeviceNewInfoPayload(stripUiVerifySeedFields(fields.value))
+      ; (dto as any).deviceNewInfo = buildDeviceNewInfoPayload(stripUiVerifySeedFields(fields.value))
     const res = await editEquipmentInfo(props.deviceId, dto)
     if (res.rc === 0) {
       emit('saved')
@@ -619,6 +584,7 @@ $p: #409eff;
   font-size: 14px;
   color: $c;
 }
+
 .cat {
   flex: 0 0 25%;
   max-width: 25%;
@@ -628,6 +594,7 @@ $p: #409eff;
   padding-right: 16px;
   box-sizing: border-box;
 }
+
 .cat-list {
   list-style: none;
   margin: 0;
@@ -635,6 +602,7 @@ $p: #409eff;
   flex: 1;
   overflow-y: auto;
 }
+
 .cat li {
   position: relative;
   display: flex;
@@ -646,23 +614,28 @@ $p: #409eff;
   font-size: 13px;
   color: $g;
   cursor: pointer;
+
   :deep(.el-checkbox) {
     flex: 1;
     min-width: 0;
   }
+
   :deep(.el-checkbox__label) {
     flex: 1;
     min-width: 0;
     line-height: 1.4;
     white-space: normal;
   }
+
   &:hover {
     background: #f5f7fa;
   }
+
   &.on {
     background: #ecf5ff;
     color: $p;
     font-weight: 500;
+
     &::before {
       content: '';
       position: absolute;
@@ -675,16 +648,19 @@ $p: #409eff;
     }
   }
 }
+
 .cat-txt {
   flex: 1;
   min-width: 0;
   word-break: break-word;
   line-height: 1.4;
 }
+
 .lock {
   color: $m;
   font-size: 14px;
 }
+
 .main {
   flex: 1;
   min-width: 0;
@@ -694,6 +670,7 @@ $p: #409eff;
   padding-left: 20px;
   box-sizing: border-box;
 }
+
 .scroll {
   flex: 1;
   overflow-y: auto;
@@ -704,14 +681,17 @@ $p: #409eff;
   border-radius: 8px;
   scroll-behavior: smooth;
 }
+
 .sec {
   scroll-margin-top: 12px;
+
   &:not(:first-child) {
     margin-top: 24px;
     padding-top: 20px;
     border-top: 1px solid #dfe3eb;
   }
 }
+
 .sec-h {
   margin: 0 0 14px;
   padding-left: 10px;
@@ -719,6 +699,7 @@ $p: #409eff;
   font-weight: 600;
   border-left: 3px solid $p;
 }
+
 .empty {
   margin: 0;
   padding: 20px;
@@ -729,20 +710,24 @@ $p: #409eff;
   border: 1px dashed #dcdfe6;
   border-radius: 6px;
 }
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
 }
+
 .row {
   display: flex;
   align-items: stretch;
   gap: 8px;
   min-width: 0;
+
   &.chk {
     align-items: center;
   }
 }
+
 .card {
   flex: 1;
   min-width: 0;
@@ -754,13 +739,16 @@ $p: #409eff;
   border: 1px solid $b;
   border-radius: 6px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+
   &:hover:not(.ed) {
     border-color: #c6e2ff;
   }
+
   &.sys:not(.ed) {
     background: #fafcff;
     border-color: #d9ecff;
   }
+
   &.ed {
     flex-flow: row wrap;
     align-items: center;
@@ -768,39 +756,47 @@ $p: #409eff;
     padding: 12px 14px;
   }
 }
+
 .lb {
   font-size: 12px;
   color: $m;
 }
+
 .val {
   font-size: 14px;
   font-weight: 500;
   color: $c;
   word-break: break-word;
 }
+
 .inp {
   flex: 1;
   min-width: 100px;
 }
+
 .lb-inp {
   max-width: 120px;
 }
+
 .cat-inline-add-wrap {
   list-style: none;
   margin: 0;
   padding: 10px 12px 12px 14px;
   cursor: default;
 }
+
 .cat-inline-add {
   background: #f5f7fa;
   border: 1px dashed $b;
   border-radius: 6px;
   padding: 10px 12px;
 }
+
 .row--add {
   align-items: stretch;
   min-width: 0;
 }
+
 .add-plus {
   width: 100%;
   min-height: 64px;
@@ -812,16 +808,19 @@ $p: #409eff;
   line-height: 1;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
+
   &:hover {
     border-color: $p;
     background: #ecf5ff;
   }
+
   &.on {
     border-color: $p;
     background: #ecf5ff;
     font-weight: 600;
   }
 }
+
 .field-inline-add {
   margin-top: 12px;
   display: flex;
@@ -833,11 +832,13 @@ $p: #409eff;
   border: 1px solid $b;
   border-radius: 6px;
 }
+
 .field-inline-add__btns {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
+
 .mv {
   display: flex;
   align-items: center;
@@ -851,9 +852,11 @@ $p: #409eff;
   border: 1px solid #faecd8;
   border-radius: 6px;
 }
+
 .sel {
   width: 200px;
 }
+
 .foot {
   display: flex;
   flex-wrap: wrap;
@@ -861,15 +864,25 @@ $p: #409eff;
   padding-top: 12px;
   border-top: 1px solid $b;
 }
+
+.foot-label {
+  width: 100%;
+  font-size: 13px;
+  color: $g;
+  line-height: 1.4;
+}
+
 .cat .foot {
   margin-top: 12px;
 }
+
 .form .row2 {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 12px;
 }
+
 .form .lbl {
   width: 72px;
   flex-shrink: 0;
@@ -877,34 +890,80 @@ $p: #409eff;
   font-size: 13px;
   color: $g;
 }
+
 .grow {
   flex: 1;
   min-width: 0;
+}
+
+@media (max-width: 800px) {
+  .layout {
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+
+  .cat {
+    flex: 0 0 auto;
+    max-width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid $b;
+    padding-right: 0;
+    padding-bottom: 10px;
+  }
+
+  .cat-list {
+    max-height: 180px;
+  }
+
+  .main {
+    padding-left: 0;
+    padding-top: 10px;
+  }
+
+  .scroll {
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sel {
+    width: 100%;
+  }
 }
 </style>
 
 <style lang="scss">
 .device-info-dlg.el-dialog {
   color: #303133 !important;
+
   .el-dialog__title {
     font-size: 16px;
     font-weight: 600;
     color: #303133 !important;
   }
+
   .el-dialog__body {
     color: #303133 !important;
     font-size: 14px;
   }
+
   .el-dialog__headerbtn .el-dialog__close {
     color: #909399 !important;
+
     &:hover {
       color: #409eff !important;
     }
   }
+
   .el-checkbox__label {
     color: #606266 !important;
     font-size: 13px !important;
   }
+
   .el-input__inner,
   .el-select__placeholder,
   .el-select__selected-item,
@@ -912,45 +971,66 @@ $p: #409eff;
     color: #606266 !important;
     font-size: 13px !important;
   }
+
   .el-input__inner::placeholder,
   .el-select__placeholder {
     color: #a8abb2 !important;
   }
+
   .el-input__wrapper,
   .el-select .el-input__wrapper {
     background: #fff;
     box-shadow: 0 0 0 1px #dcdfe6 inset;
   }
+
   .el-input__wrapper:hover,
   .el-select .el-input__wrapper:hover {
     box-shadow: 0 0 0 1px #c0c4cc inset;
   }
+
   .el-input__wrapper.is-focus,
   .el-select .el-input__wrapper.is-focus {
     box-shadow: 0 0 0 1px #409eff inset;
   }
 }
+
 .device-info-dlg--main.el-dialog {
   width: 80vw !important;
   max-width: 80vw !important;
 }
+
 .device-info-dlg--sub.el-dialog {
   width: 50vw !important;
   max-width: 520px !important;
 }
+
 .device-info-popper.el-popper .el-select-dropdown__item {
   height: 32px;
   line-height: 32px;
   font-size: 13px;
   color: #606266;
 }
+
 .device-info-popper.el-popper .el-select-dropdown__item:hover,
 .device-info-popper.el-popper .el-select-dropdown__item.is-hovering,
 .device-info-popper.el-popper .el-select-dropdown__item.is-hover {
   background: #f5f7fa;
 }
+
 .device-info-popper.el-popper .el-select-dropdown__item.is-selected {
   font-weight: 500;
   color: #409eff;
+}
+
+@media (max-width: 800px) {
+  .device-info-dlg--main.el-dialog {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    margin-top: 5vh !important;
+  }
+
+  .device-info-dlg--main .el-dialog__body {
+    padding: 10px 12px 12px !important;
+  }
 }
 </style>

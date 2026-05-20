@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted, computed, shallowRef, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, computed, shallowRef, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 import { CommonEcharts } from '@/components/common/chart'
@@ -188,6 +188,10 @@ let fullscreenFreqFinishedCleanup: (() => void) | null = null
 let pendingFullscreenRmsYClamp = false
 /** 全屏频域：mousemove 将轴线指针吸附到局部谱峰（下一帧 dispatch，避免与默认轴指针抢帧） */
 let fullscreenFreqPeakSnapRafId: number | null = null
+/** 轴线指针移动时谐波箭头 graphic 的 RAF 合并与频率键去重（避免每帧 replaceMerge graphic 导致指示线跟手卡顿） */
+let freqFullscreenHarmonicArrowPointerRafId: number | null = null
+let freqFullscreenHarmonicArrowPointerPending: number | null = null
+let lastFreqFullscreenHarmonicArrowPaintedPointerKey: string | null = null
 /** 晚于 CommonEcharts 全屏 autoY debounce（默认 120ms）再读 yAxis，用于同步 Y 输入框 */
 let freqFullscreenYInputSyncTimer: ReturnType<typeof setTimeout> | null = null
 let markLineRafId: number | null = null
@@ -318,7 +322,41 @@ const removeFreqFullscreenHarmonicLineArrows = (inst: echarts.ECharts | null) =>
   if (!inst) return
   try {
     inst.setOption({ graphic: [] } as any, { lazyUpdate: true, replaceMerge: ['graphic'] })
+    lastFreqFullscreenHarmonicArrowPaintedPointerKey = null
   } catch { }
+}
+
+/** 缩放、Y 轴、阶数或整 option 刷新后必须与「指针量化键」失效，否则会误跳过本应重算的箭头像素位置 */
+const invalidateFreqFullscreenHarmonicArrowPointerThrottle = () => {
+  lastFreqFullscreenHarmonicArrowPaintedPointerKey = null
+}
+
+const cancelFreqFullscreenHarmonicArrowPointerRaf = () => {
+  if (freqFullscreenHarmonicArrowPointerRafId != null) {
+    cancelAnimationFrame(freqFullscreenHarmonicArrowPointerRafId)
+    freqFullscreenHarmonicArrowPointerRafId = null
+  }
+  freqFullscreenHarmonicArrowPointerPending = null
+}
+
+/**
+ * 仅用于跟随轴线指针：`updateFreqFullscreenHarmonicLineArrows` 会 replaceMerge graphic，mousemove 每秒触发远高于刷新需求。
+ * 合并到单帧并按 toFreqKey 去重，与谱线离散刻度一致。
+ */
+const scheduleFreqFullscreenHarmonicLineArrowsForPointerMove = (baseFreq: number) => {
+  if (!freqFullscreenUiActive.value) return
+  if (!Number.isFinite(baseFreq) || baseFreq <= 0) return
+  freqFullscreenHarmonicArrowPointerPending = baseFreq
+  if (freqFullscreenHarmonicArrowPointerRafId != null) return
+  freqFullscreenHarmonicArrowPointerRafId = requestAnimationFrame(() => {
+    freqFullscreenHarmonicArrowPointerRafId = null
+    const pending = freqFullscreenHarmonicArrowPointerPending
+    freqFullscreenHarmonicArrowPointerPending = null
+    if (pending == null || !Number.isFinite(pending) || pending <= 0) return
+    const key = toFreqKey(pending)
+    if (key === lastFreqFullscreenHarmonicArrowPaintedPointerKey) return
+    updateFreqFullscreenHarmonicLineArrows(pending)
+  })
 }
 
 const updateFreqFullscreenHarmonicLineArrows = (baseFreq?: number | null) => {
@@ -335,6 +373,7 @@ const updateFreqFullscreenHarmonicLineArrows = (baseFreq?: number | null) => {
   )
   try {
     inst.setOption({ graphic: graphics } as any, { lazyUpdate: true, replaceMerge: ['graphic'] })
+    lastFreqFullscreenHarmonicArrowPaintedPointerKey = toFreqKey(base)
   } catch { }
 }
 const pinnedFreqPoints = ref<EchartsPersistentPoint[]>([])
@@ -393,6 +432,14 @@ const axisOptions = VIBRATION_AXIS_OPTIONS
 const getVibrationAxisDisplayLabel = vibrationAxisLabel
 
 const freqAxis = ref<VibrationAxis>('X')
+const MOBILE_BREAKPOINT = 800
+const isFreqMobileViewport = ref(
+  typeof window !== 'undefined' ? window.innerWidth <= MOBILE_BREAKPOINT : false,
+)
+const syncFreqMobileViewport = () => {
+  if (typeof window === 'undefined') return
+  isFreqMobileViewport.value = window.innerWidth <= MOBILE_BREAKPOINT
+}
 
 const pointerBaseFreq = ref<number | null>(null)
 const HARMONIC_ORDER_MIN = 1
@@ -525,6 +572,7 @@ const patchFullscreenFreqYAxisRange = (min: number, max: number) => {
   try {
     // 全屏右侧有效值柱状图使用第二条 yAxis（与主 yAxis 同尺度），这里需一并更新
     inst.setOption({ yAxis: [{ min, max }, { min, max }] } as any, { notMerge: false, lazyUpdate: true })
+    invalidateFreqFullscreenHarmonicArrowPointerThrottle()
     requestAnimationFrame(() => updateFreqFullscreenHarmonicLineArrows())
   } catch {
     // ignore
@@ -1021,6 +1069,8 @@ const freqOption = computed<EChartsOption>(() => {
   const s = chartSplitLineColor.value
 
   const showRmsBars = freqFullscreenRmsLayoutInOption.value
+  const mobileFullscreenRmsOnLeft =
+    showRmsBars && freqFullscreenUiActive.value && isFreqMobileViewport.value
   const axisColor = axisLabel === 'X' ? '#7ecba1' : axisLabel === 'Y' ? '#ffd166' : '#ff6b6b'
 
   const fullscreenTooltipExtra =
@@ -1162,8 +1212,12 @@ const freqOption = computed<EChartsOption>(() => {
     },
     grid: showRmsBars
       ? [
-        { top: 30, left: 40, right: 180, bottom: 35, containLabel: true },
-        { top: 30, right: 16, width: 140, bottom: 35, containLabel: true },
+        mobileFullscreenRmsOnLeft
+          ? { top: 30, left: 112, right: 24, bottom: 35, containLabel: true }
+          : { top: 30, left: 40, right: 180, bottom: 35, containLabel: true },
+        mobileFullscreenRmsOnLeft
+          ? { top: 30, left: 0, width: 118, bottom: 35, containLabel: true }
+          : { top: 30, right: 16, width: 140, bottom: 35, containLabel: true },
       ]
       : { top: 30, left: 40, right: 50, bottom: 35, containLabel: true },
     xAxis: showRmsBars
@@ -1194,7 +1248,7 @@ const freqOption = computed<EChartsOption>(() => {
             fontSize: 11,
             interval: 0,
             hideOverlap: false,
-            width: 132,
+            width: mobileFullscreenRmsOnLeft ? 108 : 132,
             overflow: 'break',
           },
           splitLine: { show: false },
@@ -1310,7 +1364,7 @@ const freqOption = computed<EChartsOption>(() => {
                 return `${getVibrationAxisDisplayLabel(axisLabel)}轴速度有效值：${formatRmsBarValue(v)} mm/s`
               },
             },
-            barWidth: 36,
+            barWidth: mobileFullscreenRmsOnLeft ? 18 : 36,
             itemStyle: {
               borderRadius: [4, 4, 0, 0],
               color: axisColor,
@@ -1380,6 +1434,7 @@ const commitFreqHarmonicMaxOrder = () => {
   } catch { }
   lastHarmonicBaseFreq = base
   if (freqFullscreenUiActive.value) {
+    invalidateFreqFullscreenHarmonicArrowPointerThrottle()
     updateFreqFullscreenHarmonicLineArrows(base)
   }
 }
@@ -1425,16 +1480,14 @@ const onUpdateAxisPointer = (params: any) => {
     if (Math.abs(n - locked) > 1e-9) {
       syncVcFreqChartsAxisPointerToValue(locked)
     }
-    if (freqFullscreenUiActive.value) {
-      updateFreqFullscreenHarmonicLineArrows(locked)
-    }
+    // 锁定后倍频箭头位置不变，无需在每个 updateAxisPointer 上 replaceMerge graphic（会拖垮跟手手感）
     return
   }
 
   pointerBaseFreq.value = n
   scheduleHarmonicMarkLines(n)
   if (freqFullscreenUiActive.value) {
-    updateFreqFullscreenHarmonicLineArrows(n)
+    scheduleFreqFullscreenHarmonicLineArrowsForPointerMove(n)
   }
 }
 
@@ -1720,6 +1773,7 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   inst.on('updateAxisPointer', onUpdateAxisPointer)
   const onFreqFullscreenDataZoom = (params: any) => {
     handleFullscreenDataZoom(params)
+    invalidateFreqFullscreenHarmonicArrowPointerThrottle()
     updateFreqFullscreenHarmonicLineArrows()
     if (!freqFullscreenYUseCustom.value) {
       if (freqFullscreenYInputSyncTimer != null) {
@@ -1741,6 +1795,7 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
       }
       syncFreqFullscreenYInputsFromChartOption()
     }
+    invalidateFreqFullscreenHarmonicArrowPointerThrottle()
     updateFreqFullscreenHarmonicLineArrows()
   }
   inst.on('finished', onFreqFullscreenFinished)
@@ -1816,6 +1871,7 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   patchFullscreenPinnedMarkPoints()
   syncFreqFullscreenTooltipLockHandlers()
   attachFreqFullscreenMouseModeHotkey()
+  invalidateFreqFullscreenHarmonicArrowPointerThrottle()
   requestAnimationFrame(() => updateFreqFullscreenHarmonicLineArrows())
 }
 
@@ -1825,6 +1881,8 @@ const onFreqFullscreenClosed = () => {
     freqFullscreenYInputSyncTimer = null
   }
   cancelFreqFullscreenPeakSnapRaf()
+  cancelFreqFullscreenHarmonicArrowPointerRaf()
+  invalidateFreqFullscreenHarmonicArrowPointerThrottle()
   detachFreqFullscreenMouseModeHotkey()
   detachFreqFullscreenTooltipLockHandlers()
   resetFreqFullscreenTooltipLock()
@@ -1951,6 +2009,7 @@ watch(
     requestAnimationFrame(() => {
       refreshFullscreenPinnedMarkPoints()
       if (freqFullscreenUiActive.value) {
+        invalidateFreqFullscreenHarmonicArrowPointerThrottle()
         updateFreqFullscreenHarmonicLineArrows()
       }
     })
@@ -1960,6 +2019,7 @@ watch(
 
 onUnmounted(() => {
   cancelFreqFullscreenPeakSnapRaf()
+  cancelFreqFullscreenHarmonicArrowPointerRaf()
   detachFreqFullscreenMouseModeHotkey()
   detachFreqFullscreenTooltipLockHandlers()
   if (freqChartCleanup) {
@@ -1985,6 +2045,16 @@ onUnmounted(() => {
   clearFreqHarmonicDebounce()
   disposeInlineRangeControls()
   disposeFullscreenRangeControls()
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', syncFreqMobileViewport)
+  }
+})
+
+onMounted(() => {
+  syncFreqMobileViewport()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', syncFreqMobileViewport, { passive: true })
+  }
 })
 
 const {
@@ -2345,6 +2415,11 @@ $vibration-axis-font-size: 12px;
     justify-content: flex-start;
     flex-wrap: wrap;
     white-space: normal;
+  }
+
+  /* 手机端：取消“按功能组整块换行”，改成单个控件自然换行 */
+  .freq-filter-inline .freq-filter-group {
+    display: contents;
   }
 
   /* 振动点位页：弹窗内图表高度固定（仅手机端） */
