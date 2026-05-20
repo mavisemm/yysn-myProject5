@@ -83,6 +83,13 @@
               <span class="freq-filter-divider" aria-hidden="true" />
             </span>
             <span class="freq-filter-group">
+              <span class="freq-filter-label">频率分段：</span>
+              <el-input-number v-model="freqDataSizeInput" :min="FREQ_DATA_SIZE_MIN" :precision="0" :step="1" size="small"
+                controls-position="right" class="freq-filter-num freq-harmonic-order-input" />
+              <el-button size="small" type="primary" @click="commitFreqDataSize">确认</el-button>
+              <span class="freq-filter-divider" aria-hidden="true" />
+            </span>
+            <span class="freq-filter-group">
               <span class="freq-filter-label">Y 轴范围：</span>
               <el-input-number v-model="freqFullscreenYMinInput" :step="FREQ_Y_AXIS_STEP"
                 :precision="FREQ_Y_AXIS_PRECISION" size="small" controls-position="right"
@@ -444,11 +451,14 @@ const syncFreqMobileViewport = () => {
 const pointerBaseFreq = ref<number | null>(null)
 const HARMONIC_ORDER_MIN = 1
 const HARMONIC_ORDER_MAX = 100
+const FREQ_DATA_SIZE_MIN = 0
 /** 非全屏小图倍频竖线固定为默认 4 阶，不与全屏自定义倍频同步 */
 const INLINE_HARMONIC_MAX_ORDER = 4
 const FREQ_HARMONIC_DEBOUNCE_MS = 400
 const freqHarmonicMaxOrderCommitted = ref(4)
 const freqHarmonicMaxOrderInput = ref(4)
+const freqDataSizeCommitted = ref(0)
+const freqDataSizeInput = ref(0)
 let freqHarmonicDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const clearFreqHarmonicDebounce = () => {
@@ -498,6 +508,12 @@ const clampHarmonicMaxOrder = (raw: unknown) => {
   const v = Math.round(Number(raw))
   if (!Number.isFinite(v)) return 4
   return Math.min(HARMONIC_ORDER_MAX, Math.max(HARMONIC_ORDER_MIN, v))
+}
+
+const clampFreqDataSize = (raw: unknown) => {
+  const v = Math.round(Number(raw))
+  if (!Number.isFinite(v)) return 0
+  return Math.max(FREQ_DATA_SIZE_MIN, v)
 }
 
 const harmonicOrderLabel = (order: number) => `${order}倍频`
@@ -1439,6 +1455,14 @@ const commitFreqHarmonicMaxOrder = () => {
   }
 }
 
+const commitFreqDataSize = () => {
+  const nextDataSize = clampFreqDataSize(freqDataSizeInput.value)
+  freqDataSizeInput.value = nextDataSize
+  if (freqDataSizeCommitted.value === nextDataSize) return
+  freqDataSizeCommitted.value = nextDataSize
+  void loadFreqData()
+}
+
 const scheduleFreqHarmonicDebouncedCommit = () => {
   clearFreqHarmonicDebounce()
   freqHarmonicDebounceTimer = setTimeout(() => {
@@ -1751,6 +1775,7 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
   }
   clearFreqHarmonicDebounce()
   freqHarmonicMaxOrderInput.value = freqHarmonicMaxOrderCommitted.value
+  freqDataSizeInput.value = freqDataSizeCommitted.value
   resetFreqFullscreenTooltipLock()
   fullscreenFreqChartInstance.value = inst
   pendingFullscreenRmsYClamp = true
@@ -1933,6 +1958,7 @@ const loadFreqData = async () => {
       receiverIdResolved.value,
       freqAxis.value,
       vibrationAlarmTimeArg.value,
+      freqDataSizeCommitted.value,
     )
     if (freqResponse.rc === 0 && freqResponse.ret) {
       const { frequency, freqSpeedData } = freqResponse.ret

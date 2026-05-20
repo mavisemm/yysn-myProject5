@@ -27,8 +27,12 @@ export const getVibrationFrequencyData = (
   receiverId: string,
   axis: VibrationAxis = 'X',
   alarmTime?: number,
+  dataSize: number = 0,
 ): Promise<NewApiResponse<VibrationFrequencyData>> =>
-  request.post('/device/vibration/data/frequency', buildVibrationPayload(deviceId, receiverId, axis, alarmTime))
+  request.post('/device/vibration/data/frequency', {
+    ...buildVibrationPayload(deviceId, receiverId, axis, alarmTime),
+    dataSize: Number.isFinite(Number(dataSize)) ? Number(dataSize) : 0,
+  })
 
 export const getVibrationFrequencyWaterfallData = (
   deviceId: string,
