@@ -60,20 +60,25 @@ export const buildPersistentMarkPointData = (
   currentId: string,
   formatter: PersistentPointLabelFormatter,
   style: PersistentMarkPointStyle = {},
-) =>
-  points.map((point) => {
+) => {
+  const {
+    activeSymbolSize = 9,
+    inactiveSymbolSize = 7,
+    activeColor = '#ffd166',
+    inactiveColor = '#ff6b6b',
+    borderColor = '#fff',
+    borderWidth = 1,
+  } = style
+
+  return points.map((point) => {
     const isCurrent = point.id === currentId
     const labelText = formatPersistentPointLabel(point, formatter.formatX, formatter.formatY)
     return {
       name: point.id,
       coord: [point.x, point.y],
       symbol: 'circle',
-      symbolSize: isCurrent ? (style.activeSymbolSize ?? 9) : (style.inactiveSymbolSize ?? 7),
-      itemStyle: {
-        color: isCurrent ? (style.activeColor ?? '#ffd166') : (style.inactiveColor ?? '#ff6b6b'),
-        borderColor: style.borderColor ?? '#fff',
-        borderWidth: style.borderWidth ?? 1,
-      },
+      symbolSize: isCurrent ? activeSymbolSize : inactiveSymbolSize,
+      itemStyle: { color: isCurrent ? activeColor : inactiveColor, borderColor, borderWidth },
       label: {
         show: true,
         position: 'top',
@@ -94,3 +99,4 @@ export const buildPersistentMarkPointData = (
       },
     }
   })
+}

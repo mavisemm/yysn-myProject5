@@ -1,0 +1,56 @@
+.filter-form {
+  :deep(.el-form-item) {
+    margin-bottom: 10px;
+    margin-right: 14px;
+  }
+}
+
+.actions-bar {
+  display: flex;
+  gap: 10px;
+  row-gap: 10px;
+  margin: 2px 0 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.all-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.device-cell {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.device-sub {
+  opacity: 0.75;
+}
+
+.pager {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.table-wrapper {
+  flex: 1;
+  min-height: 0;
+}
+
+.operation-cell :deep(.operation-link) {
+  font-size: 12px;
+}
+
+@media (max-width: 800px) {
+  .table-wrapper {
+    overflow-x: hidden;
+  }
+
+  .table-wrapper :deep(.el-table) {
+    min-width: 0;
+  }
+}

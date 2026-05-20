@@ -23,49 +23,33 @@ export interface ApiRcRet<T> {
   err?: string | null
 }
 
-export const apiGetEventById = async (params: { id: string | number }): Promise<ApiRcRet<AlarmEventDetail>> => {
-  return request.get('/taicang/event/findById', {
-    params: {
-          id: params.id
-        },
-    showLoading: true
+export const apiGetEventById = (params: { id: string | number }): Promise<ApiRcRet<AlarmEventDetail>> =>
+  request.get('/taicang/event/findById', {
+    params: { id: params.id },
+    showLoading: true,
   })
-}
 
-export const apiGetDevicePosition = async (params: { objectId: string | number }): Promise<ApiRcRet<any>> => {
-  return request.get('/taicang/hardware/factory/layout/findByObjectId', {
-    params: {
-      objectId: params.objectId
-    },
-    showLoading: false
+export const apiGetDevicePosition = (params: { objectId: string | number }): Promise<ApiRcRet<any>> =>
+  request.get('/taicang/hardware/factory/layout/findByObjectId', {
+    params: { objectId: params.objectId },
+    showLoading: false,
   })
-}
 
-export const apiGetAbnormalHistory = async (payload: any): Promise<ApiRcRet<{ items: any[] }>> => {
-  return request.post('/taicang/hardware/device/sound/scene/find', payload, {
-    showLoading: true
-  })
-}
+export const apiGetAbnormalHistory = (payload: any): Promise<ApiRcRet<{ items: any[] }>> =>
+  request.post('/taicang/hardware/device/sound/scene/find', payload, { showLoading: true })
 
-export const apiConfirmSoundNot = async (payload: {
+export const apiConfirmSoundNot = (payload: {
   type: string | number
   name: string
   id: string | number
   tenantId: string
-}): Promise<any> => {
-  return request.post('/taicang/event/confirm/soundNot', payload, {
-    showLoading: true
-  })
-}
+}): Promise<any> =>
+  request.post('/taicang/event/confirm/soundNot', payload, { showLoading: true })
 
-export const apiConfirmSoundYes = async (payload: {
+export const apiConfirmSoundYes = (payload: {
   name?: string
   id: string | number
   exceptionId?: string | number
   tenantId: string
-}): Promise<any> => {
-  return request.post('/taicang/event/confirm/soundYes', payload, {
-    showLoading: true
-  })
-}
-
+}): Promise<any> =>
+  request.post('/taicang/event/confirm/soundYes', payload, { showLoading: true })

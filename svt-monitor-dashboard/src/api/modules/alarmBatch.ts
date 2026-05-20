@@ -1,5 +1,5 @@
 import request from '../request'
-import { readTenantIdFromStorageOrAddressBar } from '../tenant'
+import { TAICANG_EVENT_FIND_URL, withTenantQuery } from '../helpers'
 
 export type FilterOperate = 'EQ' | 'GE' | 'LE' | 'GTE' | 'LTE' | 'LIKE'
 
@@ -63,9 +63,7 @@ export interface FindVibrationAlarmByConditionBody {
   tenantId: string
   startTime?: number
   endTime?: number
-  /** 可选：后端若支持则按设备过滤 */
   deviceId?: string
-  /** 可选：后端若支持则按类型过滤（前端用 eventTypeCode 表达） */
   eventTypeCode?: string
 }
 
@@ -84,71 +82,55 @@ export interface DropdownResponse {
   err: string | null
 }
 
-export const apiFindEvents = (body: FindBody) => {
-  return request.post<FindResponse>('http://122.224.196.178:8003/taicang/event/find', body, { showLoading: false })
-}
+const postEvent = <T>(url: string, body: unknown, showLoading: boolean) =>
+  request.post<T>(url, body, { showLoading })
 
-export const apiFindVibrationAlarmByCondition = (body: FindVibrationAlarmByConditionBody) => {
-  return request.post<FindResponse>('/taicang/event/findVibrationAlarmByCondition', body, { showLoading: false })
-}
+export const apiFindEvents = (body: FindBody) =>
+  request.post<FindResponse>(TAICANG_EVENT_FIND_URL, body, { showLoading: false })
 
-export const apiSoundAlarmFind = (body: FindSoundAlarmBody) => {
-  return request.post<FindResponse>('/taicang/event/soundAlarmFind', body, { showLoading: false })
-}
+export const apiFindVibrationAlarmByCondition = (body: FindVibrationAlarmByConditionBody) =>
+  request.post<FindResponse>('/taicang/event/findVibrationAlarmByCondition', body, { showLoading: false })
 
-export const apiGetDeviceNameDropdownList = () => {
-  const tenantId = readTenantIdFromStorageOrAddressBar()
-  return request.get<DropdownResponse>('/taicang/hardware/device/name/getDropdownList', {
-    params: { _t: Date.now(), tenantId, userId: '' },
-    showLoading: false
+export const apiSoundAlarmFind = (body: FindSoundAlarmBody) =>
+  request.post<FindResponse>('/taicang/event/soundAlarmFind', body, { showLoading: false })
+
+export const apiGetDeviceNameDropdownList = () =>
+  request.get<DropdownResponse>('/taicang/hardware/device/name/getDropdownList', {
+    params: withTenantQuery(),
+    showLoading: false,
   })
-}
 
-export const apiGetEventTypeDropdownList = () => {
-  const tenantId = readTenantIdFromStorageOrAddressBar()
-  return request.get<DropdownResponse>('/taicang/hardware/eventType/getDropdownList', {
-    params: { _t: Date.now(), tenantId, userId: '' },
-    showLoading: false
+export const apiGetEventTypeDropdownList = () =>
+  request.get<DropdownResponse>('/taicang/hardware/eventType/getDropdownList', {
+    params: withTenantQuery(),
+    showLoading: false,
   })
-}
 
-export const apiGetPointListNew = (body: any) => {
-  return request.post<any>('/taicang/hardware/device/check-point/find/point/message', body, { showLoading: false })
-}
+export const apiGetPointListNew = (body: any) =>
+  request.post<any>('/taicang/hardware/device/check-point/find/point/message', body, {
+    showLoading: false,
+  })
 
-export const apiConfirmYes = (idList: string[]) => {
-  
-  return request.post<any>('/taicang/event/confirm/yes', idList, { showLoading: true })
-}
+export const apiConfirmYes = (idList: string[]) =>
+  postEvent('/taicang/event/confirm/yes', idList, true)
 
-export const apiConfirmNot = (idList: string[]) => {
-  return request.post<any>('/taicang/event/confirm/not', idList, { showLoading: true })
-}
+export const apiConfirmNot = (idList: string[]) =>
+  postEvent('/taicang/event/confirm/not', idList, true)
 
-export const apiConfirmVibrationYes = (idList: string[]) => {
-  return request.post<any>('/device/vibration/data/yes', idList, { showLoading: true })
-}
+export const apiConfirmVibrationYes = (idList: string[]) =>
+  postEvent('/device/vibration/data/yes', idList, true)
 
-export const apiConfirmVibrationNot = (idList: string[]) => {
-  return request.post<any>('/device/vibration/data/not', idList, { showLoading: true })
-}
+export const apiConfirmVibrationNot = (idList: string[]) =>
+  postEvent('/device/vibration/data/not', idList, true)
 
-export const apiDeleteEvents = (idList: string[]) => {
-  return request.post<any>('/taicang/event/delete', idList, { showLoading: true })
-}
+export const apiDeleteEvents = (idList: string[]) =>
+  postEvent('/taicang/event/delete', idList, true)
 
-export const apiConfirmYesAll = (idList?: string[]) => {
-  
-  return request.post<any>('/taicang/event/confirm/yesAll', idList ?? [], { showLoading: true })
-}
+export const apiConfirmYesAll = (idList?: string[]) =>
+  postEvent('/taicang/event/confirm/yesAll', idList ?? [], true)
 
-export const apiConfirmNotAll = () => {
-  
-  return request.post<any>('/taicang/event/confirm/notAll', [], { showLoading: true })
-}
+export const apiConfirmNotAll = () =>
+  postEvent('/taicang/event/confirm/notAll', [], true)
 
-export const apiDeleteAllValid = () => {
-  
-  return request.post<any>('/taicang/event/deleteAllValid', [], { showLoading: true })
-}
-
+export const apiDeleteAllValid = () =>
+  postEvent('/taicang/event/deleteAllValid', [], true)

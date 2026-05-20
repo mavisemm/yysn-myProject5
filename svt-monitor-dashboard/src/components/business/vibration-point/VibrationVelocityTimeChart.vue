@@ -44,6 +44,8 @@ import { CommonEcharts } from '@/components/common/chart'
 import { getVibrationTimeDomainData, type VibrationAxis } from '@/api/modules/device'
 import { FullScreen } from '@element-plus/icons-vue'
 import { enableMouseWheelZoom } from '@/utils/chart'
+import { formatChartYAxisTick2 } from '@/utils/chartAxis'
+import { useVibrationInlineChartTheme, VIBRATION_AXIS_OPTIONS } from './vibrationPointUtils'
 
 const props = withDefaults(
   defineProps<{
@@ -77,29 +79,14 @@ const openTimeFullscreen = () => {
 const timeDomainData = ref<number[]>([])
 const totalTime = ref<number>(0)
 
-const axisOptions: { label: string; value: VibrationAxis }[] = [
-  { label: 'X轴(A)', value: 'X' },
-  { label: 'Y轴(H)', value: 'Y' },
-  { label: 'Z轴(V)', value: 'Z' },
-]
-
+const axisOptions = VIBRATION_AXIS_OPTIONS
 const timeAxis = ref<VibrationAxis>('X')
-
-const chartAxisColor = computed(() => {
-  if (timeFullscreenUiActive.value) return '#fff'
-  return props.inlineChartTheme === 'light' ? '#303133' : '#fff'
-})
-
-const chartSplitLineColor = computed(() => {
-  if (timeFullscreenUiActive.value) return 'rgba(255,255,255,0.1)'
-  return props.inlineChartTheme === 'light' ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.1)'
-})
-
-const formatYAxisTick = (v: number | string) => {
-  const n = Number(v)
-  if (!Number.isFinite(n)) return ''
-  return String(Number(n.toFixed(2)))
-}
+const inlineChartThemeRef = computed(() => props.inlineChartTheme)
+const { chartAxisColor, chartSplitLineColor } = useVibrationInlineChartTheme(
+  inlineChartThemeRef,
+  timeFullscreenUiActive,
+)
+const formatYAxisTick = formatChartYAxisTick2
 
 const timeOption = computed<EChartsOption>(() => {
   if (timeDomainData.value.length === 0) return {}

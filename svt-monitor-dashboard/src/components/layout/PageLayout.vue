@@ -52,6 +52,17 @@ import { useAlarmOverviewStore } from '@/stores/alarmOverview'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import { resolveRealtimeDeviceKey } from '@/utils/realtimeAlarmNavigator'
+import {
+  layoutShowHomeButton,
+  layoutShowPointTypeSwitch,
+  layoutShowReturnDevice,
+} from '@/components/layout/layoutNavUtils'
+import {
+  escapeHtml,
+  normalizeIncomingAlarm,
+  type IncomingAlarmPreview,
+} from '@/components/layout/layoutIncomingAlarm'
+import { useLayoutDeviceNavigation } from '@/composables/useLayoutDeviceNavigation'
 
 const backgroundMode = ref<'image' | 'navy' | 'solid'>('solid')
 provide('backgroundMode', backgroundMode)
@@ -66,56 +77,15 @@ const updateMobileState = () => {
   }
 }
 
-const showHomeButton = computed(() => {
-  return route.name === 'DeviceDetail' || route.name === 'SoundPoint' || route.name === 'VibrationPoint'
-})
-
-const showReturnDeviceButton = computed(() => {
-  return route.name === 'SoundPoint' || route.name === 'VibrationPoint'
-})
-
-const showPointTypeSwitch = computed(() => {
-  return route.name === 'SoundPoint' || route.name === 'VibrationPoint'
-})
+const showHomeButton = computed(() => layoutShowHomeButton(route.name))
+const showReturnDeviceButton = computed(() => layoutShowReturnDevice(route.name))
+const showPointTypeSwitch = computed(() => layoutShowPointTypeSwitch(route.name))
 
 const goHome = () => {
   router.push('/dashboard')
 }
 
-const goToDevice = () => {
-  if (route.name === 'DeviceDetail') {
-    const id = route.params.id
-    if (typeof id === 'string' && id) return
-  }
-
-  let equipmentId = (route.query.equipmentId as string) || ''
-
-  if (!equipmentId && (route.name === 'SoundPoint' || route.name === 'VibrationPoint')) {
-    const receiverIdParam = route.params.receiverId
-    const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
-    if (typeof receiverId === 'string' && receiverId) {
-      const findParentDeviceId = (rid: string): string | null => {
-        for (const factory of deviceTreeStore.deviceTreeData) {
-          for (const workshop of factory.children ?? []) {
-            for (const device of workshop.children ?? []) {
-              if (device.type !== 'device') continue
-              const hasPoint = (device.children ?? []).some((p) => p.type === 'point' && p.id === rid)
-              if (hasPoint) return device.id
-            }
-          }
-        }
-        return null
-      }
-      equipmentId = findParentDeviceId(receiverId) ?? ''
-    }
-  }
-
-  if (equipmentId) {
-    router.push({ name: 'DeviceDetail', params: { id: equipmentId } })
-  } else {
-    router.push('/dashboard')
-  }
-}
+const { goToDevice } = useLayoutDeviceNavigation()
 
 const handleChangeBackground = (mode: 'image' | 'navy' | 'solid') => {
   backgroundMode.value = mode
@@ -139,98 +109,6 @@ const router = useRouter()
 const alarmOverviewStore = useAlarmOverviewStore()
 const alarmBatchStore = useAlarmBatchStore()
 const deviceTreeStore = useDeviceTreeStore()
-
-type IncomingAlarmPreview = {
-  alarmId: string
-  shopName: string
-  deviceName: string
-  pointName: string
-  pointNum: number
-  alarmTimeText: string
-  status: 'alarm' | 'warning'
-}
-
-function escapeHtml(input: string): string {
-  return String(input ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-function safeParseJson(input: unknown): any {
-  if (!input) return undefined
-  if (typeof input === 'object') return input
-  if (typeof input !== 'string') return undefined
-  try {
-    return JSON.parse(input)
-  } catch {
-    return undefined
-  }
-}
-
-function formatAlarmTime(input: unknown): string {
-  const timestamp = Number(input)
-  if (!Number.isFinite(timestamp) || timestamp <= 0) return ''
-  const d = new Date(timestamp)
-  if (Number.isNaN(d.getTime())) return ''
-  const month = d.getMonth() + 1
-  const day = d.getDate()
-  const hour = String(d.getHours()).padStart(2, '0')
-  const minute = String(d.getMinutes()).padStart(2, '0')
-  return `${month}月${day}日${hour}:${minute}`
-}
-
-function normalizeIncomingAlarm(payload: any): IncomingAlarmPreview | null {
-  if (!payload || typeof payload !== 'object') return null
-  const hasEventTypeCode = 'eventTypeCode' in payload
-  const parsedData = safeParseJson((payload as any).dataJson)
-  const parsedRaw = safeParseJson((payload as any).rawDataJson)
-
-  const alarmId = String((payload as any).equipmentId ?? (payload as any).deviceId ?? '').trim()
-  if (!alarmId) return null
-
-  const pointNameRaw =
-    (payload as any).data?.pointName ??
-    parsedData?.pointName ??
-    parsedData?.pointname ??
-    parsedRaw?.pointName ??
-    parsedRaw?.pointname
-  const pointName = String(pointNameRaw ?? '').trim() || '未知点位'
-
-  const pointNum = (() => {
-    const fromName = pointName.match(/(\d+)/)
-    if (fromName) {
-      const n = Number(fromName[1])
-      if (Number.isFinite(n) && n > 0) return n
-    }
-    const ch = (payload as any).data?.channelNo ?? parsedData?.channelNo ?? parsedRaw?.channelNo
-    const channelNo = Number(ch)
-    return Number.isFinite(channelNo) && channelNo > 0 ? channelNo : 0
-  })()
-
-  const level = String((payload as any).data?.level ?? parsedData?.level ?? parsedRaw?.level ?? '').toUpperCase()
-  const alarmTypeCode = String((payload as any).alarmTypeCode ?? '').toUpperCase()
-  const status: 'alarm' | 'warning' =
-    hasEventTypeCode || level === 'WARNING' || level === 'WARN'
-      ? 'warning'
-      : alarmTypeCode === 'MACHINE_VIBRATION' || level === 'ALARM'
-        ? 'alarm'
-        : 'warning'
-
-  return {
-    alarmId,
-    shopName: String((payload as any).workshopName ?? parsedData?.shopName ?? parsedRaw?.shopName ?? '').trim() || '未知车间',
-    deviceName: String((payload as any).equipmentName ?? (payload as any).deviceName ?? '').trim() || alarmId,
-    pointName,
-    pointNum,
-    alarmTimeText: formatAlarmTime(
-      (payload as any).alarmTime ?? parsedData?.alarmTime ?? parsedRaw?.alarmTime,
-    ),
-    status,
-  }
-}
 
 async function goToDashboardWithTarget(item: IncomingAlarmPreview) {
   await alarmBatchStore.ensureDropdowns()
@@ -350,6 +228,12 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
+/** 首页背景上“透底”的业务卡片（navy/solid 主题额外包含声纹 charts-section） */
+@mixin layout-transparent-panel-bg {
+  background: transparent !important;
+  background-image: none !important;
+}
+
 .page-layout {
   width: 100vw;
   height: 100vh;
@@ -402,8 +286,7 @@ onUnmounted(() => {
   :deep(.waterfall-card),
   :deep(.freq-card),
   :deep(.time-card) {
-    background: transparent !important;
-    background-image: none !important;
+    @include layout-transparent-panel-bg;
   }
 
   &.page-layout--navy {
@@ -427,8 +310,7 @@ onUnmounted(() => {
     :deep(.waterfall-card),
     :deep(.freq-card),
     :deep(.time-card) {
-      background: transparent !important;
-      background-image: none !important;
+      @include layout-transparent-panel-bg;
     }
   }
 
@@ -450,8 +332,7 @@ onUnmounted(() => {
     :deep(.waterfall-card),
     :deep(.freq-card),
     :deep(.time-card) {
-      background: transparent !important;
-      background-image: none !important;
+      @include layout-transparent-panel-bg;
     }
   }
 

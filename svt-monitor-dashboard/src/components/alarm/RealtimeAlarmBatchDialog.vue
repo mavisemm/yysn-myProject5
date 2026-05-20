@@ -100,65 +100,67 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
-import { ElMessageBox } from 'element-plus'
-import { useAlarmBatchStore } from '@/stores/alarmBatch'
-import { formatDateTime, normalizeEndDateTimeBySelectedDay } from '@/utils/datetime'
+import {
+  SAME_WIDTH_POPPER_OPTIONS,
+  confirmBatchAction,
+  useAlarmBatchDropdownOptions,
+  useAlarmBatchEndTimePicker,
+  useAlarmBatchRowLabels,
+  useDialogOpenEffect,
+  useResponsiveDialogWidth,
+  useUiPageIndex,
+  type BatchConfirmType,
+} from './alarmBatchDialogUtils'
 
 defineEmits<{ (e: 'view', row: any): void }>()
 
-const store = useAlarmBatchStore()
-const isMobile = computed(() => window.innerWidth <= 800)
-const dialogWidth = computed(() => (isMobile.value ? '100vw' : '70vw'))
-const sameWidthPopperOptions = {
-  modifiers: [
-    {
-      name: 'sameWidth',
-      enabled: true,
-      phase: 'beforeWrite',
-      requires: ['computeStyles'],
-      fn: ({ state }: any) => {
-        state.styles.popper.width = `${state.rects.reference.width}px`
-      },
-    },
-  ],
-} as any
+const { store, deviceOptions, typeOptions } = useAlarmBatchDropdownOptions()
+const { dialogWidth } = useResponsiveDialogWidth()
+const sameWidthPopperOptions = SAME_WIDTH_POPPER_OPTIONS
 
-watch(
+useDialogOpenEffect(
   () => store.realtimeAlarmVisible,
-  (visible) => {
-    if (!visible) return
-    nextTick(() => {
-      void store.ensureDropdowns()
-      void store.fetchRealtimeAlarmList(0)
-    })
+  () => {
+    void store.ensureDropdowns()
+    void store.fetchRealtimeAlarmList(0)
   },
 )
 
-const pageForUi = computed({
-  get: () => store.realtimeAlarmPageIndex + 1,
-  set: (v: number) => {
-    store.realtimeAlarmPageIndex = Math.max(0, v - 1) as any
+const pageForUi = useUiPageIndex(
+  () => store.realtimeAlarmPageIndex,
+  (v) => {
+    store.realtimeAlarmPageIndex = v as any
   },
-})
+)
+
+const {
+  onEndTimeChange,
+  onEndModelValue,
+  onEndPanelChange,
+  onEndCalendarChange,
+  disableFutureDate,
+  getDisabledStartHours,
+  getDisabledStartMinutes,
+  getDisabledStartSeconds,
+  getDisabledEndHours,
+  getDisabledEndMinutes,
+  getDisabledEndSeconds,
+} = useAlarmBatchEndTimePicker(
+  () => store.realtimeAlarmQuery.startTime,
+  () => store.realtimeAlarmQuery.endTime,
+  (v) => {
+    store.realtimeAlarmQuery.endTime = v
+  },
+)
+
+const { getDeviceMainName, getDeviceSubName, getPointName, getReceiverName } =
+  useAlarmBatchRowLabels({ parseDataJson: false })
+
+
 
 const onSelectionChange = (rows: any[]) => {
   store.realtimeAlarmSelectedRowKeys = rows.map((r) => String(r.id)) as any
 }
-
-const deviceOptions = computed(() => {
-  return (store.deviceNameList ?? []).map((x: any) => ({
-    value: x.key,
-    label: String(x.text ?? ''),
-  }))
-})
-
-const typeOptions = computed(() => {
-  return (store.typeList ?? []).map((x: any) => ({
-    value: x.key,
-    label: String(x.text ?? ''),
-  }))
-})
 
 const onPageChange = (page: number) => {
   store.fetchRealtimeAlarmList(page - 1)
@@ -169,249 +171,21 @@ const onReset = () => {
   store.fetchRealtimeAlarmList(0, true)
 }
 
-const endDatePart = ref<string>('')
+const confirmBatch = (type: BatchConfirmType) =>
+  confirmBatchAction(type, {
+    yes: () => store.batchYesRealtimeAlarm(),
+    not: () => store.batchNotRealtimeAlarm(),
+    delete: () => store.batchDeleteRealtimeAlarm(),
+  })
 
-const getDatePart = (value?: string) => {
-  const raw = String(value ?? '').trim()
-  if (!raw) return ''
-  return raw.split(' ')[0] ?? ''
-}
 
-const normalizeAndApplyEndTime = (rawValue?: string, forceApplyRule: boolean = false) => {
-  const normalized = normalizeEndDateTimeBySelectedDay(rawValue, forceApplyRule)
-  const picked = normalized ? new Date(normalized.replace(' ', 'T')) : null
-  const now = new Date()
-  const finalValue =
-    picked && !Number.isNaN(picked.getTime()) && picked.getTime() > now.getTime()
-      ? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
-      : normalized
-  if (finalValue !== rawValue) store.realtimeAlarmQuery.endTime = finalValue
-  endDatePart.value = getDatePart(store.realtimeAlarmQuery.endTime)
-}
 
-const toDateTimeText = (value: unknown): string | undefined => {
-  if (value == null || value === '') return undefined
-  if (value instanceof Date)
-    return Number.isNaN(value.getTime()) ? undefined : formatDateTime(value)
-  return String(value)
-}
-
-const onEndTimeChange = (value?: string) => {
-  normalizeAndApplyEndTime(value)
-}
-
-const onEndModelValue = (value?: string) => {
-  const nextDatePart = getDatePart(value)
-  const prevDatePart = endDatePart.value || getDatePart(store.realtimeAlarmQuery.endTime)
-  const forceApplyRule = !!nextDatePart && !!prevDatePart && nextDatePart !== prevDatePart
-  normalizeAndApplyEndTime(value, forceApplyRule)
-}
-
-const onEndPanelChange = (value: unknown) => {
-  normalizeAndApplyEndTime(toDateTimeText(value))
-}
-
-const onEndCalendarChange = (value: unknown) => {
-  const picked = Array.isArray(value) ? value[value.length - 1] : value
-  normalizeAndApplyEndTime(toDateTimeText(picked))
-}
-
-const disableFutureDate = (time: Date) => time.getTime() > Date.now()
-
-const isTodayByValue = (rawValue?: string) => {
-  const raw = String(rawValue ?? '').trim()
-  if (!raw) return false
-  const selected = new Date(raw.replace(' ', 'T'))
-  if (Number.isNaN(selected.getTime())) return false
-  const now = new Date()
-  return (
-    selected.getFullYear() === now.getFullYear() &&
-    selected.getMonth() === now.getMonth() &&
-    selected.getDate() === now.getDate()
-  )
-}
-
-const getDisabledHoursByRaw = (rawValue?: string) => {
-  if (!isTodayByValue(rawValue)) return []
-  const h = new Date().getHours()
-  return Array.from({ length: 24 - (h + 1) }, (_, i) => h + 1 + i)
-}
-
-const getDisabledMinutesByRaw = (rawValue: string | undefined, hour: number) => {
-  if (!isTodayByValue(rawValue)) return []
-  const now = new Date()
-  if (hour !== now.getHours()) return []
-  const m = now.getMinutes()
-  return Array.from({ length: 60 - (m + 1) }, (_, i) => m + 1 + i)
-}
-
-const getDisabledSecondsByRaw = (rawValue: string | undefined, hour: number, minute: number) => {
-  if (!isTodayByValue(rawValue)) return []
-  const now = new Date()
-  if (hour !== now.getHours() || minute !== now.getMinutes()) return []
-  const s = now.getSeconds()
-  return Array.from({ length: 60 - (s + 1) }, (_, i) => s + 1 + i)
-}
-
-const getDisabledStartHours = () => getDisabledHoursByRaw(store.realtimeAlarmQuery.startTime)
-const getDisabledStartMinutes = (hour: number) =>
-  getDisabledMinutesByRaw(store.realtimeAlarmQuery.startTime, hour)
-const getDisabledStartSeconds = (hour: number, minute: number) =>
-  getDisabledSecondsByRaw(store.realtimeAlarmQuery.startTime, hour, minute)
-
-const getDisabledEndHours = () => getDisabledHoursByRaw(store.realtimeAlarmQuery.endTime)
-const getDisabledEndMinutes = (hour: number) =>
-  getDisabledMinutesByRaw(store.realtimeAlarmQuery.endTime, hour)
-const getDisabledEndSeconds = (hour: number, minute: number) =>
-  getDisabledSecondsByRaw(store.realtimeAlarmQuery.endTime, hour, minute)
-
-const confirmBatch = async (type: 'yes' | 'not' | 'delete') => {
-  const actionText =
-    type === 'yes' ? '批量确认警报' : type === 'not' ? '批量确认误报' : '批量确认删除'
-  await ElMessageBox.confirm(`确认要执行【${actionText}】吗？`, '提示', { type: 'warning' })
-  if (type === 'yes') await store.batchYesRealtimeAlarm()
-  if (type === 'not') await store.batchNotRealtimeAlarm()
-  if (type === 'delete') await store.batchDeleteRealtimeAlarm()
-}
-
-function splitDeviceName(rawName: any): { main: string; sub: string } {
-  const raw = String(rawName || '-')
-  const idxCn = raw.indexOf('（')
-  const idxEn = raw.indexOf('(')
-  const idx = idxCn !== -1 ? idxCn : idxEn
-  if (idx <= 0) return { main: raw, sub: '' }
-  const main = raw.slice(0, idx).trim()
-  const sub = raw
-    .slice(idx)
-    .replace(/^（|^\(/, '')
-    .replace(/）$|\)$/, '')
-    .trim()
-  return { main, sub }
-}
-
-const getDeviceMainName = (row: any): string => {
-  const deviceName = row?.deviceName
-  const main = deviceName ? splitDeviceName(deviceName).main : ''
-  return row?._deviceMainName || main || String(deviceName ?? '')
-}
-
-const getDeviceSubName = (row: any): string => {
-  const deviceName = row?.deviceName
-  const shopName = row?.shopName
-  if (shopName) return String(shopName)
-  if (!deviceName) return row?._deviceSubName || ''
-  return splitDeviceName(deviceName).sub || row?._deviceSubName || ''
-}
-
-const getPointName = (row: any): string => {
-  return row?.pointName ? String(row.pointName) : ''
-}
-
-const getReceiverName = (row: any): string => {
-  return row?.receiverName ? String(row.receiverName) : ''
-}
 </script>
 
 <style scoped lang="scss">
-.filter-form {
-  :deep(.el-form-item) {
-    margin-bottom: 10px;
-    margin-right: 14px;
-  }
-}
-
-.actions-bar {
-  display: flex;
-  gap: 10px;
-  row-gap: 10px;
-  margin: 2px 0 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.device-cell {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-
-.device-sub {
-  opacity: 0.75;
-}
-
-.pager {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.table-wrapper {
-  flex: 1;
-  min-height: 0;
-}
-
-.operation-cell :deep(.operation-link) {
-  font-size: 12px;
-}
-
-@media (max-width: 800px) {
-  .table-wrapper {
-    overflow-x: hidden;
-  }
-
-  .table-wrapper :deep(.el-table) {
-    min-width: 0;
-  }
-
-}
+@import './alarm-batch-dialog.local.scss';
 </style>
 
 <style lang="scss">
-@media (max-width: 800px) {
-  .alarm-batch-dialog.el-dialog {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    margin: 0 !important;
-  }
-
-  .alarm-batch-dialog .el-dialog__body {
-    padding: 12px;
-  }
-
-  .alarm-batch-dialog .filter-form .el-form-item {
-    width: 100%;
-    margin-right: 0;
-    margin-bottom: 8px;
-  }
-
-  .alarm-batch-dialog .filter-form .el-form-item .alarm-filter-control {
-    width: 100% !important;
-  }
-
-  .alarm-batch-dialog .filter-form .el-form-item:last-child .el-form-item__content {
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .alarm-batch-dialog--realtime-alarm .actions-bar {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .alarm-batch-dialog--realtime-alarm .actions-bar .el-button {
-    width: 100%;
-    margin-left: 0 !important;
-  }
-
-  .alarm-batch-datetime-popper.el-picker__popper {
-    width: calc(100vw - 2px) !important;
-    max-width: calc(100vw - 2px) !important;
-    left: 0 !important;
-    right: 0 !important;
-    overflow-x: hidden;
-  }
-}
+@import './alarm-batch-dialog.scss';
 </style>

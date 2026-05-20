@@ -47,17 +47,14 @@
       </el-dialog>
 
       <div class="header-actions">
-        <el-button type="primary" size="small" @click="openAddFieldDialog" class="add-field-btn mobile-font-title">
-          添加信息
-        </el-button>
-        <el-button type="primary" size="small" @click="toggleEdit" class="edit-btn mobile-font-title">
-          {{ isEditing ? '保存' : '编辑' }}
+        <el-button type="primary" size="small" @click="manageDialogVisible = true" class="edit-btn mobile-font-title">
+          更多
         </el-button>
       </div>
 
       <div v-if="!hasDeviceInfo" class="device-no-data">暂无数据</div>
       <div v-else class="device-basic-info">
-        <div class="info-row" v-if="!isEditing">
+        <div class="info-row">
           <div class="info-item">
             <span class="info-label mobile-font-title">设备名称：</span>
             <span class="info-value mobile-font-title">{{ deviceInfo.equipmentName }}</span>
@@ -68,18 +65,7 @@
           </div>
         </div>
 
-        <div class="info-row" v-else>
-          <div class="info-item">
-            <span class="info-label mobile-font-title">设备名称：</span>
-            <el-input v-model="editForm.equipmentName" size="small" class="info-input" />
-          </div>
-          <div class="info-item">
-            <span class="info-label mobile-font-title">设备型号：</span>
-            <el-input v-model="editForm.deviceModel" size="small" class="info-input" />
-          </div>
-        </div>
-
-        <div class="info-row" v-if="!isEditing">
+        <div class="info-row">
           <div class="info-item">
             <span class="info-label mobile-font-title">生产厂家：</span>
             <span class="info-value mobile-font-title">{{ deviceInfo.deviceFactory }}</span>
@@ -89,162 +75,69 @@
             <span class="info-value mobile-font-title">{{ deviceInfo.locationDetail }}</span>
           </div>
         </div>
-        <div class="info-row" v-else>
-          <div class="info-item">
-            <span class="info-label mobile-font-title">生产厂家：</span>
-            <el-input v-model="editForm.deviceFactory" size="small" class="info-input" />
-          </div>
-          <div class="info-item">
-            <span class="info-label mobile-font-title">安装位置：</span>
-            <el-input v-model="editForm.locationDetail" size="small" class="info-input" />
-          </div>
-        </div>
 
-        <div class="info-row" v-if="!isEditing">
+        <div class="info-row">
           <div class="info-item">
             <span class="info-label mobile-font-title">额定转速：</span>
             <span class="info-value mobile-font-title">{{
-              formatValueWithUnit(deviceInfo.rotationSpeed, 'rpm')
-              }}</span>
+              formatDeviceInfoValueWithUnit(deviceInfo.rotationSpeed, 'rpm')
+            }}</span>
           </div>
           <div class="info-item">
             <span class="info-label mobile-font-title">设计流量：</span>
-            <span class="info-value mobile-font-title">{{ formatValueWithUnit(deviceInfo.designFlow, 'm³/h') }}</span>
-          </div>
-        </div>
-        <div class="info-row" v-else>
-          <div class="info-item">
-            <span class="info-label mobile-font-title">额定转速：</span>
-            <el-input v-model="editForm.rotationSpeed" size="small" class="info-input" />
-          </div>
-          <div class="info-item">
-            <span class="info-label mobile-font-title">设计流量：</span>
-            <el-input v-model="editForm.designFlow" size="small" class="info-input" />
+            <span class="info-value mobile-font-title">{{ formatDeviceInfoValueWithUnit(deviceInfo.designFlow, 'm³/h') }}</span>
           </div>
         </div>
 
-        <div class="info-row" v-if="!isEditing">
+        <div class="info-row">
           <div class="info-item">
             <span class="info-label mobile-font-title">压力：</span>
-            <span class="info-value mobile-font-title">{{ formatValueWithUnit(deviceInfo.pressure, 'MPa') }}</span>
-          </div>
-          <div v-if="extraFields.length > 0" class="info-item">
-            <span class="info-label mobile-font-title">{{ extraFields[0]?.label }}：</span>
-            <span class="info-value mobile-font-title">{{ extraFields[0]?.value }}</span>
-          </div>
-        </div>
-        <div class="info-row" v-else>
-          <div class="info-item">
-            <span class="info-label mobile-font-title">压力：</span>
-            <el-input v-model="editForm.pressure" size="small" class="info-input" />
-          </div>
-          <div class="info-item"></div>
-        </div>
-
-        <div class="info-row" v-for="(row, rowIndex) in extraFieldRows" :key="'extra-row-' + rowIndex"
-          v-if="!isEditing">
-          <div v-for="(field, index) in row" :key="'extra-' + rowIndex + '-' + index" class="info-item">
-            <span class="info-label mobile-font-title">{{ field.label }}：</span>
-            <span class="info-value mobile-font-title">{{ field.value }}</span>
+            <span class="info-value mobile-font-title">{{ formatDeviceInfoValueWithUnit(deviceInfo.pressure, 'MPa') }}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <el-dialog v-model="addFieldDialogVisible" title="添加设备信息" width="360px" :close-on-click-modal="false"
-      :teleported="true" :append-to-body="true" :modal-append-to-body="true">
-      <div class="add-field-form">
-        <div class="form-row">
-          <span class="form-label">名称：</span>
-          <el-input v-model="newField.label" size="small" placeholder="例如：维护周期" />
-        </div>
-        <div class="form-row">
-          <span class="form-label">值：</span>
-          <el-input v-model="newField.value" size="small" placeholder="例如：每3个月" />
-        </div>
-      </div>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button size="small" @click="addFieldDialogVisible = false">取消</el-button>
-          <el-button size="small" type="primary" @click="confirmAddField">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
+    <DeviceInfoManageDialog
+      v-model="manageDialogVisible"
+      :device-id="props.deviceId"
+      :equipment-name="deviceInfo.equipmentName"
+      :device-info="manageDialogDeviceInfo"
+      :custom-fields="customFieldsForManage"
+      @saved="onManageDialogSaved"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted, nextTick, onUnmounted, watch } from 'vue'
-import { ElButton, ElInput, ElMessage, ElForm, ElFormItem } from 'element-plus'
+import { ElButton, ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import {
   getDeviceInfoByEquipmentId,
-  editEquipmentInfo,
   getEquipmentHealth,
-  type DeviceInfoDto,
-  type DeviceHealthResponse,
 } from '@/api/modules/hardware'
 import { service } from '@/api/request'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
-
-const deviceImages = import.meta.glob('@/assets/images/background/*.{webp,svg}', {
-  eager: true,
-  import: 'default',
-}) as Record<string, string>
-
-const normalizeDeviceImageKey = (name: string) =>
-  String(name ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '')
-    .replace(/[（(].*?[）)]/g, '')
-    .replace(/[-_]/g, '')
-
-const deviceImageByBaseName = (() => {
-  const map = new Map<string, string>()
-  for (const [path, url] of Object.entries(deviceImages)) {
-    const fileName = path.split('/').pop() ?? ''
-    const base = fileName.replace(/\.[^.]+$/, '')
-    if (!base) continue
-    map.set(base, url)
-  }
-  return map
-})()
-
-const resolveDeviceImageFromName = (equipmentName: string): string => {
-  const rawName = String(equipmentName ?? '').trim()
-  if (!rawName) return ''
-
-  const exact = deviceImageByBaseName.get(rawName)
-  if (exact) return exact
-
-  const normalizedRawName = normalizeDeviceImageKey(rawName)
-  if (!normalizedRawName) return ''
-  for (const [baseName, url] of deviceImageByBaseName.entries()) {
-    if (normalizeDeviceImageKey(baseName) === normalizedRawName) {
-      return url
-    }
-  }
-
-  for (const [baseName, url] of deviceImageByBaseName.entries()) {
-    const normalizedBase = normalizeDeviceImageKey(baseName)
-    if (!normalizedBase) continue
-    if (normalizedBase.includes(normalizedRawName) || normalizedRawName.includes(normalizedBase)) {
-      return url
-    }
-  }
-
-  return ''
-}
-
-const formatValueWithUnit = (value: unknown, unit: string) => {
-  if (value === null || value === undefined) return ''
-  const raw = typeof value === 'string' ? value.trim() : value
-  if (raw === '') return ''
-  const num = typeof raw === 'number' ? raw : Number(raw)
-  if (!Number.isFinite(num) || num === 0) return ''
-  return `${raw} ${unit}`
-}
+import DeviceInfoManageDialog from './DeviceInfoManageDialog.vue'
+import {
+  mergeUiVerifyFields,
+  parseCustomFieldsFromDeviceNewInfo,
+  type CustomDeviceField,
+} from './deviceInfoMeta'
+import {
+  formatDeviceInfoValueWithUnit,
+  resolveDeviceImageFromName,
+} from './deviceImageUtils'
+import {
+  buildHealthGaugeOption,
+  parseSoundHealthRet,
+  parseVibrationHealthRet,
+  type HealthGaugeMode,
+  type HealthGaugeViewState,
+  type HealthGrade,
+} from './deviceHealthGauge'
+import { normalizeDeviceInfoRet } from './deviceInfoLoaders'
 
 interface DeviceInfo {
   id: number
@@ -259,7 +152,6 @@ interface DeviceInfo {
   onlineStatus: number
   createdTime: string | null
   updatedTime: string | null
-
   deviceNewInfo?: Array<{ label: string; value: string }>
 }
 
@@ -267,41 +159,9 @@ const props = defineProps<{
   deviceId: string
 }>()
 
-const emit = defineEmits<{
-  (e: 'edit-status-change', status: { isEditing: boolean; hasChanges: boolean }): void
-}>()
-
 const hasDeviceInfo = ref(true)
-
-interface ExtraField {
-  label: string
-  value: string
-  type: 'input' | 'select'
-  options?: string[]
-}
-
-const extraFields = ref<ExtraField[]>([])
-
-const extraFieldRows = computed<ExtraField[][]>(() => {
-  const rows: ExtraField[][] = []
-  const list = extraFields.value.slice(1)
-  for (let i = 0; i < list.length; i += 2) {
-    rows.push(list.slice(i, i + 2))
-  }
-  return rows
-})
-const addFieldDialogVisible = ref(false)
-const newField = ref<ExtraField>({ label: '', value: '', type: 'input' })
-const newFieldType = ref<'input' | 'select'>('input')
-const newOptionInput = ref('')
-const newFieldOptions = ref<string[]>([])
-
-type DateRange = [string, string] | null
-const soundStageReport = reactive({
-  dialogVisible: false,
-  dateRange: null as DateRange,
-  downloading: false,
-})
+const manageDialogVisible = ref(false)
+const customFieldsForManage = ref<CustomDeviceField[]>([])
 
 const deviceInfo = ref<DeviceInfo>({
   id: 0,
@@ -319,6 +179,25 @@ const deviceInfo = ref<DeviceInfo>({
   deviceNewInfo: [],
 })
 
+const manageDialogDeviceInfo = computed(() => ({
+  id: deviceInfo.value.id,
+  equipmentName: deviceInfo.value.equipmentName,
+  deviceModel: deviceInfo.value.deviceModel,
+  deviceFactory: deviceInfo.value.deviceFactory,
+  locationDetail: deviceInfo.value.locationDetail,
+  pressure: deviceInfo.value.pressure,
+  rotationSpeed: deviceInfo.value.rotationSpeed,
+  designFlow: deviceInfo.value.designFlow,
+  onlineStatus: deviceInfo.value.onlineStatus,
+}))
+
+type DateRange = [string, string] | null
+const soundStageReport = reactive({
+  dialogVisible: false,
+  dateRange: null as DateRange,
+  downloading: false,
+})
+
 const deviceImageSrc = computed<string>(() => {
   if (!isDeviceInfoLoaded.value) return ''
   return resolveDeviceImageFromName(deviceInfo.value.equipmentName)
@@ -327,88 +206,24 @@ const deviceImageSrc = computed<string>(() => {
 const isDeviceInfoLoaded = ref(false)
 let currentDeviceInfoRequestId = 0
 
-const syncExtraFieldsFromDeviceInfo = () => {
-  const raw = (deviceInfo.value as any).deviceNewInfo
-  const parsed: ExtraField[] = []
-  if (!raw) {
-    extraFields.value = []
-    return
-  }
-
-  if (Array.isArray(raw)) {
-    raw.forEach((it: any) => {
-      const label = String(it?.label ?? '').trim()
-      const value = String(it?.value ?? '').trim()
-      if (label && value) parsed.push({ label, value, type: 'input' })
-    })
-    extraFields.value = parsed
-    return
-  }
-
-  let idx = 1
-  let foundAny = false
-  while (idx <= 50) {
-    const itemKey = `item${idx}`
-    const item = raw[itemKey]
-    if (!item) break
-    const labelKey = `label${idx}`
-    const valueKey = `value${idx}`
-    const label = String(item[labelKey] ?? '').trim()
-    const value = String(item[valueKey] ?? '').trim()
-    if (label && value) {
-      parsed.push({ label, value, type: 'input' })
-      foundAny = true
-    }
-    idx++
-  }
-
-  if (!foundAny) {
-    let j = 1
-    while (j <= 50) {
-      const labelKey = `label${j}`
-      const valueKey = `value${j}`
-      if (!(labelKey in raw) || !(valueKey in raw)) break
-      const label = String(raw[labelKey] ?? '').trim()
-      const value = String(raw[valueKey] ?? '').trim()
-      if (label && value) parsed.push({ label, value, type: 'input' })
-      j++
-    }
-  }
-
-  extraFields.value = parsed
+const syncCustomFieldsForManageDialog = () => {
+  const raw = (deviceInfo.value as { deviceNewInfo?: unknown }).deviceNewInfo
+  customFieldsForManage.value = mergeUiVerifyFields(parseCustomFieldsFromDeviceNewInfo(raw)).map(
+    (f) => ({ ...f }),
+  )
 }
 
-const openAddFieldDialog = () => {
-  newField.value = { label: '', value: '', type: 'input' }
-  newFieldType.value = 'input'
-  newOptionInput.value = ''
-  newFieldOptions.value = []
-  addFieldDialogVisible.value = true
+const applyDeviceInfoRet = (ret: unknown) => {
+  deviceInfo.value = normalizeDeviceInfoRet(ret) as DeviceInfo
+  hasDeviceInfo.value = true
+  syncCustomFieldsForManageDialog()
 }
 
-const addOption = () => {
-  const v = newOptionInput.value.trim()
-  if (!v) {
-    ElMessage.warning('请输入选项值')
-    return
-  }
-  if (newFieldOptions.value.includes(v)) {
-    ElMessage.warning('该选项已存在')
-    return
-  }
-  newFieldOptions.value.push(v)
-  newOptionInput.value = ''
+const onManageDialogSaved = async () => {
+  await loadDeviceInfo()
 }
 
-const removeOption = (index: number) => {
-  newFieldOptions.value.splice(index, 1)
-}
-
-const openSoundStageReportDialog = () => {
-  soundStageReport.dialogVisible = true
-}
-
-const sanitizeFilename = (name: string) => name.replace(/[\\/:*?"<>|]/g, '-')
+const sanitizeFilename = (name: string) => name.replace(/[\/:*?"<>|]/g, '-')
 
 const downloadSoundStageReport = async () => {
   if (!props.deviceId) {
@@ -433,7 +248,7 @@ const downloadSoundStageReport = async () => {
     const blob = res as unknown as Blob
     if (
       blob &&
-      typeof (blob as any).text === 'function' &&
+      typeof (blob as { text?: () => Promise<string> }).text === 'function' &&
       blob.type?.includes('application/json')
     ) {
       const text = await blob.text()
@@ -449,14 +264,12 @@ const downloadSoundStageReport = async () => {
 
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    const fileName = sanitizeFilename(`声音健康度阶段性报告_${startTime}_${endTime}`)
     a.href = url
-    a.download = `${fileName}.pdf`
+    a.download = `${sanitizeFilename(`声音健康度阶段性报告_${startTime}_${endTime}`)}.pdf`
     document.body.appendChild(a)
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
-
     soundStageReport.dialogVisible = false
   } catch (e) {
     console.error('下载阶段性报告失败:', e)
@@ -468,18 +281,10 @@ const downloadSoundStageReport = async () => {
 
 const loadDeviceInfo = async () => {
   if (!props.deviceId) return
-
   try {
     const response = await getDeviceInfoByEquipmentId(props.deviceId)
     if (response.rc === 0 && response.ret) {
-      const raw: any = response.ret
-      deviceInfo.value = {
-        ...response.ret,
-        equipmentId: raw.equipmentId ?? '',
-        equipmentName: raw.equipmentName ?? '',
-      } as any
-      hasDeviceInfo.value = true
-      syncExtraFieldsFromDeviceInfo()
+      applyDeviceInfoRet(response.ret)
     } else {
       hasDeviceInfo.value = false
     }
@@ -489,24 +294,33 @@ const loadDeviceInfo = async () => {
   }
 }
 
+const soundHealthScore = ref(0)
+const vibrationHealthScore = ref(0)
+const hasSoundHealthData = ref(false)
+const hasVibrationHealthData = ref(false)
+const soundHealthGrade = ref<HealthGrade>('')
+const vibrationHealthGrade = ref<HealthGrade>('')
+
+const gaugeViewState = computed<HealthGaugeViewState>(() => ({
+  soundScore: soundHealthScore.value,
+  vibrationScore: vibrationHealthScore.value,
+  soundGrade: soundHealthGrade.value,
+  vibrationGrade: vibrationHealthGrade.value,
+  hasSoundHealthData: hasSoundHealthData.value,
+  hasVibrationHealthData: hasVibrationHealthData.value,
+}))
+
 const loadDeviceDataParallel = async () => {
   if (!props.deviceId) return
   const requestId = ++currentDeviceInfoRequestId
   isDeviceInfoLoaded.value = false
-
   deviceInfo.value.equipmentName = ''
 
   try {
     const [infoResult, soundHealthResult, vibrationHealthResult] = await Promise.allSettled([
       getDeviceInfoByEquipmentId(props.deviceId),
-      getEquipmentHealth({
-        equipmentId: props.deviceId,
-        type: 'sound',
-      }),
-      getEquipmentHealth({
-        equipmentId: props.deviceId,
-        type: 'vibration',
-      }),
+      getEquipmentHealth({ equipmentId: props.deviceId, type: 'sound' }),
+      getEquipmentHealth({ equipmentId: props.deviceId, type: 'vibration' }),
     ])
 
     const infoResponse = infoResult.status === 'fulfilled' ? infoResult.value : null
@@ -515,15 +329,8 @@ const loadDeviceDataParallel = async () => {
       vibrationHealthResult.status === 'fulfilled' ? vibrationHealthResult.value : null
 
     if (infoResponse?.rc === 0 && infoResponse.ret) {
-      const raw: any = infoResponse.ret
       if (requestId !== currentDeviceInfoRequestId) return
-      deviceInfo.value = {
-        ...infoResponse.ret,
-        equipmentId: raw.equipmentId ?? '',
-        equipmentName: raw.equipmentName ?? '',
-      } as any
-      hasDeviceInfo.value = true
-      syncExtraFieldsFromDeviceInfo()
+      applyDeviceInfoRet(infoResponse.ret)
       isDeviceInfoLoaded.value = true
     } else {
       hasDeviceInfo.value = false
@@ -531,12 +338,10 @@ const loadDeviceDataParallel = async () => {
     }
 
     if (soundHealthResponse?.rc === 0 && soundHealthResponse.ret) {
-      const ret: any = soundHealthResponse.ret
-      const score = typeof ret.healthScore === 'number' ? ret.healthScore : null
-      const grade = extractHealthGrade(ret)
-      hasSoundHealthData.value = score !== null || !!grade
-      soundHealthScore.value = score ?? 0
-      soundHealthGrade.value = grade
+      const parsed = parseSoundHealthRet(soundHealthResponse.ret)
+      hasSoundHealthData.value = parsed.hasData
+      soundHealthScore.value = parsed.score
+      soundHealthGrade.value = parsed.grade
     } else {
       hasSoundHealthData.value = false
       soundHealthScore.value = 0
@@ -544,21 +349,18 @@ const loadDeviceDataParallel = async () => {
     }
 
     if (vibrationHealthResponse?.rc === 0 && vibrationHealthResponse.ret) {
-      const ret: any = vibrationHealthResponse.ret
-      const grade = extractHealthGrade(ret)
-      hasVibrationHealthData.value = !!grade
-      vibrationHealthGrade.value = grade
-      vibrationHealthScore.value = mapGradeToScore(grade)
+      const parsed = parseVibrationHealthRet(vibrationHealthResponse.ret)
+      hasVibrationHealthData.value = parsed.hasData
+      vibrationHealthGrade.value = parsed.grade
+      vibrationHealthScore.value = parsed.score
     } else {
       hasVibrationHealthData.value = false
       vibrationHealthGrade.value = ''
       vibrationHealthScore.value = 0
     }
 
-    nextTick(() => {
-      initGaugeCharts()
-    })
-  } catch (error) {
+    nextTick(() => initGaugeCharts())
+  } catch {
     ElMessage.error('获取设备数据失败')
   } finally {
     if (requestId === currentDeviceInfoRequestId && !isDeviceInfoLoaded.value) {
@@ -570,324 +372,20 @@ const loadDeviceDataParallel = async () => {
 watch(
   () => props.deviceId,
   (newId) => {
-    if (newId) {
-      loadDeviceDataParallel()
-    }
+    if (newId) loadDeviceDataParallel()
   },
   { immediate: true },
 )
-
-const isEditing = ref(false)
-const editForm = ref<DeviceInfo>({ ...deviceInfo.value })
-
-const buildDeviceNewInfo = (fields: ExtraField[]): Array<{ label: string; value: string }> => {
-  const arr: Array<{ label: string; value: string }> = []
-  for (const f of fields) {
-    const label = String(f.label ?? '').trim()
-    if (!label) continue
-    const value =
-      f.type === 'select'
-        ? String(f.value || (f.options && f.options[0]) || '').trim()
-        : String(f.value ?? '').trim()
-    if (!value) continue
-    arr.push({ label, value })
-  }
-  return arr
-}
-
-const confirmAddField = () => {
-  const label = newField.value.label.trim()
-  if (!label) {
-    ElMessage.warning('请填写名称')
-    return
-  }
-
-  if (newFieldType.value === 'input') {
-    const value = newField.value.value.trim()
-    if (!value) {
-      ElMessage.warning('请填写值')
-      return
-    }
-    extraFields.value.push({ label, value, type: 'input' })
-  } else {
-    if (newFieldOptions.value.length === 0) {
-      ElMessage.warning('请至少添加一个选项')
-      return
-    }
-    extraFields.value.push({
-      label,
-      value: newFieldOptions.value[0] ?? '',
-      type: 'select',
-      options: [...newFieldOptions.value],
-    })
-  }
-
-  ElMessage.success('已添加')
-  addFieldDialogVisible.value = false
-}
-
-const soundHealthScore = ref(0)
-const vibrationHealthScore = ref(0)
-
-const hasSoundHealthData = ref(false)
-
-const hasVibrationHealthData = ref(false)
-
-const soundHealthGrade = ref<'A' | 'B' | 'C' | 'D' | ''>('')
-const vibrationHealthGrade = ref<'A' | 'B' | 'C' | 'D' | ''>('')
 
 const soundGaugeRef = ref<HTMLDivElement>()
 const vibrationGaugeRef = ref<HTMLDivElement>()
 let soundGaugeChart: echarts.ECharts | null = null
 let vibrationGaugeChart: echarts.ECharts | null = null
 
-const calculateResponsiveFontSize = (
-  baseSize: number,
-  containerWidth: number,
-  containerHeight: number,
-) => {
-  const baseDimension = Math.min(containerWidth, containerHeight)
-  const scaleRatio = Math.min(baseDimension / 200, 2)
-  return Math.max(baseSize * scaleRatio, baseSize * 0.5)
-}
-const calculateResponsiveDistance = (
-  baseDistance: number,
-  containerWidth: number,
-  containerHeight: number,
-) => {
-  const baseDimension = Math.min(containerWidth, containerHeight)
-  const scaleRatio = Math.min(baseDimension / 200, 2)
-  return Math.max(baseDistance * scaleRatio, baseDistance * 0.5)
-}
+const buildGaugeOption = (mode: HealthGaugeMode, w: number, h: number) =>
+  buildHealthGaugeOption(mode, gaugeViewState.value, w, h)
 
-const extractHealthGrade = (ret: any): 'A' | 'B' | 'C' | 'D' | '' => {
-  if (!ret) return ''
-  const raw = ret.healthGrade ?? ret.health_grade ?? ret.grade ?? ''
-  if (!raw || typeof raw !== 'string') return ''
-  const upper = raw.toUpperCase()
-  if (upper === 'A' || upper === 'B' || upper === 'C' || upper === 'D') {
-    return upper
-  }
-  return ''
-}
-
-const mapGradeToScore = (grade: 'A' | 'B' | 'C' | 'D' | ''): number => {
-  switch (grade) {
-    case 'A':
-      return 90
-    case 'B':
-      return 70
-    case 'C':
-      return 40
-    case 'D':
-      return 15
-    default:
-      return 0
-  }
-}
-
-type GaugeMode = 'sound' | 'vibration'
-
-const resolveHealthColor = (score: number, grade: 'A' | 'B' | 'C' | 'D' | '') => {
-  if (grade === 'D') return '#ff5722'
-  if (grade === 'C') return '#f2b504'
-  if (grade === 'B') return '#85ea8c'
-  if (grade === 'A') return '#309735'
-
-  if (score >= 80) return '#309735'
-  if (score >= 60) return '#85ea8c'
-  if (score >= 20) return '#f2b504'
-  return '#ff5722'
-}
-
-const buildGaugeOption = (mode: GaugeMode, containerWidth: number, containerHeight: number) => {
-  const isVibration = mode === 'vibration'
-  const score = isVibration ? vibrationHealthScore.value : soundHealthScore.value
-  const grade = isVibration ? vibrationHealthGrade.value : soundHealthGrade.value
-
-  const hasData = isVibration ? hasVibrationHealthData.value : hasSoundHealthData.value
-  const healthColor = hasData ? resolveHealthColor(score, grade) : 'rgba(255,255,255,0.65)'
-
-  const axisLabelFontSize = Math.round(
-    calculateResponsiveFontSize(15, containerWidth, containerHeight),
-  )
-  const titleFontSize = Math.round(calculateResponsiveFontSize(20, containerWidth, containerHeight))
-  const detailFontSize = Math.round(
-    calculateResponsiveFontSize(24, containerWidth, containerHeight),
-  )
-
-  const total = 10 + 8 + 8 + 10
-  const dEnd = 10 / total
-  const cEnd = (10 + 8) / total
-  const bEnd = (10 + 8 + 8) / total
-
-  return {
-    series: [
-      {
-        type: 'gauge',
-        center: ['50%', '60%'],
-        radius: '80%',
-        startAngle: 210,
-        endAngle: -30,
-        min: 0,
-        max: 100,
-        splitNumber: 10,
-        progress: { show: false },
-        pointer: { show: false },
-        axisLine: {
-          roundCap: true,
-          lineStyle: {
-            width: Math.round(12 * Math.min(containerWidth / 300, 2)),
-
-            color: [
-              [dEnd, '#ff5722'],
-              [cEnd, '#f2b504'],
-              [bEnd, '#85ea8c'],
-              [1, '#309735'],
-            ],
-          },
-        },
-        axisTick: { show: false },
-        splitLine: { show: false },
-        axisLabel: {
-          show: true,
-
-          distance: calculateResponsiveDistance(
-            isVibration ? -130 : -105,
-            containerWidth,
-            containerHeight,
-          ),
-          fontSize: axisLabelFontSize,
-          color: '#fff',
-          formatter: function (value: number) {
-            if (isVibration) {
-              const total = 10 + 8 + 8 + 10
-              const dEnd = 10 / total
-              const cEnd = (10 + 8) / total
-              const bEnd = (10 + 8 + 8) / total
-              const roundToTick = (percent: number) => Math.round(percent / 10) * 10
-              const dCenter = roundToTick((0 + dEnd * 100) / 2)
-              const cCenter = roundToTick(((dEnd + cEnd) * 100) / 2)
-              const bCenter = roundToTick(((cEnd + bEnd) * 100) / 2)
-              const aCenter = roundToTick(((bEnd + 1) * 100) / 2)
-
-              if (value === dCenter) return '{gradeD|D\n不允许}'
-              if (value === cCenter) return '{gradeC|C\n注意}'
-              if (value === bCenter) return '{gradeB|B\n可接受}'
-              if (value === aCenter) return '{gradeA|A\n良好}'
-              return ''
-            }
-
-            if (value === 0) return '{stop|0}'
-            if (value === 10) return '{stop|停机}'
-            if (value === 20) return '{stop|20}'
-            if (value === 40) return '{inspect|巡检}'
-            if (value === 60) return '{inspect|60}'
-            if (value === 70) return '{focus|关注}'
-            if (value === 80) return '{focus|80}'
-            if (value === 90) return '{health|健康}'
-            if (value === 100) return '{health|100}'
-            return ''
-          },
-          rich: {
-            stop: { color: '#ff5722', fontSize: axisLabelFontSize },
-            inspect: { color: '#f2b504', fontSize: axisLabelFontSize },
-            focus: { color: '#85ea8c', fontSize: axisLabelFontSize },
-            health: { color: '#309735', fontSize: axisLabelFontSize },
-
-            gradeD: {
-              color: '#ff5722',
-              fontSize: Math.round(axisLabelFontSize * 0.85),
-              fontWeight: 'bold',
-              lineHeight: axisLabelFontSize,
-            },
-            gradeC: {
-              color: '#f2b504',
-              fontSize: Math.round(axisLabelFontSize * 0.85),
-              fontWeight: 'bold',
-              lineHeight: axisLabelFontSize,
-            },
-            gradeB: {
-              color: '#85ea8c',
-              fontSize: Math.round(axisLabelFontSize * 0.85),
-              fontWeight: 'bold',
-              lineHeight: axisLabelFontSize,
-            },
-            gradeA: {
-              color: '#309735',
-              fontSize: Math.round(axisLabelFontSize * 0.85),
-              fontWeight: 'bold',
-              lineHeight: axisLabelFontSize,
-            },
-          },
-        },
-        anchor: { show: false },
-        title: {
-          show: true,
-          color: healthColor,
-          fontSize: titleFontSize,
-          fontWeight: 'bolder',
-          offsetCenter: [0, '0%'],
-        },
-        detail: {
-          valueAnimation: true,
-          offsetCenter: [0, '-30%'],
-          fontSize: detailFontSize,
-          fontWeight: 'bolder',
-
-          formatter: function (value: number) {
-            if (isVibration) return grade || '-'
-            if (!hasSoundHealthData.value) return '-'
-            return String(Math.round(value))
-          },
-          color: healthColor,
-        },
-        data: [{ value: score, name: isVibration ? '振动健康度' : '声音健康度' }],
-      },
-    ],
-  }
-}
-
-const toggleEdit = async () => {
-  if (isEditing.value) {
-    try {
-      const deviceInfoDto: DeviceInfoDto = {
-        id: deviceInfo.value.id,
-        equipmentId: props.deviceId,
-        equipmentName: editForm.value.equipmentName,
-        deviceModel: editForm.value.deviceModel,
-        deviceFactory: editForm.value.deviceFactory,
-        locationDetail: editForm.value.locationDetail,
-        pressure: Number(editForm.value.pressure),
-        rotationSpeed: Number(editForm.value.rotationSpeed),
-        designFlow: Number(editForm.value.designFlow),
-        onlineStatus: deviceInfo.value.onlineStatus,
-      }
-
-        ; (deviceInfoDto as any).deviceNewInfo = buildDeviceNewInfo(extraFields.value)
-
-      const response = await editEquipmentInfo(props.deviceId, deviceInfoDto)
-
-      if (response.rc === 0) {
-        Object.assign(deviceInfo.value, editForm.value)
-        ElMessage.success('设备信息更新成功')
-        isEditing.value = false
-        emit('edit-status-change', { isEditing: false, hasChanges: false })
-      } else {
-        ElMessage.error(response.err || '设备信息更新失败')
-      }
-    } catch (error) {
-      console.error('更新设备信息失败:', error)
-      ElMessage.error('设备信息更新失败')
-    }
-  } else {
-    Object.assign(editForm.value, deviceInfo.value)
-    isEditing.value = true
-    emit('edit-status-change', { isEditing: true, hasChanges: false })
-  }
-}
-
-const initOneGauge = (mode: GaugeMode) => {
+const initOneGauge = (mode: HealthGaugeMode) => {
   const el = mode === 'sound' ? soundGaugeRef.value : vibrationGaugeRef.value
   if (!el) return
   const rect = el.getBoundingClientRect()
@@ -911,6 +409,7 @@ const initGaugeCharts = () => {
 
 let resizeObserver: ResizeObserver | null = null
 let parentResizeObserver: ResizeObserver | null = null
+let gaugeRetryTimerId: number | null = null
 
 const resizeGauge = () => {
   setTimeout(() => {
@@ -934,17 +433,13 @@ const resizeGauge = () => {
   }, 50)
 }
 
-let gaugeRetryTimerId: number | null = null
-
 const setupGaugeResizeObserver = () => {
   if (soundGaugeRef.value && vibrationGaugeRef.value) {
     resizeObserver = new ResizeObserver(resizeGauge)
     resizeObserver.observe(soundGaugeRef.value)
     resizeObserver.observe(vibrationGaugeRef.value)
   } else {
-    if (gaugeRetryTimerId) {
-      clearTimeout(gaugeRetryTimerId)
-    }
+    if (gaugeRetryTimerId) clearTimeout(gaugeRetryTimerId)
     gaugeRetryTimerId = window.setTimeout(setupGaugeResizeObserver, 100)
   }
 }
@@ -957,7 +452,7 @@ const setupParentResizeObserver = () => {
   }
 }
 
-onMounted(async () => {
+onMounted(() => {
   nextTick(() => {
     initGaugeCharts()
     setupGaugeResizeObserver()
@@ -968,17 +463,14 @@ onMounted(async () => {
 onUnmounted(() => {
   if (soundGaugeChart) soundGaugeChart.dispose()
   if (vibrationGaugeChart) vibrationGaugeChart.dispose()
-
   if (resizeObserver) {
     resizeObserver.disconnect()
     resizeObserver = null
   }
-
   if (parentResizeObserver) {
     parentResizeObserver.disconnect()
     parentResizeObserver = null
   }
-
   if (gaugeRetryTimerId) {
     clearTimeout(gaugeRetryTimerId)
     gaugeRetryTimerId = null
@@ -1021,10 +513,6 @@ onUnmounted(() => {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-
-    .add-field-btn {
-      margin-right: -12px;
-    }
   }
 
   .device-main {

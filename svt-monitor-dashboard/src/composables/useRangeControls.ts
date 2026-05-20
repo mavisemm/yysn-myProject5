@@ -19,19 +19,26 @@ export interface UseRangeControlsConfig {
 
 export function useRangeControls(config: UseRangeControlsConfig) {
     const roundToPrecision = (n: number, precision: number) => {
-        const p = Math.pow(10, Math.max(0, precision));
+        const p = 10 ** Math.max(0, precision);
         return Math.round(n * p) / p;
+    };
+
+    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
+    const clampPair = (a: number, b: number, min: number, max: number) => {
+        let minV = clamp(a, min, max);
+        let maxV = clamp(b, min, max);
+        if (minV > maxV) [minV, maxV] = [maxV, minV];
+        return [minV, maxV] as const;
     };
 
     const getXAxisDataFromOption = (opt: EChartsOption | null | undefined, xAxisIndex: number): any[] => {
         if (!opt) return [];
-        const anyOpt = opt as any;
-        const xAxis = anyOpt?.xAxis;
+        const xAxis = (opt as any)?.xAxis;
         const axis = Array.isArray(xAxis) ? xAxis[xAxisIndex] : xAxis;
-        const axisType = axis?.type;
         const data = axis?.data;
         if (!Array.isArray(data) || data.length === 0) return [];
-        if (axisType && axisType !== 'category') return [];
+        if (axis?.type && axis.type !== 'category') return [];
         return data;
     };
 
@@ -68,6 +75,18 @@ export function useRangeControls(config: UseRangeControlsConfig) {
     const suppressDebouncedApply = ref(false);
     let debouncedApplyTimer: ReturnType<typeof setTimeout> | null = null;
 
+    const runWithSuppressedApply = (fn: () => void) => {
+        suppressDebouncedApply.value = true;
+        if (debouncedApplyTimer) {
+            clearTimeout(debouncedApplyTimer);
+            debouncedApplyTimer = null;
+        }
+        fn();
+        setTimeout(() => {
+            suppressDebouncedApply.value = false;
+        }, 0);
+    };
+
     const showResolvedRangeControls = computed(
         () => !!config.showRangeControls.value && rangeAxisAllFinite.value
     );
@@ -90,10 +109,7 @@ export function useRangeControls(config: UseRangeControlsConfig) {
         if (rangeMin.value === null || rangeMax.value === null) return;
 
         const precision = config.rangeControlsPrecision.value;
-        let minV = Math.max(rangeDataMin.value, Math.min(rangeDataMax.value, rangeMin.value));
-        let maxV = Math.max(rangeDataMin.value, Math.min(rangeDataMax.value, rangeMax.value));
-        if (minV > maxV) [minV, maxV] = [maxV, minV];
-
+        let [minV, maxV] = clampPair(rangeMin.value, rangeMax.value, rangeDataMin.value, rangeDataMax.value);
         minV = roundToPrecision(minV, precision);
         maxV = roundToPrecision(maxV, precision);
         rangeMin.value = minV;
@@ -138,25 +154,23 @@ export function useRangeControls(config: UseRangeControlsConfig) {
         const minV = roundToPrecision(rangeDataMin.value, precision);
         const maxV = roundToPrecision(rangeDataMax.value, precision);
 
-        suppressDebouncedApply.value = true;
-        rangeMin.value = minV;
-        rangeMax.value = maxV;
+        runWithSuppressedApply(() => {
+            rangeMin.value = minV;
+            rangeMax.value = maxV;
 
-        const raw = rangeAxisRaw.value;
-        const startValue = raw[0];
-        const endValue = raw[raw.length - 1];
-        zoomRange.value =
-            typeof startValue !== 'undefined' && typeof endValue !== 'undefined'
-                ? { startValue, endValue }
-                : null;
+            const raw = rangeAxisRaw.value;
+            const startValue = raw[0];
+            const endValue = raw[raw.length - 1];
+            zoomRange.value =
+                typeof startValue !== 'undefined' && typeof endValue !== 'undefined'
+                    ? { startValue, endValue }
+                    : null;
 
-        if (zoomRange.value) {
-            config.doDataZoom(zoomRange.value);
-        }
-        config.onRangeReset?.();
-        setTimeout(() => {
-            suppressDebouncedApply.value = false;
-        }, 0);
+            if (zoomRange.value) {
+                config.doDataZoom(zoomRange.value);
+            }
+            config.onRangeReset?.();
+        });
     };
 
     const scheduleApplyRange = () => {
@@ -193,20 +207,12 @@ export function useRangeControls(config: UseRangeControlsConfig) {
         )
             return;
 
-        suppressDebouncedApply.value = true;
-        if (debouncedApplyTimer) {
-            clearTimeout(debouncedApplyTimer);
-            debouncedApplyTimer = null;
-        }
-
-        const precision = config.rangeControlsPrecision.value ?? 0;
-        rangeMin.value = roundToPrecision(minV, precision);
-        rangeMax.value = roundToPrecision(maxV, precision);
-        zoomRange.value = { startValue, endValue };
-
-        setTimeout(() => {
-            suppressDebouncedApply.value = false;
-        }, 0);
+        runWithSuppressedApply(() => {
+            const precision = config.rangeControlsPrecision.value ?? 0;
+            rangeMin.value = roundToPrecision(minV, precision);
+            rangeMax.value = roundToPrecision(maxV, precision);
+            zoomRange.value = { startValue, endValue };
+        });
     };
 
     const handleDataZoom = (params: any) => {
@@ -221,21 +227,12 @@ export function useRangeControls(config: UseRangeControlsConfig) {
             const eNum = Number(endValue);
             if (Number.isFinite(sNum) && Number.isFinite(eNum)) {
                 const precision = config.rangeControlsPrecision.value ?? 0;
-                let minV = Math.max(rangeDataMin.value, Math.min(rangeDataMax.value, sNum));
-                let maxV = Math.max(rangeDataMin.value, Math.min(rangeDataMax.value, eNum));
-                if (minV > maxV) [minV, maxV] = [maxV, minV];
-
-                suppressDebouncedApply.value = true;
-                if (debouncedApplyTimer) {
-                    clearTimeout(debouncedApplyTimer);
-                    debouncedApplyTimer = null;
-                }
-                rangeMin.value = roundToPrecision(minV, precision);
-                rangeMax.value = roundToPrecision(maxV, precision);
-                zoomRange.value = { startValue: minV, endValue: maxV };
-                setTimeout(() => {
-                    suppressDebouncedApply.value = false;
-                }, 0);
+                const [minV, maxV] = clampPair(sNum, eNum, rangeDataMin.value, rangeDataMax.value);
+                runWithSuppressedApply(() => {
+                    rangeMin.value = roundToPrecision(minV, precision);
+                    rangeMax.value = roundToPrecision(maxV, precision);
+                    zoomRange.value = { startValue: minV, endValue: maxV };
+                });
                 return;
             }
         }

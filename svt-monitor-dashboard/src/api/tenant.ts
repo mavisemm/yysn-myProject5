@@ -6,25 +6,26 @@ export function registerTenantRouteReader(fn: RouteTenantReader | null) {
   routeTenantReader = fn
 }
 
+const trimOrEmpty = (value: string | null | undefined) => value?.trim() ?? ''
+
 export function readTenantIdFromStorageOrAddressBar(): string {
   const fromStorage =
-    typeof window !== 'undefined' ? localStorage.getItem('tenantId') : null
-  if (fromStorage?.trim()) return fromStorage.trim()
+    typeof window !== 'undefined' ? trimOrEmpty(localStorage.getItem('tenantId')) : ''
+  if (fromStorage) return fromStorage
 
-  let fromRoute = ''
   try {
-    fromRoute = routeTenantReader?.() ?? ''
+    const fromRoute = trimOrEmpty(routeTenantReader?.())
+    if (fromRoute) return fromRoute
   } catch {
-    fromRoute = ''
+    // ignore route reader errors
   }
-  if (fromRoute.trim()) return fromRoute.trim()
 
   const fromUrl =
     typeof window !== 'undefined'
-      ? new URLSearchParams(window.location.search).get('tenantId')
-      : null
+      ? trimOrEmpty(new URLSearchParams(window.location.search).get('tenantId'))
+      : ''
 
-  return (fromUrl?.trim() || '').trim()
+  return fromUrl
 }
 
 export function getTenantId(): string {

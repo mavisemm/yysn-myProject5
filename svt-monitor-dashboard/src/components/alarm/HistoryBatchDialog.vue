@@ -104,62 +104,75 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
-import { ElMessageBox } from 'element-plus'
-import { useAlarmBatchStore } from '@/stores/alarmBatch'
-import { formatDateTime, normalizeEndDateTimeBySelectedDay } from '@/utils/datetime'
+import { watch } from 'vue'
+import {
+  SAME_WIDTH_POPPER_OPTIONS,
+  confirmBatchAction,
+  useAlarmBatchDropdownOptions,
+  useAlarmBatchEndTimePicker,
+  useAlarmBatchRowLabels,
+  useDialogOpenEffect,
+  useResponsiveDialogWidth,
+  useUiPageIndex,
+  type BatchConfirmType,
+} from './alarmBatchDialogUtils'
 
 defineEmits<{ (e: 'view', row: any): void }>()
 
-const store = useAlarmBatchStore()
-const isMobile = computed(() => window.innerWidth <= 800)
-const dialogWidth = computed(() => (isMobile.value ? '100vw' : '70vw'))
+const { store, deviceOptions, typeOptions } = useAlarmBatchDropdownOptions()
+const { dialogWidth } = useResponsiveDialogWidth()
+const sameWidthPopperOptions = SAME_WIDTH_POPPER_OPTIONS
 
-const sameWidthPopperOptions = {
-  modifiers: [
-    {
-      name: 'sameWidth',
-      enabled: true,
-      phase: 'beforeWrite',
-      requires: ['computeStyles'],
-      fn: ({ state }: any) => {
-        state.styles.popper.width = `${state.rects.reference.width}px`
-      },
-    },
-  ],
-} as any
+useDialogOpenEffect(
+  () => store.historyVisible,
+  () => {
+    void store.ensureDropdowns()
+    void store.fetchHistoryList(0)
+  },
+)
+
+const pageForUi = useUiPageIndex(
+  () => store.historyPageIndex,
+  (v) => {
+    store.historyPageIndex = v as any
+  },
+)
+
+const {
+  onEndTimeChange,
+  onEndModelValue,
+  onEndPanelChange,
+  onEndCalendarChange,
+  disableFutureDate,
+  getDisabledStartHours,
+  getDisabledStartMinutes,
+  getDisabledStartSeconds,
+  getDisabledEndHours,
+  getDisabledEndMinutes,
+  getDisabledEndSeconds,
+} = useAlarmBatchEndTimePicker(
+  () => store.historyQuery.startTime,
+  () => store.historyQuery.endTime,
+  (v) => {
+    store.historyQuery.endTime = v
+  },
+)
+
+const { getDeviceMainName, getDeviceSubName, getPointName, getReceiverName, clearParsedRowCache } =
+  useAlarmBatchRowLabels({ parseDataJson: true })
 
 watch(
   () => store.historyVisible,
   (visible) => {
-    if (!visible) return
-    nextTick(() => {
-      void store.ensureDropdowns()
-      void store.fetchHistoryList(0)
-    })
+    if (!visible) clearParsedRowCache()
   },
 )
 
-const pageForUi = computed({
-  get: () => store.historyPageIndex + 1,
-  set: (v: number) => {
-    store.historyPageIndex = Math.max(0, v - 1) as any
-  },
-})
+watch(
+  () => store.historyRows.map((row: any) => String(row?.id ?? '')),
+  () => clearParsedRowCache(),
+)
 
-const deviceOptions = computed(() => {
-  return (store.deviceNameList ?? []).map((x: any) => ({
-    value: x.key,
-    label: String(x.text ?? ''),
-  }))
-})
-
-const typeOptions = computed(() => {
-  return (store.typeList ?? []).map((x: any) => ({
-    value: x.key,
-    label: String(x.text ?? ''),
-  }))
-})
 
 const onSelectionChange = (rows: any[]) => {
   store.historySelectedRowKeys = rows.map((r) => String(r.id)) as any
@@ -174,299 +187,29 @@ const onReset = () => {
   store.fetchHistoryList(0, true)
 }
 
-const endDatePart = ref<string>('')
+const confirmBatch = (type: BatchConfirmType) =>
+  confirmBatchAction(type, {
+    yes: () => store.batchYesHistory(),
+    not: () => store.batchNotHistory(),
+    delete: () => store.batchDeleteHistory(),
+  })
 
-const getDatePart = (value?: string) => {
-  const raw = String(value ?? '').trim()
-  if (!raw) return ''
-  return raw.split(' ')[0] ?? ''
-}
-
-const normalizeAndApplyEndTime = (rawValue?: string, forceApplyRule: boolean = false) => {
-  const normalized = normalizeEndDateTimeBySelectedDay(rawValue, forceApplyRule)
-  const picked = normalized ? new Date(normalized.replace(' ', 'T')) : null
-  const now = new Date()
-  const finalValue =
-    picked && !Number.isNaN(picked.getTime()) && picked.getTime() > now.getTime()
-      ? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
-      : normalized
-  if (finalValue !== rawValue) store.historyQuery.endTime = finalValue
-  endDatePart.value = getDatePart(store.historyQuery.endTime)
-}
-
-const toDateTimeText = (value: unknown): string | undefined => {
-  if (value == null || value === '') return undefined
-  if (value instanceof Date)
-    return Number.isNaN(value.getTime()) ? undefined : formatDateTime(value)
-  return String(value)
-}
-
-const onEndTimeChange = (value?: string) => {
-  normalizeAndApplyEndTime(value)
-}
-
-const onEndModelValue = (value?: string) => {
-  const nextDatePart = getDatePart(value)
-  const prevDatePart = endDatePart.value || getDatePart(store.historyQuery.endTime)
-  const forceApplyRule = !!nextDatePart && !!prevDatePart && nextDatePart !== prevDatePart
-  normalizeAndApplyEndTime(value, forceApplyRule)
-}
-
-const onEndPanelChange = (value: unknown) => {
-  normalizeAndApplyEndTime(toDateTimeText(value))
-}
-
-const onEndCalendarChange = (value: unknown) => {
-  const picked = Array.isArray(value) ? value[value.length - 1] : value
-  normalizeAndApplyEndTime(toDateTimeText(picked))
-}
-
-const disableFutureDate = (time: Date) => time.getTime() > Date.now()
-
-const isTodayByValue = (rawValue?: string) => {
-  const raw = String(rawValue ?? '').trim()
-  if (!raw) return false
-  const selected = new Date(raw.replace(' ', 'T'))
-  if (Number.isNaN(selected.getTime())) return false
-  const now = new Date()
-  return (
-    selected.getFullYear() === now.getFullYear() &&
-    selected.getMonth() === now.getMonth() &&
-    selected.getDate() === now.getDate()
+const confirmAll = (type: BatchConfirmType) =>
+  confirmBatchAction(
+    type,
+    {
+      yes: () => store.allYesHistory(),
+      not: () => store.allNotHistory(),
+      delete: () => store.allDeleteHistory(),
+    },
+    'all',
   )
-}
 
-const getDisabledHoursByRaw = (rawValue?: string) => {
-  if (!isTodayByValue(rawValue)) return []
-  const h = new Date().getHours()
-  return Array.from({ length: 24 - (h + 1) }, (_, i) => h + 1 + i)
-}
 
-const getDisabledMinutesByRaw = (rawValue: string | undefined, hour: number) => {
-  if (!isTodayByValue(rawValue)) return []
-  const now = new Date()
-  if (hour !== now.getHours()) return []
-  const m = now.getMinutes()
-  return Array.from({ length: 60 - (m + 1) }, (_, i) => m + 1 + i)
-}
-
-const getDisabledSecondsByRaw = (rawValue: string | undefined, hour: number, minute: number) => {
-  if (!isTodayByValue(rawValue)) return []
-  const now = new Date()
-  if (hour !== now.getHours() || minute !== now.getMinutes()) return []
-  const s = now.getSeconds()
-  return Array.from({ length: 60 - (s + 1) }, (_, i) => s + 1 + i)
-}
-
-const getDisabledStartHours = () => getDisabledHoursByRaw(store.historyQuery.startTime)
-const getDisabledStartMinutes = (hour: number) =>
-  getDisabledMinutesByRaw(store.historyQuery.startTime, hour)
-const getDisabledStartSeconds = (hour: number, minute: number) =>
-  getDisabledSecondsByRaw(store.historyQuery.startTime, hour, minute)
-
-const getDisabledEndHours = () => getDisabledHoursByRaw(store.historyQuery.endTime)
-const getDisabledEndMinutes = (hour: number) =>
-  getDisabledMinutesByRaw(store.historyQuery.endTime, hour)
-const getDisabledEndSeconds = (hour: number, minute: number) =>
-  getDisabledSecondsByRaw(store.historyQuery.endTime, hour, minute)
-
-const confirmBatch = async (type: 'yes' | 'not' | 'delete') => {
-  const actionText =
-    type === 'yes' ? '批量确认警报' : type === 'not' ? '批量确认误报' : '批量确认删除'
-  await ElMessageBox.confirm(`确认要执行【${actionText}】吗？`, '提示', { type: 'warning' })
-  if (type === 'yes') await store.batchYesHistory()
-  if (type === 'not') await store.batchNotHistory()
-  if (type === 'delete') await store.batchDeleteHistory()
-}
-
-const confirmAll = async (type: 'yes' | 'not' | 'delete') => {
-  const actionText = type === 'yes' ? '全部确认警报' : type === 'not' ? '全部确认误报' : '全部删除'
-  await ElMessageBox.confirm(`确认要执行【${actionText}】吗？`, '提示', { type: 'warning' })
-  if (type === 'yes') await store.allYesHistory()
-  if (type === 'not') await store.allNotHistory()
-  if (type === 'delete') await store.allDeleteHistory()
-}
-
-function safeParseJson(input: any): any {
-  if (!input) return undefined
-  if (typeof input === 'object') return input
-  if (typeof input !== 'string') return undefined
-  try {
-    return JSON.parse(input)
-  } catch {
-    return undefined
-  }
-}
-
-function splitDeviceName(rawName: any): { main: string; sub: string } {
-  const raw = String(rawName || '-')
-  const idxCn = raw.indexOf('（')
-  const idxEn = raw.indexOf('(')
-  const idx = idxCn !== -1 ? idxCn : idxEn
-  if (idx <= 0) return { main: raw, sub: '' }
-  const main = raw.slice(0, idx).trim()
-  const sub = raw
-    .slice(idx)
-    .replace(/^（|^\(/, '')
-    .replace(/）$|\)$/, '')
-    .trim()
-  return { main, sub }
-}
-
-const parsedRowCache = new Map<string, any>()
-const MAX_PARSED_ROW_CACHE = 300
-const clearParsedRowCache = () => parsedRowCache.clear()
-function ensureRowParsed(row: any): any {
-  if (!row) return undefined
-  const rowId = row.id != null ? String(row.id) : ''
-  if (!rowId) return undefined
-
-  if (parsedRowCache.has(rowId)) return parsedRowCache.get(rowId)
-
-  if (!row.dataJson) {
-    parsedRowCache.set(rowId, undefined)
-    return undefined
-  }
-
-  const parsed = safeParseJson(row.dataJson)
-  parsedRowCache.set(rowId, parsed)
-  if (parsedRowCache.size > MAX_PARSED_ROW_CACHE) {
-    const firstKey = parsedRowCache.keys().next().value
-    if (firstKey != null) parsedRowCache.delete(firstKey)
-  }
-
-  return parsed
-}
-
-const getDeviceMainName = (row: any): string => {
-  const deviceName = row?.deviceName
-  const main = deviceName ? splitDeviceName(deviceName).main : ''
-  return row?._deviceMainName || main || String(deviceName ?? '')
-}
-
-const getDeviceSubName = (row: any): string => {
-  const deviceName = row?.deviceName
-  const shopName = row?.shopName
-  if (shopName) return String(shopName)
-  if (!deviceName) return row?._deviceSubName || ''
-  return splitDeviceName(deviceName).sub || row?._deviceSubName || ''
-}
-
-const getPointName = (row: any): string => {
-  const parsed = ensureRowParsed(row)
-  const pointName = parsed?.pointName ?? row?.pointName
-  return pointName ? String(pointName) : ''
-}
-
-const getReceiverName = (row: any): string => {
-  const parsed = ensureRowParsed(row)
-  const receiverName = parsed?.receiverName ?? row?.receiverName
-  return receiverName ? String(receiverName) : ''
-}
-
-watch(
-  () => store.historyVisible,
-  (visible) => {
-    if (!visible) clearParsedRowCache()
-  },
-)
-
-watch(
-  () => store.historyRows.map((row: any) => String(row?.id ?? '')),
-  () => {
-    clearParsedRowCache()
-  },
-)
 </script>
 
 <style scoped lang="scss">
-:deep(.el-dialog__body) {
-  color: var(--alarm-dialog-text);
-  font-size: var(--alarm-dialog-font);
-}
-
-:deep(.el-form-item__label) {
-  color: var(--alarm-dialog-muted);
-  font-size: var(--alarm-dialog-font);
-}
-
-:deep(.el-table) {
-  color: var(--alarm-dialog-text);
-  font-size: var(--alarm-dialog-font);
-}
-
-:deep(.el-table__header-wrapper th) {
-  color: var(--alarm-dialog-muted);
-  font-weight: 600;
-}
-
-:deep(.el-pagination) {
-  color: var(--alarm-dialog-muted);
-  font-size: var(--alarm-dialog-font);
-}
-
-.filter-form {
-  :deep(.el-form-item) {
-    margin-bottom: 10px;
-    margin-right: 14px;
-  }
-
-  :deep(.el-form-item:last-child) {
-    margin-right: 0;
-  }
-}
-
-.actions-bar {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 2px 0 12px;
-  flex-wrap: wrap;
-  row-gap: 10px;
-  align-items: center;
-}
-
-.all-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.device-cell {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-
-.device-sub {
-  opacity: 0.75;
-}
-
-.pager {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.table-wrapper {
-  flex: 1;
-  min-height: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.table-wrapper::-webkit-scrollbar {
-  display: none;
-}
-
-.table-wrapper :deep(.el-table) {
-  min-width: 0;
-}
-
-.operation-cell :deep(.operation-link) {
-  font-size: var(--alarm-dialog-font);
-}
+@import './alarm-batch-dialog.local.scss';
 </style>
 
 <style lang="scss">

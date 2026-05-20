@@ -30,15 +30,15 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, shallowRef, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import * as echarts from 'echarts'
 import { ElMessage, ElDialog } from 'element-plus'
 import { enableMouseWheelZoom } from '@/utils/chart'
-import { useDeviceTreeStore } from '@/stores/deviceTree'
+import { formatChartYAxisTick2 } from '@/utils/chartAxis'
 import { usePointMessageStore } from '@/stores/pointMessage'
+import { usePointPageRoute } from '@/composables/usePointPageRoute'
 
-const deviceTreeStore = useDeviceTreeStore()
 const pointMessageStore = usePointMessageStore()
+const { receiverId } = usePointPageRoute()
 import {
   getLatestDeviationByReceiver,
   getStandardFrequencyList,
@@ -46,38 +46,6 @@ import {
   getWavByFreqGroupIdUrl,
   type SoundDeviationItem,
 } from '@/api/modules/voiceSound'
-
-const route = useRoute()
-const receiverId = computed(() => {
-  const rid = route.params.receiverId
-  const resolved = Array.isArray(rid) ? rid[0] : rid
-  return typeof resolved === 'string' ? resolved : ''
-})
-
-const equipmentIdFromQuery = computed(() => {
-  const q = route.query.equipmentId
-  if (typeof q === 'string') return q
-  if (Array.isArray(q) && q[0]) return String(q[0])
-  return ''
-})
-
-const pointNameFromQuery = computed(() => {
-  const q = route.query.pointName
-  if (typeof q === 'string') return q
-  if (Array.isArray(q) && q[0]) return String(q[0])
-  return ''
-})
-
-const syncTreeSelectionFromRoute = () => {
-  const rid = receiverId.value.trim()
-  if (!rid) return
-  const eid = equipmentIdFromQuery.value.trim()
-  const pname = pointNameFromQuery.value.trim()
-  const treeKey = deviceTreeStore.resolveTreeKeyForPoint(rid, eid || undefined, {
-    pointName: pname || undefined,
-  })
-  if (treeKey) deviceTreeStore.setSelectedDeviceId(treeKey)
-}
 
 import SoundPointCharts from '@/components/business/sound-point/SoundPointCharts.vue'
 import SoundDataTable from '@/components/business/sound-point/SoundDataTable.vue'
@@ -131,12 +99,7 @@ const colors = [
   '#ff9e7d',
 ]
 
-// y 轴刻度最多保留小数点后两位（并去掉无意义的尾随 0）
-const formatYAxisTick = (v: unknown) => {
-  const n = Number(v)
-  if (!Number.isFinite(n)) return ''
-  return String(Number(n.toFixed(2)))
-}
+const formatYAxisTick = formatChartYAxisTick2
 
 const toSafeNumber = (
   value: unknown,
@@ -732,10 +695,9 @@ const handleResize = () => {
 }
 
 watch(
-  () => route.params.receiverId,
+  () => receiverId.value,
   (newId, oldId) => {
     if (newId !== oldId) {
-      syncTreeSelectionFromRoute()
       applyStorePointInfo()
       loadDeviationList({ mode: 'init' })
       startRefreshTimer()
@@ -743,30 +705,7 @@ watch(
   },
 )
 
-watch(equipmentIdFromQuery, () => {
-  syncTreeSelectionFromRoute()
-})
-
-watch(pointNameFromQuery, () => {
-  syncTreeSelectionFromRoute()
-})
-
-watch(
-  () => deviceTreeStore.deviceTreeData.length,
-  () => {
-    syncTreeSelectionFromRoute()
-  },
-)
-
-watch(
-  () => deviceTreeStore.loading,
-  (loading) => {
-    if (!loading) syncTreeSelectionFromRoute()
-  },
-)
-
 onMounted(() => {
-  syncTreeSelectionFromRoute()
   applyStorePointInfo()
   loadDeviationList({ mode: 'init' })
   startRefreshTimer()

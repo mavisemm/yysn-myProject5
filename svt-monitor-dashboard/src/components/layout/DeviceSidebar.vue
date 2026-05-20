@@ -139,6 +139,7 @@ import {
 import { useDebounce } from '@/composables/useDebounce'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
+import { findAncestorKeysForNodeId, getCssEscaped } from '@/components/layout/deviceSidebarTreeUtils'
 
 const router = useRouter()
 
@@ -192,29 +193,7 @@ const deviceTreeStore = useDeviceTreeStore()
 const deviceTreeData = computed(() => deviceTreeStore.deviceTreeData)
 const selectedDeviceId = computed(() => deviceTreeStore.selectedDeviceId)
 
-/** 从根到目标节点父链的 id（不含目标自身），用于展开工厂/车间/设备以露出点位或设备行 */
-const findAncestorKeysForNodeId = (nodes: DeviceNode[], targetId: string): string[] | null => {
-  const t = String(targetId).trim()
-  const walk = (list: DeviceNode[], path: string[]): string[] | null => {
-    for (const node of list) {
-      if (String(node.id).trim() === t) return path
-      if (node.children?.length) {
-        const found = walk(node.children, [...path, node.id])
-        if (found !== null) return found
-      }
-    }
-    return null
-  }
-  return walk(nodes, [])
-}
-
 const treeScrollbarRef = ref<{ wrapRef?: { value?: HTMLElement } } | null>(null)
-
-const getCssEscaped = (v: string) => {
-  const raw = String(v ?? '')
-  const esc = (globalThis as any)?.CSS?.escape
-  return typeof esc === 'function' ? esc(raw) : raw.replace(/"/g, '\\"')
-}
 
 const scrollSelectedNodeIntoView = (key?: string | null) => {
   const tree = deviceTreeRef.value

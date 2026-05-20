@@ -23,19 +23,6 @@
         </div>
       </div>
       <div class="search-section header-controls-desktop">
-        <!-- <div class="device-search-wrapper">
-                    <el-input v-model="deviceSearch" placeholder="请输入设备名称" :prefix-icon="Search" size="small" clearable
-                        style="width: 140px;" @focus="showDeviceDropdown" @blur="hideDeviceDropdown"
-                        @keyup.enter="handleSearch" @clear="handleClear" class="custom-search-input" />
-                    <div v-if="showDropdown" class="dropdown-list">
-                        <div v-for="device in filteredDevices" :key="device.id" class="dropdown-item"
-                            @click="selectDevice(device)">
-                            <span class="device-name">{{ device.deviceName }}</span>
-                            <span class="workshop-name">({{ device.workshopName }})</span>
-                        </div>
-                    </div>
-                </div> -->
-
         <div class="time-section">
           <CommonDateTimePicker v-model="dateRange" :width="pickerWidth" />
           <el-button @click="toggleSortOrder" class="sort-btn" :icon="sortIcon"> </el-button>
@@ -148,69 +135,36 @@
 import { storeToRefs } from 'pinia'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useDeviceTreeStore } from '@/stores/deviceTree'
-import { Search, Sort } from '@element-plus/icons-vue'
-import { ElInput, ElButton, ElDatePicker, ElPagination } from 'element-plus'
-import { useLocale } from 'element-plus'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import type { DeviceNode } from '@/types/device'
-import { formatDateTime, disabledFutureDate, getDefaultDateRange } from '@/utils/datetime'
+import { Sort } from '@element-plus/icons-vue'
+import { ElButton, ElPagination } from 'element-plus'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
-import type { VibrationEventPayload } from '@/services/vibrationWs'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
+import { useAlarmOverviewStore } from '@/stores/alarmOverview'
+import type { AlarmItem } from '@/stores/alarmOverviewLogic'
+import { useDeviceTreeStore } from '@/stores/deviceTree'
 import {
-  useAlarmOverviewStore,
-  resolveDevicePointCountFromTree,
-} from '@/stores/alarmOverview'
-import { getTenantId } from '@/api/tenant'
-import { resolveRealtimeDeviceKey } from '@/utils/realtimeAlarmNavigator'
-
-/** 该租户下预警总览：设备名展示末尾连续数字的末 1～2 位；点位名展示「最后一个数字段」的末 1～2 位（见业务约定） */
-const TENANT_DEVICE_CARD_SUFFIX_DIGITS = '2b410e834b4b4ae49ab8d52f6d49e967'
-
-function extractTrailingDigitLabel(deviceName: string): string | null {
-  const m = String(deviceName ?? '').match(/(\d+)$/)
-  if (!m?.[1]) return null
-  const run = m[1]
-  return run.length >= 2 ? run.slice(-2) : run
-}
-
-/** 取名称中「最后一个连续数字段」的末 1～2 位（如 ...5602cmdk → 02；仅一段个位数则显示该位） */
-function extractLastDigitRunSuffixForPoint(pointName: string): string | null {
-  const matches = String(pointName ?? '').match(/\d+/g)
-  if (!matches?.length) return null
-  const run = matches[matches.length - 1]
-  if (run == null || run === '') return null
-  return run.length >= 2 ? run.slice(-2) : run
-}
-
-function formatAlarmCardDeviceName(deviceName: string): string {
-  if (getTenantId() !== TENANT_DEVICE_CARD_SUFFIX_DIGITS) return deviceName
-  return extractTrailingDigitLabel(deviceName) ?? deviceName
-}
-
-function formatAlarmCardPointLabel(point: MeasurementPoint, pointNum: number): string {
-  if (getTenantId() !== TENANT_DEVICE_CARD_SUFFIX_DIGITS) return String(pointNum)
-  return extractLastDigitRunSuffixForPoint(point.name) ?? String(pointNum)
-}
-
-const { t } = useLocale()
+  buildFilteredOverviewAlarms,
+  clearDisplayPointsCache,
+  formatAlarmCardDeviceName,
+  formatAlarmCardPointLabel,
+  formatAlarmTime,
+  getDeviceDisplayStatus,
+  getDisplayPoints,
+  getPointStyleClass,
+} from './alarmOverviewView'
+import { openRealtimeBatchForPoint } from './dashboardViewUtils'
 
 const alarmBatchStore = useAlarmBatchStore()
-
 const openRealtimeBatch = () => {
   void alarmBatchStore.openRealtime()
 }
-
 const openHistoryBatch = () => {
   void alarmBatchStore.openHistory()
 }
-
 const openRealtimeAlarmBatch = () => {
   void alarmBatchStore.openRealtimeAlarm()
 }
-
 const openHistoryAlarmBatch = () => {
   void alarmBatchStore.openHistoryAlarm()
 }
@@ -218,101 +172,9 @@ const openHistoryAlarmBatch = () => {
 const router = useRouter()
 const deviceTreeStore = useDeviceTreeStore()
 
-interface MeasurementPoint {
-  name: string
-  status: 'healthy' | 'warning' | 'alarm' | 'offline'
-  lastAlarmTime?: number
-}
-
-interface AlarmItem {
-  id: string
-  kind: 'vibration' | 'sound'
-  deviceName: string
-  shopName: string
-  deviceNameWithShop: string
-  status: 'alarm' | 'warning' | 'healthy' | 'offline'
-  statusText: string
-  time: string
-  measurementPoints: MeasurementPoint[]
-  devicePointCount?: number
-  latestPointNum?: number
-  latestOrderKey?: number
-  statusPriority?: number
-  sortTimeTs?: number
-  searchText?: string
-  displayStatus?: 'alarm' | 'warning' | 'healthy' | 'offline'
-}
-
-interface DisplayAlarmItem extends AlarmItem {
-  cardId: string
-  cardType: 'vibration' | 'sound'
-}
-interface AlarmWsPayload {
-  alarmId?: string
-  tenantId?: string
-
-  equipmentId?: string
-  equipmentName?: string
-  deviceId?: string
-  deviceName?: string
-  workshopId?: string | null
-  workshopName?: string | null
-  alarmTime?: number
-  alarmTypeCode?: string
-  alarmTypeName?: string
-  statusCode?: string
-  probability?: number
-  judgeFlag?: boolean
-  data?: {
-    channelNo?: string | number
-    value?: number
-    threshold?: number
-    level?: string
-    unit?: string
-    pointName?: string
-    amplitude?: number
-  }
-  rawDataJson?: string
-  [k: string]: unknown
-}
-
-interface DeviceItem {
-  id: string | number
-  name: string
-  deviceName: string
-  workshopName: string
-}
-
-const extractDevicesFromTree = (nodes: DeviceNode[]): DeviceItem[] => {
-  const devices: DeviceItem[] = []
-
-  nodes.forEach((factory) => {
-    factory.children?.forEach((workshop) => {
-      workshop.children?.forEach((device) => {
-        if (device.type === 'device') {
-          devices.push({
-            id: device.id,
-            name: `${device.name}（${workshop.name}）`,
-            deviceName: device.name,
-            workshopName: workshop.name,
-          })
-        }
-      })
-    })
-  })
-
-  return devices
-}
-
-const deviceSearch = ref('')
-const debouncedDeviceSearch = ref('')
-let deviceSearchDebounceTimer: number | null = null
 const dateRange = ref<[string, string]>(['', ''])
-const showDropdown = ref(false)
 const currentPage = ref(1)
-
-const containerWidth = ref(window.innerWidth)
-const containerHeight = ref(window.innerHeight)
+const containerWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1200)
 
 const responsivePageSize = computed(() => {
   const w = containerWidth.value
@@ -320,78 +182,12 @@ const responsivePageSize = computed(() => {
   return { pageSize: 4, columns: 4, rows: 1 }
 })
 const pickerWidth = computed(() => (containerWidth.value <= 800 ? '100vw' : '320px'))
-
-const rowsCount = computed(() => {
-  const { pageSize, columns } = responsivePageSize.value
-  return Math.ceil(pageSize / columns)
-})
-
 const pageSize = ref(responsivePageSize.value.pageSize)
-
 const sortOrder = ref<'asc' | 'desc'>('desc')
-const displayPointsCache = new Map<string, { point: MeasurementPoint; pointNum: number }[]>()
-const MAX_DISPLAY_POINTS_CACHE = 500
+const sortIcon = Sort
 
 const alarmOverviewStore = useAlarmOverviewStore()
 const { alarms, httpInitialized } = storeToRefs(alarmOverviewStore)
-const parsePickerDateTime = (s: string): Date => {
-  const str = (s ?? '').trim()
-  if (!str) return new Date(NaN)
-
-  if (!str.includes(' ')) return new Date(str)
-
-  const parts = str.split(' ')
-  const datePart = parts[0]
-  const timePart = parts[1]
-  if (!datePart || !timePart) return new Date(NaN)
-
-  const dateParts = datePart.split('-')
-  if (dateParts.length !== 3) return new Date(NaN)
-  const y = Number(dateParts[0])
-  const m = Number(dateParts[1])
-  const d = Number(dateParts[2])
-
-  const timeParts = String(timePart).split(':')
-
-  const hh = Number(timeParts[0])
-  const mm = Number(timeParts[1])
-  const ss = Number(timeParts[2] ?? '0')
-
-  if (![y, m, d, hh, mm, ss].every((n) => Number.isFinite(n))) return new Date(NaN)
-
-  return new Date(y, m - 1, d, hh, mm, ss, 0)
-}
-const parseAlarmTime = (timeStr: string | undefined, fallbackYear: number): Date | null => {
-  if (!timeStr) return null
-  const raw = String(timeStr).trim()
-  if (!raw) return null
-
-  const ts = Number(raw)
-  if (Number.isFinite(ts) && ts > 0) {
-    const d = new Date(ts)
-    return isNaN(d.getTime()) ? null : d
-  }
-
-  if (/\d{4}/.test(raw)) {
-    const d = new Date(raw)
-    return isNaN(d.getTime()) ? null : d
-  }
-
-  const m = raw.match(/^(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
-  if (!m) {
-    const d = new Date(raw)
-    return isNaN(d.getTime()) ? null : d
-  }
-
-  const month = Number(m[1])
-  const day = Number(m[2])
-  const hh = Number(m[3])
-  const mm = Number(m[4])
-  const ss = Number(m[5] ?? 0)
-
-  if (![month, day, hh, mm, ss].every((n) => Number.isFinite(n))) return null
-  return new Date(fallbackYear, month - 1, day, hh, mm, ss, 0)
-}
 
 watch(
   () => dateRange.value,
@@ -401,290 +197,14 @@ watch(
   { deep: true },
 )
 
-watch(
-  () => deviceSearch.value,
-  (value) => {
-    if (deviceSearchDebounceTimer) clearTimeout(deviceSearchDebounceTimer)
-    deviceSearchDebounceTimer = window.setTimeout(() => {
-      debouncedDeviceSearch.value = String(value ?? '')
-    }, 160)
-  },
-  { immediate: true },
+const filteredAlarms = computed(() =>
+  buildFilteredOverviewAlarms(alarms.value ?? [], {
+    httpInitialized: httpInitialized.value,
+    keyword: '',
+    dateRange: dateRange.value,
+    sortOrder: sortOrder.value,
+  }),
 )
-
-function findDeviceInfo(deviceId: string): { deviceName: string; shopName: string } {
-  const walk = (
-    nodes: DeviceNode[],
-    currentWorkshopName = '',
-  ): { deviceName: string; shopName: string } | null => {
-    for (const node of nodes) {
-      if (node.type === 'workshop') {
-        const res = walk(node.children ?? [], node.name)
-        if (res) return res
-      } else if (node.type === 'device') {
-        if (node.id === deviceId || node.customerDeviceId === deviceId) {
-          return { deviceName: node.name, shopName: node.workshopName ?? currentWorkshopName }
-        }
-        const res = walk(node.children ?? [], currentWorkshopName)
-        if (res) return res
-      } else if (node.children?.length) {
-        const res = walk(node.children, currentWorkshopName)
-        if (res) return res
-      }
-    }
-    return null
-  }
-  return walk(deviceTreeStore.deviceTreeData) ?? { deviceName: '', shopName: '' }
-}
-
-function mapLevelToStatus(level: string | undefined): MeasurementPoint['status'] {
-  const v = String(level ?? '').toUpperCase()
-  if (v === 'ALARM') return 'alarm'
-  if (v === 'WARNING' || v === 'WARN') return 'warning'
-  return 'healthy'
-}
-
-function safeParseJson(input: any): any {
-  if (!input) return undefined
-  if (typeof input === 'object') return input
-  if (typeof input !== 'string') return undefined
-  try {
-    return JSON.parse(input)
-  } catch {
-    return undefined
-  }
-}
-
-function isAlarmWsPayload(x: any): x is AlarmWsPayload {
-  // 只要具备告警时间/告警类型等关键信息，就按告警载荷处理
-  // 避免因 payload 是否带 `data` 字段不同，导致时间字段走了不同分支
-  return (
-    !!x && typeof x === 'object' && ('alarmTypeCode' in x || 'alarmTime' in x || 'alarmId' in x)
-  )
-}
-
-type OverviewNormalized = {
-  deviceId: string
-  deviceName?: string
-  shopName?: string
-  time: number
-  alarmTypeCode?: string
-  statusCode?: string
-  point: {
-    channelNo?: string | number
-    level?: string
-    pointName?: string
-  }
-}
-
-function normalizeToOverviewEvent(input: any): OverviewNormalized | null {
-  if (isAlarmWsPayload(input)) {
-    const deviceId = String(input.equipmentId ?? '')
-    const t = Number(input.alarmTime ?? 0)
-    if (!deviceId || !Number.isFinite(t) || t <= 0) return null
-    return {
-      deviceId,
-      deviceName: input.equipmentName ? String(input.equipmentName) : undefined,
-      shopName: input.workshopName ? String(input.workshopName) : undefined,
-      time: t,
-      alarmTypeCode: input.alarmTypeCode ? String(input.alarmTypeCode) : undefined,
-      statusCode: input.statusCode ? String(input.statusCode) : undefined,
-      point: {
-        channelNo: input.data?.channelNo,
-        level: input.data?.level ? String(input.data.level) : undefined,
-        pointName: input.data?.pointName ? String(input.data.pointName) : undefined,
-      },
-    }
-  }
-
-  const evt = input as Partial<VibrationEventPayload>
-  if (!evt || typeof evt !== 'object') return null
-  const deviceId = String(evt.deviceId ?? '')
-  const t = Number(evt.time ?? 0)
-  if (!deviceId || !Number.isFinite(t) || t <= 0) return null
-
-  const parsed = safeParseJson(evt.dataJson)
-  return {
-    deviceId,
-    time: t,
-    alarmTypeCode: evt.eventTypeCode ? String(evt.eventTypeCode) : undefined,
-    statusCode: evt.statusCode ? String(evt.statusCode) : undefined,
-    shopName: parsed?.shopName ? String(parsed.shopName) : undefined,
-    point: {
-      channelNo: parsed?.channelNo,
-      level: parsed?.level ? String(parsed.level) : undefined,
-      pointName: parsed?.pointName ? String(parsed.pointName) : undefined,
-    },
-  }
-}
-
-function buildMeasurementPointsFromPoint(point: OverviewNormalized['point']): MeasurementPoint[] {
-  const channelNo = point?.channelNo != null ? Number(point.channelNo) : NaN
-  const pointStatus = mapLevelToStatus(point?.level)
-  const pointName = point?.pointName ? String(point.pointName) : ''
-
-  const total = 10
-  const list: MeasurementPoint[] = Array.from({ length: total }).map((_, i) => ({
-    name: i === 0 && pointName ? pointName : `测点${i + 1}`,
-    status: 'healthy',
-  }))
-
-  if (!isNaN(channelNo) && channelNo >= 1 && channelNo <= total) {
-    const existing = list[channelNo - 1]
-    list[channelNo - 1] = {
-      name: pointName || existing?.name || `测点${channelNo}`,
-      status: pointStatus,
-    }
-  }
-  return list
-}
-
-function upsertAlarmFromEvent(input: any) {
-  const evt = normalizeToOverviewEvent(input)
-  if (!evt) return
-
-  if (evt.statusCode && String(evt.statusCode).toUpperCase() !== 'VALID') return
-
-  const isFaultAlarm = String(evt.alarmTypeCode ?? '').toUpperCase() === 'MACHINE_VIBRATION'
-
-  const deviceId = evt.deviceId
-  const deviceName = evt.deviceName ? String(evt.deviceName) : ''
-  const shopName = evt.shopName && evt.shopName !== '未知车间' ? String(evt.shopName) : ''
-
-  const t = Number(evt.time)
-  const timeStr = Number.isFinite(t) && t > 0 ? String(t) : ''
-
-  const measurementPoints = buildMeasurementPointsFromPoint(evt.point)
-
-  const deviceStatus: AlarmItem['status'] = isFaultAlarm ? 'alarm' : 'healthy'
-
-  const statusText = deviceStatus === 'alarm' ? '报警' : '健康'
-
-  const item: AlarmItem = {
-    id: deviceId,
-    kind: isFaultAlarm ? 'vibration' : 'sound',
-    deviceName,
-    shopName,
-    deviceNameWithShop: `${deviceName}（${shopName || ''}）`,
-    status: deviceStatus,
-    statusText,
-    time: timeStr,
-    measurementPoints,
-  }
-
-  const idx = alarms.value.findIndex((a) => a.id === deviceId)
-  if (idx >= 0) alarms.value.splice(idx, 1, item)
-  else alarms.value.unshift(item)
-}
-
-const allDevices = computed(() => {
-  return extractDevicesFromTree(deviceTreeStore.deviceTreeData)
-})
-
-const filteredDevices = computed(() => {
-  if (!deviceSearch.value) {
-    return allDevices.value
-  }
-  const search = deviceSearch.value.toLowerCase()
-  return allDevices.value.filter(
-    (device) =>
-      device.deviceName.toLowerCase().includes(search) ||
-      device.workshopName.toLowerCase().includes(search) ||
-      device.name.toLowerCase().includes(search),
-  )
-})
-
-const filteredAlarms = computed(() => {
-  // HTTP 初始化完成前，先隐藏“预填充健康卡片”，避免首页进入时绿->红闪烁
-  const source = httpInitialized.value
-    ? (alarms.value ?? [])
-    : (alarms.value ?? []).filter((a) => !a?.prefilled)
-
-  let result: DisplayAlarmItem[] = source.map((item: AlarmItem) => ({
-    ...item,
-    cardId: `${item.kind}:${item.id}`,
-    cardType: item.kind,
-  }))
-  const keyword = debouncedDeviceSearch.value.trim().toLowerCase()
-  if (keyword) {
-    const searchMatch = keyword.match(/^(.+)\((.+)\)$/)
-    if (searchMatch && searchMatch[1] && searchMatch[2]) {
-      const searchDeviceName = searchMatch[1]
-      const searchWorkshopName = searchMatch[2]
-      result = result.filter(
-        (alarm) =>
-          alarm.deviceName.toLowerCase().includes(searchDeviceName) &&
-          alarm.shopName.toLowerCase().includes(searchWorkshopName),
-      )
-    } else {
-      result = result.filter((alarm) => String(alarm.searchText ?? '').includes(keyword))
-    }
-  }
-
-  if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
-    const startDate = parsePickerDateTime(dateRange.value[0])
-    let endDate = parsePickerDateTime(dateRange.value[1])
-    const fallbackYear = startDate.getFullYear()
-
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return result
-
-    const now = new Date()
-    if (endDate.getTime() > now.getTime()) {
-      endDate = now
-    }
-
-    result = result.filter((alarm) => {
-      if (alarm.status === 'healthy' || alarm.status === 'offline') return true
-      const sortTs = Number((alarm as any).sortTimeTs ?? 0)
-      if (!Number.isFinite(sortTs) || sortTs <= 0) return false
-      return sortTs >= startDate.getTime() && sortTs <= endDate.getTime()
-    })
-  }
-
-  // 同一 equipmentId 上只要已有声音预警或振动报警，就不再展示该设备下的「健康」卡片（振动/声音两侧任一均可）。
-  const deviceIdsWithAlarmOrWarning = new Set<string>()
-  for (const row of result) {
-    const st = getDeviceDisplayStatus(row)
-    if (st === 'alarm' || st === 'warning') deviceIdsWithAlarmOrWarning.add(row.id)
-  }
-  result = result.filter((alarm) => {
-    if (getDeviceDisplayStatus(alarm) !== 'healthy') return true
-    return !deviceIdsWithAlarmOrWarning.has(alarm.id)
-  })
-
-  result.sort((a, b) => {
-    const aStatus = Number(a.statusPriority ?? 9)
-    const bStatus = Number(b.statusPriority ?? 9)
-
-    const statusDiff = aStatus - bStatus
-    if (statusDiff !== 0) return statusDiff
-
-    // 关键：如果 store 提供了“HTTP 数组顺序 key”，优先按它排序（越大越新）
-    const aKey = Number(a.latestOrderKey ?? 0)
-    const bKey = Number(b.latestOrderKey ?? 0)
-    const aHasKey = Number.isFinite(aKey) && aKey > 0
-    const bHasKey = Number.isFinite(bKey) && bKey > 0
-    if (aHasKey || bHasKey) {
-      if (aHasKey && !bHasKey) return -1
-      if (!aHasKey && bHasKey) return 1
-      if (aHasKey && bHasKey && aKey !== bKey) return bKey - aKey
-    }
-
-    const timeA = Number(a.sortTimeTs ?? NaN)
-    const timeB = Number(b.sortTimeTs ?? NaN)
-
-    const aHasTime = !isNaN(timeA)
-    const bHasTime = !isNaN(timeB)
-
-    if (aHasTime && !bHasTime) return -1
-    if (!aHasTime && bHasTime) return 1
-    if (!aHasTime && !bHasTime) return 0
-
-    return sortOrder.value === 'desc' ? timeB - timeA : timeA - timeB
-  })
-
-  return result
-})
 
 const alarmTotalPages = computed(() =>
   Math.max(1, Math.ceil(filteredAlarms.value.length / pageSize.value)),
@@ -692,54 +212,15 @@ const alarmTotalPages = computed(() =>
 
 const displayedAlarms = computed(() => {
   const startIndex = (currentPage.value - 1) * pageSize.value
-  const endIndex = startIndex + pageSize.value
-  return filteredAlarms.value.slice(startIndex, endIndex)
+  return filteredAlarms.value.slice(startIndex, startIndex + pageSize.value)
 })
 
 watch(
   () => displayedAlarms.value.map((item) => `${item.cardId}:${item.latestOrderKey ?? 0}`).join('|'),
   () => {
-    displayPointsCache.clear()
+    clearDisplayPointsCache()
   },
 )
-
-const showDeviceDropdown = () => {
-  showDropdown.value = true
-}
-
-let hideDropdownTimerId: number | null = null
-
-const hideDeviceDropdown = () => {
-  if (hideDropdownTimerId) {
-    clearTimeout(hideDropdownTimerId)
-  }
-  hideDropdownTimerId = window.setTimeout(() => {
-    showDropdown.value = false
-  }, 200)
-}
-
-const selectDevice = (device: DeviceItem) => {
-  const match = device.name.match(/^(.+)\((.+)\)$/)
-  if (match) {
-    const deviceName = match[1]
-    const workshopName = match[2]
-    deviceSearch.value = device.name
-  } else {
-    deviceSearch.value = device.name
-  }
-
-  showDropdown.value = false
-  currentPage.value = 1
-}
-
-const handleSearch = () => {
-  currentPage.value = 1
-}
-
-const handleClear = () => {
-  deviceSearch.value = ''
-  currentPage.value = 1
-}
 
 const toggleSortOrder = () => {
   sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
@@ -749,11 +230,8 @@ const handleCurrentChange = (val: number) => {
   currentPage.value = val
 }
 
-const sortIcon = Sort
-
 const updateContainerSize = () => {
   containerWidth.value = window.innerWidth
-  containerHeight.value = window.innerHeight
   pageSize.value = responsivePageSize.value.pageSize
   if (currentPage.value > Math.ceil(filteredAlarms.value.length / pageSize.value)) {
     currentPage.value = 1
@@ -766,166 +244,23 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateContainerSize)
-
-  if (hideDropdownTimerId) {
-    clearTimeout(hideDropdownTimerId)
-    hideDropdownTimerId = null
-  }
-  if (deviceSearchDebounceTimer) {
-    clearTimeout(deviceSearchDebounceTimer)
-    deviceSearchDebounceTimer = null
-  }
-  displayPointsCache.clear()
+  clearDisplayPointsCache()
 })
-
-const isValidDevice = (deviceId: string): boolean => {
-  const findDeviceInTree = (nodes: DeviceNode[]): boolean => {
-    for (const node of nodes) {
-      if (node.id === deviceId && node.type === 'device') {
-        return true
-      }
-      if (node.children && node.children.length > 0) {
-        if (findDeviceInTree(node.children)) {
-          return true
-        }
-      }
-    }
-    return false
-  }
-
-  return findDeviceInTree(deviceTreeStore.deviceTreeData)
-}
-function getDeviceDisplayStatus(
-  alarm: AlarmItem | DisplayAlarmItem,
-): 'alarm' | 'warning' | 'offline' | 'healthy' {
-  if ((alarm as any).displayStatus) return (alarm as any).displayStatus
-  if (alarm.status === 'offline') return 'offline'
-  const points = alarm.measurementPoints ?? []
-  const hasAlarm = points.some((p) => p.status === 'alarm')
-  const hasWarning = points.some((p) => p.status === 'warning')
-  if (hasAlarm) return 'alarm'
-  if (hasWarning) return 'warning'
-  return 'healthy'
-}
-
-function getPointStyleClass(
-  pointStatus: MeasurementPoint['status'],
-  deviceStatus: 'alarm' | 'warning' | 'offline' | 'healthy',
-): string {
-  if (deviceStatus === 'healthy') return 'healthy'
-  if (deviceStatus === 'offline') return 'offline'
-  if (deviceStatus === 'alarm') return pointStatus === 'alarm' ? 'alarm' : 'alarm-device'
-  if (deviceStatus === 'warning') return pointStatus === 'warning' ? 'warning' : 'warning-device'
-  return 'healthy'
-}
-
-function getDisplayPoints(
-  points: MeasurementPoint[],
-  latestPointNum?: number,
-  cardType?: 'vibration' | 'sound',
-  deviceStatus?: 'alarm' | 'warning' | 'offline' | 'healthy',
-  devicePointCount?: number,
-  deviceId?: string,
-): { point: MeasurementPoint; pointNum: number }[] {
-  const raw = points ?? []
-  const fromTree = deviceId ? resolveDevicePointCountFromTree(deviceId) : undefined
-  const fromItem =
-    devicePointCount != null && devicePointCount > 0 ? Math.floor(devicePointCount) : undefined
-  const effective = fromTree ?? fromItem
-  let cap =
-    effective != null && effective > 0 ? Math.min(raw.length, effective) : raw.length
-  // 按设备点数截断后，若「预警/报警」落在截断范围之外（常见于 channel/名称解析出较大序号），
-  // 声音卡只展示 warning、振动卡只展示 alarm，会导致过滤结果为空但卡片仍为预警态。
-  if (latestPointNum != null && latestPointNum > cap) {
-    cap = Math.min(raw.length, latestPointNum)
-  }
-  if (cardType === 'sound') {
-    for (let i = 0; i < raw.length; i++) {
-      if (raw[i]?.status === 'warning') cap = Math.min(raw.length, Math.max(cap, i + 1))
-    }
-  } else if (cardType === 'vibration') {
-    for (let i = 0; i < raw.length; i++) {
-      if (raw[i]?.status === 'alarm') cap = Math.min(raw.length, Math.max(cap, i + 1))
-    }
-  }
-  const list = raw.slice(0, cap)
-  const cacheKey = `${cardType ?? 'all'}|${deviceStatus ?? 'unknown'}|${latestPointNum ?? 'none'}|dpc:${effective ?? 'na'}|${list.map((p, i) => `${i + 1}:${p.status}:${p.lastAlarmTime ?? 0}`).join(',')}`
-  const cached = displayPointsCache.get(cacheKey)
-  if (cached) return cached
-  const withNum = list
-    .map((p, i) => ({ point: p, pointNum: i + 1 }))
-    .filter((item) => {
-      // 健康/离线卡片：展示基础点位编号，避免看起来“没有点位”
-      if (deviceStatus === 'healthy' || deviceStatus === 'offline') return true
-      if (!cardType) return true
-      // 声音卡片只展示预警点位；振动卡片只展示报警点位（保持“卡片内部只按时间”）
-      if (cardType === 'sound') return item.point.status === 'warning'
-      if (cardType === 'vibration') return item.point.status === 'alarm'
-      return true
-    })
-  const order = { alarm: 0, warning: 1, healthy: 2, offline: 3 }
-  const sorted = withNum.sort((a, b) => {
-    // 约定：latestPointNum 对应“最新点位”，强制置顶（即使其它点位的 lastAlarmTime 更大）
-    if (latestPointNum != null) {
-      const aIsLatest = a.pointNum === latestPointNum
-      const bIsLatest = b.pointNum === latestPointNum
-      if (aIsLatest !== bIsLatest) return aIsLatest ? -1 : 1
-    }
-    const aTime = a.point.lastAlarmTime ?? 0
-    const bTime = b.point.lastAlarmTime ?? 0
-    if (aTime !== bTime) return bTime - aTime // 最近的时间排前面
-    return a.pointNum - b.pointNum
-  })
-  const result = sorted.slice(0, 8)
-  displayPointsCache.set(cacheKey, result)
-  if (displayPointsCache.size > MAX_DISPLAY_POINTS_CACHE) {
-    const firstKey = displayPointsCache.keys().next().value
-    if (firstKey != null) displayPointsCache.delete(firstKey)
-  }
-  return result
-}
-function formatAlarmTime(time: string | undefined): string {
-  if (!time) return '暂无'
-  const raw = String(time).trim()
-  const ts = Number(raw)
-  const d = Number.isFinite(ts) && ts > 0 ? new Date(ts) : new Date(raw)
-  if (isNaN(d.getTime())) return '暂无'
-  const month = d.getMonth() + 1
-  const day = d.getDate()
-  const h = d.getHours()
-  const m = d.getMinutes()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${pad(month)}-${pad(day)} ${pad(h)}:${pad(m)}`
-}
 
 const handlePointItemClick = async (
   alarm: AlarmItem,
-  clicked: { point: MeasurementPoint; pointNum: number },
+  clicked: { point: { status: string; name: string }; pointNum: number },
 ) => {
   const point = clicked?.point
   if (!point || (point.status !== 'alarm' && point.status !== 'warning')) return
-  await alarmBatchStore.ensureDropdowns()
-  const deviceId = resolveRealtimeDeviceKey({
-    alarmId: String(alarm.id ?? ''),
+  await openRealtimeBatchForPoint({
+    alarmBatchStore,
+    deviceTreeData: deviceTreeStore.deviceTreeData ?? [],
+    deviceId: String(alarm.id ?? ''),
     pointNum: Number(clicked?.pointNum ?? 0),
     pointName: point.name,
-    deviceTreeData: deviceTreeStore.deviceTreeData ?? [],
-    deviceOptions: (alarmBatchStore.deviceNameList ?? []) as any[],
+    mode: point.status === 'warning' ? 'sound-warning' : 'vibration-alarm',
   })
-  if (point.status === 'warning') {
-    alarmBatchStore.resetRealtime()
-    if (deviceId) {
-      alarmBatchStore.realtimeQuery.deviceId = deviceId
-    }
-    void alarmBatchStore.openRealtime()
-    return
-  }
-
-  alarmBatchStore.resetRealtimeAlarm()
-  if (deviceId) {
-    alarmBatchStore.realtimeAlarmQuery.deviceId = deviceId
-  }
-  void alarmBatchStore.openRealtimeAlarm()
 }
 
 const goToDeviceDetail = (alarm: AlarmItem) => {
@@ -934,7 +269,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
     console.warn('缺少设备ID，无法跳转:', alarm)
     return
   }
-
   deviceTreeStore.setSelectedDeviceId(equipmentId)
   router
     .push({

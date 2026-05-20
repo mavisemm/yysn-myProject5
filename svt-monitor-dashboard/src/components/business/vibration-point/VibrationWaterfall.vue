@@ -76,6 +76,7 @@ import { CommonEcharts } from '@/components/common/chart'
 import { FullScreen } from '@element-plus/icons-vue'
 import { getVibrationFrequencyWaterfallData, type VibrationAxis } from '@/api/modules/device'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
+import { resolvePointDeviceIdFromTree } from './vibrationPointUtils'
 // 与 echarts-gl Grid3DView 一致：底面射线求交 + pointToData（仅类型外依赖，运行时用 chart 内部视图）
 import graphicGL from 'echarts-gl/lib/util/graphicGL.js'
 
@@ -565,21 +566,9 @@ const receiverIdFromParams = computed(() => {
   return (typeof resolved === 'string' ? resolved : '') || ''
 })
 
-const resolvePointDeviceId = (rid: string): string => {
-  if (!rid) return ''
-  for (const factory of deviceTreeStore.deviceTreeData) {
-    for (const workshop of factory.children ?? []) {
-      for (const device of workshop.children ?? []) {
-        if (device.type !== 'device') continue
-        const hit = (device.children ?? []).find((p) => p.type === 'point' && p.id === rid)
-        if (hit?.deviceId) return hit.deviceId
-      }
-    }
-  }
-  return ''
-}
-
-const pointDeviceId = computed(() => resolvePointDeviceId(receiverIdFromParams.value))
+const pointDeviceId = computed(() =>
+  resolvePointDeviceIdFromTree(deviceTreeStore.deviceTreeData, receiverIdFromParams.value),
+)
 
 const openWaterfallFullscreen = () => {
   void (waterfallChartRef.value as { openFullscreen?: () => void } | undefined)?.openFullscreen?.()

@@ -122,7 +122,6 @@
 import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import { ElButton, ElDialog, ElCheckbox, ElIcon } from 'element-plus'
 import { FullScreen } from '@element-plus/icons-vue'
-import type { Ref } from 'vue'
 import {
   getTemperatureRealTime,
   getTemperatureTrend,
@@ -130,38 +129,25 @@ import {
   getSoundTrend,
 } from '@/api/modules/hardware'
 import { CommonEcharts } from '@/components/common/chart'
-import type { EChartsOption } from 'echarts'
-
-interface PointInfo {
-  id: string
-  name: string
-  lastAlarmTime: string
-  alarmType: string
-  alarmValue: string
-  hasAlarm: boolean
-}
-
-interface AnalysisResult {
-  deviation: string
-  pointName: string
-}
-
-export type DateRange = [string, string] | null
+import type { DeviceDetailPointInfo, DeviceTrendChartData } from './deviceDetailTypes'
+import {
+  buildDeviceTrendChartOption,
+  computeSoundTrendYAxisRange,
+  computeTempTrendYAxisRange,
+  computeVibTrendYAxisRange,
+  extractTrendTimeLabel,
+  normalizeTrendApiList,
+  type DeviceTrendChartKind,
+} from './deviceDetailChartUtils'
 
 const props = defineProps<{
-  pointList: PointInfo[]
+  pointList: DeviceDetailPointInfo[]
   selectedPointId?: string
 }>()
 
-interface ChartDataPoint {
-  timeLabels: string[]
-  values: number[]
-  yMin?: number
-  yMax?: number
-}
-const tempChartData = ref<ChartDataPoint | null>(null)
-const vibChartData = ref<ChartDataPoint | null>(null)
-const soundChartData = ref<ChartDataPoint | null>(null)
+const tempChartData = ref<DeviceTrendChartData | null>(null)
+const vibChartData = ref<DeviceTrendChartData | null>(null)
+const soundChartData = ref<DeviceTrendChartData | null>(null)
 
 const realtimeTempValue = ref<number | null>(null)
 const realtimeTempReqSeq = ref(0)
@@ -171,38 +157,46 @@ const realtimeTempValueText = computed(() => {
   if (realtimeTempValue.value == null) return '—'
   const num = Number(realtimeTempValue.value)
   if (Number.isNaN(num)) return '—'
-  // 直接使用接口返回值，不再对小数点后位数做截断/四舍五入
   return String(num)
 })
 
 const chartAxisColor = computed(() => '#fff')
 const chartSplitLineColor = computed(() => 'rgba(150,150,150, 0.2)')
-const TEMP_COLOR = '#ff4d4f'
-const VIB_COLOR = '#1890ff'
-const SOUND_COLOR = '#fadb14'
 
-// 全屏弹窗里/页面上的图表同时存在于 DOM 时，如果使用同一个 linkage-group，
-// ECharts 会把同组图表联动 tooltip（你看到的“3个图却显示5/4个 tooltip”就是这个原因）。
 const normalLinkageGroup = 'device-detail-charts-normal'
 const fullscreenLinkageGroup = 'device-detail-charts-fullscreen'
 
 const deviceChartsFullscreenVisible = ref(false)
-const fullscreenChartVisible = ref({
-  vib: true,
-  sound: true,
-  temp: true,
-})
+const fullscreenChartVisible = ref({ vib: true, sound: true, temp: true })
 
-const FULLSCREEN_DATAZOOM_SLIDER_HEIGHT_PX = 20 // 如需更大手柄/刻度，可改成 50
-const fullscreenDataZoomSliderHeight = computed(() => {
-  // 全屏时 slider 高度固定，避免随容器比例变化导致图表区域被挤压
-  return deviceChartsFullscreenVisible.value ? FULLSCREEN_DATAZOOM_SLIDER_HEIGHT_PX : '10%'
-})
+const FULLSCREEN_DATAZOOM_SLIDER_HEIGHT_PX = 20
+const fullscreenDataZoomSliderHeight = computed(() =>
+  deviceChartsFullscreenVisible.value ? FULLSCREEN_DATAZOOM_SLIDER_HEIGHT_PX : '10%',
+)
 
-const isDeviceChartsFullscreen = computed(() => deviceChartsFullscreenVisible.value)
-const fullscreenGridTop = computed(() => (isDeviceChartsFullscreen.value ? 30 : '10%'))
-const fullscreenGridBottom = computed(() => (isDeviceChartsFullscreen.value ? 35 : '15%'))
-const fullscreenDataZoomBottom = computed(() => (isDeviceChartsFullscreen.value ? 10 : '5%'))
+const fullscreenGridTop = computed(() => (deviceChartsFullscreenVisible.value ? 30 : '10%'))
+const fullscreenGridBottom = computed(() => (deviceChartsFullscreenVisible.value ? 35 : '15%'))
+const fullscreenDataZoomBottom = computed(() => (deviceChartsFullscreenVisible.value ? 10 : '5%'))
+
+const trendChartLayout = computed(() => ({
+  gridBottom: fullscreenGridBottom.value,
+  gridTop: fullscreenGridTop.value,
+  dataZoomBottom: fullscreenDataZoomBottom.value,
+  dataZoomSliderHeight: fullscreenDataZoomSliderHeight.value,
+}))
+
+const buildTrendOption = (kind: DeviceTrendChartKind, data: DeviceTrendChartData | null) =>
+  buildDeviceTrendChartOption({
+    kind,
+    data,
+    layout: trendChartLayout.value,
+    axisColor: chartAxisColor.value,
+    splitLineColor: chartSplitLineColor.value,
+  })
+
+const tempOption = computed(() => buildTrendOption('temp', tempChartData.value))
+const vibOption = computed(() => buildTrendOption('vib', vibChartData.value))
+const soundOption = computed(() => buildTrendOption('sound', soundChartData.value))
 
 const hasAnyChartData = computed(() => {
   const vibLen = vibChartData.value?.values?.length ?? 0
@@ -238,17 +232,19 @@ const soundFullscreenChartRef = ref<InstanceType<typeof CommonEcharts> | null>(n
 const tempFullscreenChartRef = ref<InstanceType<typeof CommonEcharts> | null>(null)
 
 const resizeVisibleFullscreenCharts = () => {
-  // 防止弹窗打开瞬间容器高度尚未稳定，导致 ECharts 画布高度计算不正确（顶部被裁切）
   requestAnimationFrame(() => {
     try {
       if (fullscreenChartVisible.value.vib) {
-        ; (vibFullscreenChartRef.value as any)?.chartInstance?.resize?.()
+        ;(vibFullscreenChartRef.value as { chartInstance?: { resize?: () => void } } | null)
+          ?.chartInstance?.resize?.()
       }
       if (fullscreenChartVisible.value.sound) {
-        ; (soundFullscreenChartRef.value as any)?.chartInstance?.resize?.()
+        ;(soundFullscreenChartRef.value as { chartInstance?: { resize?: () => void } } | null)
+          ?.chartInstance?.resize?.()
       }
       if (fullscreenChartVisible.value.temp) {
-        ; (tempFullscreenChartRef.value as any)?.chartInstance?.resize?.()
+        ;(tempFullscreenChartRef.value as { chartInstance?: { resize?: () => void } } | null)
+          ?.chartInstance?.resize?.()
       }
     } catch {
       // ignore
@@ -259,22 +255,10 @@ const resizeVisibleFullscreenCharts = () => {
 const onDeviceChartsFullscreenOpened = async () => {
   await nextTick()
   resizeVisibleFullscreenCharts()
-  // 再补一次，给字体/布局收敛留余量
   setTimeout(resizeVisibleFullscreenCharts, 50)
 }
 
-const onDeviceChartsFullscreenClosed = () => {
-  // nothing
-}
-
-// y 轴刻度最多保留小数点后两位（同时去掉无意义的尾随 0）
-const formatYAxisTick = (v: number | string) => {
-  const n = Number(v)
-  if (!Number.isFinite(n)) return ''
-  return String(Number(n.toFixed(2)))
-}
-
-const HOURS_24 = Array.from({ length: 24 }, (_, i) => `${i}`)
+const onDeviceChartsFullscreenClosed = () => {}
 
 const activeReceiverId = computed(() => props.selectedPointId || props.pointList?.[0]?.id || '')
 
@@ -283,332 +267,37 @@ const loadTemperatureRealTime = async (receiverId: string) => {
     realtimeTempValue.value = null
     return
   }
-
   const seq = ++realtimeTempReqSeq.value
   try {
     const res = await getTemperatureRealTime({ receiverId })
     if (seq !== realtimeTempReqSeq.value) return
-
     if (res?.rc === 0) {
-      const raw: any = res.ret
+      const raw = res.ret as number | { temperature?: number } | undefined
       const value = typeof raw === 'number' ? raw : Number(raw?.temperature)
       realtimeTempValue.value = Number.isFinite(value) ? value : null
     } else {
       realtimeTempValue.value = null
     }
-  } catch (e) {
+  } catch {
     if (seq !== realtimeTempReqSeq.value) return
     realtimeTempValue.value = null
   }
 }
 
-const tempOption = computed<EChartsOption>(() => {
-  const c = chartAxisColor.value
-  const s = chartSplitLineColor.value
-  const d = tempChartData.value
-  const timeLabels = d?.timeLabels ?? []
-  const values = d?.values ?? []
-  const yMin = d?.yMin
-  const yMax = d?.yMax
-  return {
-    tooltip: {
-      trigger: 'axis',
-      className: 'echarts-tooltip',
-      backgroundColor: 'rgba(50,50,50,0.8)',
-      borderColor: 'rgba(50,50,50,0.8)',
-      textStyle: { color: '#fff' },
-    },
-    grid: {
-      left: '3%',
-      right: '6%',
-      bottom: fullscreenGridBottom.value,
-      top: fullscreenGridTop.value,
-      containLabel: true,
-    },
-    dataZoom: [
-      { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-      {
-        type: 'slider',
-        xAxisIndex: [0],
-        bottom: fullscreenDataZoomBottom.value,
-        height: fullscreenDataZoomSliderHeight.value,
-        fillerColor: 'rgba(255, 77, 79, 0.3)',
-        borderColor: 'rgba(255, 77, 79, 0.5)',
-        handleStyle: { color: TEMP_COLOR },
-        filterMode: 'none',
-      },
-    ],
-    xAxis: {
-      type: 'category',
-      data: timeLabels,
-      axisLabel: {
-        fontSize: 10,
-        color: c,
-        margin: 8,
-        showMaxLabel: true,
-        hideOverlap: true,
-      },
-      axisLine: { lineStyle: { color: c }, onZero: false },
-      axisTick: { lineStyle: { color: c }, alignWithLabel: true },
-    },
-    yAxis: {
-      type: 'value',
-      scale: true,
-      ...(yMin != null && yMax != null
-        ? { min: yMin, max: yMax }
-        : { min: 'dataMin', max: 'dataMax' }),
-      axisLabel: { fontSize: 10, color: c, formatter: formatYAxisTick },
-      axisLine: { lineStyle: { color: c } },
-      axisTick: { lineStyle: { color: c } },
-      splitLine: { lineStyle: { color: s } },
-      splitNumber: 4,
-    },
-    series: values.length
-      ? [
-        {
-          data: values,
-          type: 'line',
-          smooth: true,
-          symbolSize: 1,
-          itemStyle: { color: TEMP_COLOR },
-          lineStyle: { color: TEMP_COLOR, width: 2 },
-          areaStyle: {
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: 'rgba(255, 77, 79, 0.5)' },
-                { offset: 1, color: 'rgba(255, 77, 79, 0.1)' },
-              ],
-            },
-            opacity: 0.3,
-          },
-        },
-      ]
-      : [],
-    backgroundColor: 'transparent',
-  } as EChartsOption
-})
-
-const vibOption = computed<EChartsOption>(() => {
-  const c = chartAxisColor.value
-  const s = chartSplitLineColor.value
-  const d = vibChartData.value
-  const timeLabels = d?.timeLabels ?? []
-  const values = d?.values ?? []
-  const yMin = d?.yMin
-  const yMax = d?.yMax
-  return {
-    tooltip: {
-      trigger: 'axis',
-      className: 'echarts-tooltip',
-      backgroundColor: 'rgba(50,50,50,0.8)',
-      borderColor: 'rgba(50,50,50,0.8)',
-      textStyle: { color: '#fff' },
-    },
-    grid: {
-      left: '3%',
-      right: '6%',
-      bottom: fullscreenGridBottom.value,
-      top: fullscreenGridTop.value,
-      containLabel: true,
-    },
-    dataZoom: [
-      { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-      {
-        type: 'slider',
-        xAxisIndex: [0],
-        bottom: fullscreenDataZoomBottom.value,
-        height: fullscreenDataZoomSliderHeight.value,
-        fillerColor: 'rgba(24, 144, 255, 0.3)',
-        borderColor: 'rgba(24, 144, 255, 0.5)',
-        handleStyle: { color: VIB_COLOR },
-        filterMode: 'none',
-      },
-    ],
-    xAxis: {
-      type: 'category',
-      data: timeLabels,
-      axisLabel: {
-        fontSize: 10,
-        color: c,
-        margin: 8,
-        showMaxLabel: true,
-        hideOverlap: true,
-      },
-      axisLine: { lineStyle: { color: c }, onZero: false },
-      axisTick: { lineStyle: { color: c }, alignWithLabel: true },
-    },
-    yAxis: {
-      type: 'value',
-      ...(yMin != null && yMax != null ? { min: yMin, max: yMax } : {}),
-      axisLabel: { fontSize: 10, color: c, formatter: formatYAxisTick },
-      axisLine: { lineStyle: { color: c } },
-      axisTick: { lineStyle: { color: c } },
-      splitLine: { lineStyle: { color: s } },
-      splitNumber: 4,
-    },
-    series: values.length
-      ? [
-        {
-          data: values,
-          type: 'line',
-          smooth: true,
-          symbolSize: 1,
-          itemStyle: { color: VIB_COLOR },
-          lineStyle: { color: VIB_COLOR, width: 2 },
-          areaStyle: {
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: 'rgba(24, 144, 255, 0.5)' },
-                { offset: 1, color: 'rgba(24, 144, 255, 0.1)' },
-              ],
-            },
-            opacity: 0.3,
-          },
-        },
-      ]
-      : [],
-    backgroundColor: 'transparent',
-  } as EChartsOption
-})
-
-const soundOption = computed<EChartsOption>(() => {
-  const c = chartAxisColor.value
-  const s = chartSplitLineColor.value
-  const d = soundChartData.value
-  const timeLabels = d?.timeLabels ?? []
-  const values = d?.values ?? []
-  const yMin = d?.yMin
-  const yMax = d?.yMax
-  return {
-    tooltip: {
-      trigger: 'axis',
-      className: 'echarts-tooltip',
-      backgroundColor: 'rgba(50,50,50,0.8)',
-      borderColor: 'rgba(50,50,50,0.8)',
-      textStyle: { color: '#fff' },
-    },
-    grid: {
-      left: '3%',
-      right: '6%',
-      bottom: fullscreenGridBottom.value,
-      top: fullscreenGridTop.value,
-      containLabel: true,
-    },
-    dataZoom: [
-      { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
-      {
-        type: 'slider',
-        xAxisIndex: [0],
-        bottom: fullscreenDataZoomBottom.value,
-        height: fullscreenDataZoomSliderHeight.value,
-        fillerColor: 'rgba(250, 219, 20, 0.3)',
-        borderColor: 'rgba(250, 219, 20, 0.5)',
-        handleStyle: { color: SOUND_COLOR },
-        filterMode: 'none',
-      },
-    ],
-    xAxis: {
-      type: 'category',
-      data: timeLabels,
-      axisLabel: {
-        fontSize: 10,
-        color: c,
-        margin: 8,
-        showMaxLabel: true,
-        hideOverlap: true,
-      },
-      axisLine: { lineStyle: { color: c }, onZero: false },
-      axisTick: { lineStyle: { color: c }, alignWithLabel: true },
-    },
-    yAxis: {
-      type: 'value',
-      scale: true,
-      ...(yMin != null && yMax != null ? { min: yMin, max: yMax } : {}),
-      axisLabel: { fontSize: 10, color: c, formatter: formatYAxisTick },
-      axisLine: { lineStyle: { color: c } },
-      axisTick: { lineStyle: { color: c } },
-      splitLine: { lineStyle: { color: s } },
-      splitNumber: 4,
-    },
-    series: values.length
-      ? [
-        {
-          data: values,
-          type: 'line',
-          smooth: true,
-          symbolSize: 1,
-          itemStyle: { color: SOUND_COLOR },
-          lineStyle: { color: SOUND_COLOR, width: 2 },
-          areaStyle: {
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [
-                { offset: 0, color: 'rgba(250, 219, 20, 0.5)' },
-                { offset: 1, color: 'rgba(250, 219, 20, 0.1)' },
-              ],
-            },
-            opacity: 0.3,
-          },
-        },
-      ]
-      : [],
-    backgroundColor: 'transparent',
-  } as EChartsOption
-})
-
-function computeTempYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
-  const span = dataMax - dataMin
-  const padding = Math.max(span * 0.1, 2)
-  let min = dataMin - padding
-  let max = dataMax + padding
-  const range = max - min
-  const step = range <= 0 ? 1 : Math.pow(10, Math.floor(Math.log10(range)))
-  min = Math.floor(min / step) * step
-  max = Math.ceil(max / step) * step
-  return { min, max }
-}
-
 const loadTemperatureData = async (receiverId: string) => {
   if (!receiverId) return
-
   try {
-    const response = await getTemperatureTrend({
-      receiverId,
-    })
-
-    if (
-      response.rc === 0 &&
-      response.ret &&
-      Array.isArray(response.ret) &&
-      response.ret.length > 0
-    ) {
-      const timeData = response.ret.map((item: { dateTime?: string; time?: string }) => {
-        const dt = item.dateTime || item.time || ''
-        if (dt.includes(' ')) return (dt.split(' ')[1] || dt).trim().substring(0, 8)
-        if (dt.includes('T')) return (dt.split('T')[1] || dt).substring(0, 8)
-        return dt || ''
-      })
-      const tempData = response.ret.map((item) => item.temperature)
+    const response = await getTemperatureTrend({ receiverId })
+    if (response.rc === 0 && Array.isArray(response.ret) && response.ret.length > 0) {
+      const timeData = response.ret.map((item: { dateTime?: string; time?: string }) =>
+        extractTrendTimeLabel(item.dateTime || item.time || ''),
+      )
+      const tempData = response.ret.map((item: { temperature: number }) => item.temperature)
       const dataMin = tempData.length ? Math.min(...tempData) : 0
       const dataMax = tempData.length ? Math.max(...tempData) : 100
-      const { min: yMin, max: yMax } = computeTempYAxisRange(dataMin, dataMax)
+      const { min: yMin, max: yMax } = computeTempTrendYAxisRange(dataMin, dataMax)
       tempChartData.value = { timeLabels: timeData, values: tempData, yMin, yMax }
     } else {
-      console.warn('温度趋势数据格式错误:', response)
       tempChartData.value = null
     }
   } catch (error) {
@@ -617,46 +306,19 @@ const loadTemperatureData = async (receiverId: string) => {
   }
 }
 
-function computeVibYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
-  const span = dataMax - dataMin
-  const padding = Math.max(span * 0.1, 0.5)
-  let min = Math.min(0, dataMin - padding)
-  let max = dataMax + padding
-  const range = max - min
-  const step = range <= 0 ? 1 : Math.pow(10, Math.floor(Math.log10(range)))
-  const safeStep = step < 0.1 ? 0.1 : step
-  min = Math.floor(min / safeStep) * safeStep
-  max = Math.ceil(max / safeStep) * safeStep
-  return { min, max }
-}
-
 const loadVibrationData = async (receiverId: string) => {
   if (!receiverId) return
-
   try {
-    const response = await getVibrationTrend({
-      receiverId,
-    })
-
-    const list = Array.isArray(response)
-      ? response
-      : response.ret && Array.isArray(response.ret)
-        ? response.ret
-        : []
+    const response = await getVibrationTrend({ receiverId })
+    const list = normalizeTrendApiList(response)
     if (list.length > 0) {
-      const timeData = list.map((item) => {
-        const dt = item.time || ''
-        if (dt.includes(' ')) return (dt.split(' ')[1] || dt).trim().substring(0, 8)
-        if (dt.includes('T')) return (dt.split('T')[1] || dt).substring(0, 8)
-        return dt
-      })
-      const vibData = list.map((item) => item.sumRms)
+      const timeData = list.map((item: { time?: string }) => extractTrendTimeLabel(item.time || ''))
+      const vibData = list.map((item: { sumRms: number }) => item.sumRms)
       const dataMin = vibData.length ? Math.min(...vibData) : 0
       const dataMax = vibData.length ? Math.max(...vibData) : 20
-      const { min: yMin, max: yMax } = computeVibYAxisRange(dataMin, dataMax)
+      const { min: yMin, max: yMax } = computeVibTrendYAxisRange(dataMin, dataMax)
       vibChartData.value = { timeLabels: timeData, values: vibData, yMin, yMax }
     } else {
-      console.warn('振动趋势数据格式错误:', response)
       vibChartData.value = null
     }
   } catch (error) {
@@ -665,45 +327,23 @@ const loadVibrationData = async (receiverId: string) => {
   }
 }
 
-function computeSoundYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
-  const span = Math.max(dataMax - dataMin, 1)
-  const padding = Math.max(span * 0.1, 2)
-  let min = Math.min(0, dataMin - padding)
-  let max = dataMax + padding
-  const range = max - min
-  const step = range <= 0 ? 10 : Math.pow(10, Math.floor(Math.log10(range)))
-  const safeStep = step < 1 ? 1 : step
-  min = Math.floor(min / safeStep) * safeStep
-  max = Math.ceil(max / safeStep) * safeStep
-  return { min, max }
-}
-
 const loadSoundData = async (receiverId: string) => {
   if (!receiverId) return
   try {
-    const response = await getSoundTrend({
-      receiverId,
-    })
-
-    const list = Array.isArray(response)
-      ? response
-      : response.ret && Array.isArray(response.ret)
-        ? response.ret
-        : []
+    const response = await getSoundTrend({ receiverId })
+    const list = normalizeTrendApiList(response)
     if (list.length > 0) {
-      const timeData = list.map((item) => {
-        const dt = item.time || item.dateTime || ''
-        if (dt.includes(' ')) return (dt.split(' ')[1] || dt).trim().substring(0, 8)
-        if (dt.includes('T')) return (dt.split('T')[1] || dt).substring(0, 8)
-        return dt
-      })
-      const soundData = list.map((item) => item.value ?? item.soundLevel ?? 0)
+      const timeData = list.map((item: { time?: string; dateTime?: string }) =>
+        extractTrendTimeLabel(item.time || item.dateTime || ''),
+      )
+      const soundData = list.map(
+        (item: { value?: number; soundLevel?: number }) => item.value ?? item.soundLevel ?? 0,
+      )
       const dataMin = soundData.length ? Math.min(...soundData) : 0
       const dataMax = soundData.length ? Math.max(...soundData) : 100
-      const { min: yMin, max: yMax } = computeSoundYAxisRange(dataMin, dataMax)
+      const { min: yMin, max: yMax } = computeSoundTrendYAxisRange(dataMin, dataMax)
       soundChartData.value = { timeLabels: timeData, values: soundData, yMin, yMax }
     } else {
-      console.warn('响度趋势数据格式错误或为空:', response)
       soundChartData.value = null
     }
   } catch (error) {
@@ -712,54 +352,44 @@ const loadSoundData = async (receiverId: string) => {
   }
 }
 
-const chartGridRef = ref<HTMLDivElement>()
+const loadChartsForReceiver = (receiverId: string) => {
+  if (!receiverId) return
+  void loadTemperatureData(receiverId)
+  void loadVibrationData(receiverId)
+  void loadSoundData(receiverId)
+}
 
+const chartGridRef = ref<HTMLDivElement>()
 const chartsInitialized = ref(false)
 
 watch(
   () => props.pointList,
   (newList, oldList) => {
     if (!chartsInitialized.value || !newList?.length) return
-    const oldListLength = oldList ? oldList.length : 0
-    const newListLength = newList.length
-    if (oldListLength === 0 && newListLength > 0) {
+    const oldLen = oldList?.length ?? 0
+    if ((oldLen === 0 && newList.length > 0) || (!props.selectedPointId && newList.length > 0)) {
       const receiverId = newList[0]?.id
-      if (receiverId) {
-        loadTemperatureData(receiverId)
-        loadVibrationData(receiverId)
-        loadSoundData(receiverId)
-      }
-    } else if (!props.selectedPointId && newListLength > 0) {
-      const receiverId = newList[0]?.id
-      if (receiverId) {
-        loadTemperatureData(receiverId)
-        loadVibrationData(receiverId)
-        loadSoundData(receiverId)
-      }
+      if (receiverId) loadChartsForReceiver(receiverId)
     }
   },
-  { immediate: false, deep: true },
+  { deep: true },
 )
 
 watch(
   () => props.selectedPointId,
   (newPointId, oldPointId) => {
     if (chartsInitialized.value && newPointId && newPointId !== oldPointId) {
-      loadTemperatureData(newPointId)
-      loadVibrationData(newPointId)
-      loadSoundData(newPointId)
+      loadChartsForReceiver(newPointId)
     }
   },
-  { immediate: false },
 )
 
 watch(
   () => activeReceiverId.value,
   (receiverId) => {
-    if (!receiverId) return
-    if (receiverId === lastRealtimeReceiverId.value) return
+    if (!receiverId || receiverId === lastRealtimeReceiverId.value) return
     lastRealtimeReceiverId.value = receiverId
-    loadTemperatureRealTime(receiverId)
+    void loadTemperatureRealTime(receiverId)
   },
   { immediate: true },
 )
@@ -768,15 +398,8 @@ onMounted(() => {
   nextTick(() => {
     setTimeout(() => {
       chartsInitialized.value = true
-      const firstPoint = props.pointList?.[0]
-      if (firstPoint) {
-        const receiverId = props.selectedPointId || firstPoint.id
-        if (receiverId) {
-          loadTemperatureData(receiverId)
-          loadVibrationData(receiverId)
-          loadSoundData(receiverId)
-        }
-      }
+      const receiverId = props.selectedPointId || props.pointList?.[0]?.id
+      if (receiverId) loadChartsForReceiver(receiverId)
     }, 150)
   })
 })

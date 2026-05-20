@@ -56,6 +56,10 @@ import { useChartResize } from '@/composables/useChart'
 import { enableMouseWheelZoom } from '@/utils/chart'
 import { useRangeControls } from '@/composables/useRangeControls'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
+import { captureCurrentDataZoomAction } from './commonEchartsDataZoom'
+import { applyYAxisMinMaxToChart, resolveAutoYAxisMinMax } from './commonEchartsAutoYAxis'
+import { buildResolvedChartOption, isChartOptionEmpty } from './commonEchartsOptionUtils'
+import { attachLinkageZoom } from './commonEchartsLinkage'
 
 const props = withDefaults(
   defineProps<{
@@ -192,11 +196,6 @@ let autoYAxisTimer: number | null = null
 let optionUpdateTimer: number | null = null
 let optionUpdateRaf: number | null = null
 
-type GroupRegistry = Map<string, Set<echarts.ECharts>>
-const linkageRegistry: GroupRegistry =
-  (globalThis as any).__COMMON_ECHARTS_LINKAGE_REGISTRY__ ?? new Map()
-  ; (globalThis as any).__COMMON_ECHARTS_LINKAGE_REGISTRY__ = linkageRegistry
-
 let linkageZoomCleanup: (() => void) | null = null
 let isSyncingZoom = false
 const {
@@ -247,329 +246,22 @@ const attachRangeControlsListener = () => {
   }
 }
 
-type DataZoomRange = { startIndex: number; endIndex: number }
-type DataZoomValueRange = { startValue: number; endValue: number }
-const clampInt = (v: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, Math.trunc(v)))
-const pickArray = (v: any): any[] =>
-  Array.isArray(v) ? v : typeof v !== 'undefined' && v !== null ? [v] : []
-const clampNum = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
-const asFiniteNumber = (v: any): number | null => {
-  const n = typeof v === 'number' ? v : Number(v)
-  return Number.isFinite(n) ? n : null
-}
-const getDataZoomForXAxis = (opt: any, xAxisIndex: number): any | null => {
-  const dzList = pickArray(opt?.dataZoom)
-  if (!dzList.length) return null
-  return (
-    dzList.find((d: any) => {
-      const idx = d?.xAxisIndex
-      if (Array.isArray(idx)) return idx.includes(xAxisIndex)
-      if (typeof idx === 'number') return idx === xAxisIndex
-      return typeof idx === 'undefined' && xAxisIndex === 0
-    }) ??
-    dzList[0] ??
-    null
-  )
-}
+const autoYAxisConfig = () => ({
+  xAxisIndex: (props.rangeControlsXAxisIndex ?? 0) as number,
+  paddingRatio: Math.max(0, Number(props.autoYAxisOnZoomPaddingRatio ?? 0.05)),
+  samplingThreshold: Math.max(100, Number(props.autoYAxisSamplingThreshold ?? 2000)),
+})
 
-type DataZoomActionPayload = {
-  start?: number
-  end?: number
-  startValue?: unknown
-  endValue?: unknown
-  dataZoomIndex?: number
-}
-
-/**
- * 部分图表会在交互缩放后，通过业务侧更新 option（例如设置 yAxis.min/max）。
- * 如果直接 setOption，echarts 可能把 dataZoom 重置回默认（全频段）。
- * 这里从当前实例 option 抓一份 zoom 快照，在 setOption 后补发一次 dispatchAction 恢复视窗。
- */
-const captureCurrentDataZoomAction = (
-  inst: echarts.ECharts,
-  xAxisIndex: number,
-): DataZoomActionPayload | null => {
-  try {
-    const opt = inst.getOption?.() as any
-    const dz = getDataZoomForXAxis(opt, xAxisIndex)
-    if (!dz) return null
-
-    const hasValue = typeof dz.startValue !== 'undefined' || typeof dz.endValue !== 'undefined'
-    const hasPct = typeof dz.start !== 'undefined' || typeof dz.end !== 'undefined'
-    if (!hasValue && !hasPct) return null
-
-    const payload: DataZoomActionPayload = {}
-    if (typeof dz.dataZoomIndex === 'number') payload.dataZoomIndex = dz.dataZoomIndex
-
-    if (typeof dz.startValue !== 'undefined') payload.startValue = dz.startValue
-    if (typeof dz.endValue !== 'undefined') payload.endValue = dz.endValue
-    if (typeof dz.start !== 'undefined') payload.start = dz.start
-    if (typeof dz.end !== 'undefined') payload.end = dz.end
-
-    // 若是默认全范围，则无需恢复（避免数据刷新时“锁死”旧 zoom）
-    const s = asFiniteNumber(payload.start)
-    const e = asFiniteNumber(payload.end)
-    const isDefaultPct = s !== null && e !== null && Math.abs(s - 0) < 1e-9 && Math.abs(e - 100) < 1e-9
-    if (isDefaultPct) {
-      // 注意：value 轴默认全范围无法可靠判断；这里只做最保守的去噪
-      // 若业务确需强制保留，请通过 preserveDataZoom 机制走业务侧 doDataZoom。
-      return null
-    }
-
-    return payload
-  } catch {
-    return null
-  }
-}
-const getXAxis = (opt: any, xAxisIndex: number): any | null => {
-  const xAxes = pickArray(opt?.xAxis)
-  return (xAxes[xAxisIndex] ?? xAxes[0] ?? null) as any
-}
-const getXAxisType = (
-  opt: any,
-  xAxisIndex: number,
-): 'category' | 'value' | 'time' | 'log' | string => {
-  const xAxis = getXAxis(opt, xAxisIndex)
-  return (xAxis?.type ?? (xAxis?.data ? 'category' : 'value')) as any
-}
-
-const extractXFromDatum = (datum: any): number | null => {
-  if (datum == null) return null
-  if (Array.isArray(datum)) {
-    const first = datum[0]
-    const n = Number(first)
-    return Number.isFinite(n) ? n : null
-  }
-  if (typeof datum === 'object') {
-    const v = (datum as any).value
-    if (Array.isArray(v)) {
-      const first = v[0]
-      const n = Number(first)
-      return Number.isFinite(n) ? n : null
-    }
-  }
-  return null
-}
-
-const inferXDomainFromSeries = (opt: any): { min: number; max: number } | null => {
-  const seriesList = pickArray(opt?.series) as any[]
-  let min = Number.POSITIVE_INFINITY
-  let max = Number.NEGATIVE_INFINITY
-  let found = false
-  for (const s of seriesList) {
-    const data = s?.data
-    if (!Array.isArray(data) || data.length === 0) continue
-    for (const d of data) {
-      const x = extractXFromDatum(d)
-      if (x == null) continue
-      found = true
-      if (x < min) min = x
-      if (x > max) max = x
-    }
-  }
-  if (!found || !Number.isFinite(min) || !Number.isFinite(max)) return null
-  return { min, max }
-}
-
-const getCategoryAxisLength = (opt: any, xAxisIndex: number): number => {
-  const xAxis = getXAxis(opt, xAxisIndex)
-  const data = xAxis?.data
-  return Array.isArray(data) ? data.length : 0
-}
-const parseDataZoomRange = (opt: any, xAxisIndex: number): DataZoomRange | null => {
-  const axisLen = getCategoryAxisLength(opt, xAxisIndex)
-  if (!axisLen) return null
-  const dz = getDataZoomForXAxis(opt, xAxisIndex)
-  if (!dz) return { startIndex: 0, endIndex: axisLen - 1 }
-
-  const hasValueRange = typeof dz.startValue !== 'undefined' || typeof dz.endValue !== 'undefined'
-  if (hasValueRange) {
-    const s = typeof dz.startValue === 'number' ? dz.startValue : 0
-    const e = typeof dz.endValue === 'number' ? dz.endValue : axisLen - 1
-    const startIndex = clampInt(s, 0, axisLen - 1)
-    const endIndex = clampInt(e, 0, axisLen - 1)
-    return startIndex <= endIndex
-      ? { startIndex, endIndex }
-      : { startIndex: endIndex, endIndex: startIndex }
-  }
-
-  const startPct = typeof dz.start === 'number' ? dz.start : 0
-  const endPct = typeof dz.end === 'number' ? dz.end : 100
-  const startIndex = clampInt(Math.round((startPct / 100) * (axisLen - 1)), 0, axisLen - 1)
-  const endIndex = clampInt(Math.round((endPct / 100) * (axisLen - 1)), 0, axisLen - 1)
-  return startIndex <= endIndex
-    ? { startIndex, endIndex }
-    : { startIndex: endIndex, endIndex: startIndex }
-}
-
-const parseDataZoomValueRange = (opt: any, xAxisIndex: number): DataZoomValueRange | null => {
-  const dz = getDataZoomForXAxis(opt, xAxisIndex)
-  const xAxis = getXAxis(opt, xAxisIndex)
-
-  const axisMin = asFiniteNumber(xAxis?.min)
-  const axisMax = asFiniteNumber(xAxis?.max)
-  const inferred = inferXDomainFromSeries(opt)
-  const dataMin = axisMin ?? inferred?.min
-  const dataMax = axisMax ?? inferred?.max
-  if (dataMin == null || dataMax == null) return null
-
-  if (!dz) return { startValue: dataMin, endValue: dataMax }
-
-  const sv = asFiniteNumber(dz.startValue)
-  const ev = asFiniteNumber(dz.endValue)
-  if (sv != null || ev != null) {
-    const s0 = sv ?? dataMin
-    const e0 = ev ?? dataMax
-    const startValue = Math.min(s0, e0)
-    const endValue = Math.max(s0, e0)
-    return { startValue, endValue }
-  }
-
-  const startPct = asFiniteNumber(dz.start) ?? 0
-  const endPct = asFiniteNumber(dz.end) ?? 100
-  const sPct = clampNum(startPct, 0, 100)
-  const ePct = clampNum(endPct, 0, 100)
-  const loPct = Math.min(sPct, ePct)
-  const hiPct = Math.max(sPct, ePct)
-  const startValue = dataMin + (loPct / 100) * (dataMax - dataMin)
-  const endValue = dataMin + (hiPct / 100) * (dataMax - dataMin)
-  return { startValue, endValue }
-}
-
-const extractYFromDatum = (datum: any): number | null => {
-  if (datum == null) return null
-  if (typeof datum === 'number') return Number.isFinite(datum) ? datum : null
-  if (typeof datum === 'string') {
-    const n = Number(datum)
-    return Number.isFinite(n) ? n : null
-  }
-  if (Array.isArray(datum)) {
-    const last = datum[datum.length - 1]
-    const n = Number(last)
-    return Number.isFinite(n) ? n : null
-  }
-  if (typeof datum === 'object') {
-    const v = (datum as any).value
-    if (Array.isArray(v)) {
-      const last = v[v.length - 1]
-      const n = Number(last)
-      return Number.isFinite(n) ? n : null
-    }
-    const n = Number(v)
-    return Number.isFinite(n) ? n : null
-  }
-  return null
-}
-
-const getSamplingStep = (length: number): number => {
-  const threshold = Math.max(100, Number(props.autoYAxisSamplingThreshold ?? 2000))
-  if (length <= threshold) return 1
-  return Math.max(1, Math.ceil(length / threshold))
-}
-
-const computeVisibleYRangeByIndex = (
-  opt: any,
-  range: DataZoomRange,
-): { min: number; max: number } | null => {
-  const seriesList = pickArray(opt?.series) as any[]
-  if (!seriesList.length) return null
-  let min = Number.POSITIVE_INFINITY
-  let max = Number.NEGATIVE_INFINITY
-  let found = false
-
-  for (const s of seriesList) {
-    const data = s?.data
-    if (!Array.isArray(data) || data.length === 0) continue
-    const start = clampInt(range.startIndex, 0, data.length - 1)
-    const end = clampInt(range.endIndex, 0, data.length - 1)
-    const step = getSamplingStep(Math.max(1, end - start + 1))
-    for (let i = start; i <= end; i += step) {
-      const y = extractYFromDatum(data[i])
-      if (y == null) continue
-      found = true
-      if (y < min) min = y
-      if (y > max) max = y
-    }
-  }
-  if (!found || !Number.isFinite(min) || !Number.isFinite(max)) return null
-  return { min, max }
-}
-
-const computeVisibleYRangeByXValue = (
-  opt: any,
-  xRange: DataZoomValueRange,
-): { min: number; max: number } | null => {
-  const seriesList = pickArray(opt?.series) as any[]
-  if (!seriesList.length) return null
-  let min = Number.POSITIVE_INFINITY
-  let max = Number.NEGATIVE_INFINITY
-  let found = false
-  const lo = Math.min(xRange.startValue, xRange.endValue)
-  const hi = Math.max(xRange.startValue, xRange.endValue)
-
-  for (const s of seriesList) {
-    const data = s?.data
-    if (!Array.isArray(data) || data.length === 0) continue
-    const step = getSamplingStep(data.length)
-    for (let i = 0; i < data.length; i += step) {
-      const d = data[i]
-      const x = extractXFromDatum(d)
-      if (x == null) continue
-      if (x < lo || x > hi) continue
-      const y = extractYFromDatum(d)
-      if (y == null) continue
-      found = true
-      if (y < min) min = y
-      if (y > max) max = y
-    }
-  }
-
-  if (!found || !Number.isFinite(min) || !Number.isFinite(max)) return null
-  return { min, max }
+const runAutoYAxisForInstance = (inst: echarts.ECharts, lazyUpdate = true) => {
+  if (!props.option) return
+  const opt = inst.getOption?.()
+  const patch = resolveAutoYAxisMinMax(opt, autoYAxisConfig())
+  if (patch) applyYAxisMinMaxToChart(inst, patch.min, patch.max, lazyUpdate)
 }
 
 const applyAutoYAxisRange = () => {
-  if (!chartInstance.value) return
-  if (!props.autoYAxisOnZoom) return
-  if (!props.option) return
-
-  const opt = chartInstance.value.getOption?.() as any
-  const xAxisIndex = (props.rangeControlsXAxisIndex ?? 0) as number
-  const xType = getXAxisType(opt, xAxisIndex)
-
-  let y: { min: number; max: number } | null = null
-  if (xType === 'value' || xType === 'time' || xType === 'log') {
-    const xRange = parseDataZoomValueRange(opt, xAxisIndex)
-    if (!xRange) return
-    y = computeVisibleYRangeByXValue(opt, xRange)
-  } else {
-    const range = parseDataZoomRange(opt, xAxisIndex)
-    if (!range) return
-    y = computeVisibleYRangeByIndex(opt, range)
-  }
-  if (!y) return
-
-  const paddingRatio = Math.max(0, Number(props.autoYAxisOnZoomPaddingRatio ?? 0.05))
-  const span = y.max - y.min
-  const padding = span === 0 ? (Math.abs(y.max) || 1) * paddingRatio : span * paddingRatio
-  // y 轴值本身非负（如幅值/强度）时，不要因为 padding 把下界扩到负数
-  const min = y.min >= 0 ? Math.max(0, y.min - padding) : y.min - padding
-  let max = y.max + padding
-  if (min === max) {
-    max = min + 1
-  }
-
-  try {
-    const yAxisArr = Array.isArray(opt?.yAxis) ? opt.yAxis : null
-    const yAxisPatch = yAxisArr && yAxisArr.length > 1 ? yAxisArr.map(() => ({ min, max })) : { min, max }
-    chartInstance.value.setOption({ yAxis: yAxisPatch } as any, {
-      notMerge: false,
-      lazyUpdate: true,
-    })
-  } catch {
-    // ignore
-  }
+  if (!chartInstance.value || !props.autoYAxisOnZoom) return
+  runAutoYAxisForInstance(chartInstance.value, true)
 }
 
 const attachAutoYAxisListener = () => {
@@ -581,8 +273,7 @@ const attachAutoYAxisListener = () => {
     window.clearTimeout(autoYAxisTimer)
     autoYAxisTimer = null
   }
-  if (!chartInstance.value) return
-  if (!props.autoYAxisOnZoom) return
+  if (!chartInstance.value || !props.autoYAxisOnZoom) return
 
   const handler = () => {
     const delay = Math.max(0, Number(props.autoYAxisOnZoomDebounceMs ?? 120))
@@ -605,41 +296,7 @@ const attachAutoYAxisListener = () => {
 
 const applyAutoYAxisRangeFor = (inst: echarts.ECharts) => {
   if (!resolveFullscreenAutoYAxisOnZoom()) return
-  if (!props.option) return
-
-  const opt = inst.getOption?.() as any
-  const xAxisIndex = (props.rangeControlsXAxisIndex ?? 0) as number
-  const xType = getXAxisType(opt, xAxisIndex)
-
-  let y: { min: number; max: number } | null = null
-  if (xType === 'value' || xType === 'time' || xType === 'log') {
-    const xRange = parseDataZoomValueRange(opt, xAxisIndex)
-    if (!xRange) return
-    y = computeVisibleYRangeByXValue(opt, xRange)
-  } else {
-    const range = parseDataZoomRange(opt, xAxisIndex)
-    if (!range) return
-    y = computeVisibleYRangeByIndex(opt, range)
-  }
-  if (!y) return
-
-  const paddingRatio = Math.max(0, Number(props.autoYAxisOnZoomPaddingRatio ?? 0.05))
-  const span = y.max - y.min
-  const padding = span === 0 ? (Math.abs(y.max) || 1) * paddingRatio : span * paddingRatio
-  // y 轴值本身非负（如幅值/强度）时，不要因为 padding 把下界扩到负数
-  const min = y.min >= 0 ? Math.max(0, y.min - padding) : y.min - padding
-  let max = y.max + padding
-  if (min === max) {
-    max = min + 1
-  }
-
-  try {
-    const yAxisArr = Array.isArray(opt?.yAxis) ? opt.yAxis : null
-    const yAxisPatch = yAxisArr && yAxisArr.length > 1 ? yAxisArr.map(() => ({ min, max })) : { min, max }
-    inst.setOption({ yAxis: yAxisPatch } as any, { notMerge: false, lazyUpdate: false })
-  } catch {
-    // ignore
-  }
+  runAutoYAxisForInstance(inst, false)
 }
 
 const attachAutoYAxisListenerForFullscreen = () => {
@@ -651,8 +308,7 @@ const attachAutoYAxisListenerForFullscreen = () => {
     window.clearTimeout(fullscreenAutoYAxisTimer)
     fullscreenAutoYAxisTimer = null
   }
-  if (!fullscreenChartInstance.value) return
-  if (!resolveFullscreenAutoYAxisOnZoom()) return
+  if (!fullscreenChartInstance.value || !resolveFullscreenAutoYAxisOnZoom()) return
 
   const inst = fullscreenChartInstance.value
   const handler = () => {
@@ -668,7 +324,7 @@ const attachAutoYAxisListenerForFullscreen = () => {
   fullscreenAutoYAxisCleanup = () => {
     try {
       inst.off('datazoom', handler)
-    } catch { }
+    } catch {}
     if (fullscreenAutoYAxisTimer != null) {
       window.clearTimeout(fullscreenAutoYAxisTimer)
       fullscreenAutoYAxisTimer = null
@@ -676,48 +332,10 @@ const attachAutoYAxisListenerForFullscreen = () => {
   }
 }
 
-type SeriesLike = Record<string, any> & { data?: any; type?: string }
-const isValueMeaningful = (v: any) =>
-  v !== null && typeof v !== 'undefined' && !(typeof v === 'number' && Number.isNaN(v))
-const hasNonEmptyDataArray = (arr: any[]) => arr.some(isValueMeaningful)
-const isOptionEmpty = (opt: EChartsOption | null | undefined): boolean => {
-  if (!opt) return true
-
-  const anyOpt = opt as any
-
-  const ds = anyOpt.dataset
-  const dsArr = Array.isArray(ds) ? ds : ds ? [ds] : []
-  for (const d of dsArr) {
-    const source = d?.source
-    if (Array.isArray(source) && source.length > 0) {
-      if (source.length > 1) return false
-      if (source.length === 1) {
-        const row = source[0]
-        if (Array.isArray(row) ? hasNonEmptyDataArray(row) : isValueMeaningful(row)) return false
-      }
-    }
-  }
-
-  const series = anyOpt.series
-  const seriesArr: SeriesLike[] = Array.isArray(series) ? series : series ? [series] : []
-  if (seriesArr.length === 0) return true
-
-  for (const s of seriesArr) {
-    const data = (s as any)?.data
-    if (Array.isArray(data)) {
-      if (data.length > 0 && hasNonEmptyDataArray(data)) return false
-    } else if (isValueMeaningful(data)) {
-      return false
-    }
-  }
-
-  return true
-}
-
 const resolvedEmpty = computed(() => {
   if (props.empty) return true
   if (!props.autoEmpty) return false
-  return isOptionEmpty(props.option)
+  return isChartOptionEmpty(props.option)
 })
 
 const backgroundMode = inject<Ref<'image' | 'navy' | 'solid'> | undefined>('backgroundMode')
@@ -727,88 +345,24 @@ const chartSplitLineColor = computed(() => 'rgba(255,255,255,0.1)')
 
 const applyLinkageZoom = () => {
   if (!chartInstance.value) return
-
-  const hasGroup = !!props.linkageGroup
-
   if (linkageZoomCleanup) {
     linkageZoomCleanup()
     linkageZoomCleanup = null
   }
-
-  if (!(props.enableLinkageZoom && hasGroup)) {
-    if ((chartInstance.value as any).group) (chartInstance.value as any).group = ''
+  if (!(props.enableLinkageZoom && props.linkageGroup)) {
+    if ((chartInstance.value as { group?: string }).group) {
+      ;(chartInstance.value as { group?: string }).group = ''
+    }
     return
   }
-
-  if (!props.linkageZoomOnly) {
-    ; (chartInstance.value as any).group = props.linkageGroup
-    echarts.connect(props.linkageGroup as string)
-    return
-  }
-
-  ; (chartInstance.value as any).group = ''
-  const groupId = props.linkageGroup as string
-  const inst = chartInstance.value
-  if (!linkageRegistry.has(groupId)) linkageRegistry.set(groupId, new Set())
-  linkageRegistry.get(groupId)!.add(inst)
-
-  const handler = (params: any) => {
-    if (isSyncingZoom) return
-    isSyncingZoom = true
-    try {
-      const others = linkageRegistry.get(groupId)
-      if (!others) return
-      const batch0 = Array.isArray(params?.batch) ? params.batch[0] : null
-      const payload = batch0 && typeof batch0 === 'object' ? batch0 : params
-      if (!payload || typeof payload !== 'object') return
-
-      const action: Record<string, any> = { type: 'dataZoom' }
-      if (
-        typeof (payload as any).startValue !== 'undefined' ||
-        typeof (payload as any).endValue !== 'undefined'
-      ) {
-        if (typeof (payload as any).startValue !== 'undefined')
-          action.startValue = (payload as any).startValue
-        if (typeof (payload as any).endValue !== 'undefined')
-          action.endValue = (payload as any).endValue
-      } else {
-        if (typeof (payload as any).start !== 'undefined') action.start = (payload as any).start
-        if (typeof (payload as any).end !== 'undefined') action.end = (payload as any).end
-      }
-
-      if (typeof (payload as any).dataZoomIndex !== 'undefined')
-        action.dataZoomIndex = (payload as any).dataZoomIndex
-
-      if (
-        typeof action.start === 'undefined' &&
-        typeof action.end === 'undefined' &&
-        typeof action.startValue === 'undefined' &&
-        typeof action.endValue === 'undefined'
-      ) {
-        return
-      }
-      for (const other of others) {
-        if (other === inst) continue
-        try {
-          other.dispatchAction(action as any)
-        } catch { }
-      }
-    } finally {
-      isSyncingZoom = false
-    }
-  }
-
-  inst.on('datazoom', handler)
-  linkageZoomCleanup = () => {
-    try {
-      inst.off('datazoom', handler)
-    } catch { }
-    const set = linkageRegistry.get(groupId)
-    if (set) {
-      set.delete(inst)
-      if (set.size === 0) linkageRegistry.delete(groupId)
-    }
-  }
+  linkageZoomCleanup = attachLinkageZoom({
+    inst: chartInstance.value,
+    groupId: props.linkageGroup as string,
+    linkageZoomOnly: !!props.linkageZoomOnly,
+    onSyncingChange: (v) => {
+      isSyncingZoom = v
+    },
+  })
 }
 
 const applyWheelZoom = () => {
@@ -891,79 +445,12 @@ const applyOption = () => {
   restoreZoomAfterSetOption()
 }
 
-const buildResolvedOption = () => {
-  const opt = { ...(props.option as any) } as EChartsOption & {
-    dataZoom?: any
-    xAxis?: any
-    backgroundColor?: any
-    tooltip?: any
-  }
-
-  const rawTooltip = opt.tooltip
-  if (typeof rawTooltip === 'object' && rawTooltip) {
-    opt.tooltip = {
-      ...rawTooltip,
-      className: (rawTooltip as Record<string, unknown>).className ?? 'echarts-tooltip',
-
-      appendToBody: (rawTooltip as Record<string, unknown>).appendToBody ?? true,
-      backgroundColor:
-        (rawTooltip as Record<string, unknown>).backgroundColor ?? 'rgba(50, 50, 50, 0.9)',
-      borderColor: (rawTooltip as Record<string, unknown>).borderColor ?? 'rgba(50, 50, 50, 0.9)',
-      textStyle: (rawTooltip as Record<string, unknown>).textStyle ?? { color: '#fff' },
-      extraCssText:
-        (rawTooltip as Record<string, unknown>).extraCssText ?? 'z-index: 99999 !important;',
-    }
-  } else if (!opt.tooltip) {
-    opt.tooltip = {
-      className: 'echarts-tooltip',
-      appendToBody: true,
-      backgroundColor: 'rgba(50, 50, 50, 0.9)',
-      borderColor: 'rgba(50, 50, 50, 0.9)',
-      textStyle: { color: '#fff' },
-      extraCssText: 'z-index: 99999 !important;',
-    }
-  }
-
-  if (props.tooltipFollowMouse && opt.tooltip && typeof opt.tooltip === 'object') {
-    if (!('position' in opt.tooltip)) {
-      opt.tooltip.position = (pos: any, _params: any, _el: any, _elRect: any, size: any) => {
-        const [mouseX, mouseY] = pos as [number, number]
-        const [contentWidth, contentHeight] = size.contentSize as [number, number]
-        const [viewWidth, _viewHeight] = size.viewSize as [number, number]
-        let x = mouseX + 20
-        if (x + contentWidth > viewWidth) {
-          x = mouseX - contentWidth - 20
-        }
-        const y = Math.max(0, mouseY - contentHeight / 2)
-        return [x, y]
-      }
-    }
-  }
-
-  if (props.enableDataZoom && !opt.dataZoom) {
-    const hasXAxis = Array.isArray(opt.xAxis)
-      ? opt.xAxis.length > 0
-      : typeof opt.xAxis !== 'undefined'
-    if (hasXAxis) {
-      opt.dataZoom = [
-        { type: 'inside', xAxisIndex: 0, filterMode: 'none' },
-        {
-          type: 'slider',
-          xAxisIndex: 0,
-          bottom: 10,
-          height: 20,
-          filterMode: 'none',
-        },
-      ]
-    }
-  }
-
-  if (props.transparentBackground && typeof opt.backgroundColor === 'undefined') {
-    opt.backgroundColor = 'transparent'
-  }
-
-  return opt as EChartsOption
-}
+const buildResolvedOption = () =>
+  buildResolvedChartOption(props.option, {
+    tooltipFollowMouse: !!props.tooltipFollowMouse,
+    enableDataZoom: !!props.enableDataZoom,
+    transparentBackground: !!props.transparentBackground,
+  })
 
 const applyFullscreenOption = () => {
   if (!fullscreenChartInstance.value) return

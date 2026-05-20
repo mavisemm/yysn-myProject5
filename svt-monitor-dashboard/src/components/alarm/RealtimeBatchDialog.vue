@@ -100,63 +100,75 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
-import { ElMessageBox } from 'element-plus'
-import { useAlarmBatchStore } from '@/stores/alarmBatch'
-import { formatDateTime, normalizeEndDateTimeBySelectedDay } from '@/utils/datetime'
+import { watch } from 'vue'
+import {
+  SAME_WIDTH_POPPER_OPTIONS,
+  confirmBatchAction,
+  useAlarmBatchDropdownOptions,
+  useAlarmBatchEndTimePicker,
+  useAlarmBatchRowLabels,
+  useDialogOpenEffect,
+  useResponsiveDialogWidth,
+  useUiPageIndex,
+  type BatchConfirmType,
+} from './alarmBatchDialogUtils'
 
 defineEmits<{ (e: 'view', row: any): void }>()
 
-const store = useAlarmBatchStore()
-const isMobile = computed(() => window.innerWidth <= 800)
-const dialogWidth = computed(() => (isMobile.value ? '100vw' : '70vw'))
+const { store, deviceOptions, typeOptions } = useAlarmBatchDropdownOptions()
+const { dialogWidth } = useResponsiveDialogWidth()
+const sameWidthPopperOptions = SAME_WIDTH_POPPER_OPTIONS
 
-const sameWidthPopperOptions = {
-  modifiers: [
-    {
-      name: 'sameWidth',
-      enabled: true,
-      phase: 'beforeWrite',
-      requires: ['computeStyles'],
-      fn: ({ state }: any) => {
-        state.styles.popper.width = `${state.rects.reference.width}px`
-      },
-    },
-  ],
-} as any
+useDialogOpenEffect(
+  () => store.realtimeVisible,
+  () => {
+    void store.ensureDropdowns()
+    void store.fetchRealtimeList(0)
+  },
+)
+
+const pageForUi = useUiPageIndex(
+  () => store.realtimePageIndex,
+  (v) => {
+    store.realtimePageIndex = v as any
+  },
+)
+
+const {
+  onEndTimeChange,
+  onEndModelValue,
+  onEndPanelChange,
+  onEndCalendarChange,
+  disableFutureDate,
+  getDisabledStartHours,
+  getDisabledStartMinutes,
+  getDisabledStartSeconds,
+  getDisabledEndHours,
+  getDisabledEndMinutes,
+  getDisabledEndSeconds,
+} = useAlarmBatchEndTimePicker(
+  () => store.realtimeQuery.startTime,
+  () => store.realtimeQuery.endTime,
+  (v) => {
+    store.realtimeQuery.endTime = v
+  },
+)
+
+const { getDeviceMainName, getDeviceSubName, getPointName, getReceiverName, clearParsedRowCache } =
+  useAlarmBatchRowLabels({ parseDataJson: true })
 
 watch(
   () => store.realtimeVisible,
   (visible) => {
-    if (!visible) return
-
-    nextTick(() => {
-      void store.ensureDropdowns()
-      void store.fetchRealtimeList(0)
-    })
+    if (!visible) clearParsedRowCache()
   },
 )
 
-const pageForUi = computed({
-  get: () => store.realtimePageIndex + 1,
-  set: (v: number) => {
-    store.realtimePageIndex = Math.max(0, v - 1) as any
-  },
-})
+watch(
+  () => store.realtimeRows.map((row: any) => String(row?.id ?? '')),
+  () => clearParsedRowCache(),
+)
 
-const deviceOptions = computed(() => {
-  return (store.deviceNameList ?? []).map((x: any) => ({
-    value: x.key,
-    label: String(x.text ?? ''),
-  }))
-})
-
-const typeOptions = computed(() => {
-  return (store.typeList ?? []).map((x: any) => ({
-    value: x.key,
-    label: String(x.text ?? ''),
-  }))
-})
 
 const onSelectionChange = (rows: any[]) => {
   store.realtimeSelectedRowKeys = rows.map((r) => String(r.id)) as any
@@ -171,208 +183,20 @@ const onReset = () => {
   store.fetchRealtimeList(0, true)
 }
 
-const endDatePart = ref<string>('')
+const confirmBatch = (type: BatchConfirmType) =>
+  confirmBatchAction(type, {
+    yes: () => store.batchYesRealtime(),
+    not: () => store.batchNotRealtime(),
+    delete: () => store.batchDeleteRealtime(),
+  })
 
-const getDatePart = (value?: string) => {
-  const raw = String(value ?? '').trim()
-  if (!raw) return ''
-  return raw.split(' ')[0] ?? ''
-}
 
-const normalizeAndApplyEndTime = (rawValue?: string, forceApplyRule: boolean = false) => {
-  const normalized = normalizeEndDateTimeBySelectedDay(rawValue, forceApplyRule)
-  const picked = normalized ? new Date(normalized.replace(' ', 'T')) : null
-  const now = new Date()
-  const finalValue =
-    picked && !Number.isNaN(picked.getTime()) && picked.getTime() > now.getTime()
-      ? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
-      : normalized
-  if (finalValue !== rawValue) store.realtimeQuery.endTime = finalValue
-  endDatePart.value = getDatePart(store.realtimeQuery.endTime)
-}
 
-const toDateTimeText = (value: unknown): string | undefined => {
-  if (value == null || value === '') return undefined
-  if (value instanceof Date)
-    return Number.isNaN(value.getTime()) ? undefined : formatDateTime(value)
-  return String(value)
-}
-
-const onEndTimeChange = (value?: string) => {
-  normalizeAndApplyEndTime(value)
-}
-
-const onEndModelValue = (value?: string) => {
-  const nextDatePart = getDatePart(value)
-  const prevDatePart = endDatePart.value || getDatePart(store.realtimeQuery.endTime)
-  const forceApplyRule = !!nextDatePart && !!prevDatePart && nextDatePart !== prevDatePart
-  normalizeAndApplyEndTime(value, forceApplyRule)
-}
-
-const onEndPanelChange = (value: unknown) => {
-  normalizeAndApplyEndTime(toDateTimeText(value))
-}
-
-const onEndCalendarChange = (value: unknown) => {
-  const picked = Array.isArray(value) ? value[value.length - 1] : value
-  normalizeAndApplyEndTime(toDateTimeText(picked))
-}
-
-const disableFutureDate = (time: Date) => time.getTime() > Date.now()
-
-const isTodayByValue = (rawValue?: string) => {
-  const raw = String(rawValue ?? '').trim()
-  if (!raw) return false
-  const selected = new Date(raw.replace(' ', 'T'))
-  if (Number.isNaN(selected.getTime())) return false
-  const now = new Date()
-  return (
-    selected.getFullYear() === now.getFullYear() &&
-    selected.getMonth() === now.getMonth() &&
-    selected.getDate() === now.getDate()
-  )
-}
-
-const getDisabledHoursByRaw = (rawValue?: string) => {
-  if (!isTodayByValue(rawValue)) return []
-  const h = new Date().getHours()
-  return Array.from({ length: 24 - (h + 1) }, (_, i) => h + 1 + i)
-}
-
-const getDisabledMinutesByRaw = (rawValue: string | undefined, hour: number) => {
-  if (!isTodayByValue(rawValue)) return []
-  const now = new Date()
-  if (hour !== now.getHours()) return []
-  const m = now.getMinutes()
-  return Array.from({ length: 60 - (m + 1) }, (_, i) => m + 1 + i)
-}
-
-const getDisabledSecondsByRaw = (rawValue: string | undefined, hour: number, minute: number) => {
-  if (!isTodayByValue(rawValue)) return []
-  const now = new Date()
-  if (hour !== now.getHours() || minute !== now.getMinutes()) return []
-  const s = now.getSeconds()
-  return Array.from({ length: 60 - (s + 1) }, (_, i) => s + 1 + i)
-}
-
-const getDisabledStartHours = () => getDisabledHoursByRaw(store.realtimeQuery.startTime)
-const getDisabledStartMinutes = (hour: number) =>
-  getDisabledMinutesByRaw(store.realtimeQuery.startTime, hour)
-const getDisabledStartSeconds = (hour: number, minute: number) =>
-  getDisabledSecondsByRaw(store.realtimeQuery.startTime, hour, minute)
-
-const getDisabledEndHours = () => getDisabledHoursByRaw(store.realtimeQuery.endTime)
-const getDisabledEndMinutes = (hour: number) =>
-  getDisabledMinutesByRaw(store.realtimeQuery.endTime, hour)
-const getDisabledEndSeconds = (hour: number, minute: number) =>
-  getDisabledSecondsByRaw(store.realtimeQuery.endTime, hour, minute)
-
-const confirmBatch = async (type: 'yes' | 'not' | 'delete') => {
-  const actionText =
-    type === 'yes' ? '批量确认警报' : type === 'not' ? '批量确认误报' : '批量确认删除'
-  await ElMessageBox.confirm(`确认要执行【${actionText}】吗？`, '提示', { type: 'warning' })
-  if (type === 'yes') await store.batchYesRealtime()
-  if (type === 'not') await store.batchNotRealtime()
-  if (type === 'delete') await store.batchDeleteRealtime()
-}
-
-function safeParseJson(input: any): any {
-  if (!input) return undefined
-  if (typeof input === 'object') return input
-  if (typeof input !== 'string') return undefined
-  try {
-    return JSON.parse(input)
-  } catch {
-    return undefined
-  }
-}
-
-function splitDeviceName(rawName: any): { main: string; sub: string } {
-  const raw = String(rawName || '-')
-  const idxCn = raw.indexOf('（')
-  const idxEn = raw.indexOf('(')
-  const idx = idxCn !== -1 ? idxCn : idxEn
-  if (idx <= 0) return { main: raw, sub: '' }
-  const main = raw.slice(0, idx).trim()
-  const sub = raw
-    .slice(idx)
-    .replace(/^（|^\(/, '')
-    .replace(/）$|\)$/, '')
-    .trim()
-  return { main, sub }
-}
-
-const parsedRowCache = new Map<string, any>()
-const MAX_PARSED_ROW_CACHE = 300
-const clearParsedRowCache = () => parsedRowCache.clear()
-function ensureRowParsed(row: any): any {
-  if (!row) return undefined
-  const rowId = row.id != null ? String(row.id) : ''
-  if (!rowId) return undefined
-
-  const canUseParsed = parsedRowCache.has(rowId)
-  if (canUseParsed) {
-    const cached = parsedRowCache.get(rowId)
-    return cached
-  }
-
-  if (!row.dataJson) {
-    parsedRowCache.set(rowId, undefined)
-    return undefined
-  }
-
-  const raw = row.dataJson
-  const parsed = safeParseJson(raw)
-  parsedRowCache.set(rowId, parsed)
-  if (parsedRowCache.size > MAX_PARSED_ROW_CACHE) {
-    const firstKey = parsedRowCache.keys().next().value
-    if (firstKey != null) parsedRowCache.delete(firstKey)
-  }
-  return parsed
-}
-
-const getDeviceMainName = (row: any): string => {
-  const deviceName = row?.deviceName
-  const main = deviceName ? splitDeviceName(deviceName).main : ''
-  return row?._deviceMainName || main || String(deviceName ?? '')
-}
-
-const getDeviceSubName = (row: any): string => {
-  const deviceName = row?.deviceName
-  const shopName = row?.shopName
-  if (shopName) return String(shopName)
-  if (!deviceName) return row?._deviceSubName || ''
-  return splitDeviceName(deviceName).sub || row?._deviceSubName || ''
-}
-
-const getPointName = (row: any): string => {
-  const parsed = ensureRowParsed(row)
-  const pointName = parsed?.pointName ?? row?.pointName
-  return pointName ? String(pointName) : ''
-}
-
-const getReceiverName = (row: any): string => {
-  const parsed = ensureRowParsed(row)
-  const receiverName = parsed?.receiverName ?? row?.receiverName
-  return receiverName ? String(receiverName) : ''
-}
-
-watch(
-  () => store.realtimeVisible,
-  (visible) => {
-    if (!visible) clearParsedRowCache()
-  },
-)
-
-watch(
-  () => store.realtimeRows.map((row: any) => String(row?.id ?? '')),
-  () => {
-    clearParsedRowCache()
-  },
-)
 </script>
 
 <style scoped lang="scss">
+@import './alarm-batch-dialog.local.scss';
+
 :deep(.el-dialog__body) {
   color: var(--alarm-dialog-text);
   font-size: var(--alarm-dialog-font);
@@ -399,45 +223,11 @@ watch(
   font-size: var(--alarm-dialog-font);
 }
 
-.filter-form {
-  :deep(.el-form-item) {
-    margin-bottom: 10px;
-    margin-right: 14px;
-  }
-
-  :deep(.el-form-item:last-child) {
-    margin-right: 0;
-  }
-}
-
-.actions-bar {
-  display: flex;
-  gap: 10px;
-  row-gap: 10px;
-  margin: 2px 0 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.device-cell {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-
-.device-sub {
-  opacity: 0.75;
-}
-
-.pager {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
+.filter-form :deep(.el-form-item:last-child) {
+  margin-right: 0;
 }
 
 .table-wrapper {
-  flex: 1;
-  min-height: 0;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -445,10 +235,6 @@ watch(
 
 .table-wrapper::-webkit-scrollbar {
   display: none;
-}
-
-.table-wrapper :deep(.el-table) {
-  min-width: 0;
 }
 
 .operation-cell :deep(.operation-link) {

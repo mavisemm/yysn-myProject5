@@ -33,7 +33,7 @@
           </el-table-column>
           <el-table-column :label="props.mode === 'trend' ? '预警时间' : '报警时间'" min-width="180">
             <template #default="{ row }">
-              <span>{{ formatLocalDateTime(row.alarmTime) }}</span>
+              <span>{{ formatTimestampDisplay(row.alarmTime) }}</span>
             </template>
           </el-table-column>
         </el-table>
@@ -48,7 +48,8 @@ import { useRouter } from 'vue-router'
 import { useDeviceWaringDetailStore } from '@/stores/deviceWaringDetail'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
-import { resolveRealtimeDeviceKey } from '@/utils/realtimeAlarmNavigator'
+import { formatTimestampDisplay } from './alarmOverviewView'
+import { openRealtimeBatchForPoint } from './dashboardViewUtils'
 
 const router = useRouter()
 const alarmBatchStore = useAlarmBatchStore()
@@ -157,21 +158,6 @@ function mapToRow(x: any): TableRow {
   }
 }
 
-function formatLocalDateTime(input: unknown): string {
-  if (input == null || input === '') return '—'
-  const raw = String(input).trim()
-  if (!raw) return '—'
-
-  const numeric = Number(raw)
-  const date = Number.isFinite(numeric)
-    ? new Date(numeric < 1e12 ? numeric * 1000 : numeric)
-    : new Date(raw)
-
-  if (Number.isNaN(date.getTime())) return '—'
-  const pad = (v: number) => String(v).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
-}
-
 function normalizeDeviceKey(row: TableRow): string {
   const idKey = String(row.equipmentId ?? '')
     .trim()
@@ -209,28 +195,13 @@ const goToSoundPoint = (row: TableRow) => {
   if (!row.receiverId || !row.equipmentId) return
   const match = String(row.pointName ?? '').match(/(\d+)/)
   const pointNum = match ? Number(match[1]) : 0
-  void alarmBatchStore.ensureDropdowns().then(() => {
-    const deviceId = resolveRealtimeDeviceKey({
-      alarmId: String(row.equipmentId ?? ''),
-      pointNum,
-      pointName: String(row.pointName ?? ''),
-      deviceTreeData: deviceTreeStore.deviceTreeData ?? [],
-      deviceOptions: (alarmBatchStore.deviceNameList ?? []) as any[],
-    })
-
-    if (props.mode === 'trend') {
-      alarmBatchStore.resetRealtime()
-      if (deviceId) {
-        alarmBatchStore.realtimeQuery.deviceId = deviceId
-      }
-      void alarmBatchStore.openRealtime()
-    } else {
-      alarmBatchStore.resetRealtimeAlarm()
-      if (deviceId) {
-        alarmBatchStore.realtimeAlarmQuery.deviceId = deviceId
-      }
-      void alarmBatchStore.openRealtimeAlarm()
-    }
+  void openRealtimeBatchForPoint({
+    alarmBatchStore,
+    deviceTreeData: deviceTreeStore.deviceTreeData ?? [],
+    deviceId: String(row.equipmentId ?? ''),
+    pointNum,
+    pointName: String(row.pointName ?? ''),
+    mode: props.mode === 'trend' ? 'sound-warning' : 'vibration-alarm',
   })
   handleClose()
 }

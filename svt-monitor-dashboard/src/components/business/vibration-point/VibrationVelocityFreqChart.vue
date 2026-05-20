@@ -114,6 +114,7 @@ import {
   type VibrationMetricData,
 } from '@/api/modules/device'
 import { FullScreen, WarningFilled } from '@element-plus/icons-vue'
+import { VIBRATION_AXIS_OPTIONS, vibrationAxisLabel } from './vibrationPointUtils'
 import {
   buildPersistentMarkPointData,
   removeCurrentPersistentPoint,
@@ -388,15 +389,8 @@ const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({
 })
 const metricData = ref<VibrationMetricData>({})
 
-const axisOptions: { label: string; value: VibrationAxis }[] = [
-  { label: 'X轴(A)', value: 'X' },
-  { label: 'Y轴(H)', value: 'Y' },
-  { label: 'Z轴(V)', value: 'Z' },
-]
-
-function getVibrationAxisDisplayLabel(axis: VibrationAxis): string {
-  return axisOptions.find((o) => o.value === axis)?.label ?? `${axis}轴`
-}
+const axisOptions = VIBRATION_AXIS_OPTIONS
+const getVibrationAxisDisplayLabel = vibrationAxisLabel
 
 const freqAxis = ref<VibrationAxis>('X')
 

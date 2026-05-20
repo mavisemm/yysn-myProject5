@@ -89,6 +89,7 @@ import { CommonEcharts } from '@/components/common/chart'
 import { useRangeControls } from '@/composables/useRangeControls'
 import { getTenantId } from '@/api/tenant'
 import { observeResize, enableMouseWheelZoom } from '@/utils/chart'
+import { formatChartYAxisTick2 } from '@/utils/chartAxis'
 
 const emit = defineEmits(['chart-init'])
 const props = defineProps<{
@@ -143,11 +144,7 @@ const chartAxisColor = computed(() => '#fff')
 const chartSplitLineColor = computed(() => 'rgba(150,150,150, 0.2)')
 
 // y 轴刻度最多保留小数点后两位（并去掉无意义的尾随 0）
-const formatYAxisTick = (v: unknown) => {
-  const n = Number(v)
-  if (!Number.isFinite(n)) return ''
-  return String(Number(n.toFixed(2)))
-}
+const formatYAxisTick = formatChartYAxisTick2
 
 const selectedItemsWithColor = computed(() => {
   const selected = props.deviationList.filter((item) => item.visible)

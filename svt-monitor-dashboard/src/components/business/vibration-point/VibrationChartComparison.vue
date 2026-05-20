@@ -11,6 +11,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
+import { resolvePointDeviceIdFromTree } from './vibrationPointUtils'
 import VibrationVelocityFreqChart from './VibrationVelocityFreqChart.vue'
 import VibrationVelocityTimeChart from './VibrationVelocityTimeChart.vue'
 
@@ -36,23 +37,9 @@ const receiverIdResolved = computed(() => {
 })
 const deviceTreeStore = useDeviceTreeStore()
 
-const resolvePointDeviceId = (rid: string): string => {
-  if (!rid) return ''
-  for (const factory of deviceTreeStore.deviceTreeData) {
-    for (const workshop of factory.children ?? []) {
-      for (const device of workshop.children ?? []) {
-        if (device.type !== 'device') continue
-        const hit = (device.children ?? []).find((p) => p.type === 'point' && p.id === rid)
-        if (hit?.deviceId) return hit.deviceId
-      }
-    }
-  }
-  return ''
-}
-
 const pointDeviceId = computed(() => {
   if (props.deviceId) return String(props.deviceId)
-  return resolvePointDeviceId(receiverIdResolved.value)
+  return resolvePointDeviceIdFromTree(deviceTreeStore.deviceTreeData, receiverIdResolved.value)
 })
 </script>
 

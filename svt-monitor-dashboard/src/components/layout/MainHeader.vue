@@ -58,6 +58,12 @@ import HeaderClock from './HeaderClock.vue'
 import SoundVibrationSegment from './SoundVibrationSegment.vue'
 
 import { SwitchButton, House, Back } from '@element-plus/icons-vue'
+import {
+  layoutShowHomeButton,
+  layoutShowPointTypeSwitch,
+  layoutShowReturnDevice,
+} from '@/components/layout/layoutNavUtils'
+import { useLayoutDeviceNavigation } from '@/composables/useLayoutDeviceNavigation'
 
 const router = useRouter()
 const route = useRoute()
@@ -97,19 +103,9 @@ const onThemeLeave = () => {
   }, 150)
 }
 
-const showHomeButton = computed(() => {
-  return (
-    route.name === 'DeviceDetail' || route.name === 'SoundPoint' || route.name === 'VibrationPoint'
-  )
-})
-
-const showReturnDeviceButton = computed(() => {
-  return route.name === 'SoundPoint' || route.name === 'VibrationPoint'
-})
-
-const showPointTypeSwitch = computed(() => {
-  return route.name === 'SoundPoint' || route.name === 'VibrationPoint'
-})
+const showHomeButton = computed(() => layoutShowHomeButton(route.name))
+const showReturnDeviceButton = computed(() => layoutShowReturnDevice(route.name))
+const showPointTypeSwitch = computed(() => layoutShowPointTypeSwitch(route.name))
 
 const platformTitle = computed(() => {
   const tenantId = (localStorage.getItem('tenantId') || '').trim()
@@ -131,45 +127,10 @@ onBeforeUnmount(() => {
   }
 })
 
+const { goToDevice } = useLayoutDeviceNavigation()
+
 const goHome = () => {
-  router.push('/dashboard')
-}
-
-const goToDevice = () => {
-  if (route.name === 'DeviceDetail') {
-    const id = route.params.id
-    if (typeof id === 'string' && id) return
-  }
-
-  let equipmentId = (route.query.equipmentId as string) || ''
-
-  if (!equipmentId && (route.name === 'SoundPoint' || route.name === 'VibrationPoint')) {
-    const receiverIdParam = route.params.receiverId
-    const receiverId = Array.isArray(receiverIdParam) ? receiverIdParam[0] : receiverIdParam
-    if (typeof receiverId === 'string' && receiverId) {
-      const findParentDeviceId = (rid: string): string | null => {
-        for (const factory of deviceTreeStore.deviceTreeData) {
-          for (const workshop of factory.children ?? []) {
-            for (const device of workshop.children ?? []) {
-              if (device.type !== 'device') continue
-              const hasPoint = (device.children ?? []).some(
-                (p) => p.type === 'point' && p.id === rid,
-              )
-              if (hasPoint) return device.id
-            }
-          }
-        }
-        return null
-      }
-      equipmentId = findParentDeviceId(receiverId) ?? ''
-    }
-  }
-
-  if (equipmentId) {
-    router.push({ name: 'DeviceDetail', params: { id: equipmentId } })
-  } else {
-    router.push('/dashboard')
-  }
+  void router.push('/dashboard')
 }
 
 const handleLogout = () => {

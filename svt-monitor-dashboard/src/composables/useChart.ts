@@ -1,22 +1,22 @@
-import { onUnmounted, computed } from 'vue'
-import type { Ref } from 'vue'
+import { onUnmounted, type Ref } from 'vue'
 import { observeResize } from '@/utils/chart'
 
+const CHART_AXIS_COLOR = '#fff'
+const CHART_SPLIT_LINE_COLOR = 'rgba(255,255,255,0.1)'
+
 export function useChartTheme() {
-  const isGrayTheme = computed(() => false)
-  const chartAxisColor = computed(() => '#fff')
-  const chartSplitLineColor = computed(() => 'rgba(255,255,255,0.1)')
   return {
-    isGrayTheme,
-    chartAxisColor,
-    chartSplitLineColor,
+    isGrayTheme: false,
+    chartAxisColor: CHART_AXIS_COLOR,
+    chartSplitLineColor: CHART_SPLIT_LINE_COLOR,
     getColors: () => ({
-      axisColor: chartAxisColor.value,
-      splitLineColor: chartSplitLineColor.value,
-      isGrayTheme: isGrayTheme.value,
+      axisColor: CHART_AXIS_COLOR,
+      splitLineColor: CHART_SPLIT_LINE_COLOR,
+      isGrayTheme: false,
     }),
   }
 }
+
 export function useChartResize(
   chartInstance: Ref<any>,
   containerRef: Ref<HTMLElement | undefined>,
@@ -26,7 +26,7 @@ export function useChartResize(
 
   const createResizeProxy = () => {
     const inst = chartInstance.value
-    if (!inst || typeof inst.resize !== 'function') return null
+    if (!inst?.resize) return null
     return {
       ...inst,
       resize: () => {
@@ -43,18 +43,9 @@ export function useChartResize(
     }
   }
 
-  const bind = () => {
-    if (chartInstance.value && containerRef.value) {
-      const proxy = createResizeProxy()
-      cleanup = observeResize(proxy ?? chartInstance.value, containerRef.value)
-    }
-  }
-
   onUnmounted(() => {
-    if (cleanup) {
-      cleanup()
-      cleanup = null
-    }
+    cleanup?.()
+    cleanup = null
     if (resizeRaf != null) {
       cancelAnimationFrame(resizeRaf)
       resizeRaf = null
@@ -62,6 +53,10 @@ export function useChartResize(
   })
 
   return {
-    bindResize: bind,
+    bindResize: () => {
+      if (chartInstance.value && containerRef.value) {
+        cleanup = observeResize(createResizeProxy() ?? chartInstance.value, containerRef.value)
+      }
+    },
   }
 }

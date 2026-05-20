@@ -1,4 +1,5 @@
 import request from '../request'
+import { TAICANG_EVENT_FIND_URL, eqFilter } from '../helpers'
 import { getTenantId } from '../tenant'
 import type { VibrationEventPayload } from '@/services/vibrationWs'
 
@@ -15,9 +16,7 @@ export interface EventFindItem {
 
 export interface EventFindResponse {
   rc: number
-  ret?: {
-    items?: EventFindItem[]
-  }
+  ret?: { items?: EventFindItem[] }
   err: string | null
 }
 
@@ -68,24 +67,23 @@ export const fetchVibrationEventsForOverview = async (params?: {
 
   const pageSize = params?.pageSize ?? 30
   const res = await request.post<EventFindResponse>(
-    'http://122.224.196.178:8003/taicang/event/find',
+    TAICANG_EVENT_FIND_URL,
     {
       filterPropertyMap: [
-        { code: 'statusCode', operate: 'EQ', value: 'VALID' },
-        { code: 'tenantId', operate: 'EQ', value: tenantId },
-        { code: 'eventTypeCode', operate: 'EQ', value: 'MACHINE_VIBRATION' },
+        eqFilter('statusCode', 'VALID'),
+        eqFilter('tenantId', tenantId),
+        eqFilter('eventTypeCode', 'MACHINE_VIBRATION'),
         ...(params?.startTime != null ? [{ code: 'time', operate: 'GE', value: String(params.startTime) }] : []),
-        ...(params?.endTime != null ? [{ code: 'time', operate: 'LE', value: String(params.endTime) }] : [])
+        ...(params?.endTime != null ? [{ code: 'time', operate: 'LE', value: String(params.endTime) }] : []),
       ],
       pageIndex: 0,
       pageSize,
-      sortValueMap: [{ code: 'time', sort: 'desc' }]
+      sortValueMap: [{ code: 'time', sort: 'desc' }],
     },
-    { showLoading: false }
+    { showLoading: false },
   )
 
-  const items = res?.ret?.items ?? []
-  return items
+  return (res?.ret?.items ?? [])
     .map((it) => ({
       deviceId: String(it.deviceId ?? ''),
       time: Number(it.time ?? 0),
@@ -93,10 +91,10 @@ export const fetchVibrationEventsForOverview = async (params?: {
       eventTypeCode: String(it.eventTypeCode ?? ''),
       statusCode: String(it.statusCode ?? ''),
       probability: Number(it.probability ?? 0),
-      dataJson: typeof it.dataJson === 'string' ? it.dataJson : JSON.stringify(it.dataJson ?? {})
+      dataJson: typeof it.dataJson === 'string' ? it.dataJson : JSON.stringify(it.dataJson ?? {}),
     }))
     .filter((x) => x.deviceId && x.time)
- }
+}
 
 export const fetchVibrationAlarmsForOverview = async (params?: {
   tenantId?: string
@@ -106,9 +104,6 @@ export const fetchVibrationAlarmsForOverview = async (params?: {
   const tenantId = params?.tenantId ?? getTenantId()
   if (!tenantId) return []
 
-  const pageIndex = params?.pageIndex ?? 0
-  const pageSize = params?.pageSize ?? 5000
-
   const res = await request.post<VibrationAlarmFindResponse>(
     '/taicang/event/findVibrationAlarm',
     {
@@ -116,12 +111,11 @@ export const fetchVibrationAlarmsForOverview = async (params?: {
       statusCode: 'VALID',
       alarmLevel: 'ALARM',
       alarmType: 'MACHINE_VIBRATION',
-      pageIndex,
-      pageSize
+      pageIndex: params?.pageIndex ?? 0,
+      pageSize: params?.pageSize ?? 5000,
     },
-    { showLoading: false }
+    { showLoading: false },
   )
 
   return res?.ret?.items ?? []
 }
-

@@ -1,73 +1,12 @@
 import request from '../request'
+import { buildVibrationPayload } from '../helpers'
 import { getTenantId } from '../tenant'
-
-
-
-
-export interface Device {
-  id: string
-  name: string
-  type: string
-  status: 'normal' | 'warning' | 'alarm'
-  workshopId: string
-  workshopName: string
-  pointCount: number
-  lastUpdateTime: string
-}
-
-export interface ApiResponse<T = unknown> {
-  code: number
-  message: string
-  data: T
-}
-
-export interface DeviceListData {
-  list: Device[]
-  total: number
-  page: number
-  pageSize: number
-}
-
-
-export const getDeviceList = (params?: {
-  page?: number
-  pageSize?: number
-  keyword?: string
-  status?: string
-}): Promise<ApiResponse<DeviceListData>> => {
-  return request.get('/devices', { params })
-}
-
-
-export const getDeviceDetail = (id: string): Promise<ApiResponse<Device>> => {
-  return request.get(`/devices/${id}`)
-}
-
-
-export const updateDevice = (id: string, data: Partial<Device>): Promise<ApiResponse<Device>> => {
-  return request.put(`/devices/${id}`, data)
-}
-
-
-export const deleteDevice = (id: string): Promise<ApiResponse<boolean>> => {
-  return request.delete(`/devices/${id}`)
-}
-
-
-export const batchOperateDevices = (ids: string[], operation: string): Promise<ApiResponse<{success: boolean; affectedCount: number}>> => {
-  return request.post('/devices/batch', {
-    ids,
-    operation
-  })
-}
-
 
 export interface NewApiResponse<T = unknown> {
   rc: number
   ret: T
   err: string | null
 }
-
 
 /** 振动频域 / 时域数据轴向（与后端约定为大写） */
 export type VibrationAxis = 'X' | 'Y' | 'Z'
@@ -88,19 +27,8 @@ export const getVibrationFrequencyData = (
   receiverId: string,
   axis: VibrationAxis = 'X',
   alarmTime?: number,
-): Promise<NewApiResponse<VibrationFrequencyData>> => {
-  const payload: any = {
-    tenantId: getTenantId(),
-    deviceId,
-    receiverId,
-    axis,
-  }
-  const at = alarmTime == null ? NaN : Number(alarmTime)
-  if (Number.isFinite(at) && at > 0) {
-    payload.alarmTime = at
-  }
-  return request.post('/device/vibration/data/frequency', payload)
-}
+): Promise<NewApiResponse<VibrationFrequencyData>> =>
+  request.post('/device/vibration/data/frequency', buildVibrationPayload(deviceId, receiverId, axis, alarmTime))
 
 export const getVibrationFrequencyWaterfallData = (
   deviceId: string,
@@ -108,19 +36,17 @@ export const getVibrationFrequencyWaterfallData = (
   axis: VibrationAxis,
   time: string,
   startTime: string,
-  endTime: string
-): Promise<NewApiResponse<VibrationFrequencyWaterfallData>> => {
-  return request.post('/device/vibration/data/frequency/waterfall', {
+  endTime: string,
+): Promise<NewApiResponse<VibrationFrequencyWaterfallData>> =>
+  request.post('/device/vibration/data/frequency/waterfall', {
     tenantId: getTenantId(),
     deviceId,
     receiverId,
     axis,
     time,
     startTime,
-    endTime
+    endTime,
   })
-}
-
 
 export interface VibrationMetricData {
   collectTime?: string
@@ -142,18 +68,18 @@ export interface VibrationMetricData {
   zaccelerationMax?: number
 }
 
-export const getVibrationMetricData = (deviceId: string, receiverId: string): Promise<NewApiResponse<VibrationMetricData>> => {
-  return request.post('/device/vibration/data/metric/rms', {
+export const getVibrationMetricData = (
+  deviceId: string,
+  receiverId: string,
+): Promise<NewApiResponse<VibrationMetricData>> =>
+  request.post('/device/vibration/data/metric/rms', {
     tenantId: getTenantId(),
-    deviceId: deviceId,
-    receiverId: receiverId
+    deviceId,
+    receiverId,
   })
-}
-
 
 export interface VibrationTimeDomainData {
   time: number
-  
   timedomaindata: string | number[] | string[]
 }
 
@@ -162,16 +88,5 @@ export const getVibrationTimeDomainData = (
   receiverId: string,
   axis: VibrationAxis = 'X',
   alarmTime?: number,
-): Promise<NewApiResponse<VibrationTimeDomainData>> => {
-  const payload: any = {
-    tenantId: getTenantId(),
-    deviceId: deviceId,
-    receiverId: receiverId,
-    axis,
-  }
-  const at = alarmTime == null ? NaN : Number(alarmTime)
-  if (Number.isFinite(at) && at > 0) {
-    payload.alarmTime = at
-  }
-  return request.post('/device/vibration/data/time', payload)
-}
+): Promise<NewApiResponse<VibrationTimeDomainData>> =>
+  request.post('/device/vibration/data/time', buildVibrationPayload(deviceId, receiverId, axis, alarmTime))

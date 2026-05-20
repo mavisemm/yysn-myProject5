@@ -1,4 +1,3 @@
-
 export interface DeviceNode {
   id: string
   name: string
@@ -14,24 +13,20 @@ export interface DeviceNode {
   alarmType?: string
   alarmValue?: string
   hasAlarm?: boolean
-  
-  
-  receiverId?: string    
-  deviceId?: string      
-  pointName?: string      
-  warningTime?: string    
-  warningType?: string    
-  warningValue?: number | string  
-  equipmentId?: string    
-  equipmentName?: string  
+  receiverId?: string
+  deviceId?: string
+  pointName?: string
+  warningTime?: string
+  warningType?: string
+  warningValue?: number | string
+  equipmentId?: string
+  equipmentName?: string
 }
-
 
 export interface Workshop {
   id: string
   name: string
 }
-
 
 export interface Device {
   id: string
@@ -42,15 +37,13 @@ export interface Device {
   deviceNode: DeviceNode
 }
 
-
 export interface StatItem {
-  title: string;
-  number?: number | string;
-  icon?: any;
+  title: string
+  number?: number | string
+  icon?: any
 }
 
-
 export interface MetricItem {
-  title: string;
-  unit?: string;
+  title: string
+  unit?: string
 }

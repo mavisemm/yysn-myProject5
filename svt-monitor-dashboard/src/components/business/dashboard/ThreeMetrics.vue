@@ -73,6 +73,7 @@ import { useDeviceTreeStore } from '@/stores/deviceTree'
 import type { MetricItem } from '@/types/device'
 import type { DeviceNode } from '@/types/device'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
+import { findDeviceIdInTree } from './dashboardViewUtils'
 
 interface RankingItem {
   equipmentId?: string
@@ -109,24 +110,8 @@ const buildDeviceNameToIdMap = (nodes: DeviceNode[]) => {
 
 buildDeviceNameToIdMap(deviceTreeStore.deviceTreeData)
 
-const isValidDevice = (deviceId: string): boolean => {
-  const findDeviceInTree = (nodes: DeviceNode[]): boolean => {
-    for (const node of nodes) {
-      if (node.id === deviceId && node.type === 'device') {
-        return true
-      }
-      if (node.children && node.children.length > 0) {
-        if (findDeviceInTree(node.children)) {
-          return true
-        }
-      }
-    }
-    return false
-  }
-
-  const deviceTreeStoreInstance = useDeviceTreeStore()
-  return findDeviceInTree(deviceTreeStoreInstance.deviceTreeData)
-}
+const isValidDevice = (deviceId: string): boolean =>
+  findDeviceIdInTree(deviceTreeStore.deviceTreeData, deviceId)
 
 const goToRankTarget = (rank: RankingItem) => {
   const fromApi = String(rank.equipmentId ?? '').trim()

@@ -1,100 +1,5 @@
 import request from '../request'
-
-import { getTenantId } from '../tenant'
-
-export interface SoundData {
-  id: string
-  deviceId: string
-  deviceName: string
-  soundType: string
-  soundLevel: number
-  frequency: number
-  waveform: string 
-  spectrum: SpectrumData[] 
-  capturedTime: string
-  duration: number
-  status: 'normal' | 'warning' | 'alarm'
-  threshold: {
-    warning: number
-    alarm: number
-  }
-}
-
-export interface SpectrumData {
-  frequency: number
-  amplitude: number
-}
-
-export interface AISoundAnalysis {
-  id: string
-  soundId: string
-  analysisResult: string
-  confidence: number
-  anomalyType?: string
-  severity: 'low' | 'medium' | 'high' | 'critical'
-  suggestions: string[]
-  createTime: string
-}
-
-export interface SoundPoint {
-  id: string
-  receiverId: string
-  pointName: string
-  deviceId: string
-  deviceName: string
-  location: string
-  status: 'normal' | 'warning' | 'alarm'
-  lastSoundLevel: number
-  lastFrequency: number
-  threshold: {
-    warning: number
-    alarm: number
-  }
-  lastCapturedTime: string
-}
-
-export interface SoundAnalysisResult {
-  soundId: string
-  analysis: {
-    frequencyComponents: { freq: number; amp: number }[]
-    dominantFrequency: number
-    soundLevel: number
-    harmonicDistortion: number
-    noiseLevel: number
-    classification: string
-    riskLevel: 'low' | 'medium' | 'high' | 'critical'
-  }
-  recommendations: string[]
-}
-
-export interface SoundDataResponse {
-  code: number
-  message: string
-  data: SoundData
-}
-
-export interface SoundAnalysisResponse {
-  code: number
-  message: string
-  data: AISoundAnalysis
-}
-
-export interface SoundPointListResponse {
-  code: number
-  message: string
-  data: {
-    list: SoundPoint[]
-    total: number
-    page: number
-    pageSize: number
-  }
-}
-
-export interface SoundAnalysisResultResponse {
-  code: number
-  message: string
-  data: SoundAnalysisResult
-}
+import { withTenantQuery } from '../helpers'
 
 export interface SoundDeviationItem {
   id: number
@@ -129,107 +34,6 @@ export interface SoundDeviationItem {
   detectorName?: string | null
 }
 
-export const getSoundData = (params?: {
-  deviceId?: string
-  startTime?: string
-  endTime?: string
-  page?: number
-  pageSize?: number
-}): Promise<SoundDataResponse> => {
-  return request.get('/sound/data', {
-    params,
-    showLoading: true
-  })
-}
-
-export const getAISoundAnalysis = (soundId: string): Promise<SoundAnalysisResponse> => {
-  return request.get(`/sound/ai-analysis/${soundId}`, {
-    showLoading: true
-  })
-}
-
-export const analyzeSoundByAI = (soundId: string): Promise<SoundAnalysisResponse> => {
-  return request.post(`/sound/ai-analyze/${soundId}`, {}, {
-    showLoading: true
-  })
-}
-
-export const getSoundPointList = (params?: {
-  deviceId?: string
-  keyword?: string
-  status?: string
-  page?: number
-  pageSize?: number
-}): Promise<SoundPointListResponse> => {
-  return request.get('/sound/points', {
-    params,
-    showLoading: true
-  })
-}
-
-export const getSpectrumData = (params?: {
-  deviceId?: string
-  startTime?: string
-  endTime?: string
-}): Promise<any> => {
-  return request.get('/sound/spectrum', {
-    params,
-    showLoading: true
-  })
-}
-
-export const getSoundTrend = (deviceId: string, params?: {
-  startTime?: string
-  endTime?: string
-  interval?: string
-}): Promise<any> => {
-  return request.get(`/sound/trend/${deviceId}`, {
-    params,
-    showLoading: true
-  })
-}
-
-export const getRealTimeSoundData = (deviceId: string): Promise<SoundDataResponse> => {
-  return request.get(`/sound/realtime/${deviceId}`, {
-    showLoading: false
-  })
-}
-
-export const getSoundAnalysisReport = (params?: {
-  deviceId?: string
-  startTime?: string
-  endTime?: string
-  reportType?: string
-}): Promise<any> => {
-  return request.get('/sound/report', {
-    params,
-    showLoading: true
-  })
-}
-
-export const uploadSoundForAnalysis = (formData: FormData): Promise<SoundAnalysisResultResponse> => {
-  return request.post('/sound/upload-analyze', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    },
-    showLoading: true
-  })
-}
-
-export const getHistoricalSoundData = (params?: {
-  deviceId?: string
-  receiverId?: string
-  startTime?: string
-  endTime?: string
-  page?: number
-  pageSize?: number
-}): Promise<any> => {
-  return request.get('/sound/history', {
-    params,
-    showLoading: true
-  })
-}
-
 export const getStandardFrequencyList = (payload: {
   recordIdList: (number | string)[]
   type: number
@@ -244,34 +48,23 @@ export const getStandardFrequencyList = (payload: {
     dbArray: number[] | null
     densityArray: number[] | null
   }>
-}> => {
-  return request.post('/taicang/hardware/device/standard-frequency-type/findSimpleFrequencyList', payload, {
-    params: {
-      userId: '',
-      tenantId: getTenantId(),
-      _t: Date.now()
-    }
+}> =>
+  request.post('/taicang/hardware/device/standard-frequency-type/findSimpleFrequencyList', payload, {
+    params: withTenantQuery(),
   })
-}
 
 export const getLatestDeviationByReceiver = (params?: {
   receiverId?: string
   startTime?: string
   endTime?: string
 }): Promise<SoundDeviationItem[]> => {
-  const receiverId = params?.receiverId ?? ''
   const now = Date.now()
-  const startTime = params?.startTime ?? String(now - 24 * 60 * 60 * 1000)
-  const endTime = params?.endTime ?? String(now)
   return request.get('/taicang/device/sound/data/findLatestDeviationByReceiver/no-scene', {
-    params: {
-      userId: '',
-      tenantId: getTenantId(),
-      ...(receiverId ? { receiverId } : {}),
-      startTime,
-      endTime,
-      _t: now
-    },
+    params: withTenantQuery({
+      ...(params?.receiverId ? { receiverId: params.receiverId } : {}),
+      startTime: params?.startTime ?? String(now - 24 * 60 * 60 * 1000),
+      endTime: params?.endTime ?? String(now),
+    }),
   })
 }
 
@@ -279,24 +72,20 @@ export interface FindLatestFrequencyByIdRet {
   soundFrequencyDtoList?: Array<{ freq1: number; freq2: number; db?: number; density?: number }>
   soundAvgFrequencyDtoList?: Array<{ db?: number; density?: number }>
 }
-export const findLatestFrequencyById = (params: { id: string | number; type: number }): Promise<FindLatestFrequencyByIdRet> => {
-  return request.get('/taicang/device/sound/data/findLatestFrequencyById', {
-    params: {
-      userId: '',
-      tenantId: getTenantId(),
-      id: params.id,
-      type: params.type,
-      _t: Date.now()
-    },
-    showLoading: true
+
+export const findLatestFrequencyById = (params: {
+  id: string | number
+  type: number
+}): Promise<FindLatestFrequencyByIdRet> =>
+  request.get('/taicang/device/sound/data/findLatestFrequencyById', {
+    params: withTenantQuery({ id: params.id, type: params.type }),
+    showLoading: true,
   })
-}
 
 const SOUND_WAV_BASE = import.meta.env.VITE_SOUND_WAV_BASE_URL || ''
 
 export const getWavByFreqGroupIdUrl = (freqGroupId: string | number): string => {
-  const safeFreqGroupId = encodeURIComponent(String(freqGroupId))
-  const path = `/jiepai/hardware/device/type/das/soundDetector/findWavByFreqGroupId?freqGroupId=${safeFreqGroupId}`
+  const path = `/jiepai/hardware/device/type/das/soundDetector/findWavByFreqGroupId?freqGroupId=${encodeURIComponent(String(freqGroupId))}`
   return SOUND_WAV_BASE ? `${SOUND_WAV_BASE.replace(/\/$/, '')}${path}` : path
 }
 
@@ -306,10 +95,6 @@ export interface LatestFrequencyBinDto {
   db?: number
   density?: number
   [k: string]: any
-}
-
-export interface LatestFrequencyByReceiverRet {
-  ret?: LatestFrequencyBinDto[]
 }
 
 export interface LatestFrequencyNoSceneRet {
@@ -322,40 +107,26 @@ export interface LatestFrequencyNoSceneRet {
   [k: string]: any
 }
 
+const latestFrequencyParams = (receiverId: string, type: number) =>
+  withTenantQuery({ receiverId, type })
+
 export const getLatestFrequencyByReceiver = (payload: {
   receiverId: string
   type: number
-}): Promise<{ rc: number; ret?: LatestFrequencyBinDto[] }> => {
-  return request.get('/taicang/device/sound/data/findLatestFrequencyByReceiver', {
-    params: {
-      userId: '',
-      tenantId: getTenantId(),
-      receiverId: payload.receiverId,
-      type: payload.type,
-      _t: Date.now()
-    },
-    showLoading: true
+}): Promise<{ rc: number; ret?: LatestFrequencyBinDto[] }> =>
+  request.get('/taicang/device/sound/data/findLatestFrequencyByReceiver', {
+    params: latestFrequencyParams(payload.receiverId, payload.type),
+    showLoading: true,
   })
-}
 
 export const getLatestFrequencyByReceiverNoScene = (payload: {
   receiverId: string
   type: number
-}): Promise<{ rc: number; ret?: LatestFrequencyNoSceneRet }> => {
-  return request.get('/taicang/device/sound/data/findLatestFrequencyByReceiver/no-scene', {
-    params: {
-      userId: '',
-      tenantId: getTenantId(),
-      receiverId: payload.receiverId,
-      type: payload.type,
-      _t: Date.now()
-    },
-    showLoading: true
+}): Promise<{ rc: number; ret?: LatestFrequencyNoSceneRet }> =>
+  request.get('/taicang/device/sound/data/findLatestFrequencyByReceiver/no-scene', {
+    params: latestFrequencyParams(payload.receiverId, payload.type),
+    showLoading: true,
   })
-}
 
-export const askAIModel = (payload: any): Promise<{ rc: number; ret?: string; err?: string }> => {
-  return request.post('/taicang/device/sound/qwen/max/analyze', payload, {
-    showLoading: true
-  })
-}
+export const askAIModel = (payload: any): Promise<{ rc: number; ret?: string; err?: string }> =>
+  request.post('/taicang/device/sound/qwen/max/analyze', payload, { showLoading: true })

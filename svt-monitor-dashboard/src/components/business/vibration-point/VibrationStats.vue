@@ -115,23 +115,10 @@ import { useRoute } from 'vue-router'
 import { getVibrationMetricData, type VibrationMetricData } from '@/api/modules/device'
 import { ElMessage } from 'element-plus'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
+import { resolvePointDeviceIdFromTree } from './vibrationPointUtils'
 
 const route = useRoute()
 const deviceTreeStore = useDeviceTreeStore()
-
-const resolvePointDeviceId = (rid: string): string => {
-  if (!rid) return ''
-  for (const factory of deviceTreeStore.deviceTreeData) {
-    for (const workshop of factory.children ?? []) {
-      for (const device of workshop.children ?? []) {
-        if (device.type !== 'device') continue
-        const hit = (device.children ?? []).find((p) => p.type === 'point' && p.id === rid)
-        if (hit?.deviceId) return hit.deviceId
-      }
-    }
-  }
-  return ''
-}
 
 const receiverIdFromParams = computed(() => {
   const rid = route.params.receiverId
@@ -139,7 +126,9 @@ const receiverIdFromParams = computed(() => {
   return (typeof resolved === 'string' ? resolved : '') || ''
 })
 
-const pointDeviceId = computed(() => resolvePointDeviceId(receiverIdFromParams.value))
+const pointDeviceId = computed(() =>
+  resolvePointDeviceIdFromTree(deviceTreeStore.deviceTreeData, receiverIdFromParams.value),
+)
 
 const emptyMetric = (): VibrationMetricData => ({
   xvelocityRms: 0,

@@ -39,21 +39,10 @@
 import { ElTable, ElTableColumn, ElPagination } from 'element-plus'
 import { ref, computed, nextTick } from 'vue'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
-
-interface PointInfo {
-  id: string
-  deviceId?: string
-  name: string
-  lastAlarmTime: string
-  alarmType: string
-  alarmValue: string
-  matchMesureValue?: string | number
-  thresholdValue?: string | number
-  hasAlarm: boolean
-}
+import type { DeviceDetailPointInfo } from './deviceDetailTypes'
 
 interface PointListModuleProps {
-  pointList: PointInfo[]
+  pointList: DeviceDetailPointInfo[]
   selectedPointId?: string
   currentPage: number
   pageSize: number
@@ -73,7 +62,7 @@ const emit = defineEmits<{
 
 const pointTableRef = ref<any>(null)
 
-const onRowClick = (row: PointInfo) => {
+const onRowClick = (row: DeviceDetailPointInfo) => {
   emit('point-selected', row.id)
   const idx = props.pointList.findIndex((p) => p.id === row.id)
   void scrollRowAtIndexIntoBodyView(idx >= 0 ? idx : 0)
