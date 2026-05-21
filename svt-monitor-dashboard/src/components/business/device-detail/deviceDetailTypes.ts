@@ -5,7 +5,9 @@ export interface DeviceDetailPointInfo {
   alarmType: string
   alarmValue: string
   matchMesureValue?: string | number
-  thresholdValue?: string | number
+  warningX?: string | number
+  warningY?: string | number
+  warningZ?: string | number
   deviceId?: string
   hasAlarm: boolean
 }

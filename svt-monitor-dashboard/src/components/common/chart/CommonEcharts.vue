@@ -324,7 +324,7 @@ const attachAutoYAxisListenerForFullscreen = () => {
   fullscreenAutoYAxisCleanup = () => {
     try {
       inst.off('datazoom', handler)
-    } catch {}
+    } catch { }
     if (fullscreenAutoYAxisTimer != null) {
       window.clearTimeout(fullscreenAutoYAxisTimer)
       fullscreenAutoYAxisTimer = null
@@ -351,7 +351,7 @@ const applyLinkageZoom = () => {
   }
   if (!(props.enableLinkageZoom && props.linkageGroup)) {
     if ((chartInstance.value as { group?: string }).group) {
-      ;(chartInstance.value as { group?: string }).group = ''
+      ; (chartInstance.value as { group?: string }).group = ''
     }
     return
   }

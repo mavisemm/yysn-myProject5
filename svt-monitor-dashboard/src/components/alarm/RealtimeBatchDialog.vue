@@ -195,7 +195,7 @@ const confirmBatch = (type: BatchConfirmType) =>
 </script>
 
 <style scoped lang="scss">
-@import './alarm-batch-dialog.local.scss';
+@use './alarm-batch-dialog.local.scss' as *;
 
 :deep(.el-dialog__body) {
   color: var(--alarm-dialog-text);

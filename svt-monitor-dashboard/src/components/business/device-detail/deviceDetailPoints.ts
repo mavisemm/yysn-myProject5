@@ -19,7 +19,9 @@ export function mapCheckPointsFromApi(rawList: unknown[]): DeviceDetailPointInfo
         ? String(item.warningValue)
         : '无',
     matchMesureValue: item.matchMesureValue,
-    thresholdValue: item.thresholdValue,
+    warningX: item.warningX,
+    warningY: item.warningY,
+    warningZ: item.warningZ,
     deviceId: item.deviceId,
     hasAlarm: item.isAlarm === 0,
   }))

@@ -13,16 +13,26 @@
         'text-align': 'center',
       }" :cell-style="{ background: 'transparent', color: '#fff', 'text-align': 'center' }" @row-click="onRowClick"
         highlight-current-row>
-        <el-table-column prop="name" label="点位名称" width="25%" />
-        <el-table-column prop="id" label="点位编号" width="30%" />
-        <el-table-column label="声音偏差值阈值" width="25%">
+        <el-table-column prop="name" label="点位名称" width="14%" />
+        <el-table-column prop="id" label="点位编号" width="18%" />
+        <el-table-column label="声音偏差值阈值" width="14%">
           <template #default="{ row }">
             {{ row.matchMesureValue ?? '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="振动阈值" width="20%">
+        <el-table-column label="X轴(A)振动报警阈值" width="18%">
           <template #default="{ row }">
-            {{ row.thresholdValue ?? '-' }}
+            {{ row.warningX ?? '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Y轴(H)振动报警阈值" width="18%">
+          <template #default="{ row }">
+            {{ row.warningY ?? '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="Z轴(V)振动报警阈值" width="18%">
+          <template #default="{ row }">
+            {{ row.warningZ ?? '-' }}
           </template>
         </el-table-column>
       </el-table>
@@ -389,7 +399,7 @@ defineExpose({
     }
 
     :deep(.el-table) {
-      min-width: 760px;
+      min-width: 980px;
       font-size: var(--mobile-font-size-body);
     }
 

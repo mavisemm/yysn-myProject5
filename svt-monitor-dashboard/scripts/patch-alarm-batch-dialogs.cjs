@@ -174,17 +174,17 @@ for (const c of configs) {
   )
   content = content.replace(
     /<style lang="scss">\s*@media \(max-width: 800px\)[\s\S]*?<\/style>\s*$/,
-    `<style lang="scss">\n@import './alarm-batch-dialog.scss';\n</style>\n`,
+    `<style lang="scss">\n@use './alarm-batch-dialog.scss' as *;\n</style>\n`,
   )
   if (c.file === 'RealtimeBatchDialog.vue') {
     content = content.replace(
       /<style scoped lang="scss">[\s\S]*?<\/style>/,
-      `<style scoped lang="scss">\n@import './alarm-batch-dialog.local.scss';\n\n:deep(.el-dialog__body) {\n  color: var(--alarm-dialog-text);\n  font-size: var(--alarm-dialog-font);\n}\n\n:deep(.el-form-item__label) {\n  color: var(--alarm-dialog-muted);\n  font-size: var(--alarm-dialog-font);\n  white-space: nowrap;\n}\n\n:deep(.el-table) {\n  color: var(--alarm-dialog-text);\n  font-size: var(--alarm-dialog-font);\n}\n\n:deep(.el-table__header-wrapper th) {\n  color: var(--alarm-dialog-muted);\n  font-weight: 600;\n}\n\n:deep(.el-pagination) {\n  color: var(--alarm-dialog-muted);\n  font-size: var(--alarm-dialog-font);\n}\n\n.filter-form :deep(.el-form-item:last-child) {\n  margin-right: 0;\n}\n\n.table-wrapper {\n  overflow-x: auto;\n  scrollbar-width: none;\n  -ms-overflow-style: none;\n}\n\n.table-wrapper::-webkit-scrollbar {\n  display: none;\n}\n\n.operation-cell :deep(.operation-link) {\n  font-size: var(--alarm-dialog-font);\n}\n</style>`,
+      `<style scoped lang="scss">\n@use './alarm-batch-dialog.local.scss' as *;\n\n:deep(.el-dialog__body) {\n  color: var(--alarm-dialog-text);\n  font-size: var(--alarm-dialog-font);\n}\n\n:deep(.el-form-item__label) {\n  color: var(--alarm-dialog-muted);\n  font-size: var(--alarm-dialog-font);\n  white-space: nowrap;\n}\n\n:deep(.el-table) {\n  color: var(--alarm-dialog-text);\n  font-size: var(--alarm-dialog-font);\n}\n\n:deep(.el-table__header-wrapper th) {\n  color: var(--alarm-dialog-muted);\n  font-weight: 600;\n}\n\n:deep(.el-pagination) {\n  color: var(--alarm-dialog-muted);\n  font-size: var(--alarm-dialog-font);\n}\n\n.filter-form :deep(.el-form-item:last-child) {\n  margin-right: 0;\n}\n\n.table-wrapper {\n  overflow-x: auto;\n  scrollbar-width: none;\n  -ms-overflow-style: none;\n}\n\n.table-wrapper::-webkit-scrollbar {\n  display: none;\n}\n\n.operation-cell :deep(.operation-link) {\n  font-size: var(--alarm-dialog-font);\n}\n</style>`,
     )
   } else {
     content = content.replace(
       /<style scoped lang="scss">[\s\S]*?<\/style>\s*(?=<style lang="scss">)/,
-      `<style scoped lang="scss">\n@import './alarm-batch-dialog.local.scss';\n</style>\n\n`,
+      `<style scoped lang="scss">\n@use './alarm-batch-dialog.local.scss' as *;\n</style>\n\n`,
     )
   }
   fs.writeFileSync(filePath, content)

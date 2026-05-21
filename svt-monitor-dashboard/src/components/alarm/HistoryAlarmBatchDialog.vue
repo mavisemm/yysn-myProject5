@@ -198,9 +198,9 @@ const confirmAll = (type: BatchConfirmType) =>
 </script>
 
 <style scoped lang="scss">
-@import './alarm-batch-dialog.local.scss';
+@use './alarm-batch-dialog.local.scss' as *;
 </style>
 
 <style lang="scss">
-@import './alarm-batch-dialog.scss';
+@use './alarm-batch-dialog.scss' as *;
 </style>
