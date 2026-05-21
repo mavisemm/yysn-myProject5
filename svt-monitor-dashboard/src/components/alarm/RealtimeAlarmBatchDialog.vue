@@ -38,18 +38,23 @@
     </div>
 
     <div class="actions-bar">
-      <el-button type="success" size="small" :disabled="!store.realtimeAlarmSelectedRowKeys.length"
-        @click="confirmBatch('yes')">
-        批量确认警报
-      </el-button>
-      <el-button type="warning" size="small" :disabled="!store.realtimeAlarmSelectedRowKeys.length"
-        @click="confirmBatch('not')">
-        批量确认误报
-      </el-button>
-      <el-button type="danger" size="small" :disabled="!store.realtimeAlarmSelectedRowKeys.length"
-        @click="confirmBatch('delete')">
-        批量确认删除
-      </el-button>
+      <div class="all-actions">
+        <el-button type="success" size="small" @click="confirmAll('yes')">全部确认警报</el-button>
+        <el-button type="warning" size="small" @click="confirmAll('not')">全部确认误报</el-button>
+        <el-button type="danger" size="small" @click="confirmAll('delete')">全部删除</el-button>
+        <el-button type="success" size="small" :disabled="!store.realtimeAlarmSelectedRowKeys.length"
+          @click="confirmBatch('yes')">
+          批量确认警报
+        </el-button>
+        <el-button type="warning" size="small" :disabled="!store.realtimeAlarmSelectedRowKeys.length"
+          @click="confirmBatch('not')">
+          批量确认误报
+        </el-button>
+        <el-button type="danger" size="small" :disabled="!store.realtimeAlarmSelectedRowKeys.length"
+          @click="confirmBatch('delete')">
+          批量确认删除
+        </el-button>
+      </div>
     </div>
 
     <div class="table-wrapper" v-loading="store.realtimeAlarmLoading">
@@ -177,6 +182,17 @@ const confirmBatch = (type: BatchConfirmType) =>
     not: () => store.batchNotRealtimeAlarm(),
     delete: () => store.batchDeleteRealtimeAlarm(),
   })
+
+const confirmAll = (type: BatchConfirmType) =>
+  confirmBatchAction(
+    type,
+    {
+      yes: () => store.allYesRealtimeAlarm(),
+      not: () => store.allNotRealtimeAlarm(),
+      delete: () => store.allDeleteRealtimeAlarm(),
+    },
+    'all',
+  )
 
 
 

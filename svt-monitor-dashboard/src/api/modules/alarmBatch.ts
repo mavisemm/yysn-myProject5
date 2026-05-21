@@ -123,6 +123,9 @@ export const apiConfirmVibrationYes = (idList: string[]) =>
 export const apiConfirmVibrationNot = (idList: string[]) =>
   postEvent('/device/vibration/data/not', idList, true)
 
+export const apiDeleteVibrationAlarm = (idList: string[]) =>
+  postEvent('/taicang/event/vibration/alarm/delete', idList, true)
+
 export const apiDeleteEvents = (idList: string[]) =>
   postEvent('/taicang/event/delete', idList, true)
 

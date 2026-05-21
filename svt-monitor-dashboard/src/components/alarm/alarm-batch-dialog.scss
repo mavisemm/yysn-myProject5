@@ -143,24 +143,15 @@
   }
 
   .alarm-batch-dialog--realtime-warning .actions-bar,
-  .alarm-batch-dialog--realtime-alarm .actions-bar {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .alarm-batch-dialog--realtime-warning .actions-bar .el-button,
-  .alarm-batch-dialog--realtime-alarm .actions-bar .el-button {
-    width: 100%;
-    margin-left: 0 !important;
-  }
-
+  .alarm-batch-dialog--realtime-alarm .actions-bar,
   .alarm-batch-dialog--history-warning .actions-bar,
   .alarm-batch-dialog--history-alarm .actions-bar {
     display: block !important;
     margin-bottom: 10px;
   }
 
+  .alarm-batch-dialog--realtime-warning .all-actions,
+  .alarm-batch-dialog--realtime-alarm .all-actions,
   .alarm-batch-dialog--history-warning .all-actions,
   .alarm-batch-dialog--history-alarm .all-actions {
     width: 100%;
@@ -169,6 +160,8 @@
     gap: 8px;
   }
 
+  .alarm-batch-dialog--realtime-warning .all-actions .el-button,
+  .alarm-batch-dialog--realtime-alarm .all-actions .el-button,
   .alarm-batch-dialog--history-warning .all-actions .el-button,
   .alarm-batch-dialog--history-alarm .all-actions .el-button {
     width: 100%;

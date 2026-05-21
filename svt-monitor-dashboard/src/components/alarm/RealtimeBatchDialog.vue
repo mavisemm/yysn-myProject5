@@ -39,18 +39,23 @@
     </div>
 
     <div class="actions-bar">
-      <el-button type="success" size="small" :disabled="!store.realtimeSelectedRowKeys.length"
-        @click="confirmBatch('yes')">
-        批量确认警报
-      </el-button>
-      <el-button type="warning" size="small" :disabled="!store.realtimeSelectedRowKeys.length"
-        @click="confirmBatch('not')">
-        批量确认误报
-      </el-button>
-      <el-button type="danger" size="small" :disabled="!store.realtimeSelectedRowKeys.length"
-        @click="confirmBatch('delete')">
-        批量确认删除
-      </el-button>
+      <div class="all-actions">
+        <el-button type="success" size="small" @click="confirmAll('yes')">全部确认警报</el-button>
+        <el-button type="warning" size="small" @click="confirmAll('not')">全部确认误报</el-button>
+        <el-button type="danger" size="small" @click="confirmAll('delete')">全部删除</el-button>
+        <el-button type="success" size="small" :disabled="!store.realtimeSelectedRowKeys.length"
+          @click="confirmBatch('yes')">
+          批量确认警报
+        </el-button>
+        <el-button type="warning" size="small" :disabled="!store.realtimeSelectedRowKeys.length"
+          @click="confirmBatch('not')">
+          批量确认误报
+        </el-button>
+        <el-button type="danger" size="small" :disabled="!store.realtimeSelectedRowKeys.length"
+          @click="confirmBatch('delete')">
+          批量确认删除
+        </el-button>
+      </div>
     </div>
 
     <div class="table-wrapper" v-loading="store.realtimeLoading">
@@ -189,6 +194,17 @@ const confirmBatch = (type: BatchConfirmType) =>
     not: () => store.batchNotRealtime(),
     delete: () => store.batchDeleteRealtime(),
   })
+
+const confirmAll = (type: BatchConfirmType) =>
+  confirmBatchAction(
+    type,
+    {
+      yes: () => store.allYesRealtime(),
+      not: () => store.allNotRealtime(),
+      delete: () => store.allDeleteRealtime(),
+    },
+    'all',
+  )
 
 
 
@@ -433,12 +449,19 @@ const confirmBatch = (type: BatchConfirmType) =>
   }
 
   .alarm-batch-dialog--realtime-warning .actions-bar {
+    display: block !important;
+    margin-bottom: 10px;
+  }
+
+  .alarm-batch-dialog--realtime-warning .all-actions {
+    width: 100%;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
+    grid-column: 1 / -1;
   }
 
-  .alarm-batch-dialog--realtime-warning .actions-bar .el-button {
+  .alarm-batch-dialog--realtime-warning .all-actions .el-button {
     width: 100%;
     margin-left: 0 !important;
   }

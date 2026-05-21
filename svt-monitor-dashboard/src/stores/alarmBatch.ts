@@ -12,6 +12,7 @@ import {
   apiConfirmYesAll,
   apiDeleteAllValid,
   apiDeleteEvents,
+  apiDeleteVibrationAlarm,
   apiFindEvents,
   apiGetDeviceNameDropdownList,
   apiGetEventTypeDropdownList,
@@ -852,7 +853,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const batchDeleteRealtimeAlarm = async () => {
     const ids = realtimeAlarmSelectedRowKeys.value
     if (!ids.length) return
-    await apiDeleteEvents(ids)
+    await apiDeleteVibrationAlarm(ids)
     realtimeAlarmSelectedRowKeys.value = []
     await refreshRealtimeAlarmAfterBatch()
   }
@@ -876,7 +877,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const batchDeleteHistoryAlarm = async () => {
     const ids = historyAlarmSelectedRowKeys.value
     if (!ids.length) return
-    await apiDeleteEvents(ids)
+    await apiDeleteVibrationAlarm(ids)
     historyAlarmSelectedRowKeys.value = []
     await refreshHistoryAlarmAfterBatch()
   }
@@ -956,6 +957,52 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     await apiDeleteAllValid()
     historyAlarmSelectedRowKeys.value = []
     await refreshHistoryAlarmAfterBatch()
+  }
+
+  const allYesRealtime = async () => {
+    try {
+      await apiConfirmYesAll(undefined)
+    } catch (e) {
+      const ids = await fetchAllValidIds()
+      await apiConfirmYesAll(ids.length ? ids : undefined)
+    }
+    realtimeSelectedRowKeys.value = []
+    await refreshRealtimeAfterBatch()
+  }
+
+  const allNotRealtime = async () => {
+    await apiConfirmNotAll()
+    realtimeSelectedRowKeys.value = []
+    await refreshRealtimeAfterBatch()
+  }
+
+  const allDeleteRealtime = async () => {
+    await apiDeleteAllValid()
+    realtimeSelectedRowKeys.value = []
+    await refreshRealtimeAfterBatch()
+  }
+
+  const allYesRealtimeAlarm = async () => {
+    try {
+      await apiConfirmYesAll(undefined)
+    } catch (e) {
+      const ids = await fetchAllValidIds()
+      await apiConfirmYesAll(ids.length ? ids : undefined)
+    }
+    realtimeAlarmSelectedRowKeys.value = []
+    await refreshRealtimeAlarmAfterBatch()
+  }
+
+  const allNotRealtimeAlarm = async () => {
+    await apiConfirmNotAll()
+    realtimeAlarmSelectedRowKeys.value = []
+    await refreshRealtimeAlarmAfterBatch()
+  }
+
+  const allDeleteRealtimeAlarm = async () => {
+    await apiDeleteAllValid()
+    realtimeAlarmSelectedRowKeys.value = []
+    await refreshRealtimeAlarmAfterBatch()
   }
 
   return {
@@ -1041,7 +1088,14 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     allDeleteHistory,
     allYesHistoryAlarm,
     allNotHistoryAlarm,
-    allDeleteHistoryAlarm
+    allDeleteHistoryAlarm,
+
+    allYesRealtime,
+    allNotRealtime,
+    allDeleteRealtime,
+    allYesRealtimeAlarm,
+    allNotRealtimeAlarm,
+    allDeleteRealtimeAlarm,
   }
 })
 
