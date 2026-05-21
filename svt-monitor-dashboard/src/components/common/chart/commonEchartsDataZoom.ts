@@ -1,3 +1,5 @@
+import type * as echarts from 'echarts'
+
 export type DataZoomRange = { startIndex: number; endIndex: number }
 export type DataZoomValueRange = { startValue: number; endValue: number }
 
@@ -173,6 +175,46 @@ export function parseDataZoomRange(opt: unknown, xAxisIndex: number): DataZoomRa
     : { startIndex: endIndex, endIndex: startIndex }
 }
 
+/** 点是否落在可见 X 轴数值范围内（仅用于统计 Y，不改变 X 轴显示范围） */
+export function isXInVisibleValueRange(x: number, lo: number, hi: number): boolean {
+  const a = Math.min(lo, hi)
+  const b = Math.max(lo, hi)
+  const span = b - a
+  const eps = span > 0 ? Math.max(span * 1e-9, 1e-12) : 1e-9
+  return x >= a - eps && x <= b + eps
+}
+
+/**
+ * 按绘图区左右边缘像素反算当前屏幕上可见的 X 数值范围（与肉眼所见一致，不扩大 X 轴配置）。
+ */
+export function parseVisibleXValueRangeFromChart(
+  inst: echarts.ECharts,
+  xAxisIndex: number,
+): DataZoomValueRange | null {
+  try {
+    if (typeof inst.isDisposed === 'function' && inst.isDisposed()) return null
+    const model = (inst as unknown as { getModel?: () => { getComponent?: (t: string, i: number) => unknown } })
+      .getModel?.()
+    if (!model) return null
+    const xAxisModel = model.getComponent?.('xAxis', xAxisIndex) as
+      | { coordinateSystem?: { getRect?: () => { x: number; y: number; width: number; height: number } } }
+      | undefined
+    const cs = xAxisModel?.coordinateSystem
+    const rect = cs?.getRect?.()
+    if (!rect || rect.width <= 0 || rect.height <= 0) return null
+
+    const yMid = rect.y + rect.height / 2
+    const left = inst.convertFromPixel({ xAxisIndex }, [rect.x, yMid]) as number[] | number
+    const right = inst.convertFromPixel({ xAxisIndex }, [rect.x + rect.width, yMid]) as number[] | number
+    const x0 = Number(Array.isArray(left) ? left[0] : left)
+    const x1 = Number(Array.isArray(right) ? right[0] : right)
+    if (!Number.isFinite(x0) || !Number.isFinite(x1)) return null
+    return { startValue: Math.min(x0, x1), endValue: Math.max(x0, x1) }
+  } catch {
+    return null
+  }
+}
+
 export function parseDataZoomValueRange(opt: unknown, xAxisIndex: number): DataZoomValueRange | null {
   const dz = getDataZoomForXAxis(opt, xAxisIndex)
   const xAxis = getXAxis(opt, xAxisIndex)
@@ -239,10 +281,18 @@ export function computeVisibleYRangeByIndex(
   return { min, max }
 }
 
+function seriesUsesXAxisIndex(series: Record<string, unknown>, xAxisIndex: number): boolean {
+  const idx = series.xAxisIndex
+  if (typeof idx === 'number') return idx === xAxisIndex
+  if (Array.isArray(idx)) return idx.includes(xAxisIndex)
+  return xAxisIndex === 0
+}
+
 export function computeVisibleYRangeByXValue(
   opt: unknown,
   xRange: DataZoomValueRange,
-  samplingThreshold: number,
+  _samplingThreshold: number,
+  xAxisIndex = 0,
 ): { min: number; max: number } | null {
   const seriesList = pickArray((opt as { series?: unknown })?.series)
   if (!seriesList.length) return null
@@ -253,12 +303,14 @@ export function computeVisibleYRangeByXValue(
   const hi = Math.max(xRange.startValue, xRange.endValue)
 
   for (const s of seriesList) {
-    const data = (s as { data?: unknown[] })?.data
+    const series = s as Record<string, unknown>
+    if (!seriesUsesXAxisIndex(series, xAxisIndex)) continue
+    const data = series.data
     if (!Array.isArray(data) || data.length === 0) continue
-    const step = getSamplingStep(data.length, samplingThreshold)
-    for (let i = 0; i < data.length; i += step) {
+
+    for (let i = 0; i < data.length; i++) {
       const x = extractXFromDatum(data[i])
-      if (x == null || x < lo || x > hi) continue
+      if (x == null || !isXInVisibleValueRange(x, lo, hi)) continue
       const y = extractYFromDatum(data[i])
       if (y == null) continue
       found = true

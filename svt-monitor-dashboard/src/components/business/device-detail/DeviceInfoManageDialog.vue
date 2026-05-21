@@ -33,7 +33,7 @@
           <template v-else-if="L === 'view'">
             <el-button size="small" type="success" @click="openCat">新增</el-button>
             <el-button size="small" type="danger" @click="enterDelCat">删除</el-button>
-            <el-button size="small" type="warning" @click="startEditCat">编辑</el-button>
+            <el-button size="small" type="primary" @click="startEditCat">编辑</el-button>
           </template>
           <template v-else>
             <el-button size="small" type="primary" :loading="saving" @click="confirmL">确定</el-button>
@@ -102,7 +102,7 @@
           <template v-else-if="R === 'view'">
             <el-button size="small" type="success" @click="toggleInfoAddMode">新增</el-button>
             <el-button size="small" type="danger" @click="enterDelField">删除</el-button>
-            <el-button size="small" type="warning" @click="startEditField">编辑</el-button>
+            <el-button size="small" type="primary" @click="startEditField">编辑</el-button>
           </template>
           <template v-else>
             <el-button size="small" type="primary" :loading="saving" @click="confirmR">确定</el-button>

@@ -455,16 +455,25 @@ const FREQ_DATA_SIZE_MIN = 0
 /** 非全屏小图倍频竖线固定为默认 4 阶，不与全屏自定义倍频同步 */
 const INLINE_HARMONIC_MAX_ORDER = 4
 const FREQ_HARMONIC_DEBOUNCE_MS = 400
+const FREQ_DATA_SIZE_DEBOUNCE_MS = 400
 const freqHarmonicMaxOrderCommitted = ref(4)
 const freqHarmonicMaxOrderInput = ref(4)
 const freqDataSizeCommitted = ref(0)
 const freqDataSizeInput = ref(0)
 let freqHarmonicDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let freqDataSizeDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const clearFreqHarmonicDebounce = () => {
   if (freqHarmonicDebounceTimer != null) {
     clearTimeout(freqHarmonicDebounceTimer)
     freqHarmonicDebounceTimer = null
+  }
+}
+
+const clearFreqDataSizeDebounce = () => {
+  if (freqDataSizeDebounceTimer != null) {
+    clearTimeout(freqDataSizeDebounceTimer)
+    freqDataSizeDebounceTimer = null
   }
 }
 
@@ -617,8 +626,9 @@ const ensureFullscreenFreqYAxisIncludesRms = () => {
     const mx = Number(y0?.max)
     const rms = getCurrentAxisVelocityRms()
     if (!Number.isFinite(mn) || !Number.isFinite(mx) || !Number.isFinite(rms)) return
-    if (mx + FREQ_Y_AXIS_STEP >= rms) return
-    patchFullscreenFreqYAxisRange(mn, rms)
+    const newMax = Math.max(mx, rms)
+    if (newMax <= mx + FREQ_Y_AXIS_STEP) return
+    patchFullscreenFreqYAxisRange(mn, newMax)
   } catch {
     // ignore
   }
@@ -1456,11 +1466,14 @@ const commitFreqHarmonicMaxOrder = () => {
 }
 
 const commitFreqDataSize = () => {
-  const nextDataSize = clampFreqDataSize(freqDataSizeInput.value)
-  freqDataSizeInput.value = nextDataSize
-  if (freqDataSizeCommitted.value === nextDataSize) return
-  freqDataSizeCommitted.value = nextDataSize
-  void loadFreqData()
+  clearFreqDataSizeDebounce()
+  freqDataSizeDebounceTimer = setTimeout(() => {
+    freqDataSizeDebounceTimer = null
+    const nextDataSize = clampFreqDataSize(freqDataSizeInput.value)
+    freqDataSizeInput.value = nextDataSize
+    freqDataSizeCommitted.value = nextDataSize
+    void loadFreqData()
+  }, FREQ_DATA_SIZE_DEBOUNCE_MS)
 }
 
 const scheduleFreqHarmonicDebouncedCommit = () => {
@@ -2069,6 +2082,7 @@ onUnmounted(() => {
     fullscreenFreqZrClickCleanup = null
   }
   clearFreqHarmonicDebounce()
+  clearFreqDataSizeDebounce()
   disposeInlineRangeControls()
   disposeFullscreenRangeControls()
   if (typeof window !== 'undefined') {

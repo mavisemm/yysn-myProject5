@@ -119,7 +119,7 @@ const props = withDefaults(
     enableWheelZoom: false,
     autoYAxisOnZoom: true,
     autoYAxisOnZoomDebounceMs: 120,
-    autoYAxisOnZoomPaddingRatio: 0.05,
+    autoYAxisOnZoomPaddingRatio: 0.08,
     autoYAxisSamplingThreshold: 2000,
     tooltipFollowMouse: false,
     transparentBackground: true,
@@ -248,14 +248,14 @@ const attachRangeControlsListener = () => {
 
 const autoYAxisConfig = () => ({
   xAxisIndex: (props.rangeControlsXAxisIndex ?? 0) as number,
-  paddingRatio: Math.max(0, Number(props.autoYAxisOnZoomPaddingRatio ?? 0.05)),
+  paddingRatio: Math.max(0, Number(props.autoYAxisOnZoomPaddingRatio ?? 0.08)),
   samplingThreshold: Math.max(100, Number(props.autoYAxisSamplingThreshold ?? 2000)),
 })
 
 const runAutoYAxisForInstance = (inst: echarts.ECharts, lazyUpdate = true) => {
   if (!props.option) return
   const opt = inst.getOption?.()
-  const patch = resolveAutoYAxisMinMax(opt, autoYAxisConfig())
+  const patch = resolveAutoYAxisMinMax(opt, autoYAxisConfig(), inst)
   if (patch) applyYAxisMinMaxToChart(inst, patch.min, patch.max, lazyUpdate)
 }
 
@@ -415,6 +415,7 @@ const initChart = async () => {
   }
 
   if (chartInstance.value) {
+    unbindResize()
     chartInstance.value.dispose()
     chartInstance.value = null
   }
@@ -423,10 +424,8 @@ const initChart = async () => {
   applyLinkageZoom()
   applyWheelZoom()
   applyOption()
-  // 在移动端模拟/视口切换时，init 后再补一次 resize 更稳
-  try {
-    chartInstance.value.resize()
-  } catch { }
+  bindResize()
+  scheduleForceResizePasses()
 
   attachRangeControlsListener()
   attachAutoYAxisListener()
@@ -494,7 +493,11 @@ const getThemeColors = () => ({
   isGrayTheme: isGrayTheme.value,
 })
 
-const { bindResize } = useChartResize(chartInstance, containerRef)
+const { bindResize, unbindResize } = useChartResize(chartInstance, chartRef, containerRef)
+const { bindResize: bindFullscreenResize, unbindResize: unbindFullscreenResize } = useChartResize(
+  fullscreenChartInstance,
+  fullscreenChartRef,
+)
 
 const forceResize = (reason?: string) => {
   if (!chartInstance.value) return
@@ -512,6 +515,22 @@ const scheduleForceResizePasses = () => {
   requestAnimationFrame(() => requestAnimationFrame(() => forceResize('raf2')))
   window.setTimeout(() => forceResize('t120'), 120)
   window.setTimeout(() => forceResize('t360'), 360)
+}
+
+const forceFullscreenResize = () => {
+  if (!fullscreenChartInstance.value || !fullscreenChartRef.value) return
+  if (!hasNonZeroSize(fullscreenChartRef.value)) return
+  try {
+    fullscreenChartInstance.value.resize()
+  } catch {
+    // ignore
+  }
+}
+
+const scheduleFullscreenResizePasses = () => {
+  requestAnimationFrame(() => forceFullscreenResize())
+  requestAnimationFrame(() => requestAnimationFrame(() => forceFullscreenResize()))
+  window.setTimeout(() => forceFullscreenResize(), 120)
 }
 
 const scheduleOptionRefresh = () => {
@@ -652,14 +671,21 @@ watch(
 onMounted(() => {
   if (!resolvedEmpty.value && !props.loading) {
     initChart()
-    bindResize()
-    scheduleForceResizePasses()
   }
 
-  const onWinResize = () => scheduleForceResizePasses()
-  const onOrientation = () => scheduleForceResizePasses()
+  const onWinResize = () => {
+    scheduleForceResizePasses()
+    if (fullscreenVisible.value) scheduleFullscreenResizePasses()
+  }
+  const onOrientation = () => {
+    scheduleForceResizePasses()
+    if (fullscreenVisible.value) scheduleFullscreenResizePasses()
+  }
   const onVisibility = () => {
-    if (!document.hidden) scheduleForceResizePasses()
+    if (!document.hidden) {
+      scheduleForceResizePasses()
+      if (fullscreenVisible.value) scheduleFullscreenResizePasses()
+    }
   }
   window.addEventListener('resize', onWinResize, { passive: true } as any)
   window.addEventListener('orientationchange', onOrientation, { passive: true } as any)
@@ -712,7 +738,8 @@ const handleFullscreenOpened = async () => {
     fullscreenChartInstance.value = echarts.init(fullscreenChartRef.value)
     applyFullscreenOption()
     attachAutoYAxisListenerForFullscreen()
-    fullscreenChartInstance.value.resize()
+    bindFullscreenResize()
+    scheduleFullscreenResizePasses()
     emit('fullscreen-chart-ready', fullscreenChartInstance.value)
   } catch {
     // ignore
@@ -720,6 +747,7 @@ const handleFullscreenOpened = async () => {
 }
 const handleFullscreenClosed = () => {
   emit('fullscreen-closed')
+  unbindFullscreenResize()
   if (fullscreenAutoYAxisCleanup) {
     fullscreenAutoYAxisCleanup()
     fullscreenAutoYAxisCleanup = null
@@ -741,6 +769,8 @@ const handleFullscreenClosing = () => {
 
 onUnmounted(() => {
   cleanupInitWatchers()
+  unbindResize()
+  unbindFullscreenResize()
   if (chartInstance.value) {
     chartInstance.value.dispose()
     chartInstance.value = null
@@ -801,7 +831,6 @@ watch(
     if (empty || loading) return
     if (!chartInstance.value && chartRef.value) {
       initChart()
-      bindResize()
     }
   },
 )

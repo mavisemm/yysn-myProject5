@@ -19,44 +19,59 @@ export function useChartTheme() {
 
 export function useChartResize(
   chartInstance: Ref<any>,
-  containerRef: Ref<HTMLElement | undefined>,
+  ...containerRefs: Array<Ref<HTMLElement | undefined>>
 ) {
   let cleanup: (() => void) | null = null
   let resizeRaf: number | null = null
 
-  const createResizeProxy = () => {
-    const inst = chartInstance.value
-    if (!inst?.resize) return null
-    return {
-      ...inst,
-      resize: () => {
-        if (resizeRaf != null) cancelAnimationFrame(resizeRaf)
-        resizeRaf = requestAnimationFrame(() => {
-          resizeRaf = null
-          try {
-            inst.resize()
-          } catch {
-            // ignore
-          }
-        })
-      },
-    }
-  }
-
-  onUnmounted(() => {
+  const unbindResize = () => {
     cleanup?.()
     cleanup = null
     if (resizeRaf != null) {
       cancelAnimationFrame(resizeRaf)
       resizeRaf = null
     }
+  }
+
+  const scheduleResize = () => {
+    const inst = chartInstance.value
+    if (!inst?.resize) return
+    if (resizeRaf != null) cancelAnimationFrame(resizeRaf)
+    resizeRaf = requestAnimationFrame(() => {
+      resizeRaf = null
+      try {
+        inst.resize()
+      } catch {
+        // ignore
+      }
+    })
+  }
+
+  const createResizeProxy = () => ({
+    resize: scheduleResize,
   })
+
+  onUnmounted(unbindResize)
 
   return {
     bindResize: () => {
-      if (chartInstance.value && containerRef.value) {
-        cleanup = observeResize(createResizeProxy() ?? chartInstance.value, containerRef.value)
-      }
+      unbindResize()
+      if (!chartInstance.value) return
+      const targets = containerRefs
+        .map((r) => r.value)
+        .filter((el): el is HTMLElement => !!el)
+      const seen = new Set<HTMLElement>()
+      const uniqueTargets = targets.filter((el) => {
+        if (seen.has(el)) return false
+        seen.add(el)
+        return true
+      })
+      if (!uniqueTargets.length) return
+      const proxy = createResizeProxy()
+      const cleanups = uniqueTargets.map((el) => observeResize(proxy, el))
+      cleanup = () => cleanups.forEach((fn) => fn())
     },
+    unbindResize,
+    scheduleResize,
   }
 }

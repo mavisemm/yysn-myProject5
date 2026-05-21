@@ -5,6 +5,7 @@ import {
   getXAxisType,
   parseDataZoomRange,
   parseDataZoomValueRange,
+  parseVisibleXValueRangeFromChart,
 } from './commonEchartsDataZoom'
 
 export type AutoYAxisResolveConfig = {
@@ -16,14 +17,17 @@ export type AutoYAxisResolveConfig = {
 export function resolveAutoYAxisMinMax(
   opt: unknown,
   config: AutoYAxisResolveConfig,
+  chartInst?: echarts.ECharts | null,
 ): { min: number; max: number } | null {
   const xType = getXAxisType(opt, config.xAxisIndex)
   let y: { min: number; max: number } | null = null
 
   if (xType === 'value' || xType === 'time' || xType === 'log') {
-    const xRange = parseDataZoomValueRange(opt, config.xAxisIndex)
+    const xRange =
+      (chartInst ? parseVisibleXValueRangeFromChart(chartInst, config.xAxisIndex) : null) ??
+      parseDataZoomValueRange(opt, config.xAxisIndex)
     if (!xRange) return null
-    y = computeVisibleYRangeByXValue(opt, xRange, config.samplingThreshold)
+    y = computeVisibleYRangeByXValue(opt, xRange, config.samplingThreshold, config.xAxisIndex)
   } else {
     const range = parseDataZoomRange(opt, config.xAxisIndex)
     if (!range) return null
@@ -35,7 +39,8 @@ export function resolveAutoYAxisMinMax(
   const span = y.max - y.min
   const padding = span === 0 ? (Math.abs(y.max) || 1) * paddingRatio : span * paddingRatio
   const min = y.min >= 0 ? Math.max(0, y.min - padding) : y.min - padding
-  let max = y.max + padding
+  // 上沿多留一点空隙，避免峰值贴顶（下沿保持对称 padding）
+  let max = y.max + padding * 1.1
   if (min === max) max = min + 1
   return { min, max }
 }
