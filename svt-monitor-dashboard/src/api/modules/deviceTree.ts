@@ -66,6 +66,29 @@ export const getDeviceTreeData = async (): Promise<DeviceTreeResponse> => {
   }
 }
 
+/** 从点位展示名解析序号（如「1号」「听筒2」→ 1、2），用于设备树排序 */
+const parsePointOrderNum = (point: PointData): number | null => {
+  const label = point.receiverName || point.pointName || ''
+  if (!label) return null
+  const m = label.match(/(\d+)/)
+  if (!m) return null
+  const n = Number(m[1])
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+const sortPointsByOrderNum = (points: PointData[]): PointData[] =>
+  points
+    .map((point, index) => ({ point, index }))
+    .sort((a, b) => {
+      const orderA = parsePointOrderNum(a.point)
+      const orderB = parsePointOrderNum(b.point)
+      if (orderA != null && orderB != null) return orderA - orderB
+      if (orderA != null) return -1
+      if (orderB != null) return 1
+      return a.index - b.index
+    })
+    .map(({ point }) => point)
+
 const toPointId = (point: PointData, equipmentId: string, pointIndex: number) =>
   point.receiverId != null && point.receiverId !== ''
     ? String(point.receiverId)
@@ -106,7 +129,7 @@ export const transformDeviceTreeData = (responseData: DeviceTreeResponse): Devic
         customerDeviceId: equipment.customerDeviceId,
         equipmentId: String(equipment.equipmentId),
         equipmentName: equipment.equipmentName,
-        children: equipment.children.map((point, pointIndex) =>
+        children: sortPointsByOrderNum(equipment.children).map((point, pointIndex) =>
           mapPoint(point, String(equipment.equipmentId), pointIndex),
         ),
       })),
