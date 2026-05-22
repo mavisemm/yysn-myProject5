@@ -270,3 +270,39 @@ export type AlarmBatchQuery = {
   eventTypeCode?: string
 }
 
+type SelectOption = { value: string; label: string }
+
+export function buildVibrationDeleteAllConfirmMessage(
+  query: AlarmBatchQuery,
+  deviceOptions: SelectOption[],
+  typeOptions: SelectOption[],
+): string {
+  const lines: string[] = []
+  if (query.startTime) lines.push(`开始时间：${query.startTime}`)
+  if (query.endTime) lines.push(`结束时间：${query.endTime}`)
+  if (query.deviceId) {
+    const label = deviceOptions.find((o) => o.value === String(query.deviceId))?.label
+    lines.push(`听音器名称：${label ?? query.deviceId}`)
+  }
+  if (query.eventTypeCode) {
+    const label = typeOptions.find((o) => o.value === String(query.eventTypeCode))?.label
+    lines.push(`报警类型：${label ?? query.eventTypeCode}`)
+  }
+  if (!lines.length) return '确认删除所有数据吗？'
+  return ['确认删除符合以下条件的所有数据吗？', ...lines].join('<br/>')
+}
+
+export async function confirmVibrationDeleteAll(
+  query: AlarmBatchQuery,
+  deviceOptions: SelectOption[],
+  typeOptions: SelectOption[],
+  handler: () => Promise<void>,
+) {
+  const message = buildVibrationDeleteAllConfirmMessage(query, deviceOptions, typeOptions)
+  await ElMessageBox.confirm(message, '提示', {
+    type: 'warning',
+    dangerouslyUseHTMLString: true,
+  })
+  await handler()
+}
+

@@ -11,6 +11,7 @@ import {
   apiConfirmYes,
   apiConfirmYesAll,
   apiDeleteAllValid,
+  apiDeleteAllVibrationAlarm,
   apiDeleteEvents,
   apiDeleteVibrationAlarm,
   apiFindEvents,
@@ -19,7 +20,8 @@ import {
   type DropdownItem,
   type EventRow,
   type FilterProperty,
-  type FindVibrationAlarmByConditionBody
+  type FindVibrationAlarmByConditionBody,
+  type VibrationAlarmDeleteAllBody
 } from '@/api/modules/alarmBatch'
 
 type AlarmCode = 'ACCURATE_YES' | 'ACCURATE_NOT'
@@ -302,6 +304,13 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     return filters
   }
 
+  const buildAlarmFilterFields = (query: AlarmQuery) => ({
+    ...(query.deviceId ? { deviceId: String(query.deviceId) } : {}),
+    ...(query.eventTypeCode ? { eventTypeCode: String(query.eventTypeCode) } : {}),
+    ...(toMillis(query.startTime) != null ? { startTime: toMillis(query.startTime) } : {}),
+    ...(toMillis(query.endTime) != null ? { endTime: toMillis(query.endTime) } : {})
+  })
+
   const buildAlarmConditionBody = (
     query: AlarmQuery,
     statusCode: string,
@@ -317,10 +326,19 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
       pageSize,
       statusCode,
       tenantId,
-      ...(query.deviceId ? { deviceId: String(query.deviceId) } : {}),
-      ...(query.eventTypeCode ? { eventTypeCode: String(query.eventTypeCode) } : {}),
-      ...(toMillis(query.startTime) != null ? { startTime: toMillis(query.startTime) } : {}),
-      ...(toMillis(query.endTime) != null ? { endTime: toMillis(query.endTime) } : {})
+      ...buildAlarmFilterFields(query)
+    }
+  }
+
+  const buildAlarmDeleteBody = (query: AlarmQuery, statusCode: string): VibrationAlarmDeleteAllBody | null => {
+    const tenantId = readTenantIdFromStorageOrAddressBar()
+    if (!tenantId) return null
+    return {
+      alarmLevel: 'ALARM',
+      alarmType: 'MACHINE_VIBRATION',
+      statusCode,
+      tenantId,
+      ...buildAlarmFilterFields(query)
     }
   }
 
@@ -954,7 +972,9 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   }
 
   const allDeleteHistoryAlarm = async () => {
-    await apiDeleteAllValid()
+    const body = buildAlarmDeleteBody(historyAlarmQuery.value, '')
+    if (!body) return
+    await apiDeleteAllVibrationAlarm(body)
     historyAlarmSelectedRowKeys.value = []
     await refreshHistoryAlarmAfterBatch()
   }
@@ -1000,7 +1020,9 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   }
 
   const allDeleteRealtimeAlarm = async () => {
-    await apiDeleteAllValid()
+    const body = buildAlarmDeleteBody(realtimeAlarmQuery.value, 'VALID')
+    if (!body) return
+    await apiDeleteAllVibrationAlarm(body)
     realtimeAlarmSelectedRowKeys.value = []
     await refreshRealtimeAlarmAfterBatch()
   }

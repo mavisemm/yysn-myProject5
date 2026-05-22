@@ -108,6 +108,7 @@
 import {
   SAME_WIDTH_POPPER_OPTIONS,
   confirmBatchAction,
+  confirmVibrationDeleteAll,
   useAlarmBatchDropdownOptions,
   useAlarmBatchEndTimePicker,
   useAlarmBatchRowLabels,
@@ -183,8 +184,16 @@ const confirmBatch = (type: BatchConfirmType) =>
     delete: () => store.batchDeleteRealtimeAlarm(),
   })
 
-const confirmAll = (type: BatchConfirmType) =>
-  confirmBatchAction(
+const confirmAll = (type: BatchConfirmType) => {
+  if (type === 'delete') {
+    return confirmVibrationDeleteAll(
+      store.realtimeAlarmQuery,
+      deviceOptions.value,
+      typeOptions.value,
+      () => store.allDeleteRealtimeAlarm(),
+    )
+  }
+  return confirmBatchAction(
     type,
     {
       yes: () => store.allYesRealtimeAlarm(),
@@ -193,6 +202,7 @@ const confirmAll = (type: BatchConfirmType) =>
     },
     'all',
   )
+}
 
 
 

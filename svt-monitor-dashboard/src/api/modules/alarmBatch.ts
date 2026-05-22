@@ -69,6 +69,18 @@ export interface FindVibrationAlarmByConditionBody {
   eventTypeCode?: string
 }
 
+/** 振动报警全部删除（与 findVibrationAlarmByCondition 筛选字段一致，不含分页） */
+export interface VibrationAlarmDeleteAllBody {
+  alarmLevel: 'ALARM' | string
+  alarmType: 'MACHINE_VIBRATION' | string
+  statusCode: string
+  tenantId: string
+  startTime?: number
+  endTime?: number
+  deviceId?: string
+  eventTypeCode?: string
+}
+
 export interface DropdownItem {
   id?: string | number
   code?: string
@@ -127,6 +139,9 @@ export const apiConfirmVibrationNot = (idList: string[]) =>
 
 export const apiDeleteVibrationAlarm = (idList: string[]) =>
   postEvent('/taicang/event/vibration/alarm/delete', idList, true)
+
+export const apiDeleteAllVibrationAlarm = (body: VibrationAlarmDeleteAllBody) =>
+  postEvent('/taicang/event/vibration/all/delete', body, true)
 
 export const apiDeleteEvents = (idList: string[]) =>
   postEvent('/taicang/event/delete', idList, true)
