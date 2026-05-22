@@ -381,11 +381,24 @@ function formatAlarmValueText(raw: unknown): string {
   return s || '-'
 }
 
+function pickAlarmValueRaw(): unknown {
+  if (isWarningEvent.value) {
+    return (
+      dataParse.value?.deviationValue ??
+      eventDetail.value?.deviationValue ??
+      (props.row as any)?.deviationValue
+    )
+  }
+  // 振动实时/历史报警：报警值取接口 triggerValue
+  return (
+    (props.row as any)?.triggerValue ??
+    eventDetail.value?.triggerValue ??
+    dataParse.value?.triggerValue
+  )
+}
+
 const currentDeviationValueText = computed(() => {
-  const raw =
-    dataParse.value?.deviationValue ??
-    eventDetail.value?.deviationValue ??
-    (props.row as any)?.deviationValue
+  const raw = pickAlarmValueRaw()
 
   const base = formatAlarmValueText(raw)
   if (isWarningEvent.value) return base

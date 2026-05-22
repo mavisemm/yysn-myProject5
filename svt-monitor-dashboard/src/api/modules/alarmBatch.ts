@@ -41,6 +41,8 @@ export interface EventRow {
   dataJson?: any
   /** 振动报警测量轴向（如 X / Y / Z） */
   warningAxis?: string
+  /** 振动报警触发值 */
+  triggerValue?: number | string
   [k: string]: any
 }
 
