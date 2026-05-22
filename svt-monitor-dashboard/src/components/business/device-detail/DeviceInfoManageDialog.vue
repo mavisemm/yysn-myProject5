@@ -1,39 +1,47 @@
 <template>
   <el-dialog v-model="visible" :title="dialogTitle" width="80vw" class="device-info-dlg device-info-dlg--main"
-    :close-on-click-modal="false" destroy-on-close append-to-body @closed="reset">
+    :close-on-click-modal="false" destroy-on-close append-to-body @closed="handleDialogClosed">
     <div class="layout">
       <aside class="cat">
         <ul class="cat-list">
-          <li v-for="c in categories" :key="c.id" :class="{ on: c.id === activeId }" @click="nav(c.id)">
-            <el-checkbox v-if="L === 'del' && !c.isDefault" :model-value="delIds.includes(c.id)" @click.stop
-              @update:model-value="(v: boolean) => toggleDel(c.id, v)">
-              <span class="cat-txt">{{ c.name }}</span>
-            </el-checkbox>
+          <li v-for="c in categories" :key="c.typeId" :class="{ on: c.typeId === activeId }" @click="nav(c.typeId)">
+            <template v-if="L === 'del' && !c.isDefault">
+              <el-icon class="cat-del" @click.stop="onDeleteCategory(c.typeId)">
+                <Delete />
+              </el-icon>
+              <span class="cat-txt">{{ c.typeName }}</span>
+            </template>
             <template v-else-if="L === 'del' && c.isDefault">
               <el-icon class="lock">
                 <Lock />
               </el-icon>
-              <span class="cat-txt">{{ c.name }}</span>
+              <span class="cat-txt">{{ c.typeName }}</span>
             </template>
-            <el-input v-else-if="L === 'edit' && !c.isDefault" v-model="editNames[c.id]" size="small" @click.stop />
-            <span v-else class="cat-txt">{{ c.name }}</span>
+            <el-input v-else-if="L === 'edit' && !c.isDefault" v-model="editNames[c.typeId]" size="small" @click.stop />
+            <span v-else class="cat-txt">{{ c.typeName }}</span>
           </li>
           <li v-if="L === 'view' && addingCat" class="cat-inline-add-wrap" @click.stop>
-            <div class="cat-inline-add">
-              <el-input v-model="nameCat" size="small" placeholder="新类别名称，例如：报警信息" @keyup.enter="saveCat" />
+            <div v-for="(row, idx) in newCatRows" :key="idx" class="cat-inline-add">
+              <el-input v-model="row.name" size="small" placeholder="新类别名称，例如：报警信息" />
             </div>
+            <button type="button" class="add-plus cat-add-plus" title="再添加一个类别" @click="addCatRow">
+              +
+            </button>
           </li>
         </ul>
         <div class="foot">
           <div class="foot-label">类别功能：</div>
           <template v-if="addingCat && L === 'view'">
-            <el-button size="small" type="primary" :loading="saving" @click="saveCat">确定</el-button>
+            <el-button size="small" type="primary" :loading="saving" @click="confirmCatAddMode">确定</el-button>
             <el-button size="small" @click="cancelAddCat">取消</el-button>
           </template>
           <template v-else-if="L === 'view'">
             <el-button size="small" type="success" @click="openCat">新增</el-button>
-            <el-button size="small" type="danger" @click="enterDelCat">删除</el-button>
             <el-button size="small" type="primary" @click="startEditCat">编辑</el-button>
+            <el-button size="small" type="danger" @click="enterDelCat">删除</el-button>
+          </template>
+          <template v-else-if="L === 'del'">
+            <el-button size="small" @click="cancelL">取消</el-button>
           </template>
           <template v-else>
             <el-button size="small" type="primary" :loading="saving" @click="confirmL">确定</el-button>
@@ -44,12 +52,15 @@
 
       <section class="main">
         <div ref="scrollEl" class="scroll">
-          <section v-for="s in sections" :key="s.cat.id" :id="secId(s.cat.id)" class="sec">
-            <h4 class="sec-h">{{ s.cat.name }}</h4>
+          <section v-for="s in sections" :key="s.cat.typeId" :id="secId(s.cat.typeId)" class="sec">
+            <h4 class="sec-h">{{ s.cat.typeName }}</h4>
             <p v-if="!s.rows.length && !(R === 'view' && infoAddMode)" class="empty">该类别下暂无信息</p>
             <div v-if="s.rows.length || (R === 'view' && infoAddMode)" class="grid">
               <div v-for="r in s.rows" :key="r.k" class="row" :class="{ chk: R === 'del' || R === 'edit' }">
-                <el-checkbox v-if="R === 'del' || R === 'edit'" :model-value="chk.has(r.k)" :disabled="r.sys"
+                <el-icon v-if="R === 'del' && r.sys" class="lock">
+                  <Lock />
+                </el-icon>
+                <el-checkbox v-else-if="R === 'del' || (R === 'edit' && !r.sys)" :model-value="chk.has(r.k)"
                   @update:model-value="(v: boolean) => toggleChk(r.k, v)" />
                 <div class="card" :class="{ ed: R === 'edit', sys: r.sys }">
                   <template v-if="R === 'edit'">
@@ -68,14 +79,14 @@
                   </template>
                 </div>
               </div>
-              <div v-if="R === 'view' && infoAddMode" class="row row--add">
-                <button type="button" class="add-plus" :class="{ on: addingFieldCatId === s.cat.id }" title="在此类别添加信息"
-                  @click="onClickFieldPlus(s.cat.id)">
+              <div v-if="R === 'view' && infoAddMode && !s.cat.isDefault" class="row row--add">
+                <button type="button" class="add-plus" :class="{ on: addingFieldCatId === s.cat.typeId }"
+                  title="在此类别添加信息" @click="onClickFieldPlus(s.cat.typeId)">
                   +
                 </button>
               </div>
             </div>
-            <div v-if="R === 'view' && infoAddMode && addingFieldCatId === s.cat.id" class="field-inline-add">
+            <div v-if="R === 'view' && infoAddMode && addingFieldCatId === s.cat.typeId" class="field-inline-add">
               <el-input v-model="nf.lb" size="small" class="inp" placeholder="名称" />
               <el-input v-model="nf.v" size="small" class="inp" placeholder="值" />
               <div class="field-inline-add__btns">
@@ -89,20 +100,20 @@
         <div v-if="R === 'edit'" class="mv">
           <span>移动到</span>
           <el-select v-model="mvTo" size="small" class="sel" popper-class="device-info-popper" placeholder="选择类别">
-            <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
+            <el-option v-for="c in moveTargetCategories" :key="c.typeId" :label="c.typeName" :value="c.typeId" />
           </el-select>
         </div>
 
         <div class="foot">
           <div class="foot-label">信息功能：</div>
           <template v-if="infoAddMode && R === 'view'">
-            <el-button size="small" type="primary" @click="exitInfoAddMode">确定</el-button>
+            <el-button size="small" type="primary" :loading="saving" @click="confirmInfoAddMode">确定</el-button>
             <el-button size="small" @click="exitInfoAddMode">取消</el-button>
           </template>
           <template v-else-if="R === 'view'">
             <el-button size="small" type="success" @click="toggleInfoAddMode">新增</el-button>
-            <el-button size="small" type="danger" @click="enterDelField">删除</el-button>
             <el-button size="small" type="primary" @click="startEditField">编辑</el-button>
+            <el-button size="small" type="danger" @click="enterDelField">删除</el-button>
           </template>
           <template v-else>
             <el-button size="small" type="primary" :loading="saving" @click="confirmR">确定</el-button>
@@ -115,28 +126,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onBeforeUnmount, h } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Lock } from '@element-plus/icons-vue'
+import { Delete, Lock, WarningFilled } from '@element-plus/icons-vue'
 import {
-  DEFAULT_CATEGORY_ID,
-  DEFAULT_CATEGORY_NAME,
+  FRONTEND_DEFAULT_TYPE_ID,
   SYSTEM_FIELDS,
-  type CustomDeviceField,
+  createFrontendDefaultCategory,
+  isFrontendDefaultTypeId,
   type InfoCategory,
   type SystemFieldKey,
-  loadTenantCategories,
-  saveTenantCategories,
-  uid,
-  buildDeviceNewInfoPayload,
-  stripUiVerifySeedFields,
 } from './deviceInfoMeta'
 import { editEquipmentInfo, type DeviceInfoDto } from '@/api/modules/hardware'
+import {
+  createVibrationDeviceExtendInfo,
+  createVibrationDeviceType,
+  deleteVibrationDeviceExtendInfoBatch,
+  deleteVibrationDeviceType,
+  listVibrationDeviceExtendInfo,
+  listVibrationDeviceTypes,
+  updateVibrationDeviceExtendInfoBatch,
+  updateVibrationDeviceType,
+  type DeviceExtendInfoItem,
+} from '@/api/modules/vibrationDeviceInfo'
 
 type LMode = 'view' | 'del' | 'edit'
 type RMode = 'view' | 'del' | 'edit'
 
-type Row = { k: string; lb: string; val: string; sys: boolean; fk?: SystemFieldKey; cid?: string }
+type Row = {
+  k: string
+  lb: string
+  val: string
+  sys: boolean
+  fk?: SystemFieldKey
+  typeInfoId?: number
+}
 
 const props = defineProps<{
   modelValue: boolean
@@ -153,7 +177,6 @@ const props = defineProps<{
     designFlow: number
     onlineStatus: number
   }
-  customFields: CustomDeviceField[]
 }>()
 
 const emit = defineEmits<{ (e: 'update:modelValue', v: boolean): void; (e: 'saved'): void }>()
@@ -165,8 +188,11 @@ const visible = computed({
 
 const dialogTitle = computed(() => `设备信息管理 — ${props.equipmentName?.trim() || props.deviceId}`)
 
-const categories = ref<InfoCategory[]>([])
-const fields = ref<CustomDeviceField[]>([])
+const apiCategories = ref<InfoCategory[]>([])
+const frontendDefaultCategory = createFrontendDefaultCategory()
+const categories = computed(() => [frontendDefaultCategory, ...apiCategories.value])
+const moveTargetCategories = computed(() => apiCategories.value)
+const extendFields = ref<DeviceExtendInfoItem[]>([])
 const sys = reactive<Record<SystemFieldKey, string>>({
   equipmentName: '',
   deviceModel: '',
@@ -177,25 +203,25 @@ const sys = reactive<Record<SystemFieldKey, string>>({
   designFlow: '',
 })
 
-const activeId = ref(DEFAULT_CATEGORY_ID)
+const defaultTypeId = FRONTEND_DEFAULT_TYPE_ID
+const activeId = ref<number>(FRONTEND_DEFAULT_TYPE_ID)
 const scrollEl = ref<HTMLElement | null>(null)
 const L = ref<LMode>('view')
 const R = ref<RMode>('view')
 const saving = ref(false)
-const delIds = ref<string[]>([])
-const editNames = ref<Record<string, string>>({})
+const editNames = ref<Record<number, string>>({})
 const addingCat = ref(false)
-const nameCat = ref('')
+const newCatRows = ref<{ name: string }[]>([{ name: '' }])
 const infoAddMode = ref(false)
-const addingFieldCatId = ref<string | null>(null)
+const addingFieldCatId = ref<number | null>(null)
 const nf = ref({ lb: '', v: '' })
 const chk = ref(new Set<string>())
 const draft = ref<Record<string, { lb: string; v: string }>>({})
-const mvTo = ref(DEFAULT_CATEGORY_ID)
+const mvTo = ref<number | null>(null)
 
 let io: IntersectionObserver | null = null
 
-const secId = (id: string) => `dic-${id}`
+const secId = (typeId: number) => `dic-${typeId}`
 
 const fmt = (fk: SystemFieldKey, raw: string) => {
   const x = raw.trim()
@@ -206,32 +232,97 @@ const fmt = (fk: SystemFieldKey, raw: string) => {
   return x
 }
 
-function rowsFor(catId: string): Row[] {
-  const out: Row[] = []
-  if (catId === DEFAULT_CATEGORY_ID) {
-    for (const [fk, lb] of SYSTEM_FIELDS) {
-      out.push({ k: `s:${fk}`, lb, val: fmt(fk, sys[fk]), sys: true, fk })
-    }
+function rowsFor(typeId: number, isDefaultCat: boolean): Row[] {
+  if (isDefaultCat) {
+    return SYSTEM_FIELDS.map(([fk, lb]) => ({
+      k: `s:${fk}`,
+      lb,
+      val: fmt(fk, sys[fk]),
+      sys: true,
+      fk,
+    }))
   }
-  for (const f of fields.value) {
-    if (f.categoryId !== catId) continue
-    out.push({ k: `c:${f.id}`, lb: f.label, val: f.value || '—', sys: false, cid: f.id })
-  }
-  return out
+  return extendFields.value
+    .filter((f) => f.typeId === typeId)
+    .map((f) => ({
+      k: `e:${f.typeInfoId}`,
+      lb: f.itemKey,
+      val: f.itemValue || '—',
+      sys: false,
+      typeInfoId: f.typeInfoId,
+    }))
 }
 
-const sections = computed(() => categories.value.map((cat) => ({ cat, rows: rowsFor(cat.id) })))
+const sections = computed(() =>
+  categories.value.map((cat) => ({
+    cat,
+    rows: rowsFor(cat.typeId, cat.isDefault),
+  })),
+)
 
 const flatRows = computed(() => sections.value.flatMap((s) => s.rows))
 
-function sync() {
-  categories.value = loadTenantCategories()
-  fields.value = props.customFields.map((f) => ({ ...f }))
+function syncSystemFieldsFromProps() {
   const d = props.deviceInfo
     ; (Object.keys(sys) as SystemFieldKey[]).forEach((k) => {
-      sys[k] = String((d as any)[k] ?? '')
+      sys[k] = String((d as Record<string, unknown>)[k] ?? '')
     })
-  if (!categories.value.some((c) => c.id === activeId.value)) activeId.value = DEFAULT_CATEGORY_ID
+}
+
+function ensureActiveId() {
+  if (!categories.value.some((c) => c.typeId === activeId.value)) {
+    activeId.value = defaultTypeId
+  }
+}
+
+async function refreshCategories(): Promise<boolean> {
+  const res = await listVibrationDeviceTypes()
+  if (res.rc !== 0) {
+    ElMessage.error(res.err || '加载类别失败')
+    return false
+  }
+  apiCategories.value = res.ret ?? []
+  ensureActiveId()
+  return true
+}
+
+async function refreshExtendInfos(): Promise<boolean> {
+  if (!props.deviceId) return false
+  const res = await listVibrationDeviceExtendInfo(props.deviceId)
+  if (res.rc !== 0) {
+    ElMessage.error(res.err || '加载设备信息失败')
+    return false
+  }
+  extendFields.value = res.ret ?? []
+  return true
+}
+
+async function loadDialogData() {
+  syncSystemFieldsFromProps()
+  await Promise.all([refreshCategories(), refreshExtendInfos()])
+}
+
+async function handleDialogClosed() {
+  if (props.deviceId) {
+    try {
+      await Promise.all([refreshCategories(), refreshExtendInfos()])
+    } catch {
+      /* 关弹窗时与后端对齐，失败忽略 */
+    }
+  }
+  reset()
+}
+
+function cloneExtendFields() {
+  return extendFields.value.map((f) => ({ ...f }))
+}
+
+function cloneApiCategories() {
+  return apiCategories.value.map((c) => ({ ...c }))
+}
+
+function hasExtendInfoForType(typeId: number) {
+  return extendFields.value.some((f) => f.typeId === typeId)
 }
 
 function bindIo() {
@@ -243,23 +334,23 @@ function bindIo() {
       if (L.value !== 'view' || R.value !== 'view') return
       const top = ents.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]
         ?.target as HTMLElement | undefined
-      if (top?.id?.startsWith('dic-')) activeId.value = top.id.slice(4)
+      if (top?.id?.startsWith('dic-')) activeId.value = Number(top.id.slice(4))
     },
     { root, rootMargin: '-8% 0px -72% 0px', threshold: [0, 0.25, 0.5] },
   )
-  categories.value.forEach((c) => document.getElementById(secId(c.id)) && io!.observe(document.getElementById(secId(c.id))!))
+  categories.value.forEach((c) => {
+    const el = document.getElementById(secId(c.typeId))
+    if (el) io!.observe(el)
+  })
 }
 
-function nav(id: string) {
+function nav(typeId: number) {
   if (L.value === 'view' && R.value === 'view') {
-    activeId.value = id
-    nextTick(() => document.getElementById(secId(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    activeId.value = typeId
+    nextTick(() =>
+      document.getElementById(secId(typeId))?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    )
   }
-}
-
-function toggleDel(id: string, on: boolean) {
-  if (on) delIds.value = [...delIds.value, id]
-  else delIds.value = delIds.value.filter((x) => x !== id)
 }
 
 function toggleChk(k: string, on: boolean) {
@@ -279,10 +370,28 @@ function exitInfoAddMode() {
   nf.value = { lb: '', v: '' }
 }
 
+async function confirmInfoAddMode() {
+  saving.value = true
+  try {
+    await refreshExtendInfos()
+    exitInfoAddMode()
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('刷新信息列表失败')
+  } finally {
+    saving.value = false
+  }
+}
+
 watch(visible, async (o) => {
   if (o) {
-    sync()
     reset()
+    saving.value = true
+    try {
+      await loadDialogData()
+    } finally {
+      saving.value = false
+    }
     await nextTick()
     bindIo()
   } else {
@@ -292,12 +401,14 @@ watch(visible, async (o) => {
 })
 
 watch(
-  () => props.customFields,
-  () => visible.value && sync(),
+  () => props.deviceInfo,
+  () => {
+    if (visible.value) syncSystemFieldsFromProps()
+  },
   { deep: true },
 )
 
-watch(categories, async () => {
+watch(apiCategories, async () => {
   if (visible.value) {
     await nextTick()
     bindIo()
@@ -311,21 +422,19 @@ onBeforeUnmount(() => {
 
 function reset() {
   L.value = R.value = 'view'
-  delIds.value = []
   editNames.value = {}
   chk.value = new Set()
   draft.value = {}
   addingCat.value = false
-  nameCat.value = ''
+  newCatRows.value = [{ name: '' }]
   exitInfoAddMode()
 }
 
 function cancelL() {
   L.value = 'view'
-  delIds.value = []
   editNames.value = {}
   addingCat.value = false
-  nameCat.value = ''
+  newCatRows.value = [{ name: '' }]
 }
 
 function cancelR() {
@@ -337,87 +446,161 @@ function cancelR() {
 
 function enterDelCat() {
   addingCat.value = false
-  nameCat.value = ''
+  newCatRows.value = [{ name: '' }]
   exitInfoAddMode()
   L.value = 'del'
 }
 
 function cancelAddCat() {
   addingCat.value = false
-  nameCat.value = ''
+  newCatRows.value = [{ name: '' }]
+}
+
+async function confirmCatAddMode() {
+  const names = newCatRows.value.map((r) => r.name.trim()).filter(Boolean)
+  if (!names.length) return ElMessage.warning('请填写类别名称')
+  if (new Set(names).size !== names.length) return ElMessage.warning('类别名称不能重复')
+  if (names.some((n) => categories.value.some((c) => c.typeName === n))) {
+    return ElMessage.warning('类别名称已存在')
+  }
+  const snapCats = cloneApiCategories()
+  saving.value = true
+  let lastTypeId: number | null = null
+  try {
+    for (const typeName of names) {
+      const res = await createVibrationDeviceType(typeName)
+      if (res.rc !== 0) {
+        ElMessage.error(res.err || '新增类别失败')
+        apiCategories.value = snapCats
+        return
+      }
+      const typeId = typeof res.ret === 'number' ? res.ret : Date.now()
+      apiCategories.value.push({ typeId, typeName, isDefault: false })
+      lastTypeId = typeId
+    }
+    await refreshCategories()
+    addingCat.value = false
+    newCatRows.value = [{ name: '' }]
+    ElMessage.success(names.length > 1 ? `已新增 ${names.length} 个类别` : '类别已新增')
+    if (lastTypeId != null) {
+      activeId.value = lastTypeId
+      await nextTick()
+      bindIo()
+      nav(lastTypeId)
+    }
+  } catch (e) {
+    console.error(e)
+    apiCategories.value = snapCats
+    ElMessage.error('新增类别失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+function addCatRow() {
+  newCatRows.value = [...newCatRows.value, { name: '' }]
 }
 
 function openCat() {
   if (R.value !== 'view') cancelR()
   exitInfoAddMode()
-  nameCat.value = ''
+  newCatRows.value = [{ name: '' }]
   addingCat.value = true
-}
-
-function saveCat() {
-  const name = nameCat.value.trim()
-  if (!name) return ElMessage.warning('请填写类别名称')
-  if (categories.value.some((c) => c.name === name)) return ElMessage.warning('类别名称已存在')
-  const cat: InfoCategory = { id: uid('cat'), name, isDefault: false }
-  categories.value = [...categories.value, cat]
-  saveTenantCategories(categories.value)
-  activeId.value = cat.id
-  addingCat.value = false
-  nameCat.value = ''
-  ElMessage.success('类别已新增')
-  nextTick(() => {
-    bindIo()
-    nav(cat.id)
-  })
 }
 
 function startEditCat() {
   if (R.value !== 'view') cancelR()
   exitInfoAddMode()
   addingCat.value = false
-  nameCat.value = ''
+  newCatRows.value = [{ name: '' }]
   L.value = 'edit'
-  const m: Record<string, string> = {}
-  categories.value.forEach((c) => {
-    if (!c.isDefault) m[c.id] = c.name
+  const m: Record<number, string> = {}
+  apiCategories.value.forEach((c) => {
+    m[c.typeId] = c.typeName
   })
   editNames.value = m
 }
 
-async function confirmL() {
-  if (L.value === 'del') {
-    if (!delIds.value.length) return ElMessage.warning('请选择要删除的类别')
-    try {
-      await ElMessageBox.confirm(
-        `确定删除选中的 ${delIds.value.length} 个类别？其下信息将移至「${DEFAULT_CATEGORY_NAME}」。`,
-        '确认删除',
-        { type: 'warning' },
-      )
-    } catch {
-      return
-    }
-    const rm = new Set(delIds.value)
-    fields.value = fields.value.map((f) => (rm.has(f.categoryId) ? { ...f, categoryId: DEFAULT_CATEGORY_ID } : f))
-    categories.value = categories.value.filter((c) => !rm.has(c.id))
-    saveTenantCategories(categories.value)
-    if (rm.has(activeId.value)) activeId.value = DEFAULT_CATEGORY_ID
-    if (await persist()) {
-      ElMessage.success('类别已删除')
-      cancelL()
-      nextTick(bindIo)
-    }
+async function onDeleteCategory(typeId: number) {
+  if (isFrontendDefaultTypeId(typeId)) return
+  const hasInfo = hasExtendInfoForType(typeId)
+  const msg = hasInfo
+    ? `是否删除该类别,会一并删除该类别下的所有信息`
+    : '是否删除该类别'
+  try {
+    await ElMessageBox.confirm(msg, '确认删除', { type: 'warning' })
+  } catch {
     return
   }
-  if (L.value === 'edit') {
-    const next = categories.value.map((c) =>
-      c.isDefault ? c : { ...c, name: (editNames.value[c.id] ?? c.name).trim() || c.name },
-    )
-    const names = next.filter((c) => !c.isDefault).map((c) => c.name)
-    if (new Set(names).size !== names.length) return ElMessage.warning('类别名称不能重复')
-    categories.value = next
-    saveTenantCategories(categories.value)
+  const snapCats = cloneApiCategories()
+  const snapExt = cloneExtendFields()
+  saving.value = true
+  try {
+    const res = await deleteVibrationDeviceType(typeId)
+    if (res.rc !== 0) {
+      ElMessage.error(res.err || '删除类别失败')
+      return
+    }
+    apiCategories.value = apiCategories.value.filter((c) => c.typeId !== typeId)
+    extendFields.value = extendFields.value.filter((f) => f.typeId !== typeId)
+    if (activeId.value === typeId) activeId.value = defaultTypeId
+    ElMessage.success('类别已删除')
+    await nextTick()
+    bindIo()
+  } catch (e) {
+    console.error(e)
+    apiCategories.value = snapCats
+    extendFields.value = snapExt
+    ElMessage.error('删除类别失败')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function confirmL() {
+  if (L.value !== 'edit') return
+  const pending = apiCategories.value
+    .map((c) => ({
+      typeId: c.typeId,
+      typeName: (editNames.value[c.typeId] ?? c.typeName).trim(),
+    }))
+    .filter((c) => {
+      const orig = apiCategories.value.find((x) => x.typeId === c.typeId)
+      return c.typeName && orig && c.typeName !== orig.typeName
+    })
+  const allNames = [
+    frontendDefaultCategory.typeName,
+    ...apiCategories.value.map((c) => pending.find((p) => p.typeId === c.typeId)?.typeName ?? c.typeName),
+  ]
+  if (new Set(allNames).size !== allNames.length) return ElMessage.warning('类别名称不能重复')
+  if (!pending.length) {
+    cancelL()
+    return
+  }
+  const snapCats = cloneApiCategories()
+  saving.value = true
+  try {
+    for (const item of pending) {
+      const res = await updateVibrationDeviceType(item.typeId, item.typeName)
+      if (res.rc !== 0) {
+        ElMessage.error(res.err || '保存类别失败')
+        apiCategories.value = snapCats
+        return
+      }
+      const i = apiCategories.value.findIndex((c) => c.typeId === item.typeId)
+      const cur = i >= 0 ? apiCategories.value[i] : undefined
+      if (cur) {
+        apiCategories.value[i] = { typeId: cur.typeId, typeName: item.typeName, isDefault: cur.isDefault }
+      }
+    }
     ElMessage.success('类别已保存')
     cancelL()
+  } catch (e) {
+    console.error(e)
+    apiCategories.value = snapCats
+    ElMessage.error('保存类别失败')
+  } finally {
+    saving.value = false
   }
 }
 
@@ -431,12 +614,12 @@ function toggleInfoAddMode() {
   }
 }
 
-function onClickFieldPlus(catId: string) {
-  if (addingFieldCatId.value === catId) {
+function onClickFieldPlus(typeId: number) {
+  if (addingFieldCatId.value === typeId) {
     addingFieldCatId.value = null
     nf.value = { lb: '', v: '' }
   } else {
-    addingFieldCatId.value = catId
+    addingFieldCatId.value = typeId
     nf.value = { lb: '', v: '' }
   }
 }
@@ -449,7 +632,7 @@ function cancelFieldInline() {
 function enterDelField() {
   if (L.value !== 'view') cancelL()
   addingCat.value = false
-  nameCat.value = ''
+  newCatRows.value = [{ name: '' }]
   exitInfoAddMode()
   R.value = 'del'
   chk.value = new Set()
@@ -458,113 +641,204 @@ function enterDelField() {
 function startEditField() {
   if (L.value !== 'view') cancelL()
   addingCat.value = false
-  nameCat.value = ''
+  newCatRows.value = [{ name: '' }]
   exitInfoAddMode()
   R.value = 'edit'
   chk.value = new Set()
-  mvTo.value = activeId.value
+  const firstMove = moveTargetCategories.value[0]
+  mvTo.value =
+    !isFrontendDefaultTypeId(activeId.value) && moveTargetCategories.value.some((c) => c.typeId === activeId.value)
+      ? activeId.value
+      : (firstMove?.typeId ?? null)
   const d: Record<string, { lb: string; v: string }> = {}
   for (const r of flatRows.value) {
     if (r.sys && r.fk) d[r.k] = { lb: r.lb, v: sys[r.fk] }
-    else if (r.cid) {
-      const f = fields.value.find((x) => x.id === r.cid)
-      if (f) d[r.k] = { lb: f.label, v: f.value }
+    else if (r.typeInfoId != null) {
+      const f = extendFields.value.find((x) => x.typeInfoId === r.typeInfoId)
+      if (f) d[r.k] = { lb: f.itemKey, v: f.itemValue }
     }
   }
   draft.value = d
 }
 
-async function persist() {
+async function persistSystemFields(): Promise<boolean> {
+  const dto: DeviceInfoDto = {
+    id: props.deviceInfo.id,
+    equipmentId: props.deviceId,
+    equipmentName: sys.equipmentName,
+    deviceModel: sys.deviceModel,
+    deviceFactory: sys.deviceFactory,
+    locationDetail: sys.locationDetail,
+    pressure: Number(sys.pressure) || 0,
+    rotationSpeed: Number(sys.rotationSpeed) || 0,
+    designFlow: Number(sys.designFlow) || 0,
+    onlineStatus: props.deviceInfo.onlineStatus,
+  }
+  const res = await editEquipmentInfo(props.deviceId, dto)
+  if (res.rc === 0) {
+    emit('saved')
+    return true
+  }
+  ElMessage.error(res.err || '保存失败')
+  return false
+}
+
+async function saveFieldInline() {
+  const typeId = addingFieldCatId.value
+  if (typeId == null || isFrontendDefaultTypeId(typeId)) return ElMessage.warning('请选择要添加到的类别')
+  const itemKey = nf.value.lb.trim()
+  const itemValue = nf.value.v.trim()
+  if (!itemKey) return ElMessage.warning('请填写名称')
+  if (!itemValue) return ElMessage.warning('请填写值')
+  if (extendFields.value.some((f) => f.typeId === typeId && f.itemKey === itemKey)) {
+    return ElMessage.warning('该类别下已存在相同名称的信息')
+  }
   saving.value = true
   try {
-    const dto: DeviceInfoDto = {
-      id: props.deviceInfo.id,
+    const res = await createVibrationDeviceExtendInfo({
       equipmentId: props.deviceId,
-      equipmentName: sys.equipmentName,
-      deviceModel: sys.deviceModel,
-      deviceFactory: sys.deviceFactory,
-      locationDetail: sys.locationDetail,
-      pressure: Number(sys.pressure) || 0,
-      rotationSpeed: Number(sys.rotationSpeed) || 0,
-      designFlow: Number(sys.designFlow) || 0,
-      onlineStatus: props.deviceInfo.onlineStatus,
+      itemKey,
+      itemValue,
+      typeId,
+    })
+    if (res.rc !== 0) {
+      ElMessage.error(res.err || '添加失败')
+      return
     }
-      ; (dto as any).deviceNewInfo = buildDeviceNewInfoPayload(stripUiVerifySeedFields(fields.value))
-    const res = await editEquipmentInfo(props.deviceId, dto)
-    if (res.rc === 0) {
-      emit('saved')
-      return true
-    }
-    ElMessage.error(res.err || '保存失败')
-    return false
+    const typeInfoId = typeof res.ret === 'number' ? res.ret : -Date.now()
+    extendFields.value.push({
+      typeInfoId,
+      equipmentId: props.deviceId,
+      itemKey,
+      itemValue,
+      typeId,
+    })
+    ElMessage.success('已添加')
+    nf.value = { lb: '', v: '' }
+    addingFieldCatId.value = null
   } catch (e) {
     console.error(e)
-    ElMessage.error('保存失败')
-    return false
+    ElMessage.error('添加失败')
   } finally {
     saving.value = false
   }
 }
 
-async function saveFieldInline() {
-  const cid = addingFieldCatId.value
-  if (!cid) return ElMessage.warning('请选择要添加到的类别')
-  const lb = nf.value.lb.trim()
-  const v = nf.value.v.trim()
-  if (!lb) return ElMessage.warning('请填写名称')
-  if (!v) return ElMessage.warning('请填写值')
-  if (fields.value.some((f) => f.categoryId === cid && f.label === lb)) return ElMessage.warning('该类别下已存在相同名称的信息')
-  fields.value.push({ id: uid('fld'), label: lb, value: v, categoryId: cid, type: 'input' })
-  if (await persist()) {
-    ElMessage.success('已添加')
-    nf.value = { lb: '', v: '' }
-  } else fields.value.pop()
-}
-
 async function confirmR() {
   if (R.value === 'del') {
-    const ids = [...chk.value].filter((k) => k.startsWith('c:'))
-    if (!ids.length) return ElMessage.warning('请选择要删除的自定义信息')
+    const keys = [...chk.value].filter((k) => k.startsWith('e:'))
+    if (!keys.length) return ElMessage.warning('请选择要删除的自定义信息')
     try {
-      await ElMessageBox.confirm(`确定删除选中的 ${ids.length} 条信息？`, '确认删除', { type: 'warning' })
+      await ElMessageBox.confirm(`确定删除选中的 ${keys.length} 条信息？`, '确认删除', { type: 'warning' })
     } catch {
       return
     }
-    const rm = new Set(ids.map((k) => k.slice(2)))
-    fields.value = fields.value.filter((f) => !rm.has(f.id))
-    if (await persist()) {
+    const typeInfoIds = keys.map((k) => Number(k.slice(2)))
+    const rm = new Set(typeInfoIds)
+    const snapExt = cloneExtendFields()
+    saving.value = true
+    try {
+      const res = await deleteVibrationDeviceExtendInfoBatch(typeInfoIds)
+      if (res.rc !== 0) {
+        ElMessage.error(res.err || '删除失败')
+        return
+      }
+      extendFields.value = extendFields.value.filter((f) => !rm.has(f.typeInfoId))
       ElMessage.success('已删除')
       cancelR()
+    } catch (e) {
+      console.error(e)
+      extendFields.value = snapExt
+      ElMessage.error('删除失败')
+    } finally {
+      saving.value = false
     }
     return
   }
   if (R.value === 'edit') {
+    let sysChanged = false
+    const batch: {
+      typeInfoId: number
+      itemKey: string
+      itemValue: string
+      typeId: number
+    }[] = []
+
     for (const r of flatRows.value) {
       const d = draft.value[r.k]
       if (!d) continue
-      if (r.sys && r.fk) sys[r.fk] = String(d.v ?? '').trim()
-      else if (r.cid) {
-        const lb = String(d.lb ?? '').trim()
-        const v = String(d.v ?? '').trim()
-        if (!lb || !v) return ElMessage.warning('自定义信息的名称和值不能为空')
-        const i = fields.value.findIndex((f) => f.id === r.cid)
-        const ex = i >= 0 ? fields.value[i] : undefined
-        if (ex) {
-          const dup = fields.value.some((f, j) => j !== i && f.categoryId === ex.categoryId && f.label === lb)
-          if (dup) return ElMessage.warning('该类别下已存在相同名称的信息')
-          fields.value[i] = { ...ex, label: lb, value: v }
+      if (r.sys && r.fk) {
+        const next = String(d.v ?? '').trim()
+        if (sys[r.fk] !== next) {
+          sys[r.fk] = next
+          sysChanged = true
         }
+        continue
+      }
+      if (r.typeInfoId == null) continue
+      const itemKey = String(d.lb ?? '').trim()
+      const itemValue = String(d.v ?? '').trim()
+      if (!itemKey || !itemValue) return ElMessage.warning('自定义信息的名称和值不能为空')
+      const ex = extendFields.value.find((f) => f.typeInfoId === r.typeInfoId)
+      if (!ex) continue
+      const dup = extendFields.value.some(
+        (f) =>
+          f.typeInfoId !== ex.typeInfoId &&
+          f.typeId === ex.typeId &&
+          f.itemKey === itemKey,
+      )
+      if (dup) return ElMessage.warning('该类别下已存在相同名称的信息')
+      let typeId = ex.typeId
+      const mvKeys = [...chk.value].filter((k) => k.startsWith('e:'))
+      if (mvKeys.includes(r.k) && mvTo.value != null) {
+        if (isFrontendDefaultTypeId(mvTo.value)) {
+          return ElMessage.warning('不能将信息移动到默认信息类别')
+        }
+        typeId = mvTo.value
+      }
+      if (itemKey !== ex.itemKey || itemValue !== ex.itemValue || typeId !== ex.typeId) {
+        batch.push({ typeInfoId: ex.typeInfoId, itemKey, itemValue, typeId })
       }
     }
-    const mvIds = [...chk.value].filter((k) => k.startsWith('c:'))
-    if (mvIds.length) {
-      const set = new Set(mvIds.map((k) => k.slice(2)))
-      const t = mvTo.value
-      fields.value = fields.value.map((f) => (set.has(f.id) ? { ...f, categoryId: t } : f))
-    }
-    if (await persist()) {
-      ElMessage.success(mvIds.length ? '已保存，分类已更新' : '已保存')
+
+    const snapExt = cloneExtendFields()
+    saving.value = true
+    try {
+      if (batch.length) {
+        const res = await updateVibrationDeviceExtendInfoBatch(batch)
+        if (res.rc !== 0) {
+          ElMessage.error(res.err || '保存失败')
+          return
+        }
+        for (const item of batch) {
+          const i = extendFields.value.findIndex((f) => f.typeInfoId === item.typeInfoId)
+          if (i < 0) continue
+          const cur = extendFields.value[i]!
+          extendFields.value[i] = {
+            typeInfoId: cur.typeInfoId,
+            equipmentId: cur.equipmentId,
+            itemKey: item.itemKey,
+            itemValue: item.itemValue,
+            typeId: item.typeId,
+          }
+        }
+      }
+      if (sysChanged) {
+        const ok = await persistSystemFields()
+        if (!ok) {
+          extendFields.value = snapExt
+          return
+        }
+      }
+      const moved = [...chk.value].filter((k) => k.startsWith('e:')).length
+      ElMessage.success(moved ? '已保存，分类已更新' : '已保存')
       cancelR()
+    } catch (e) {
+      console.error(e)
+      extendFields.value = snapExt
+      ElMessage.error('保存失败')
+    } finally {
+      saving.value = false
     }
   }
 }
@@ -657,8 +931,13 @@ $p: #409eff;
 }
 
 .lock {
+  flex-shrink: 0;
   color: $m;
   font-size: 14px;
+}
+
+.row.chk .lock {
+  align-self: center;
 }
 
 .main {
@@ -750,10 +1029,23 @@ $p: #409eff;
   }
 
   &.ed {
-    flex-flow: row wrap;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     gap: 8px;
     padding: 12px 14px;
+
+    .lb {
+      line-height: 1.4;
+    }
+
+    .inp {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .lb-inp {
+      max-width: none;
+    }
   }
 }
 
@@ -783,6 +1075,9 @@ $p: #409eff;
   margin: 0;
   padding: 10px 12px 12px 14px;
   cursor: default;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .cat-inline-add {
@@ -790,6 +1085,23 @@ $p: #409eff;
   border: 1px dashed $b;
   border-radius: 6px;
   padding: 10px 12px;
+}
+
+.cat-add-plus {
+  width: 100%;
+  min-height: 40px;
+  font-size: 22px;
+}
+
+.cat-del {
+  flex-shrink: 0;
+  font-size: 16px;
+  color: #f56c6c;
+  cursor: pointer;
+
+  &:hover {
+    color: #f78989;
+  }
 }
 
 .row--add {
@@ -1020,6 +1332,22 @@ $p: #409eff;
 .device-info-popper.el-popper .el-select-dropdown__item.is-selected {
   font-weight: 500;
   color: #409eff;
+}
+
+.cat-del-confirm-msg {
+  display: inline;
+  margin: 0;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+
+.cat-del-confirm-warn {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin: 0 2px;
+  color: #e6a23c;
+  vertical-align: -0.15em;
 }
 
 @media (max-width: 800px) {

@@ -103,7 +103,6 @@
       :device-id="props.deviceId"
       :equipment-name="deviceInfo.equipmentName"
       :device-info="manageDialogDeviceInfo"
-      :custom-fields="customFieldsForManage"
       @saved="onManageDialogSaved"
     />
   </div>
@@ -120,11 +119,6 @@ import {
 import { service } from '@/api/request'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
 import DeviceInfoManageDialog from './DeviceInfoManageDialog.vue'
-import {
-  mergeUiVerifyFields,
-  parseCustomFieldsFromDeviceNewInfo,
-  type CustomDeviceField,
-} from './deviceInfoMeta'
 import {
   formatDeviceInfoValueWithUnit,
   resolveDeviceImageFromName,
@@ -161,7 +155,6 @@ const props = defineProps<{
 
 const hasDeviceInfo = ref(true)
 const manageDialogVisible = ref(false)
-const customFieldsForManage = ref<CustomDeviceField[]>([])
 
 const deviceInfo = ref<DeviceInfo>({
   id: 0,
@@ -206,17 +199,9 @@ const deviceImageSrc = computed<string>(() => {
 const isDeviceInfoLoaded = ref(false)
 let currentDeviceInfoRequestId = 0
 
-const syncCustomFieldsForManageDialog = () => {
-  const raw = (deviceInfo.value as { deviceNewInfo?: unknown }).deviceNewInfo
-  customFieldsForManage.value = mergeUiVerifyFields(parseCustomFieldsFromDeviceNewInfo(raw)).map(
-    (f) => ({ ...f }),
-  )
-}
-
 const applyDeviceInfoRet = (ret: unknown) => {
   deviceInfo.value = normalizeDeviceInfoRet(ret) as DeviceInfo
   hasDeviceInfo.value = true
-  syncCustomFieldsForManageDialog()
 }
 
 const onManageDialogSaved = async () => {
