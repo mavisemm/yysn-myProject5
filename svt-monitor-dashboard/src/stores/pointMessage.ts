@@ -26,23 +26,31 @@ export const usePointMessageStore = defineStore('pointMessage', () => {
   const pointMapByReceiverId = ref<Record<string, PointMessageInfo>>({})
   const pointMapById = ref<Record<string, PointMessageInfo>>({})
 
+  function dtoToPointInfo(dto: PointMessageCheckPointDto, groupName = ''): PointMessageInfo {
+    return {
+      groupName: groupName || String(dto.groupName ?? ''),
+      productName: dto.productName ?? '',
+      subProductName: dto.subProductName ?? '',
+      detectorName: dto.detectorName ?? '',
+      receiverName: dto.receiverName ?? '',
+      pointName: dto.pointName ?? '',
+      id: dto.id,
+      receiverId: dto.receiverId ?? '',
+      productId: dto.productId ?? '',
+    }
+  }
+
   function flattenItems(items: PointMessageGroupItem[]): PointMessageInfo[] {
     const list: PointMessageInfo[] = []
     for (const group of items) {
       const groupName = group.groupName ?? ''
-      for (const dto of group.checkPointDtos ?? []) {
-        list.push({
-          groupName,
-          productName: dto.productName ?? '',
-          subProductName: dto.subProductName ?? '',
-          detectorName: dto.detectorName ?? '',
-          receiverName: dto.receiverName ?? '',
-          pointName: dto.pointName ?? '',
-          id: dto.id,
-          receiverId: dto.receiverId ?? '',
-          productId: dto.productId ?? ''
-        })
+      if (Array.isArray(group.checkPointDtos)) {
+        for (const dto of group.checkPointDtos) {
+          list.push(dtoToPointInfo(dto, groupName))
+        }
+        continue
       }
+      list.push(dtoToPointInfo(group as unknown as PointMessageCheckPointDto, groupName))
     }
     return list
   }

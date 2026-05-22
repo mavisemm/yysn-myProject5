@@ -246,6 +246,7 @@ export interface PointMessageCheckPointDto {
   subProductId: string
   subProductName: string
   groupId: number
+  groupName?: string
   tenantId: string
   [key: string]: unknown
 }
@@ -264,11 +265,46 @@ export interface PointMessageResponse {
   err: string | null
 }
 
-export const getPointMessage = (params: {
+const POINT_MESSAGE_URL = '/taicang/hardware/device/check-point/find/point/message'
+const POINT_DETAIL_URL = '/taicang/hardware/device/check-point/find/point/detail'
+
+const isPointMessageIdNullError = (err: unknown) => {
+  const msg = String((err as Error)?.message ?? err ?? '')
+  return msg.includes('id must not be null') || msg.includes('given id must not be null')
+}
+
+/** message 返回分组；detail 返回扁平列表，统一成分组结构供 store 消费 */
+const normalizePointMessageResponse = (res: PointMessageResponse): PointMessageResponse => {
+  const ret = res.ret
+  if (!ret?.items?.length) return res
+
+  const first = ret.items[0] as PointMessageGroupItem | PointMessageCheckPointDto
+  if (Array.isArray((first as PointMessageGroupItem).checkPointDtos)) return res
+
+  const flat = ret.items as unknown as PointMessageCheckPointDto[]
+  return {
+    ...res,
+    ret: {
+      rowCount: ret.rowCount ?? flat.length,
+      items: [{ groupName: '', checkPointDtos: flat }],
+    },
+  }
+}
+
+export const getPointMessage = async (params: {
   filterPropertyMap: PointMessageFilterItem[]
   pageIndex: number
   pageSize: number
-}): Promise<PointMessageResponse> =>
-  request.post('/taicang/hardware/device/check-point/find/point/message', params, {
-    showLoading: false,
-  })
+}): Promise<PointMessageResponse> => {
+  const reqConfig = { showLoading: false as const }
+
+  try {
+    const res = await request.post<PointMessageResponse>(POINT_MESSAGE_URL, params, reqConfig)
+    return normalizePointMessageResponse(res)
+  } catch (err) {
+    if (!isPointMessageIdNullError(err)) throw err
+  }
+
+  const detailRes = await request.post<PointMessageResponse>(POINT_DETAIL_URL, params, reqConfig)
+  return normalizePointMessageResponse(detailRes)
+}
