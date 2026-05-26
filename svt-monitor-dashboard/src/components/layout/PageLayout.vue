@@ -352,6 +352,10 @@ onUnmounted(() => {
       height: 100%;
       min-width: 0;
 
+      @media (min-width: 801px) {
+        padding-left: 15px;
+      }
+
       &::-webkit-scrollbar {
         width: 6px;
         height: 6px;

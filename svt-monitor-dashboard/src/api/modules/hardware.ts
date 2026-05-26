@@ -93,7 +93,7 @@ const normalizeCheckPointList = (ret: SelectCheckPointInResponse['ret']): CheckP
 
 export const getSelectCheckPointIn = (
   equipmentId: string,
-  pageSize: 10 = 10,
+  pageSize = 10,
   pageNum = 1,
 ): Promise<SelectCheckPointInResponse> =>
   request

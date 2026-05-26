@@ -3,8 +3,8 @@
     <div class="card-header">
       <div class="card-header-leading">
         <div class="card-title app-section-title">{{ chartTitle }}</div>
-        <el-select v-model="timeAxis" class="vibration-axis-select" size="small" teleported :show-arrow="false"
-          popper-class="vibration-axis-select-dropdown vibration-axis-select-dropdown--inline">
+        <el-select v-if="!axisLocked" v-model="timeAxis" class="vibration-axis-select" size="small" teleported
+          :show-arrow="false" popper-class="vibration-axis-select-dropdown vibration-axis-select-dropdown--inline">
           <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
         </el-select>
       </div>
@@ -19,13 +19,16 @@
       </div>
     </div>
     <div class="chart-container">
-      <CommonEcharts ref="timeChartRef" :option="timeOption" :enable-data-zoom="false" :not-merge="true"
-        enable-fullscreen :fullscreen-title="fullscreenTitle" fullscreen-background="#142060"
+      <CommonEcharts ref="timeChartRef" :option="timeOption" :loading="chartLoading" empty-text="暂无数据"
+        :enable-data-zoom="false" :not-merge="true" enable-fullscreen :fullscreen-title="fullscreenTitle"
+        fullscreen-background="#142060" :use-embedded-fullscreen="useTripleAxisEmbeddedFullscreen"
+        :embedded-fullscreen-active="tripleAxisEmbeddedActive" :embedded-fullscreen-mount="tripleAxisEmbeddedMount"
         @chart-ready="onTimeChartReady" @fullscreen-chart-ready="onTimeFullscreenChartReady"
         @fullscreen-closed="onTimeFullscreenClosed">
-        <template #fullscreen-body-top>
+        <template v-if="!useTripleAxisToolbarTeleport" #fullscreen-body-top>
           <div class="time-fullscreen-top">
-            <el-select v-model="timeAxis" class="vibration-axis-select" size="small" teleported :show-arrow="false"
+            <el-select v-if="!axisLocked" v-model="timeAxis" class="vibration-axis-select" size="small" teleported
+              :show-arrow="false"
               popper-class="vibration-axis-select-dropdown vibration-axis-select-dropdown--fullscreen">
               <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
             </el-select>
@@ -37,15 +40,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, shallowRef } from 'vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 import { CommonEcharts } from '@/components/common/chart'
 import { getVibrationTimeDomainData, type VibrationAxis } from '@/api/modules/device'
 import { FullScreen } from '@element-plus/icons-vue'
 import { enableMouseWheelZoom } from '@/utils/chart'
-import { formatChartYAxisTick2 } from '@/utils/chartAxis'
+import { formatChartYAxisTick5 } from '@/utils/chartAxis'
 import { useVibrationInlineChartTheme, VIBRATION_AXIS_OPTIONS } from './vibrationPointUtils'
+import { useVaTripleAxisFullscreen } from '@/composables/useVaTripleAxisFullscreen'
 
 const props = withDefaults(
   defineProps<{
@@ -56,14 +60,24 @@ const props = withDefaults(
     fullscreenTitle?: string
     /** 小图坐标轴配色：light 适合白底卡片内嵌；全屏仍为深色底白字 */
     inlineChartTheme?: 'dark' | 'light'
+    fixedAxis?: VibrationAxis
+    /** 振动分析页：全屏时 X/Y/Z 三轴上下堆叠（仅分析页传入） */
+    analysisTripleFullscreen?: boolean
   }>(),
   {
     alarmTime: 0,
     chartTitle: '振动速度时域图',
     fullscreenTitle: '振动速度时域图',
     inlineChartTheme: 'dark',
+    fixedAxis: undefined,
+    analysisTripleFullscreen: false,
   },
 )
+
+const axisLocked = computed(() => {
+  const v = props.fixedAxis
+  return v === 'X' || v === 'Y' || v === 'Z'
+})
 
 const emit = defineEmits<{
   (e: 'time-data-state', payload: { hasData: boolean }): void
@@ -72,21 +86,62 @@ const emit = defineEmits<{
 const timeChartRef = ref<InstanceType<typeof CommonEcharts>>()
 const timeFullscreenUiActive = ref(false)
 
+const vaTripleFs = useVaTripleAxisFullscreen()
+const useTripleAxisEmbeddedFullscreen = computed(
+  () => !!props.analysisTripleFullscreen && !!vaTripleFs,
+)
+const tripleAxisEmbeddedActive = computed(() => {
+  if (!useTripleAxisEmbeddedFullscreen.value || !vaTripleFs || !props.fixedAxis) return false
+  return vaTripleFs.isActiveFor('time', props.fixedAxis)
+})
+const tripleAxisEmbeddedMount = shallowRef<HTMLElement | null>(null)
+watch(
+  () => {
+    if (!tripleAxisEmbeddedActive.value || !vaTripleFs || !props.fixedAxis) return null
+    return vaTripleFs.getMount('time', props.fixedAxis)
+  },
+  (mount) => {
+    if (tripleAxisEmbeddedMount.value === mount) return
+    tripleAxisEmbeddedMount.value = mount
+  },
+  { flush: 'post' },
+)
+const useTripleAxisToolbarTeleport = computed(
+  () =>
+    !!props.analysisTripleFullscreen &&
+    !!vaTripleFs &&
+    !!props.fixedAxis &&
+    vaTripleFs.isToolbarAxis('time', props.fixedAxis),
+)
+
 const openTimeFullscreen = () => {
+  if (props.analysisTripleFullscreen && vaTripleFs && props.fixedAxis) {
+    vaTripleFs.open('time', props.fixedAxis, props.fullscreenTitle || props.chartTitle)
+    return
+  }
   ; (timeChartRef.value as any)?.openFullscreen?.()
 }
 
 const timeDomainData = ref<number[]>([])
 const totalTime = ref<number>(0)
+const chartLoading = ref(false)
 
 const axisOptions = VIBRATION_AXIS_OPTIONS
-const timeAxis = ref<VibrationAxis>('X')
+const timeAxis = ref<VibrationAxis>(props.fixedAxis ?? 'X')
+
+watch(
+  () => props.fixedAxis,
+  (v) => {
+    if (v === 'X' || v === 'Y' || v === 'Z') timeAxis.value = v
+  },
+  { immediate: true },
+)
 const inlineChartThemeRef = computed(() => props.inlineChartTheme)
 const { chartAxisColor, chartSplitLineColor } = useVibrationInlineChartTheme(
   inlineChartThemeRef,
   timeFullscreenUiActive,
 )
-const formatYAxisTick = formatChartYAxisTick2
+const formatYAxisTick = formatChartYAxisTick5
 
 const timeOption = computed<EChartsOption>(() => {
   if (timeDomainData.value.length === 0) return {}
@@ -110,7 +165,7 @@ const timeOption = computed<EChartsOption>(() => {
       borderColor: 'rgba(50, 50, 50, 0.9)',
       textStyle: { color: '#fff' },
     },
-    grid: { top: 30, left: 40, right: 50, bottom: 35, containLabel: true },
+    grid: { top: 30, left: 20, right: 40, bottom: 35, containLabel: true },
     xAxis: {
       type: 'value',
       name: 's',
@@ -174,14 +229,23 @@ const notifyTimeDataState = () => {
   emit('time-data-state', { hasData })
 }
 
+/** 测点暂无数据为正常业务态，避免懒加载批量请求时刷屏 */
+const warnTimeDataIssue = (message: string, detail?: unknown) => {
+  if (!import.meta.env.DEV) return
+  if (detail !== undefined) console.warn(message, detail)
+  else console.warn(message)
+}
+
 const loadTimeData = async () => {
   if (!props.pointDeviceId || !props.receiverId) {
+    chartLoading.value = false
     timeDomainData.value = []
     totalTime.value = 0
     notifyTimeDataState()
     return
   }
 
+  chartLoading.value = true
   try {
     const timeResponse = await getVibrationTimeDomainData(
       props.pointDeviceId,
@@ -209,7 +273,6 @@ const loadTimeData = async () => {
           timeDomainData.value = timeDomainArray
           totalTime.value = timeResponse.ret.time
         } else {
-          console.warn('时域图数据为空或格式不正确')
           timeDomainData.value = []
           totalTime.value = 0
         }
@@ -219,7 +282,7 @@ const loadTimeData = async () => {
         totalTime.value = 0
       }
     } else {
-      console.warn('时域图接口返回错误或无数据:', timeResponse)
+      warnTimeDataIssue('时域图接口返回错误:', timeResponse)
       timeDomainData.value = []
       totalTime.value = 0
     }
@@ -227,8 +290,10 @@ const loadTimeData = async () => {
     console.error('获取振动时域数据失败:', error)
     timeDomainData.value = []
     totalTime.value = 0
+  } finally {
+    chartLoading.value = false
+    notifyTimeDataState()
   }
-  notifyTimeDataState()
 }
 
 const onTimeChartReady = (inst: echarts.ECharts) => {
@@ -271,6 +336,19 @@ watch(timeAxis, () => {
   border-radius: 0;
   box-shadow: none;
 
+  :deep(.common-echarts-empty) {
+    z-index: 2;
+    background: rgba(248, 250, 252, 0.92);
+  }
+
+  :deep(.common-echarts-empty .common-empty-state) {
+    color: #6c757d !important;
+  }
+
+  :deep(.common-echarts-loading .loading-text) {
+    color: #6c757d !important;
+  }
+
   .card-title {
     color: rgba(0, 0, 0, 0.72);
   }
@@ -301,7 +379,7 @@ watch(timeAxis, () => {
   .card-header {
     display: flex;
     align-items: center;
-    padding: 10px 10px 0 20px;
+    padding: 10px 10px 0 10px;
     gap: 0;
     min-height: 40px;
 
@@ -356,7 +434,7 @@ watch(timeAxis, () => {
     flex: 1;
     width: 100%;
     min-height: 0;
-    padding: 10px 10px 20px 20px;
+    padding: 10px 10px 0 10px;
     position: relative;
   }
 }

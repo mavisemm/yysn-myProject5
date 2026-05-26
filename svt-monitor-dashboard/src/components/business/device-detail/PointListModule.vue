@@ -2,6 +2,10 @@
   <div class="point-list-module">
     <div class="module-header">
       <h3 class="module-title app-section-title">点位列表</h3>
+      <el-button v-if="equipmentId" type="primary" size="small" class="vibration-analysis-entry-btn"
+        @click="emit('open-vibration-analysis')">
+        设备振动分析
+      </el-button>
     </div>
     <div class="point-table-container">
       <div v-if="!pointList.length" class="point-empty-wrapper">
@@ -57,6 +61,7 @@ interface PointListModuleProps {
   currentPage: number
   pageSize: number
   total: number
+  equipmentId?: string
 }
 
 const props = defineProps<PointListModuleProps>()
@@ -68,6 +73,7 @@ const totalPages = computed(() =>
 const emit = defineEmits<{
   'point-selected': [receiverId: string]
   'page-change': [pageNum: number]
+  'open-vibration-analysis': []
 }>()
 
 const pointTableRef = ref<any>(null)
@@ -132,8 +138,6 @@ defineExpose({
   display: flex;
   flex-direction: column;
   height: 50%;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   min-width: 0;
 
@@ -146,6 +150,10 @@ defineExpose({
     .module-title {
       margin: 0;
       color: #fff !important;
+    }
+
+    .vibration-analysis-entry-btn {
+      flex-shrink: 0;
     }
   }
 

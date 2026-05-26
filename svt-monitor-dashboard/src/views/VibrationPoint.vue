@@ -35,7 +35,7 @@ usePointPageRoute()
 
   .top-row {
     display: flex;
-    height: 60%;
+    height: 55%;
     gap: 10px;
     min-height: 0;
   }

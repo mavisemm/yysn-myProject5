@@ -23,7 +23,7 @@
     </div>
   </div>
 
-  <el-dialog v-if="enableFullscreenButton" v-model="fullscreenVisible" :fullscreen="true" destroy-on-close
+  <el-dialog v-if="showBuiltinFullscreenDialog" v-model="fullscreenVisible" :fullscreen="true" destroy-on-close
     :append-to-body="true" :modal-append-to-body="true" class="common-echarts-fullscreen-dialog"
     modal-class="common-echarts-fullscreen-modal" :style="{ '--ce-fullscreen-bg': fullscreenBackgroundResolved }"
     @opened="handleFullscreenOpened" @close="handleFullscreenClosing" @closed="handleFullscreenClosed">
@@ -49,11 +49,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, shallowRef, inject, computed, nextTick } from 'vue'
+import {
+  VA_TRIPLE_AXIS_FULLSCREEN_KEY,
+} from '@/composables/useVaTripleAxisFullscreen'
 import type { Ref } from 'vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 import { useChartResize } from '@/composables/useChart'
-import { enableMouseWheelZoom } from '@/utils/chart'
+import { chartHasSeriesId, enableMouseWheelZoom, scheduleChartSetOption } from '@/utils/chart'
 import { useRangeControls } from '@/composables/useRangeControls'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 import { captureCurrentDataZoomAction } from './commonEchartsDataZoom'
@@ -102,6 +105,12 @@ const props = withDefaults(
     fullscreenBackground?: string
     /** 未传时与 autoYAxisOnZoom 一致；为 false 时全屏图不在 X 缩放后自动改 Y（避免覆盖业务侧手写 Y 轴） */
     fullscreenAutoYAxisOnZoom?: boolean
+    /** 为 true 时不渲染内置全屏弹窗，由父级容器挂载全屏图（如振动分析页三轴堆叠） */
+    useEmbeddedFullscreen?: boolean
+    /** 与 useEmbeddedFullscreen 配合，由父级控制是否处于全屏展示态 */
+    embeddedFullscreenActive?: boolean
+    /** 父级提供的 DOM 挂载点 */
+    embeddedFullscreenMount?: HTMLElement | null
   }>(),
   {
     option: () => ({}),
@@ -139,6 +148,9 @@ const props = withDefaults(
     enableFullscreen: false,
     fullscreenTitle: '',
     fullscreenBackground: '#142060',
+    useEmbeddedFullscreen: false,
+    embeddedFullscreenActive: false,
+    embeddedFullscreenMount: null,
   },
 )
 
@@ -167,6 +179,18 @@ const fullscreenVisible = ref(false)
 const fullscreenToolbarKey = ref(0)
 const fullscreenChartRef = ref<HTMLElement>()
 const fullscreenChartInstance = shallowRef<echarts.ECharts | null>(null)
+
+const isFullscreenChartActive = computed(
+  () =>
+    fullscreenVisible.value ||
+    (!!props.useEmbeddedFullscreen && !!props.embeddedFullscreenActive),
+)
+/** 振动分析三轴全屏时仅维护全屏实例，减轻双实例 setOption */
+const skipInlineOptionWhileEmbeddedFs = computed(
+  () => !!props.useEmbeddedFullscreen && !!props.embeddedFullscreenActive,
+)
+
+const vaTripleAxisFs = inject(VA_TRIPLE_AXIS_FULLSCREEN_KEY, null)
 let initSizeObserver: ResizeObserver | null = null
 let initRaf: number | null = null
 let initRetryTimer: number | null = null
@@ -296,7 +320,7 @@ const attachAutoYAxisListener = () => {
 
 const applyAutoYAxisRangeFor = (inst: echarts.ECharts) => {
   if (!resolveFullscreenAutoYAxisOnZoom()) return
-  runAutoYAxisForInstance(inst, false)
+  runAutoYAxisForInstance(inst, true)
 }
 
 const attachAutoYAxisListenerForFullscreen = () => {
@@ -469,19 +493,17 @@ const applyFullscreenOption = () => {
       notMerge: props.notMerge,
       replaceMerge: props.replaceMerge.length > 0 ? props.replaceMerge : undefined,
     })
-    if (zoomSnapshot) {
-      // 下一帧再恢复更稳，避免与 setOption 内部流程抢时序；再通知父级合并 overlay（如有效值柱）
-      requestAnimationFrame(() => {
+    // 下一帧再恢复 zoom / 通知 overlay，避免 series 尚未注册时局部 merge 报 Unknown series
+    requestAnimationFrame(() => {
+      if (zoomSnapshot) {
         try {
           fullscreenChartInstance.value?.dispatchAction({ type: 'dataZoom', ...zoomSnapshot } as any)
         } catch {
           // ignore
         }
-        notifyAfterSetOption()
-      })
-    } else {
+      }
       notifyAfterSetOption()
-    }
+    })
   } catch {
     // ignore
   }
@@ -546,11 +568,16 @@ const scheduleOptionRefresh = () => {
   const run = () => {
     optionUpdateRaf = window.requestAnimationFrame(() => {
       optionUpdateRaf = null
-      if (chartInstance.value && !props.loading && !resolvedEmpty.value) {
+      if (
+        chartInstance.value &&
+        !props.loading &&
+        !resolvedEmpty.value &&
+        !skipInlineOptionWhileEmbeddedFs.value
+      ) {
         applyOption()
       }
       if (
-        fullscreenVisible.value &&
+        isFullscreenChartActive.value &&
         fullscreenChartInstance.value &&
         !props.loading &&
         !resolvedEmpty.value
@@ -637,20 +664,20 @@ watch(
 
 watch(
   () => [
-    fullscreenVisible.value,
+    isFullscreenChartActive.value,
     fullscreenChartInstance.value,
     props.fullscreenAutoYAxisOnZoom,
     props.autoYAxisOnZoom,
   ],
   () => {
-    if (!fullscreenVisible.value || !fullscreenChartInstance.value) return
+    if (!isFullscreenChartActive.value || !fullscreenChartInstance.value) return
     if (fullscreenAutoYAxisCleanup) {
       fullscreenAutoYAxisCleanup()
       fullscreenAutoYAxisCleanup = null
     }
     if (!resolveFullscreenAutoYAxisOnZoom()) return
     attachAutoYAxisListenerForFullscreen()
-    void nextTick(() => {
+    requestAnimationFrame(() => {
       if (fullscreenChartInstance.value) {
         applyAutoYAxisRangeFor(fullscreenChartInstance.value)
       }
@@ -668,23 +695,39 @@ watch(
   { flush: 'post' },
 )
 
+let vaScopedResizeRaf: number | null = null
+/** 振动分析点位内局部 resize：单次 rAF，避免连续 scheduleForceResizePasses 放大卡顿 */
+const requestChartResize = () => {
+  if (vaScopedResizeRaf != null) return
+  vaScopedResizeRaf = requestAnimationFrame(() => {
+    vaScopedResizeRaf = null
+    forceResize()
+    if (isFullscreenChartActive.value) forceFullscreenResize()
+  })
+}
+
 onMounted(() => {
   if (!resolvedEmpty.value && !props.loading) {
     initChart()
   }
 
+  let unregisterVaResize: (() => void) | null = null
+  if (props.useEmbeddedFullscreen && vaTripleAxisFs) {
+    unregisterVaResize = vaTripleAxisFs.registerResizeHandler(requestChartResize)
+  }
+
   const onWinResize = () => {
     scheduleForceResizePasses()
-    if (fullscreenVisible.value) scheduleFullscreenResizePasses()
+    if (isFullscreenChartActive.value) scheduleFullscreenResizePasses()
   }
   const onOrientation = () => {
     scheduleForceResizePasses()
-    if (fullscreenVisible.value) scheduleFullscreenResizePasses()
+    if (isFullscreenChartActive.value) scheduleFullscreenResizePasses()
   }
   const onVisibility = () => {
     if (!document.hidden) {
       scheduleForceResizePasses()
-      if (fullscreenVisible.value) scheduleFullscreenResizePasses()
+      if (isFullscreenChartActive.value) scheduleFullscreenResizePasses()
     }
   }
   window.addEventListener('resize', onWinResize, { passive: true } as any)
@@ -692,6 +735,7 @@ onMounted(() => {
   document.addEventListener('visibilitychange', onVisibility)
 
   onUnmounted(() => {
+    unregisterVaResize?.()
     window.removeEventListener('resize', onWinResize as any)
     window.removeEventListener('orientationchange', onOrientation as any)
     document.removeEventListener('visibilitychange', onVisibility)
@@ -699,34 +743,21 @@ onMounted(() => {
 })
 
 const enableFullscreenButton = computed(() => !!props.enableFullscreen)
+const showBuiltinFullscreenDialog = computed(
+  () => enableFullscreenButton.value && !props.useEmbeddedFullscreen,
+)
 const fullscreenTitleResolved = computed(
   () => props.fullscreenTitle || (props.option as any)?.title?.text || '图表',
 )
 const fullscreenBackgroundResolved = computed(() => props.fullscreenBackground || '#142060')
 
-const openFullscreen = () => {
-  fullscreenVisible.value = true
-}
-const patchFullscreenSeriesMarkLine = (seriesId: string, data: unknown[]) => {
-  if (!fullscreenChartInstance.value) return
-  try {
-    fullscreenChartInstance.value.setOption(
-      { series: [{ id: seriesId, markLine: { data } }] } as EChartsOption,
-      { notMerge: false, lazyUpdate: false },
-    )
-  } catch {
-    // ignore
-  }
-}
-
-const handleFullscreenOpened = async () => {
+const mountFullscreenChartToHost = async (host: HTMLElement) => {
   await nextTick()
   fullscreenToolbarKey.value += 1
-  if (!fullscreenChartRef.value) return
-  if (!hasNonZeroSize(fullscreenChartRef.value)) {
-    // 全屏弹窗打开到可见之间也可能出现 0 尺寸，延后一帧再初始化
+  fullscreenChartRef.value = host
+  if (!hasNonZeroSize(host)) {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-    if (!fullscreenChartRef.value || !hasNonZeroSize(fullscreenChartRef.value)) return
+    if (!hasNonZeroSize(host)) return
   }
   if (fullscreenChartInstance.value) {
     try {
@@ -735,18 +766,22 @@ const handleFullscreenOpened = async () => {
     fullscreenChartInstance.value = null
   }
   try {
-    fullscreenChartInstance.value = echarts.init(fullscreenChartRef.value)
+    fullscreenChartInstance.value = echarts.init(host)
     applyFullscreenOption()
     attachAutoYAxisListenerForFullscreen()
     bindFullscreenResize()
     scheduleFullscreenResizePasses()
-    emit('fullscreen-chart-ready', fullscreenChartInstance.value)
+    const inst = fullscreenChartInstance.value
+    requestAnimationFrame(() => {
+      if (fullscreenChartInstance.value !== inst) return
+      emit('fullscreen-chart-ready', inst)
+    })
   } catch {
     // ignore
   }
 }
-const handleFullscreenClosed = () => {
-  emit('fullscreen-closed')
+
+const cleanupFullscreenChart = () => {
   unbindFullscreenResize()
   if (fullscreenAutoYAxisCleanup) {
     fullscreenAutoYAxisCleanup()
@@ -762,10 +797,62 @@ const handleFullscreenClosed = () => {
     } catch { }
     fullscreenChartInstance.value = null
   }
+  if (props.useEmbeddedFullscreen) {
+    fullscreenChartRef.value = undefined
+  }
+  emit('fullscreen-closed')
+}
+
+const openFullscreen = () => {
+  if (props.useEmbeddedFullscreen) return
+  fullscreenVisible.value = true
+}
+const patchFullscreenSeriesMarkLine = (seriesId: string, data: unknown[]) => {
+  const inst = fullscreenChartInstance.value
+  if (!inst || !seriesId) return
+  scheduleChartSetOption(() => {
+    const live = fullscreenChartInstance.value
+    if (!live || live !== inst || !chartHasSeriesId(live, seriesId)) return
+    try {
+      live.setOption(
+        { series: [{ id: seriesId, type: 'line', markLine: { data } }] } as EChartsOption,
+        { notMerge: false, lazyUpdate: true },
+      )
+    } catch {
+      // ignore
+    }
+  })
+}
+
+const handleFullscreenOpened = async () => {
+  if (!fullscreenChartRef.value) return
+  await mountFullscreenChartToHost(fullscreenChartRef.value)
+}
+const handleFullscreenClosed = () => {
+  cleanupFullscreenChart()
 }
 const handleFullscreenClosing = () => {
   emit('fullscreen-closing')
 }
+
+watch(
+  () => [
+    props.useEmbeddedFullscreen,
+    props.embeddedFullscreenActive,
+    props.embeddedFullscreenMount,
+  ],
+  async ([useEmb, active, mount]) => {
+    if (!useEmb) return
+    if (active && mount instanceof HTMLElement) {
+      await mountFullscreenChartToHost(mount)
+      return
+    }
+    if (!active && fullscreenChartInstance.value) {
+      emit('fullscreen-closing')
+      cleanupFullscreenChart()
+    }
+  },
+)
 
 onUnmounted(() => {
   cleanupInitWatchers()
@@ -842,6 +929,7 @@ defineExpose({
   getThemeColors,
   openFullscreen,
   patchFullscreenSeriesMarkLine,
+  requestChartResize,
 })
 </script>
 

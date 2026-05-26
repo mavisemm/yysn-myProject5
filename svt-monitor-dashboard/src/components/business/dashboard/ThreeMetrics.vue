@@ -115,7 +115,7 @@ const isValidDevice = (deviceId: string): boolean =>
 
 const goToRankTarget = (rank: RankingItem) => {
   const fromApi = String(rank.equipmentId ?? '').trim()
-  let equipmentId = fromApi || deviceNameToIdMap[String(rank.equipmentName ?? '').trim()]
+  const equipmentId = fromApi || deviceNameToIdMap[String(rank.equipmentName ?? '').trim()]
   if (!equipmentId) return
   if (!fromApi && !isValidDevice(equipmentId)) return
 
@@ -290,7 +290,7 @@ watch(
   gap: 10px;
   overflow: hidden;
   box-sizing: border-box;
-  padding: 10px 10px 0 20px;
+  padding: 10px 10px 0 0;
 
   >.chart-container {
     flex: 1;

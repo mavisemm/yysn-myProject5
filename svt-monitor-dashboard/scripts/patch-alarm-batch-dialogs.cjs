@@ -188,7 +188,6 @@ for (const c of configs) {
     )
   }
   fs.writeFileSync(filePath, content)
-  console.log('patched', c.file)
 }
 
 // Remove bindQueryEndTime export if unused
@@ -202,5 +201,3 @@ for (const f of ['AlarmBatchDialogFilters.vue', '_test.html']) {
   const p = path.join(dir, f)
   if (fs.existsSync(p)) fs.unlinkSync(p)
 }
-
-console.log('done')

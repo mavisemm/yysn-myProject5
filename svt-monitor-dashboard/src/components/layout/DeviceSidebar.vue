@@ -935,7 +935,7 @@ onUnmounted(() => {
   }
 
   .device-tree-container {
-    padding: 10px 10px 20px;
+    padding: 10px 10px 0;
     background-image: image-set(url('@/assets/images/background/首页-设备列表背景.avif') type('image/avif'),
         url('@/assets/images/background/首页-设备列表背景.webp') type('image/webp'));
     background-repeat: no-repeat;

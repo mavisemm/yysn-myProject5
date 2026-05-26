@@ -210,7 +210,7 @@ watch(
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
-    padding: 10px 10px 0 20px;
+    padding: 10px 10px 0 0;
 
     .card-header-row--top {
       display: flex;
@@ -286,7 +286,7 @@ watch(
     grid-auto-rows: auto;
     gap: 10px;
     flex: 1;
-    padding: 10px 10px 20px 20px;
+    padding: 10px 10px 0 0;
 
     .stat-box {
       font-size: 1rem;

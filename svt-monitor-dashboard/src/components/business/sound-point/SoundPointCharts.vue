@@ -614,7 +614,7 @@ onUnmounted(() => {
     justify-content: center;
     flex-wrap: nowrap;
     gap: 8px;
-    padding: 10px 20px 20px;
+    padding: 10px 10px 0 0;
     font-size: 12px;
     overflow-x: auto;
     overflow-y: hidden;
@@ -655,7 +655,6 @@ onUnmounted(() => {
       align-items: center;
       justify-content: center;
       gap: 10px;
-      padding: 10px 10px 0 20px;
       position: relative;
 
       .energy-fullscreen-btn {
@@ -695,7 +694,6 @@ onUnmounted(() => {
     .chart-container {
       flex: 1;
       min-height: 200px;
-      padding: 0 10px 0 20px;
 
       :deep(.common-echarts-wrapper) {
         height: 100%;
@@ -705,6 +703,26 @@ onUnmounted(() => {
       :deep(.common-echarts-inner) {
         min-height: inherit;
       }
+    }
+  }
+
+  .charts-row .chart-item:first-child {
+    .chart-title-row {
+      padding: 10px 10px 0 0;
+    }
+
+    .chart-container {
+      padding: 10px 10px 0 0;
+    }
+  }
+
+  .charts-row .chart-item:last-child {
+    .chart-title-row {
+      padding: 10px 10px 0 10px;
+    }
+
+    .chart-container {
+      padding: 10px 10px 0 10px;
     }
   }
 }

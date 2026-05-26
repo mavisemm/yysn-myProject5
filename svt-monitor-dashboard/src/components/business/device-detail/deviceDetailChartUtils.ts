@@ -41,36 +41,50 @@ function roundAxis(min: number, max: number, step: number) {
   }
 }
 
+/** 按约 4 段刻度取「好看」的步长，避免 range 略大时一步跳到 10 造成留白过多 */
+function trendAxisStep(range: number, minStep: number): number {
+  if (range <= 0) return minStep
+  const rough = range / 4
+  const exp = Math.floor(Math.log10(rough))
+  const step = Math.pow(10, exp)
+  return Math.max(step, minStep)
+}
+
+function trendAxisPadding(span: number, minPadding: number): number {
+  return Math.max(span * 0.05, minPadding)
+}
+
 export function computeTempTrendYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
   const span = dataMax - dataMin
-  const padding = Math.max(span * 0.1, 2)
-  let min = dataMin - padding
-  let max = dataMax + padding
+  const padding = trendAxisPadding(span, 1)
+  const min = dataMin - padding
+  const max = dataMax + padding
   const range = max - min
-  const step = range <= 0 ? 1 : Math.pow(10, Math.floor(Math.log10(range)))
+  const step = trendAxisStep(range, 0.5)
   return roundAxis(min, max, step)
 }
 
 export function computeVibTrendYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
   const span = dataMax - dataMin
-  const padding = Math.max(span * 0.1, 0.5)
-  let min = Math.min(0, dataMin - padding)
-  let max = dataMax + padding
+  const padding = trendAxisPadding(span, 0.2)
+  const min = Math.max(0, dataMin - padding)
+  const max = dataMax + padding
   const range = max - min
-  const step = range <= 0 ? 1 : Math.pow(10, Math.floor(Math.log10(range)))
-  const safeStep = step < 0.1 ? 0.1 : step
-  return roundAxis(min, max, safeStep)
+  const step = trendAxisStep(range, 0.1)
+  return roundAxis(min, max, step)
 }
 
 export function computeSoundTrendYAxisRange(dataMin: number, dataMax: number): { min: number; max: number } {
-  const span = Math.max(dataMax - dataMin, 1)
-  const padding = Math.max(span * 0.1, 2)
-  let min = Math.min(0, dataMin - padding)
-  let max = dataMax + padding
+  const span = dataMax - dataMin
+  const ref = Math.max(Math.abs(dataMax), Math.abs(dataMin), 1e-6)
+  const effectiveSpan = span > 0 ? span : ref * 0.1
+  const padding = Math.max(effectiveSpan * 0.05, ref * 0.05, 1e-4)
+  const min = Math.max(0, dataMin - padding)
+  const max = dataMax + padding
   const range = max - min
-  const step = range <= 0 ? 10 : Math.pow(10, Math.floor(Math.log10(range)))
-  const safeStep = step < 1 ? 1 : step
-  return roundAxis(min, max, safeStep)
+  const minStep = Math.pow(10, Math.floor(Math.log10(ref)) - 1)
+  const step = trendAxisStep(range, Math.max(minStep, 1e-4))
+  return roundAxis(min, max, step)
 }
 
 const AREA_GRADIENT: Record<DeviceTrendChartKind, [string, string]> = {

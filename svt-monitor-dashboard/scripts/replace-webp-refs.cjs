@@ -43,5 +43,3 @@ for (const file of files) {
     touched += 1
   }
 }
-
-console.log(`files_touched=${touched} replacements=${replacements}`)

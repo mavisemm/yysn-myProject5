@@ -421,12 +421,8 @@ export function logVibrationHttpItemsDebug(items: unknown[]) {
         break
       }
     }
-    console.groupCollapsed('[AlarmOverview][HTTP] items preview (up to 5000)')
-    console.table(preview)
-    console.log('[AlarmOverview][HTTP] first idx by pointNum (9/2/4):', firstIdxByPointNum)
-    console.groupEnd()
   } catch {
-    // ignore debug failures
+    // ignore debug failures                                       
   }
 }
 

@@ -285,7 +285,7 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
 .alarm-overview {
   height: 100%;
   min-height: 0;
-  padding: 10px 10px 0 20px;
+  padding: 10px 10px 0 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;

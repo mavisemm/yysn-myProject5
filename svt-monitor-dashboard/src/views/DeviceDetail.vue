@@ -10,8 +10,10 @@
         :current-page="pagination.pageNum"
         :page-size="pagination.pageSize"
         :total="pagination.total"
+        :equipment-id="equipmentId ?? undefined"
         @point-selected="selectedPointId = $event"
         @page-change="handlePageChange"
+        @open-vibration-analysis="openVibrationAnalysis"
       />
 
       <ChartsAnalysisModule
@@ -23,7 +25,8 @@
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { getTenantId } from '@/api/tenant'
 import { watch, ref, computed, nextTick, onMounted } from 'vue'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import { getSelectCheckPointIn } from '@/api/modules/hardware'
@@ -42,6 +45,7 @@ import type { ComponentPublicInstance } from 'vue'
 type PointListModuleType = InstanceType<typeof PointListModule>
 
 const route = useRoute()
+const router = useRouter()
 const deviceTreeStore = useDeviceTreeStore()
 
 const equipmentId = computed<string | null>(() => {
@@ -131,6 +135,16 @@ onMounted(() => {
 const handlePageChange = (pageNum: number) => {
   pagination.value.pageNum = pageNum
   void initDeviceData()
+}
+
+const openVibrationAnalysis = () => {
+  const id = equipmentId.value
+  if (!id) return
+  const tenantId = getTenantId()
+  const query: Record<string, string> = { equipmentId: id }
+  if (tenantId) query.tenantId = tenantId
+  const resolved = router.resolve({ name: 'DeviceVibrationAnalysis', query })
+  window.open(resolved.href, '_blank', 'noopener,noreferrer')
 }
 </script>
 

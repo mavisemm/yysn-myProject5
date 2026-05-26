@@ -7,6 +7,7 @@ const TENANT_ROUTE_NAMES = new Set([
   'DeviceDetailQueryLegacy',
   'SoundPoint',
   'VibrationPoint',
+  'DeviceVibrationAnalysis',
 ])
 
 export function setupRouterGuard(router: Router) {

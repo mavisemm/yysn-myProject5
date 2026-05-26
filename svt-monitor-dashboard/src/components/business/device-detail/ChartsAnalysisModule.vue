@@ -424,7 +424,7 @@ onMounted(() => {
 
     .chart-item {
       border-radius: 8px;
-      padding: 10px;
+      padding: 10px 10px 0 10px;
       display: flex;
       flex-direction: column;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);

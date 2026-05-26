@@ -473,12 +473,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding-bottom: 20px;
+  padding-bottom: 0;
 
   overflow: hidden;
 
   .module-header {
-    padding: 10px 10px 0 20px;
+    padding: 10px 10px 0 0;
 
     .header-main {
       display: flex;
@@ -501,7 +501,7 @@ onUnmounted(() => {
   }
 
   .device-main {
-    padding: 10px 10px 20px 20px;
+    padding: 10px 10px 0 0;
     flex: 1;
 
     .device-no-data {

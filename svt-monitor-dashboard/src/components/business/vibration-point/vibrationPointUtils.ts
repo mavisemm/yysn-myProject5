@@ -13,6 +13,20 @@ export function vibrationAxisLabel(axis: VibrationAxis): string {
   return VIBRATION_AXIS_OPTIONS.find((o) => o.value === axis)?.label ?? `${axis}轴`
 }
 
+/** 振动分析页图表标题中的轴向标识，与表格/轴切换一致：X(A)、Y(H)、Z(V) */
+const AXIS_DIRECTION: Record<VibrationAxis, string> = { X: 'A', Y: 'H', Z: 'V' }
+
+/** 振动分析页：固定单轴图表标题（不含点位名，点位名在区块标题展示） */
+export function vibrationAnalysisChartTitle(
+  _pointName: string,
+  axis: VibrationAxis,
+  kind: 'freq' | 'time',
+): string {
+  const dir = AXIS_DIRECTION[axis] ?? ''
+  const suffix = kind === 'freq' ? '振动速度频域图' : '振动速度时域图'
+  return dir ? `${axis}轴（${dir}）${suffix}` : `${axis}轴${suffix}`
+}
+
 export function resolvePointDeviceIdFromTree(treeData: DeviceNode[], receiverId: string): string {
   return resolvePointDeviceIdFromTreeImpl(treeData, receiverId)
 }

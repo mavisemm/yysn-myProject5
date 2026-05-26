@@ -10,7 +10,12 @@ export function resolvePointDeviceIdFromTree(treeData: DeviceNode[], receiverId:
     for (const workshop of factory.children ?? []) {
       for (const device of workshop.children ?? []) {
         if (device.type !== 'device') continue
-        const hit = (device.children ?? []).find((p) => p.type === 'point' && p.id === rid)
+        const hit = (device.children ?? []).find(
+          (p) =>
+            p.type === 'point' &&
+            (String(p.id ?? '') === rid ||
+              (p.receiverId != null && String(p.receiverId) === rid)),
+        )
         if (hit?.deviceId) return hit.deviceId
       }
     }

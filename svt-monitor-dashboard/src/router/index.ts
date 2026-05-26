@@ -48,6 +48,12 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/vibration-analysis',
+    name: 'DeviceVibrationAnalysis',
+    component: () => import('@/views/DeviceVibrationAnalysis.vue'),
+    meta: { title: 'Device Vibration Analysis' },
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue'),

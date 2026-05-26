@@ -154,7 +154,7 @@ watch(
   }
 
   .audio-player {
-    padding: 10px 10px 20px 10px;
+    padding: 10px 10px 0 10px;
 
     audio {
       width: 100%;

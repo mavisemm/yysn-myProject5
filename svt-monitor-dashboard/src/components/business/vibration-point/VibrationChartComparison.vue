@@ -46,7 +46,7 @@ const pointDeviceId = computed(() => {
 <style lang="scss" scoped>
 .bottom-row {
   display: flex;
-  height: 40%;
+  height: 45%;
   gap: 10px;
   min-height: 0;
 }

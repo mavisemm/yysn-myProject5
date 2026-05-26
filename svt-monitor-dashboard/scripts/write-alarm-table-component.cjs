@@ -69,4 +69,3 @@ defineEmits<{ 'selection-change': [rows: Record<string, unknown>[]]; view: [row:
 `
 
 fs.writeFileSync(file, content)
-console.log('ok', file)
