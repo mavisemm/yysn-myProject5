@@ -228,6 +228,34 @@ export const getEquipmentHealth = (params: {
     showLoading: false,
   })
 
+export interface EquipmentImageItem {
+  id: number
+  tenantId: string
+  equipmentId: string
+  imageUrl: string
+  fileName: string
+  filePath: string
+  createTime: string
+}
+
+export interface EquipmentImagesResponse {
+  rc: number
+  ret: EquipmentImageItem[]
+  err: string | null
+}
+
+export const getEquipmentImages = (params: {
+  equipmentId: string
+  tenantId?: string
+}): Promise<EquipmentImagesResponse> =>
+  request.get('/taicang/hardware/device/overview/equipmentImage/images', {
+    params: {
+      equipmentId: params.equipmentId,
+      tenantId: params.tenantId ?? getTenantId(),
+    },
+    showLoading: false,
+  })
+
 export interface PointMessageFilterItem {
   code: string
   operate: string

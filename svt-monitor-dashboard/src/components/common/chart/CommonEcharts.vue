@@ -535,8 +535,9 @@ const scheduleForceResizePasses = () => {
   // 移动端首屏/切换视口时布局可能分多次稳定，单次 ResizeObserver 有时会错过最终高度
   requestAnimationFrame(() => forceResize('raf1'))
   requestAnimationFrame(() => requestAnimationFrame(() => forceResize('raf2')))
-  window.setTimeout(() => forceResize('t120'), 120)
-  window.setTimeout(() => forceResize('t360'), 360)
+  // 避免重逻辑直接跑在 setTimeout handler 内触发 [Violation]
+  window.setTimeout(() => requestAnimationFrame(() => forceResize('t120')), 120)
+  window.setTimeout(() => requestAnimationFrame(() => forceResize('t360')), 360)
 }
 
 const forceFullscreenResize = () => {
@@ -552,7 +553,8 @@ const forceFullscreenResize = () => {
 const scheduleFullscreenResizePasses = () => {
   requestAnimationFrame(() => forceFullscreenResize())
   requestAnimationFrame(() => requestAnimationFrame(() => forceFullscreenResize()))
-  window.setTimeout(() => forceFullscreenResize(), 120)
+  // 避免重逻辑直接跑在 setTimeout handler 内触发 [Violation]
+  window.setTimeout(() => requestAnimationFrame(() => forceFullscreenResize()), 120)
 }
 
 const scheduleOptionRefresh = () => {

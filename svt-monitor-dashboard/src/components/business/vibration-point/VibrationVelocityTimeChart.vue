@@ -232,8 +232,6 @@ const notifyTimeDataState = () => {
 /** 测点暂无数据为正常业务态，避免懒加载批量请求时刷屏 */
 const warnTimeDataIssue = (message: string, detail?: unknown) => {
   if (!import.meta.env.DEV) return
-  if (detail !== undefined) console.warn(message, detail)
-  else console.warn(message)
 }
 
 const loadTimeData = async () => {

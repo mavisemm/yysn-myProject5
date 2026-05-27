@@ -25,12 +25,13 @@
       <section v-loading="queryLoading" class="card">
         <div class="card-header">设备图片</div>
         <div class="card-body">
-          <div v-if="deviceImageSrc" class="va-device-images">
-            <div class="va-device-image-wrap">
-              <img :src="deviceImageSrc" :alt="queriedEquipmentLabel || '设备图片'" />
-              <div class="va-image-caption">{{ queriedEquipmentLabel || '设备实物图' }}</div>
-            </div>
-          </div>
+          <EquipmentImageGallery
+            v-if="deviceImageUrls.length"
+            variant="analysis"
+            :urls="deviceImageUrls"
+            :alt="queriedEquipmentLabel || '设备图片'"
+            :caption="queriedEquipmentLabel || '设备实物图'"
+          />
           <div v-else class="va-empty-block">暂无设备图片</div>
         </div>
       </section>
@@ -129,7 +130,7 @@ import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, ArrowUp } from '@element-plus/icons-vue'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import { getDeviceInfoByEquipmentId } from '@/api/modules/hardware'
-import { resolveDeviceImageFromName } from '@/components/business/device-detail/deviceImageUtils'
+import { fetchEquipmentImageUrls } from '@/components/business/device-detail/deviceImageUtils'
 import {
   collectEquipmentOptions,
   loadAnalysisPointsForEquipment,
@@ -138,6 +139,7 @@ import {
 } from '@/utils/vibrationAnalysisTree'
 import { buildMockPointRmsRows, type PointRmsRow } from '@/utils/vibrationAnalysisMock'
 import DeviceVibrationPointChartsLazy from '@/components/business/vibration-analysis/DeviceVibrationPointChartsLazy.vue'
+import EquipmentImageGallery from '@/components/business/device-detail/EquipmentImageGallery.vue'
 
 const route = useRoute()
 const deviceTreeStore = useDeviceTreeStore()
@@ -157,7 +159,7 @@ const draftEquipmentId = ref('')
 const queriedEquipmentId = ref('')
 const queryLoading = ref(false)
 const queryGeneration = ref(0)
-const deviceImageSrc = ref('')
+const deviceImageUrls = ref<string[]>([])
 const queriedEquipmentName = ref('')
 const rmsRows = ref<PointRmsRow[]>([])
 const analysisPoints = ref<AnalysisPointItem[]>([])
@@ -186,22 +188,27 @@ const rmsTableTitle = computed(() => {
 })
 
 const loadDeviceImageSection = async (equipmentId: string) => {
-  deviceImageSrc.value = ''
+  deviceImageUrls.value = []
   queriedEquipmentName.value = ''
   if (!equipmentId) return
-  try {
-    const res = await getDeviceInfoByEquipmentId(equipmentId)
-    if (res.rc === 0 && res.ret) {
-      const name = String(res.ret.equipmentName ?? '').trim()
-      queriedEquipmentName.value = name
-      deviceImageSrc.value = resolveDeviceImageFromName(name)
-    }
-  } catch {
-    const hit = equipmentOptions.value.find((o) => o.equipmentId === equipmentId)
-    if (hit) {
-      queriedEquipmentName.value = hit.equipmentName
-      deviceImageSrc.value = resolveDeviceImageFromName(hit.equipmentName)
-    }
+
+  const [infoResult, imageUrls] = await Promise.allSettled([
+    getDeviceInfoByEquipmentId(equipmentId),
+    fetchEquipmentImageUrls(equipmentId),
+  ])
+
+  if (imageUrls.status === 'fulfilled') {
+    deviceImageUrls.value = imageUrls.value
+  }
+
+  if (infoResult.status === 'fulfilled' && infoResult.value.rc === 0 && infoResult.value.ret) {
+    queriedEquipmentName.value = String(infoResult.value.ret.equipmentName ?? '').trim()
+    return
+  }
+
+  const hit = equipmentOptions.value.find((o) => o.equipmentId === equipmentId)
+  if (hit) {
+    queriedEquipmentName.value = hit.equipmentName
   }
 }
 
@@ -226,7 +233,7 @@ const runQuery = async (equipmentId: string) => {
     ElMessage.error('加载设备振动分析数据失败')
     analysisPoints.value = []
     rmsRows.value = []
-    deviceImageSrc.value = ''
+    deviceImageUrls.value = []
   } finally {
     queryLoading.value = false
   }

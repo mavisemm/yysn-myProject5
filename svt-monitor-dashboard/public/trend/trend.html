@@ -169,6 +169,7 @@
             margin-left: -4px;
             z-index: 2;
             cursor: ew-resize;
+            touch-action: none;
             background: rgba(37, 99, 235, 0.35);
             border-radius: 2px 0 0 2px;
         }
@@ -197,6 +198,7 @@
             top: 0;
             height: 100%;
             cursor: grab;
+            touch-action: none;
         }
         
         .trend-indicator {
@@ -2126,9 +2128,6 @@
                 if (!drag) {
                     return;
                 }
-                if (ev.type === 'touchmove') {
-                    ev.preventDefault();
-                }
                 const cx = clientXFromEvent(ev);
                 const chart = getChartOrNull();
                 if (!chart || !state.trackEl) {
@@ -2182,7 +2181,8 @@
             }
 
             function startDrag(type, ev, clientX) {
-                if (ev.preventDefault) {
+                // touch 交互依赖 touch-action: none；避免非 passive 监听导致性能告警
+                if (ev?.type === 'mousedown' && ev.preventDefault) {
                     ev.preventDefault();
                 }
                 const cx = clientX !== undefined ? clientX : ev.clientX;
@@ -2207,7 +2207,7 @@
                 state.windowEl.classList.add('is-dragging');
                 document.addEventListener('mousemove', onMove);
                 document.addEventListener('mouseup', onUp);
-                document.addEventListener('touchmove', onMove, { passive: false });
+                document.addEventListener('touchmove', onMove, { passive: true });
                 document.addEventListener('touchend', onUp);
             }
 
@@ -2221,10 +2221,9 @@
                         return;
                     }
                     e.stopPropagation();
-                    e.preventDefault();
                     const te = e.touches[0];
                     startDrag('left', e, te.clientX);
-                }, { passive: false });
+                }, { passive: true });
             }
 
             if (handleRight) {
@@ -2237,10 +2236,9 @@
                         return;
                     }
                     e.stopPropagation();
-                    e.preventDefault();
                     const te = e.touches[0];
                     startDrag('right', e, te.clientX);
-                }, { passive: false });
+                }, { passive: true });
             }
 
             function onBodyDown(e) {
@@ -2262,9 +2260,8 @@
                         return;
                     }
                     e.stopPropagation();
-                    e.preventDefault();
                     startDrag('pan', e, te.clientX);
-                }, { passive: false });
+                }, { passive: true });
             }
 
             state.trackEl.addEventListener('mousedown', function(e) {

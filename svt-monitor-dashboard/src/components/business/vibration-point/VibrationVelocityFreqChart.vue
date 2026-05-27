@@ -335,9 +335,31 @@ const getHarmonicSpectrumYAtX = (
   return nearest ? nearest[1] : null
 }
 
+const getLiveFullscreenFreqInst = (): echarts.ECharts | null => {
+  const inst = fullscreenFreqChartInstance.value
+  if (!inst) return null
+  try {
+    if (typeof (inst as any).isDisposed === 'function' && (inst as any).isDisposed()) {
+      return null
+    }
+  } catch {
+    /* ignore */
+  }
+  return inst
+}
+
+const isEchartsDisposed = (inst: any): boolean => {
+  if (!inst) return true
+  try {
+    return typeof inst.isDisposed === 'function' ? !!inst.isDisposed() : false
+  } catch {
+    return true
+  }
+}
+
 const buildFreqFullscreenHarmonicArrowGraphics = (baseFreq: number, maxOrder: number) => {
   if (!Number.isFinite(baseFreq) || baseFreq <= 0) return []
-  const inst = fullscreenFreqChartInstance.value
+  const inst = getLiveFullscreenFreqInst()
   if (!inst) return []
 
   const { xMax, pointMap } = getSortedFreqChartData()
@@ -448,7 +470,7 @@ const scheduleFreqFullscreenHarmonicLineArrowsForPointerMove = (baseFreq: number
 }
 
 const updateFreqFullscreenHarmonicLineArrows = (baseFreq?: number | null) => {
-  const inst = fullscreenFreqChartInstance.value
+  const inst = getLiveFullscreenFreqInst()
   if (!inst || !freqFullscreenUiActive.value) return
   const base = baseFreq === undefined ? resolveFreqFullscreenPointerFreqHz() : baseFreq
   if (base == null || !Number.isFinite(base) || base <= 0) {
@@ -654,7 +676,7 @@ const clampFreqDataSize = (raw: unknown) => {
 const harmonicOrderLabel = (order: number) => `${order}倍频`
 
 const harmonicMarkLineColor = (order: number) => {
-  if (order === 1) return '#ffffff'
+  if (order === 1) return FREQ_FULLSCREEN_AXIS_POINTER_LINE_COLOR
   const hue = ((order - 2) * 37 + 210) % 360
   return `hsl(${hue}, 68%, 58%)`
 }
@@ -699,7 +721,7 @@ const initFreqFullscreenYInputsFromData = () => {
 /** 自动 Y 时：把输入框同步为当前全屏图上的 Y 轴(含 X 缩放后的局部自适应)，便于在放大后直接点「确认」锁定当前视窗尺度 */
 const syncFreqFullscreenYInputsFromChartOption = () => {
   if (freqFullscreenYUseCustom.value) return
-  const inst = fullscreenFreqChartInstance.value
+  const inst = getLiveFullscreenFreqInst()
   if (!inst || !freqFullscreenUiActive.value) return
   try {
     if (typeof inst.isDisposed === 'function' && inst.isDisposed()) return
@@ -717,7 +739,7 @@ const syncFreqFullscreenYInputsFromChartOption = () => {
 }
 
 const patchFullscreenFreqYAxisRange = (min: number, max: number) => {
-  const inst = fullscreenFreqChartInstance.value
+  const inst = getLiveFullscreenFreqInst()
   if (!inst || !freqFullscreenUiActive.value) return
   if (!Number.isFinite(min) || !Number.isFinite(max)) return
   try {
@@ -742,7 +764,7 @@ const getCurrentAxisVelocityRms = () => {
 /** 全屏自动 Y 轴兜底：确保上界至少覆盖当前轴有效值，避免切轴后上界被自动计算压小 */
 const ensureFullscreenFreqYAxisIncludesRms = () => {
   if (freqFullscreenYUseCustom.value) return
-  const inst = fullscreenFreqChartInstance.value
+  const inst = getLiveFullscreenFreqInst()
   if (!inst || !freqFullscreenUiActive.value) return
   try {
     if (typeof inst.isDisposed === 'function' && inst.isDisposed()) return
@@ -1010,8 +1032,10 @@ const resolveFreqFullscreenTooltipEl = (): HTMLElement | null => {
 }
 
 const dismissFreqFullscreenFloatingTooltip = () => {
+  const inst = getLiveFullscreenFreqInst()
+  if (!inst) return
   try {
-    fullscreenFreqChartInstance.value?.dispatchAction({ type: 'hideTip' })
+    inst.dispatchAction({ type: 'hideTip' })
   } catch {
     // ignore
   }
@@ -2038,17 +2062,20 @@ const onFreqFullscreenChartReady = (inst: echarts.ECharts) => {
       freqFullscreenYInputSyncTimer = null
     }
     try {
+      if (isEchartsDisposed(inst)) return
       inst.off('updateAxisPointer', onUpdateAxisPointer)
       inst.off('datazoom', onFreqFullscreenDataZoom)
     } catch { }
   }
   fullscreenFreqFinishedCleanup = () => {
     try {
+      if (isEchartsDisposed(inst)) return
       inst.off('finished', onFreqFullscreenFinished)
     } catch { }
   }
   fullscreenFreqClickCleanup = () => {
     try {
+      if (isEchartsDisposed(inst)) return
       inst.off('click', onFreqFullscreenChartClick)
     } catch { }
   }
@@ -2112,8 +2139,6 @@ const notifyFrequencyDataState = () => {
 /** 测点暂无数据为正常业务态，避免懒加载批量请求时刷屏 */
 const warnFreqDataIssue = (message: string, detail?: unknown) => {
   if (!import.meta.env.DEV) return
-  if (detail !== undefined) console.warn(message, detail)
-  else console.warn(message)
 }
 
 const loadFreqData = async () => {

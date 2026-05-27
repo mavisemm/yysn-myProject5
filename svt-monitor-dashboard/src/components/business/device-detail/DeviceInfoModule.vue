@@ -6,8 +6,8 @@
       </div>
     </div>
     <div class="device-main">
-      <div class="device-image-container">
-        <img v-if="deviceImageSrc" :src="deviceImageSrc" alt="设备图片" class="device-image" />
+      <div v-if="deviceImageUrls.length" class="device-image-container">
+        <EquipmentImageGallery variant="detail" :urls="deviceImageUrls" alt="设备图片" />
       </div>
 
       <div class="health-gauge-container">
@@ -115,13 +115,15 @@ import * as echarts from 'echarts'
 import {
   getDeviceInfoByEquipmentId,
   getEquipmentHealth,
+  getEquipmentImages,
 } from '@/api/modules/hardware'
 import { service } from '@/api/request'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
 import DeviceInfoManageDialog from './DeviceInfoManageDialog.vue'
+import EquipmentImageGallery from './EquipmentImageGallery.vue'
 import {
+  extractEquipmentImageUrls,
   formatDeviceInfoValueWithUnit,
-  resolveDeviceImageFromName,
 } from './deviceImageUtils'
 import {
   buildHealthGaugeOption,
@@ -191,10 +193,7 @@ const soundStageReport = reactive({
   downloading: false,
 })
 
-const deviceImageSrc = computed<string>(() => {
-  if (!isDeviceInfoLoaded.value) return ''
-  return resolveDeviceImageFromName(deviceInfo.value.equipmentName)
-})
+const deviceImageUrls = ref<string[]>([])
 
 const isDeviceInfoLoaded = ref(false)
 let currentDeviceInfoRequestId = 0
@@ -300,21 +299,30 @@ const loadDeviceDataParallel = async () => {
   const requestId = ++currentDeviceInfoRequestId
   isDeviceInfoLoaded.value = false
   deviceInfo.value.equipmentName = ''
+  deviceImageUrls.value = []
 
   try {
-    const [infoResult, soundHealthResult, vibrationHealthResult] = await Promise.allSettled([
-      getDeviceInfoByEquipmentId(props.deviceId),
-      getEquipmentHealth({ equipmentId: props.deviceId, type: 'sound' }),
-      getEquipmentHealth({ equipmentId: props.deviceId, type: 'vibration' }),
-    ])
+    const [infoResult, soundHealthResult, vibrationHealthResult, imagesResult] =
+      await Promise.allSettled([
+        getDeviceInfoByEquipmentId(props.deviceId),
+        getEquipmentHealth({ equipmentId: props.deviceId, type: 'sound' }),
+        getEquipmentHealth({ equipmentId: props.deviceId, type: 'vibration' }),
+        getEquipmentImages({ equipmentId: props.deviceId }),
+      ])
 
     const infoResponse = infoResult.status === 'fulfilled' ? infoResult.value : null
     const soundHealthResponse = soundHealthResult.status === 'fulfilled' ? soundHealthResult.value : null
     const vibrationHealthResponse =
       vibrationHealthResult.status === 'fulfilled' ? vibrationHealthResult.value : null
+    const imagesResponse = imagesResult.status === 'fulfilled' ? imagesResult.value : null
+
+    if (requestId !== currentDeviceInfoRequestId) return
+
+    if (imagesResponse?.rc === 0) {
+      deviceImageUrls.value = extractEquipmentImageUrls(imagesResponse.ret)
+    }
 
     if (infoResponse?.rc === 0 && infoResponse.ret) {
-      if (requestId !== currentDeviceInfoRequestId) return
       applyDeviceInfoRet(infoResponse.ret)
       isDeviceInfoLoaded.value = true
     } else {
@@ -645,14 +653,6 @@ onUnmounted(() => {
 
     .device-image-container {
       flex: 0 0 auto;
-
-      .device-image {
-        width: 100%;
-        height: auto;
-        object-fit: contain;
-        display: block;
-        border-radius: 8px;
-      }
     }
   }
 }
