@@ -1,10 +1,6 @@
 <template>
   <div class="equipment-image-gallery" :class="`equipment-image-gallery--${variant}`">
-    <div
-      v-for="(src, idx) in urls"
-      :key="`${src}-${idx}`"
-      class="equipment-image-gallery__item"
-    >
+    <div v-for="(src, idx) in urls" :key="`${src}-${idx}`" class="equipment-image-gallery__item">
       <div class="equipment-image-gallery__frame">
         <el-image
           class="equipment-image-gallery__thumb"
@@ -12,7 +8,7 @@
           :alt="alt"
           :preview-src-list="urls"
           :initial-index="idx"
-          fit="contain"
+          fit="cover"
           preview-teleported
           hide-on-click-modal
         />
@@ -44,8 +40,13 @@ withDefaults(
 </script>
 
 <style scoped lang="scss">
+$gallery-detail-height: 200px;
+$gallery-analysis-height: 160px;
+$gallery-analysis-width: $gallery-analysis-height * 2;
+
 .equipment-image-gallery {
   &--detail {
+    width: 100%;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -58,6 +59,15 @@ withDefaults(
     align-items: flex-start;
   }
 
+  &--detail &__item {
+    width: 100%;
+  }
+
+  &--analysis &__item {
+    width: $gallery-analysis-width;
+    flex: 0 0 auto;
+  }
+
   &__item {
     cursor: zoom-in;
   }
@@ -66,6 +76,47 @@ withDefaults(
     position: relative;
     overflow: hidden;
     border-radius: 8px;
+    border: none;
+    box-shadow: none;
+    background: #2a2a2a;
+  }
+
+  &--detail &__frame {
+    width: 100%;
+    height: $gallery-detail-height;
+  }
+
+  &--analysis &__frame {
+    width: $gallery-analysis-width;
+    height: $gallery-analysis-height;
+  }
+
+  &__thumb {
+    display: block;
+    width: 100%;
+    height: 100%;
+
+    :deep(.el-image) {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: none;
+      box-shadow: none;
+    }
+
+    :deep(.el-image__inner) {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    :deep(.el-image__error),
+    :deep(.el-image__placeholder) {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
   }
 
   &__overlay {
@@ -102,43 +153,17 @@ withDefaults(
     white-space: nowrap;
   }
 
-  &--analysis &__item {
-    flex: 0 1 320px;
-    max-width: 100%;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 12px;
-    background: #f8fafc;
-  }
-
-  &__thumb {
-    display: block;
-    width: 100%;
-
-    :deep(.el-image__inner) {
-      display: block;
-      width: 100%;
-      max-height: 280px;
-      margin: 0 auto;
-      object-fit: contain;
-    }
-
-    :deep(.el-image__error),
-    :deep(.el-image__placeholder) {
-      min-height: 120px;
-    }
-  }
-
-  &--detail &__thumb :deep(.el-image__inner) {
-    max-height: none;
-  }
-
   &__caption {
     margin: 8px 0 0;
     font-size: 0.85rem;
     line-height: 1.4;
     color: #6c757d;
     text-align: center;
+    word-break: break-word;
+  }
+
+  &--analysis &__caption {
+    max-width: $gallery-analysis-width;
   }
 }
 </style>

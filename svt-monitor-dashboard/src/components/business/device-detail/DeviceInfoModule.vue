@@ -81,30 +81,27 @@
             <span class="info-label mobile-font-title">额定转速：</span>
             <span class="info-value mobile-font-title">{{
               formatDeviceInfoValueWithUnit(deviceInfo.rotationSpeed, 'rpm')
-            }}</span>
+              }}</span>
           </div>
           <div class="info-item">
             <span class="info-label mobile-font-title">设计流量：</span>
-            <span class="info-value mobile-font-title">{{ formatDeviceInfoValueWithUnit(deviceInfo.designFlow, 'm³/h') }}</span>
+            <span class="info-value mobile-font-title">{{ formatDeviceInfoValueWithUnit(deviceInfo.designFlow, 'm³/h')
+              }}</span>
           </div>
         </div>
 
         <div class="info-row">
           <div class="info-item">
             <span class="info-label mobile-font-title">压力：</span>
-            <span class="info-value mobile-font-title">{{ formatDeviceInfoValueWithUnit(deviceInfo.pressure, 'MPa') }}</span>
+            <span class="info-value mobile-font-title">{{ formatDeviceInfoValueWithUnit(deviceInfo.pressure, 'MPa')
+              }}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <DeviceInfoManageDialog
-      v-model="manageDialogVisible"
-      :device-id="props.deviceId"
-      :equipment-name="deviceInfo.equipmentName"
-      :device-info="manageDialogDeviceInfo"
-      @saved="onManageDialogSaved"
-    />
+    <DeviceInfoManageDialog v-model="manageDialogVisible" :device-id="props.deviceId"
+      :equipment-name="deviceInfo.equipmentName" :device-info="manageDialogDeviceInfo" @saved="onManageDialogSaved" />
   </div>
 </template>
 
@@ -653,6 +650,7 @@ onUnmounted(() => {
 
     .device-image-container {
       flex: 0 0 auto;
+      width: 100%;
     }
   }
 }
@@ -668,8 +666,7 @@ onUnmounted(() => {
     .device-main {
       .device-basic-info {
         .info-row {
-          .info-item {
-          }
+          .info-item {}
         }
       }
 
