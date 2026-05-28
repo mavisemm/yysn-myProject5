@@ -11,7 +11,7 @@
             <label for="va-equipment-select">选择设备</label>
             <el-select id="va-equipment-select" v-model="draftEquipmentId" class="va-equipment-select"
               popper-class="va-equipment-select-popper" filterable placeholder="请选择设备"
-              :loading="deviceTreeStore.loading">
+              :loading="equipmentLoading">
               <el-option v-for="opt in equipmentOptions" :key="opt.equipmentId" :label="opt.equipmentName"
                 :value="opt.equipmentId" />
             </el-select>
@@ -128,21 +128,18 @@ import { ref, computed, provide, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, ArrowUp } from '@element-plus/icons-vue'
-import { useDeviceTreeStore } from '@/stores/deviceTree'
-import { getDeviceInfoByEquipmentId } from '@/api/modules/hardware'
-import { fetchEquipmentImageUrls } from '@/components/business/device-detail/deviceImageUtils'
+import { getTenantId } from '@/api/tenant'
 import {
-  collectEquipmentOptions,
-  loadAnalysisPointsForEquipment,
-  type AnalysisPointItem,
-  type EquipmentOption,
-} from '@/utils/vibrationAnalysisTree'
+  getCheckPointsByEquipmentId,
+  getProductionEquipmentList,
+} from '@/api/modules/hardware'
+import { fetchEquipmentImageUrls } from '@/components/business/device-detail/deviceImageUtils'
+import type { AnalysisPointItem, EquipmentOption } from '@/utils/vibrationAnalysisTree'
 import { buildMockPointRmsRows, type PointRmsRow } from '@/utils/vibrationAnalysisMock'
 import DeviceVibrationPointChartsLazy from '@/components/business/vibration-analysis/DeviceVibrationPointChartsLazy.vue'
 import EquipmentImageGallery from '@/components/business/device-detail/EquipmentImageGallery.vue'
 
 const route = useRoute()
-const deviceTreeStore = useDeviceTreeStore()
 
 /** 分析页不在 PageLayout 内，需自行 provide，避免 CommonEcharts inject 告警 */
 const backgroundMode = ref<'image' | 'navy' | 'solid'>('solid')
@@ -165,9 +162,14 @@ const rmsRows = ref<PointRmsRow[]>([])
 const analysisPoints = ref<AnalysisPointItem[]>([])
 const pointMenuCollapsed = ref(false)
 
-const equipmentOptions = computed<EquipmentOption[]>(() =>
-  collectEquipmentOptions(deviceTreeStore.deviceTreeData ?? []),
-)
+const equipmentLoading = ref(false)
+const equipmentOptions = ref<EquipmentOption[]>([])
+
+const equipmentOptionsById = computed<Record<string, EquipmentOption>>(() => {
+  const map: Record<string, EquipmentOption> = {}
+  for (const o of equipmentOptions.value) map[o.equipmentId] = o
+  return map
+})
 const pointMenuItems = computed(() =>
   analysisPoints.value.map((p) => ({
     receiverId: p.receiverId,
@@ -177,8 +179,7 @@ const pointMenuItems = computed(() =>
 
 const queriedEquipmentLabel = computed(() => {
   if (queriedEquipmentName.value) return queriedEquipmentName.value
-  const hit = equipmentOptions.value.find((o) => o.equipmentId === queriedEquipmentId.value)
-  return hit?.equipmentName ?? queriedEquipmentId.value
+  return equipmentOptionsById.value[queriedEquipmentId.value]?.equipmentName ?? queriedEquipmentId.value
 })
 
 const rmsTableTitle = computed(() => {
@@ -189,28 +190,66 @@ const rmsTableTitle = computed(() => {
 
 const loadDeviceImageSection = async (equipmentId: string) => {
   deviceImageUrls.value = []
-  queriedEquipmentName.value = ''
+  queriedEquipmentName.value = equipmentOptionsById.value[equipmentId]?.equipmentName ?? ''
   if (!equipmentId) return
 
-  const [infoResult, imageUrls] = await Promise.allSettled([
-    getDeviceInfoByEquipmentId(equipmentId),
-    fetchEquipmentImageUrls(equipmentId),
-  ])
+  const [imageUrls] = await Promise.allSettled([fetchEquipmentImageUrls(equipmentId)])
 
   if (imageUrls.status === 'fulfilled') {
     deviceImageUrls.value = imageUrls.value
   }
+}
 
-  if (infoResult.status === 'fulfilled' && infoResult.value.rc === 0 && infoResult.value.ret) {
-    queriedEquipmentName.value = String(infoResult.value.ret.equipmentName ?? '').trim()
-    return
-  }
-
-  const hit = equipmentOptions.value.find((o) => o.equipmentId === equipmentId)
-  if (hit) {
-    queriedEquipmentName.value = hit.equipmentName
+const loadEquipmentOptions = async () => {
+  equipmentLoading.value = true
+  try {
+    const tenantId = getTenantId()
+    if (!tenantId) {
+      equipmentOptions.value = []
+      return
+    }
+    const res = await getProductionEquipmentList({ tenantId, type: 1 })
+    const list = Array.isArray(res.ret) ? res.ret : []
+    equipmentOptions.value = list
+      .map((it) => ({
+        equipmentId: String(it.id ?? '').trim(),
+        equipmentName: String(it.name ?? it.id ?? '').trim() || String(it.id ?? '').trim(),
+      }))
+      .filter((it) => it.equipmentId)
+  } catch {
+    equipmentOptions.value = []
+  } finally {
+    equipmentLoading.value = false
   }
 }
+
+const extractSortNumber = (value: string): number => {
+  const match = String(value ?? '').match(/\d+/)
+  return match ? Number(match[0]) : Number.POSITIVE_INFINITY
+}
+
+const sortAnalysisPoints = (points: AnalysisPointItem[]): AnalysisPointItem[] =>
+  points
+    .map((point, index) => ({ point, index }))
+    .sort((a, b) => {
+      const aNum = extractSortNumber(a.point.pointName || a.point.receiverId)
+      const bNum = extractSortNumber(b.point.pointName || b.point.receiverId)
+      if (aNum !== bNum) return aNum - bNum
+
+      const byName = String(a.point.pointName || '').localeCompare(String(b.point.pointName || ''), 'zh-CN', {
+        numeric: true,
+        sensitivity: 'base',
+      })
+      if (byName !== 0) return byName
+
+      const byReceiverId = String(a.point.receiverId || '').localeCompare(String(b.point.receiverId || ''), 'zh-CN', {
+        numeric: true,
+        sensitivity: 'base',
+      })
+      if (byReceiverId !== 0) return byReceiverId
+      return a.index - b.index
+    })
+    .map((item) => item.point)
 
 const runQuery = async (equipmentId: string) => {
   if (!equipmentId) {
@@ -219,11 +258,34 @@ const runQuery = async (equipmentId: string) => {
   }
   queryLoading.value = true
   try {
-    await deviceTreeStore.loadDeviceTreeData()
-    const points = await loadAnalysisPointsForEquipment(
-      deviceTreeStore.deviceTreeData ?? [],
-      equipmentId,
+    const tenantId = getTenantId()
+    if (!tenantId) {
+      analysisPoints.value = []
+      rmsRows.value = []
+      deviceImageUrls.value = []
+      queriedEquipmentId.value = equipmentId
+      queryGeneration.value += 1
+      ElMessage.warning('缺少 tenantId，无法查询点位')
+      return
+    }
+
+    const pointRes = await getCheckPointsByEquipmentId({ tenantId, equipmentId })
+    const rawPoints = Array.isArray(pointRes.ret) ? pointRes.ret : []
+    const points: AnalysisPointItem[] = sortAnalysisPoints(
+      rawPoints
+      .map((p) => {
+        const receiverId = String(p.receiverId ?? '').trim()
+        if (!receiverId) return null
+        return {
+          receiverId,
+          pointName: String(p.pointName ?? receiverId).trim() || receiverId,
+          // 你确认 receiverId 就是 pointDeviceId
+          pointDeviceId: receiverId,
+        } satisfies AnalysisPointItem
+      })
+      .filter((p): p is AnalysisPointItem => Boolean(p))
     )
+
     analysisPoints.value = points
     rmsRows.value = buildMockPointRmsRows(points)
     await loadDeviceImageSection(equipmentId)
@@ -275,7 +337,8 @@ onMounted(async () => {
   document.body.classList.add(VA_PAGE_ROOT_CLASS)
   updateBackToTopVisible()
   window.addEventListener('scroll', updateBackToTopVisible, { passive: true })
-  await deviceTreeStore.loadDeviceTreeData()
+
+  await loadEquipmentOptions()
   const defaultId =
     initialEquipmentId.value ||
     equipmentOptions.value[0]?.equipmentId ||

@@ -55,6 +55,81 @@ export const getDeviceInfoByEquipmentId = (equipmentId: string): Promise<DeviceI
     showLoading: true,
   })
 
+export interface FilterPropertyItem {
+  code: string
+  operate: 'EQ' | 'NE' | 'LIKE' | 'IN' | string
+  value: unknown
+}
+
+export interface SortValueItem {
+  code: string
+  sort: 'asc' | 'desc' | string
+}
+
+export interface ProductionEquipmentListRequest {
+  filterPropertyMap: FilterPropertyItem[]
+  sortValueMap?: SortValueItem[]
+}
+
+export interface ProductionEquipmentDto {
+  id: string
+  name?: string | null
+  remark?: string | null
+  type?: number | null
+  tenantId?: string | null
+  [key: string]: unknown
+}
+
+export interface ProductionEquipmentListResponse {
+  rc: number
+  ret: ProductionEquipmentDto[]
+  err: string | null
+}
+
+/** 获取当前租户下全部设备（生产设备列表） */
+export const getProductionEquipmentList = (payload: {
+  tenantId?: string
+  type?: number
+}): Promise<ProductionEquipmentListResponse> => {
+  const tenantId = payload.tenantId ?? getTenantId()
+  const type = payload.type ?? 1
+  return request.post<ProductionEquipmentListResponse>(
+    '/taicang/hardware/production/equipment/getList',
+    {
+      filterPropertyMap: [
+        { code: 'type', operate: 'EQ', value: type },
+        { code: 'tenantId', operate: 'EQ', value: tenantId },
+      ],
+      sortValueMap: [{ code: 'name', sort: 'asc' }],
+    } satisfies ProductionEquipmentListRequest,
+    { showLoading: false },
+  )
+}
+
+export interface EquipmentCheckPointDto {
+  pointName: string
+  receiverId: string
+}
+
+export interface EquipmentCheckPointListResponse {
+  rc: number
+  ret: EquipmentCheckPointDto[]
+  err: string | null
+}
+
+/** 获取该设备下全部点位 */
+export const getCheckPointsByEquipmentId = (params: {
+  tenantId?: string
+  equipmentId: string
+}): Promise<EquipmentCheckPointListResponse> =>
+  request.get('/taicang/hardware/device/check-point/find/ById', {
+    params: {
+      tenantId: params.tenantId ?? getTenantId(),
+      equipmentId: params.equipmentId,
+    },
+    showLoading: false,
+  })
+
 export interface CheckPointItem {
   receiverId: string
   receiverName?: string

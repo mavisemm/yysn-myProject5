@@ -77,11 +77,9 @@
 import { ref, computed, watch, nextTick, shallowRef, onUnmounted } from 'vue'
 import type { ComponentPublicInstance, ShallowRef } from 'vue'
 import type { VibrationAxis } from '@/api/modules/device'
-import { useDeviceTreeStore } from '@/stores/deviceTree'
 import { useLazyVisible } from '@/composables/useLazyVisible'
 import { provideVaTripleAxisFullscreen } from '@/composables/useVaTripleAxisFullscreen'
 import {
-  resolvePointDeviceIdFromTree,
   vibrationAnalysisChartTitle,
   vibrationAxisLabel,
 } from '@/components/business/vibration-point/vibrationPointUtils'
@@ -144,15 +142,7 @@ const tripleFsDialogVisible = computed({
 const tripleFsTitle = computed(() => tripleFs.title.value)
 const tripleFsKind = computed(() => tripleFs.kind.value)
 
-const deviceTreeStore = useDeviceTreeStore()
-
-const pointDeviceIdResolved = computed(() => {
-  const fromTree = resolvePointDeviceIdFromTree(
-    deviceTreeStore.deviceTreeData ?? [],
-    props.receiverId,
-  )
-  return fromTree || props.pointDeviceId
-})
+const pointDeviceIdResolved = computed(() => props.pointDeviceId)
 
 const chartKey = computed(
   () => `${props.queryGeneration}:${props.receiverId}:${pointDeviceIdResolved.value}`,

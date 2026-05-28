@@ -33,6 +33,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        '^/taicang/hardware/production/equipment/getList$': {
+          target: TARGET_8003,
+          changeOrigin: true,
+          secure: false,
+        },
         '/taicang/hardware': {
           target: TARGET_8006,
           changeOrigin: true,
