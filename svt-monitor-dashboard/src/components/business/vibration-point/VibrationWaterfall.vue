@@ -2,7 +2,18 @@
   <div class="card-item waterfall-card">
     <div class="card-header">
       <div class="card-header-leading">
-        <div class="card-title app-section-title">频域瀑布图</div>
+        <div class="card-title-stack">
+          <div class="card-title app-section-title">频域瀑布图</div>
+          <el-button
+            v-if="equipmentId"
+            type="primary"
+            size="small"
+            class="vibration-analysis-entry-btn"
+            @click="openVibrationAnalysis"
+          >
+            设备振动分析
+          </el-button>
+        </div>
         <el-select v-model="waterfallAxis" class="waterfall-axis-select" size="small" teleported :show-arrow="false"
           popper-class="waterfall-axis-select-dropdown">
           <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
@@ -67,9 +78,10 @@
 
 <script setup lang="ts">
 import { ref, onUnmounted, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type { EChartsOption } from 'echarts'
 import type { ECharts } from 'echarts'
+import { getTenantId } from '@/api/tenant'
 import { getRollingWeekDateRange } from '@/utils/datetime'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
 import { CommonEcharts } from '@/components/common/chart'
@@ -82,6 +94,24 @@ import graphicGL from 'echarts-gl/lib/util/graphicGL.js'
 
 const waterfallChartRef = ref<InstanceType<typeof CommonEcharts>>()
 const route = useRoute()
+const router = useRouter()
+
+const equipmentId = computed(() => {
+  const q = route.query.equipmentId
+  const fromQuery = Array.isArray(q) ? q[0] : q
+  const id = typeof fromQuery === 'string' ? fromQuery.trim() : ''
+  return id
+})
+
+const openVibrationAnalysis = () => {
+  const id = equipmentId.value
+  if (!id) return
+  const tenantId = getTenantId()
+  const query: Record<string, string> = { equipmentId: id }
+  if (tenantId) query.tenantId = tenantId
+  const resolved = router.resolve({ name: 'DeviceVibrationAnalysis', query })
+  window.open(resolved.href, '_blank', 'noopener,noreferrer')
+}
 
 /** 悬停频率时沿时间轴连成的 3D 折线（独立 series，用局部 setOption 更新，避免整图重配影响视角） */
 const FREQ_SLICE_SERIES_ID = 'waterfall-freq-slice'
@@ -996,13 +1026,25 @@ onUnmounted(() => {
 
     .card-header-leading {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 10px;
       min-width: 0;
     }
 
     .card-title {
       color: #fff;
+    }
+
+    .card-title-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    :deep(.vibration-analysis-entry-btn) {
+      flex-shrink: 0;
     }
 
     .time-section {
