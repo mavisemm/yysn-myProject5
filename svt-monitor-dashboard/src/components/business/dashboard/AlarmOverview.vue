@@ -53,6 +53,12 @@
     </div>
 
     <div class="status-legend">
+      <div class="status-legend__item status-legend__remind">
+        <span class="status-legend__text status-legend__remind-label">
+          {{ reminderEnabled ? '打开提醒' : '关闭提醒' }}
+        </span>
+        <el-switch :model-value="reminderEnabled" size="small" @change="onReminderSwitchChange" />
+      </div>
       <div class="status-legend__item">
         <img class="status-legend__icon" src="@/assets/images/background/首页-报警图例.webp" alt="报警图例" loading="lazy"
           decoding="async" />
@@ -136,11 +142,12 @@ import { storeToRefs } from 'pinia'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Sort } from '@element-plus/icons-vue'
-import { ElButton, ElPagination } from 'element-plus'
+import { ElButton, ElPagination, ElSwitch } from 'element-plus'
 import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
 import { useAlarmOverviewStore } from '@/stores/alarmOverview'
+import { useAlarmReminderStore } from '@/stores/alarmReminder'
 import type { AlarmItem } from '@/stores/alarmOverviewLogic'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import {
@@ -188,6 +195,13 @@ const sortIcon = Sort
 
 const alarmOverviewStore = useAlarmOverviewStore()
 const { alarms, httpInitialized } = storeToRefs(alarmOverviewStore)
+
+const alarmReminderStore = useAlarmReminderStore()
+const { enabled: reminderEnabled } = storeToRefs(alarmReminderStore)
+
+function onReminderSwitchChange(value: string | number | boolean) {
+  alarmReminderStore.setEnabled(Boolean(value))
+}
 
 watch(
   () => dateRange.value,
@@ -529,6 +543,24 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
     line-height: 1;
     color: rgba(255, 255, 255, 0.9);
     white-space: nowrap;
+  }
+
+  .status-legend__remind {
+    margin-right: 14px;
+    padding-right: 14px;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .status-legend__remind + .status-legend__item {
+    margin-left: 0;
+  }
+
+  .status-legend__remind-label {
+    min-width: 4.5em;
+  }
+
+  .status-legend__remind :deep(.el-switch) {
+    --el-switch-on-color: #409eff;
   }
 
   .alarm-empty {

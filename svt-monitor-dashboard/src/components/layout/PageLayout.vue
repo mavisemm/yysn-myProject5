@@ -31,6 +31,11 @@
     <RealtimeAlarmBatchDialog @view="handleRealtimeAlarmView" />
     <HistoryAlarmBatchDialog @view="handleHistoryAlarmView" />
     <AlarmBatchViewModal v-model="alarmViewVisible" :row="alarmViewRow" />
+    <IncomingAlarmRemindDialog
+      v-model:visible="remindDialogVisible"
+      :item="remindDialogItem"
+      @view="onRemindDialogView"
+    />
   </div>
 </template>
 
@@ -41,12 +46,13 @@ import SoundVibrationSegment from './SoundVibrationSegment.vue'
 import DeviceSidebar from './DeviceSidebar.vue'
 import { RouterView } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessageBox, ElDrawer } from 'element-plus'
+import { ElDrawer } from 'element-plus'
 import RealtimeBatchDialog from '@/components/alarm/RealtimeBatchDialog.vue'
 import HistoryBatchDialog from '@/components/alarm/HistoryBatchDialog.vue'
 import RealtimeAlarmBatchDialog from '@/components/alarm/RealtimeAlarmBatchDialog.vue'
 import HistoryAlarmBatchDialog from '@/components/alarm/HistoryAlarmBatchDialog.vue'
 import AlarmBatchViewModal from '@/components/alarm/AlarmBatchViewModal.vue'
+import IncomingAlarmRemindDialog from '@/components/layout/IncomingAlarmRemindDialog.vue'
 import { getTenantId } from '@/api/tenant'
 import { useAlarmOverviewStore } from '@/stores/alarmOverview'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
@@ -58,10 +64,10 @@ import {
   layoutShowReturnDevice,
 } from '@/components/layout/layoutNavUtils'
 import {
-  escapeHtml,
   normalizeIncomingAlarm,
   type IncomingAlarmPreview,
 } from '@/components/layout/layoutIncomingAlarm'
+import { useAlarmReminderStore } from '@/stores/alarmReminder'
 import { useLayoutDeviceNavigation } from '@/composables/useLayoutDeviceNavigation'
 
 const backgroundMode = ref<'image' | 'navy' | 'solid'>('solid')
@@ -109,6 +115,10 @@ const router = useRouter()
 const alarmOverviewStore = useAlarmOverviewStore()
 const alarmBatchStore = useAlarmBatchStore()
 const deviceTreeStore = useDeviceTreeStore()
+const alarmReminderStore = useAlarmReminderStore()
+
+const remindDialogVisible = ref(false)
+const remindDialogItem = ref<IncomingAlarmPreview | null>(null)
 
 async function goToDashboardWithTarget(item: IncomingAlarmPreview) {
   await alarmBatchStore.ensureDropdowns()
@@ -145,49 +155,19 @@ async function goToDashboardWithTarget(item: IncomingAlarmPreview) {
 }
 
 function showIncomingAlarmDialog(item: IncomingAlarmPreview) {
-  ElMessageBox.close()
-  const title = item.status === 'alarm' ? '新报警' : '新预警'
-  const actionText = item.status === 'alarm' ? '报警' : '预警'
-  const emphasisClass =
-    item.status === 'alarm' ? 'alarm-remind-dialog__emphasis--alarm' : 'alarm-remind-dialog__emphasis--warning'
-  const message = [
-    item.alarmTimeText
-      ? `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.alarmTimeText)}</span>`
-      : '',
-    item.alarmTimeText ? '，' : '',
-    `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.shopName)}</span>`,
-    ' 的 ',
-    `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.deviceName)}</span>`,
-    ' 的 ',
-    `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(item.pointName)}</span>`,
-    ' 发生 ',
-    `<span class="alarm-remind-dialog__emphasis ${emphasisClass}">${escapeHtml(actionText)}</span>`,
-  ].join('')
+  remindDialogItem.value = item
+  remindDialogVisible.value = true
+}
 
-  const messagePromise = ElMessageBox.confirm(message, title, {
-    confirmButtonText: '查看',
-    cancelButtonText: '确定',
-    distinguishCancelAndClose: true,
-    type: 'warning',
-    modal: true,
-    customClass:
-      item.status === 'alarm'
-        ? 'alarm-remind-dialog alarm-remind-dialog--alarm'
-        : 'alarm-remind-dialog alarm-remind-dialog--warning',
-    dangerouslyUseHTMLString: true,
-  })
-
-  void messagePromise
-    .then(async () => {
-      await goToDashboardWithTarget(item)
-    })
-    .catch(() => {
-      // 用户点击“确定”或关闭弹窗，仅关闭当前提醒
-    })
+async function onRemindDialogView() {
+  const item = remindDialogItem.value
+  if (!item) return
+  await goToDashboardWithTarget(item)
 }
 
 function enqueueIncomingAlarm(payload: unknown) {
   if (route.name === 'Login') return
+  if (!alarmReminderStore.shouldShowReminder()) return
   const normalized = normalizeIncomingAlarm(payload as any)
   if (!normalized) return
   showIncomingAlarmDialog(normalized)
@@ -490,64 +470,5 @@ onUnmounted(() => {
       padding: 0;
     }
   }
-}
-
-.alarm-remind-dialog {
-  .el-message-box__status.el-icon {
-    display: none;
-  }
-
-  .el-message-box__title {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-}
-
-.alarm-remind-dialog--alarm {
-  .el-message-box__title::before {
-    content: '!';
-    display: inline-flex;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    background: #f56c6c;
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 1;
-  }
-}
-
-.alarm-remind-dialog--warning {
-  .el-message-box__title::before {
-    content: '!';
-    display: inline-flex;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    background: #e6a23c;
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 1;
-  }
-}
-
-.alarm-remind-dialog__emphasis {
-  font-size: 1.1em;
-  font-weight: 700;
-}
-
-.alarm-remind-dialog__emphasis--alarm {
-  color: #f56c6c;
-}
-
-.alarm-remind-dialog__emphasis--warning {
-  color: #e6a23c;
 }
 </style>
