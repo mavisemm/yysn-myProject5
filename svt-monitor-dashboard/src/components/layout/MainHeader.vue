@@ -133,21 +133,38 @@ const goHome = () => {
   void router.push('/dashboard')
 }
 
+function clearAuthState() {
+  ElMessageBox.close()
+  alarmOverviewStore.stop()
+  localStorage.clear()
+  sessionStorage.clear()
+  alarmBatchStore.resetPrefetchState()
+  alarmOverviewStore.reset()
+  deviceTreeStore.clearDeviceTreeData()
+}
+
 const handleLogout = () => {
+  ElMessageBox.close()
   ElMessageBox.confirm('确定要退出登录吗？', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning',
     customClass: 'logout-confirm-box',
+    appendTo: document.body,
   })
-    .then(() => {
-      localStorage.clear()
-
-      alarmBatchStore.resetPrefetchState()
-      alarmOverviewStore.reset()
-
-      deviceTreeStore.clearDeviceTreeData()
-      router.push('/login')
+    .then(async () => {
+      clearAuthState()
+      const loginHref = router.resolve({ name: 'Login' }).href
+      try {
+        await router.replace({ name: 'Login' })
+      } catch {
+        window.location.replace(loginHref)
+        return
+      }
+      if (router.currentRoute.value.name !== 'Login') {
+        window.location.replace(loginHref)
+        return
+      }
       ElMessage.success('已安全退出')
     })
     .catch(() => { })
@@ -214,6 +231,7 @@ const handleLogout = () => {
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: none;
 
     .title {
       margin: 0;

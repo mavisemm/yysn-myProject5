@@ -19,7 +19,12 @@ export function setupRouterGuard(router: Router) {
       return
     }
 
-    const isLoggedIn = localStorage.getItem('token') !== null
+    if (to.path === '/download/app') {
+      next()
+      return
+    }
+
+    const isLoggedIn = Boolean(localStorage.getItem('token'))
     if (!isLoggedIn) {
       ElMessage.warning('请先登录')
       next('/login')

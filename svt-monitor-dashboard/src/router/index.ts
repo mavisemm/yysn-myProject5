@@ -60,6 +60,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Login' },
   },
   {
+    path: '/download/app',
+    name: 'AppDownloadTest',
+    component: () => import('@/views/AppDownloadTest.vue'),
+    meta: { title: 'App Download Test' },
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/dashboard',
   },
