@@ -1,32 +1,17 @@
 <template>
   <div class="header-clock">
-    <div v-if="showFull" class="clock-left">
+    <div class="clock-date-block">
       <span class="clock-date">{{ dateText }}</span>
       <span class="clock-week">{{ weekText }}</span>
     </div>
-    <div class="clock-right">
-      <span class="clock-time">{{ timeText }}</span>
-    </div>
+    <span class="clock-time">{{ timeText }}</span>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
-
 const now = ref<Date | null>(null)
 let timerId: number | null = null
-const route = useRoute()
-
-const showFull = computed(() => {
-  const name = route.name
-  return (
-    route.path === '/' ||
-    route.path.startsWith('/dashboard') ||
-    name === 'Home' ||
-    name === 'Dashboard'
-  )
-})
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -73,43 +58,59 @@ onUnmounted(() => {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 0;
   white-space: nowrap;
-  font-family: 'DIN';
+  font-family: 'DIN', 'Microsoft YaHei', sans-serif;
   font-style: normal;
-  background: linear-gradient(177.37deg, #ffffff 2.19%, #7ea8ff 160.82%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 
-  .clock-left {
+  .clock-date-block {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    justify-content: center;
-    line-height: 1.2;
-    margin-right: 8px;
-    font-size: 1rem;
-
-    .clock-week {
-      margin-top: 2px;
-    }
+    gap: 2px;
   }
 
-  .clock-right {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.6rem;
+  .clock-date,
+  .clock-week,
+  .clock-time {
+    background: linear-gradient(177.37deg, #ffffff 2.19%, #7ea8ff 160.82%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
 
-    // .clock-time {
-    //   font-family: 'DIN';
-    //   font-style: normal;
-    //   background: linear-gradient(177.37deg, #FFFFFF 2.19%, #7EA8FF 160.82%);
-    //   -webkit-background-clip: text;
-    //   -webkit-text-fill-color: transparent;
-    //   background-clip: text;
-    // }
+  .clock-date {
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+
+  .clock-week {
+    font-size: 0.85rem;
+    line-height: 1.2;
+    opacity: 0.92;
+  }
+
+  .clock-time {
+    margin-left: 18px;
+    font-size: 1.6rem;
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+}
+
+@media (max-width: 800px) {
+  .header-clock {
+    .clock-date {
+      font-size: 0.85rem;
+    }
+
+    .clock-time {
+      margin-left: 12px;
+      font-size: 1.1rem;
+    }
   }
 }
 </style>

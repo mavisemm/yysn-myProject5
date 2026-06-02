@@ -1,5 +1,11 @@
 <template>
-  <div class="stats-area">
+  <div
+    class="stats-area"
+    :class="{
+      'stats-area--alarm': variant === 'alarm',
+      'stats-area--trend-pair': isTrendPairLayout,
+    }"
+  >
     <div class="header-section home-title home-title--device-monitor">
       <div class="header-section__left home-title__left">
         <img class="header-section__icon home-title__icon" src="@/assets/images/background/小图标.webp" alt="" />
@@ -8,11 +14,19 @@
         </div>
       </div>
     </div>
-    <div class="stats-grid">
-      <div v-for="(stat, index) in stats" :key="index" class="stat-card" :class="[
-        `stat-card-${index}`,
-        stat.title === '声音趋势预警' || stat.title === '振动烈度报警' ? 'stat-card-trend' : '',
-      ]" @click="handleCardClick(stat.title)">
+
+    <!-- 设备驾驶舱：四宫格，数字在上、标题在下 -->
+    <div v-if="variant === 'default'" class="stats-grid">
+      <div
+        v-for="(stat, index) in stats"
+        :key="index"
+        class="stat-card"
+        :class="[
+          `stat-card-${index}`,
+          isTrendStat(stat.title) ? 'stat-card-trend' : '',
+        ]"
+        @click="handleCardClick(stat.title)"
+      >
         <div class="stat-content">
           <div class="stat-icon" :class="{ 'stat-icon-blink': isAlertOrWarning(stat) }">
             <img v-if="getIconSrc(stat.title)" :src="getIconSrc(stat.title)" :alt="stat.title" class="stat-icon-img" />
@@ -34,18 +48,66 @@
         </div>
       </div>
     </div>
+
+    <!-- 报警管理：标题下方小卡片，横向 图标 + 文字 + 数字 -->
+    <div v-else-if="variant === 'alarm'" class="stats-grid stats-grid--alarm">
+      <div
+        v-for="(stat, index) in stats"
+        :key="index"
+        class="stat-card stat-card--alarm"
+        :class="[
+          `stat-card-${index}`,
+          isTrendStat(stat.title) ? 'stat-card-trend' : '',
+        ]"
+        @click="handleCardClick(stat.title)"
+      >
+        <div class="stat-content stat-content--alarm-row">
+          <div class="stat-icon" :class="{ 'stat-icon-blink': isAlertOrWarning(stat) }">
+            <img v-if="getIconSrc(stat.title)" :src="getIconSrc(stat.title)" :alt="stat.title" class="stat-icon-img" />
+            <el-icon v-else>
+              <Monitor />
+            </el-icon>
+          </div>
+          <div class="stat-text mobile-font-title">{{ stat.title }}</div>
+          <div class="stat-number stat-number--alarm mobile-font-number">
+            <template v-for="(ch, i) in splitNumberChars(stat.number)" :key="i">
+              <span v-if="isSingleDigit(ch)" class="digit-bg">
+                <span class="digit-text mobile-font-number">{{ ch }}</span>
+              </span>
+              <span v-else class="digit-text digit-text-plain mobile-font-number">{{ ch }}</span>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { StatItem } from '@/types/device'
 import { Monitor } from '@element-plus/icons-vue'
 
 interface Props {
   stats: StatItem[]
+  /** default：驾驶舱四宫格；alarm：报警管理双卡片横排 */
+  variant?: 'default' | 'alarm'
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  variant: 'default',
+})
+
+const TREND_STAT_TITLES = new Set(['声音趋势预警', '振动烈度报警'])
+
+const isTrendStat = (title: string) => TREND_STAT_TITLES.has(title)
+
+const isTrendPairLayout = computed(
+  () =>
+    props.variant === 'default' &&
+    props.stats.length > 0 &&
+    props.stats.every((s) => isTrendStat(s.title)),
+)
 
 const emit = defineEmits<{
   (e: 'clickTrendWarning'): void
@@ -104,6 +166,15 @@ function isAlertOrWarning(stat: StatItem) {
     align-items: center;
     gap: 10px;
     flex: 0 0 auto;
+    min-width: 0;
+
+    .header-section__left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
 
     .title-with-legend {
       display: flex;
@@ -120,6 +191,16 @@ function isAlertOrWarning(stat: StatItem) {
     }
   }
 
+  &.stats-area--alarm {
+    height: auto;
+    flex: 0 0 auto;
+    padding-bottom: 0;
+  }
+
+  &.stats-area--trend-pair .stats-grid:not(.stats-grid--alarm) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .stats-grid {
     flex: 1;
     display: grid;
@@ -131,6 +212,13 @@ function isAlertOrWarning(stat: StatItem) {
     overflow: hidden;
     box-sizing: border-box;
     padding-top: 10px;
+
+    &--alarm {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      flex: 0 0 auto;
+      height: auto;
+      min-height: 88px;
+    }
 
     .stat-card {
       min-width: 0;
@@ -145,14 +233,17 @@ function isAlertOrWarning(stat: StatItem) {
       background: url('@/assets/images/background/首页-数据统计小背景.webp') no-repeat center center;
       background-size: 100% 100%;
 
+      &--alarm {
+        min-height: 88px;
+        height: auto;
+      }
+
       &.stat-card-trend {
         cursor: pointer;
         transition: all 0.3s ease;
 
         &:hover {
-          // background: rgba(255, 255, 255, 0.1);
           transform: translateY(-2px);
-          // box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
       }
     }
@@ -168,6 +259,12 @@ function isAlertOrWarning(stat: StatItem) {
       min-height: 0;
       min-width: 0;
       padding: 0 4px;
+
+      &--alarm-row {
+        justify-content: flex-start;
+        gap: 10px;
+        padding: 0 14px;
+      }
     }
 
     .stat-icon {
@@ -177,6 +274,11 @@ function isAlertOrWarning(stat: StatItem) {
       justify-content: center;
       width: clamp(24px, 6vw, 100px);
       margin-right: 10px;
+
+      .stat-content--alarm-row & {
+        width: clamp(32px, 4.5vw, 56px);
+        margin-right: 0;
+      }
 
       .stat-icon-img {
         width: 100%;
@@ -190,7 +292,6 @@ function isAlertOrWarning(stat: StatItem) {
     }
 
     @keyframes stat-icon-blink {
-
       0%,
       100% {
         opacity: 1;
@@ -216,12 +317,15 @@ function isAlertOrWarning(stat: StatItem) {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      width: 100%;
-      max-width: 100%;
       min-width: 0;
       font-weight: 500;
       letter-spacing: 0.5px;
       text-align: center;
+
+      .stat-content--alarm-row & {
+        flex: 1 1 auto;
+        text-align: left;
+      }
     }
 
     .stat-number {
@@ -235,9 +339,13 @@ function isAlertOrWarning(stat: StatItem) {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-
       font-size: 1.8rem;
       line-height: 1;
+
+      &--alarm {
+        flex: 0 0 auto;
+        margin-left: auto;
+      }
     }
 
     .digit-bg {
@@ -267,17 +375,20 @@ function isAlertOrWarning(stat: StatItem) {
   .stats-area {
     padding: 10px 10px 0 10px;
 
-    .stats-grid {
+    .stats-grid:not(.stats-grid--alarm) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       grid-template-rows: repeat(2, minmax(0, 1fr));
       align-content: stretch;
       gap: 10px;
     }
 
+    .stats-grid--alarm {
+      grid-template-columns: 1fr;
+    }
+
     .stats-grid .stat-icon {
       width: 50px;
     }
-
   }
 }
 </style>

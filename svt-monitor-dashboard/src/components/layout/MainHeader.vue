@@ -1,12 +1,7 @@
 <template>
   <header class="main-header">
     <div class="header-left">
-      <div v-if="showHomeButton" class="nav-btn" @click="goHome">
-        <el-icon :size="24" class="nav-icon">
-          <House />
-        </el-icon>
-        <span>首页</span>
-      </div>
+      <HeaderClock />
 
       <div v-if="showReturnDeviceButton" class="nav-btn" @click="goToDevice">
         <el-icon :size="24" class="nav-icon">
@@ -22,44 +17,30 @@
       <h1 class="title">{{ platformTitle }}</h1>
     </div>
 
-    <div class="header-right-clock">
-      <HeaderClock />
-    </div>
-
     <div class="header-right-actions">
-      <div class="theme-wrapper" @mouseenter="onThemeEnter" @mouseleave="onThemeLeave">
-        <div class="theme-trigger" :class="`theme-trigger--${currentBackground}`" title="切换背景" />
-        <div v-show="showThemeDropdown" class="theme-dropdown" @mouseenter="onThemeEnter" @mouseleave="onThemeLeave">
-          <div v-if="currentBackground !== 'image'" class="theme-square theme-square--image" title="背景1"
-            @click="selectBackground('image')" />
-          <div v-if="currentBackground !== 'navy'" class="theme-square theme-square--navy" title="背景2"
-            @click="selectBackground('navy')" />
-          <div v-if="currentBackground !== 'solid'" class="theme-square theme-square--solid" title="默认背景"
-            @click="selectBackground('solid')" />
+      <el-tooltip content="退出登录" placement="bottom">
+        <div class="nav-btn logout-btn" @click="handleLogout">
+          <el-icon :size="26" class="nav-icon">
+            <SwitchButton />
+          </el-icon>
         </div>
-      </div>
-      <div class="nav-btn logout-btn" @click="handleLogout">
-        <el-icon :size="26" class="nav-icon">
-          <SwitchButton />
-        </el-icon>
-      </div>
+      </el-tooltip>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { computed, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessageBox, ElMessage } from 'element-plus'
+import { ElMessageBox, ElMessage, ElTooltip } from 'element-plus'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import { useAlarmBatchStore } from '@/stores/alarmBatch'
 import { useAlarmOverviewStore } from '@/stores/alarmOverview'
 import HeaderClock from './HeaderClock.vue'
 import SoundVibrationSegment from './SoundVibrationSegment.vue'
 
-import { SwitchButton, House, Back } from '@element-plus/icons-vue'
+import { SwitchButton, Back } from '@element-plus/icons-vue'
 import {
-  layoutShowHomeButton,
   layoutShowPointTypeSwitch,
   layoutShowReturnDevice,
 } from '@/components/layout/layoutNavUtils'
@@ -77,33 +58,10 @@ interface Props {
 }
 withDefaults(defineProps<Props>(), { currentBackground: 'navy' })
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'change-background', mode: 'image' | 'navy' | 'solid'): void
 }>()
 
-const showThemeDropdown = ref(false)
-const themeCloseTimer = ref<number | null>(null)
-
-const onThemeEnter = () => {
-  if (themeCloseTimer.value !== null) {
-    window.clearTimeout(themeCloseTimer.value)
-    themeCloseTimer.value = null
-  }
-  showThemeDropdown.value = true
-}
-
-const onThemeLeave = () => {
-  if (themeCloseTimer.value !== null) {
-    window.clearTimeout(themeCloseTimer.value)
-  }
-
-  themeCloseTimer.value = window.setTimeout(() => {
-    showThemeDropdown.value = false
-    themeCloseTimer.value = null
-  }, 150)
-}
-
-const showHomeButton = computed(() => layoutShowHomeButton(route.name))
 const showReturnDeviceButton = computed(() => layoutShowReturnDevice(route.name))
 const showPointTypeSwitch = computed(() => layoutShowPointTypeSwitch(route.name))
 
@@ -112,26 +70,14 @@ const platformTitle = computed(() => {
   if (tenantId === '9eda8d5a0d4e41c38950c1c8b95d92ca') {
     return '中铁装备声振温在线监测平台'
   }
-  return '鲁西化工声振温在线监测平台'
+  return '云音声脑在线监测预警平台'
 })
 
-const selectBackground = (mode: 'image' | 'navy' | 'solid') => {
-  emit('change-background', mode)
-  showThemeDropdown.value = false
-}
-
 onBeforeUnmount(() => {
-  if (themeCloseTimer.value !== null) {
-    window.clearTimeout(themeCloseTimer.value)
-    themeCloseTimer.value = null
-  }
+  //
 })
 
 const { goToDevice } = useLayoutDeviceNavigation()
-
-const goHome = () => {
-  void router.push('/dashboard')
-}
 
 function clearAuthState() {
   ElMessageBox.close()
@@ -188,7 +134,7 @@ const handleLogout = () => {
   .header-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     position: absolute;
     left: 10px;
     top: 50%;
@@ -260,14 +206,6 @@ const handleLogout = () => {
     }
   }
 
-  .header-right-clock {
-    position: absolute;
-    right: 115px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 1;
-  }
-
   .header-right-actions {
     position: absolute;
     right: 10px;
@@ -277,82 +215,6 @@ const handleLogout = () => {
     display: flex;
     align-items: center;
     gap: 10px;
-  }
-
-  .theme-wrapper {
-    position: relative;
-    flex-shrink: 0;
-  }
-
-  .theme-trigger {
-    width: 22px;
-    height: 22px;
-    border-radius: 4px;
-    cursor: pointer;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    transition: box-shadow 0.2s;
-
-    &:hover {
-      box-shadow: 0 0 10px rgba(255, 255, 255, 0.35);
-    }
-
-    &--image {
-      background: #135ba9;
-    }
-
-    &--navy {
-      background: #061028;
-    }
-
-    &--solid {
-      background: #151155;
-    }
-  }
-
-  .theme-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-top: 6px;
-    padding: 6px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(0, 0, 0, 0.18);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-    z-index: 1000;
-    pointer-events: auto;
-  }
-
-  .theme-square {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition:
-      transform 0.2s,
-      box-shadow 0.2s;
-
-    &:hover {
-      transform: scale(1.1);
-      box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
-    }
-
-    &--image {
-      background: #135ba9;
-    }
-
-    &--navy {
-      background: #061028;
-    }
-
-    &--solid {
-      background: #12316b;
-    }
   }
 
   .nav-btn {
@@ -374,13 +236,6 @@ const handleLogout = () => {
 
     .nav-icon {
       color: #cfe4ff;
-    }
-
-    span {
-      background: linear-gradient(177.37deg, #ffffff 2.19%, #7ea8ff 160.82%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
     }
   }
 
@@ -410,20 +265,13 @@ const handleLogout = () => {
     background-size: cover;
 
     .header-left {
-      display: none;
-    }
-
-    .header-right-clock {
-      display: none;
+      left: 8px;
+      gap: 8px;
+      max-width: calc(100vw - 80px);
     }
 
     .header-right-actions {
       right: 8px;
-      gap: 8px;
-
-      .theme-wrapper {
-        display: none;
-      }
 
       .logout-btn {
         width: 0.8em;

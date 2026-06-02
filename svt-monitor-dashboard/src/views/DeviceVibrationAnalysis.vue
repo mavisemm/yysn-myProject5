@@ -1,11 +1,11 @@
 <template>
-  <div class="vibration-analysis-page">
+  <div class="vibration-analysis-page" :class="{ 'vibration-analysis-page--embedded': embedded }">
     <div class="va-container">
-      <header class="dashboard-header">
+      <header v-if="!embedded" class="dashboard-header">
         <h1>设备振动分析</h1>
       </header>
 
-      <section class="load-data-section">
+      <section v-if="!embedded" class="load-data-section">
         <div class="va-filter-row">
           <div class="va-filter-item">
             <label for="va-equipment-select">选择设备</label>
@@ -36,10 +36,52 @@
         </div>
       </section>
 
-      <section class="card">
+      <section v-if="analysisPoints.length" class="card va-point-select-card">
+        <div class="card-header">点位勾选</div>
+        <div class="card-body va-point-select-body">
+          <el-select
+            v-model="selectedPointIds"
+            multiple
+            filterable
+            collapse-tags
+            collapse-tags-tooltip
+            :max-collapse-tags="3"
+            placeholder="请选择要展示的点位"
+            class="va-point-select"
+            popper-class="va-point-select-popper"
+            clearable
+          >
+            <el-option
+              v-for="p in analysisPoints"
+              :key="p.receiverId"
+              :label="formatPointOptionLabel(p)"
+              :value="p.receiverId"
+            >
+              <div class="va-point-option">
+                <el-checkbox
+                  :model-value="selectedPointIdSet.has(p.receiverId)"
+                  @click.stop.prevent="
+                    togglePointSelection(p.receiverId, !selectedPointIdSet.has(p.receiverId))
+                  "
+                />
+                <span class="va-point-option__label">{{ formatPointOptionLabel(p) }}</span>
+              </div>
+            </el-option>
+          </el-select>
+          <div class="va-point-select-actions">
+            <el-button size="small" @click="selectAllPoints">全选</el-button>
+            <el-button size="small" @click="clearSelectedPoints">清空</el-button>
+            <span v-if="selectedPointIds.length" class="va-point-select-hint">
+              已选 {{ selectedPointIds.length }} / {{ analysisPoints.length }} 个点位
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section v-if="analysisPoints.length" class="card">
         <div class="card-header">{{ rmsTableTitle }}</div>
         <div class="card-body data-table">
-          <el-table v-if="rmsRows.length" :data="rmsRows" border stripe style="width: 100%">
+          <el-table v-if="visibleRmsRows.length" :data="visibleRmsRows" border stripe style="width: 100%">
             <el-table-column prop="pointName" label="点位名称" min-width="140" />
             <el-table-column prop="receiverId" label="点位编号" min-width="160" />
             <el-table-column label="X轴(A)速度有效值 (mm/s)" min-width="160" align="center">
@@ -52,16 +94,18 @@
               <template #default="{ row }">{{ row.zRms.toFixed(2) }}</template>
             </el-table-column>
           </el-table>
-          <div v-else class="va-empty-block">暂无点位数据</div>
+          <div v-else class="va-empty-block">
+            {{ selectedPointIds.length ? '暂无点位数据' : '请在上方勾选要展示的点位' }}
+          </div>
         </div>
       </section>
 
-      <section class="card">
+      <section v-if="analysisPoints.length" class="card">
         <div class="card-header">各点位振动速度频域 / 时域图</div>
         <div class="card-body">
-          <template v-if="analysisPoints.length">
+          <template v-if="visibleAnalysisPoints.length">
             <div
-              v-for="p in analysisPoints"
+              v-for="p in visibleAnalysisPoints"
               :id="pointAnchorId(p.receiverId)"
               :key="`${queryGeneration}:${p.receiverId}`"
               class="va-point-anchor"
@@ -71,18 +115,25 @@
                 :point-device-id="p.pointDeviceId"
                 :point-name="p.pointName"
                 :query-generation="queryGeneration"
+                :freq-anchor-id="pointFreqAnchorId(p.receiverId)"
+                :eager="chartsEager"
+                :lazy-root-margin="chartsLazyRootMargin"
               />
             </div>
           </template>
-          <div v-else class="va-empty-block">暂无点位，请先查询设备数据</div>
+          <div v-else class="va-empty-block">请在上方勾选要展示的点位</div>
         </div>
       </section>
     </div>
 
+    <Teleport to="body">
     <aside
-      v-if="pointMenuItems.length"
+      v-if="showPointFloatMenu"
       class="va-point-float-menu"
-      :class="{ 'is-collapsed': pointMenuCollapsed }"
+      :class="{
+        'is-collapsed': pointMenuCollapsed,
+        'va-point-float-menu--embedded': embedded,
+      }"
       aria-label="点位悬浮菜单"
     >
       <button
@@ -101,7 +152,7 @@
         </span>
       </button>
       <div v-show="!pointMenuCollapsed" class="va-point-float-menu__body">
-        <div class="va-point-float-menu__title">点位目录</div>
+        <div class="va-point-float-menu__title">振动速度频域图</div>
         <button
           v-for="item in pointMenuItems"
           :key="item.receiverId"
@@ -113,8 +164,15 @@
         </button>
       </div>
     </aside>
+    </Teleport>
 
-    <button v-show="showBackToTop" type="button" class="va-back-to-top" aria-label="回到顶部" @click="scrollToTop">
+    <button
+      v-show="!embedded && showBackToTop"
+      type="button"
+      class="va-back-to-top"
+      aria-label="回到顶部"
+      @click="scrollToTop"
+    >
       <el-icon class="va-back-to-top__icon">
         <ArrowUp />
       </el-icon>
@@ -124,28 +182,60 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, provide, onMounted, onUnmounted } from 'vue'
+import { ref, computed, provide, onMounted, onUnmounted, watch } from 'vue'
+import { provideVaPointChartLoadScheduler } from '@/composables/useVaPointChartLoadScheduler'
 import { useRoute } from 'vue-router'
+import { useDeviceTreeStore } from '@/stores/deviceTree'
+import {
+  resolvePointDeviceIdFromTree,
+  resolveEquipmentNameFromTree,
+  resolvePointDisplayNameFromTree,
+  resolveEquipmentIdFromPointReceiver,
+} from '@/utils/deviceTreePoint'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, ArrowUp } from '@element-plus/icons-vue'
 import { getTenantId } from '@/api/tenant'
 import {
   getCheckPointsByEquipmentId,
   getProductionEquipmentList,
+  normalizeEquipmentCheckPointList,
 } from '@/api/modules/hardware'
+import {
+  getCheckPointDisplayName,
+  getCheckPointReceiverId,
+} from '@/components/business/device-detail/devicePointMetrics'
 import { fetchEquipmentImageUrls } from '@/components/business/device-detail/deviceImageUtils'
 import type { AnalysisPointItem, EquipmentOption } from '@/utils/vibrationAnalysisTree'
 import { buildMockPointRmsRows, type PointRmsRow } from '@/utils/vibrationAnalysisMock'
 import DeviceVibrationPointChartsLazy from '@/components/business/vibration-analysis/DeviceVibrationPointChartsLazy.vue'
 import EquipmentImageGallery from '@/components/business/device-detail/EquipmentImageGallery.vue'
 
+/** 超过该数量显示右侧悬浮目录；全选时也启用图表懒加载节流 */
+const VA_POINT_FLOAT_MENU_MIN = 3
+/** 嵌入页勾选不超过该数量时可立即加载图表 */
+const VA_POINT_EAGER_MAX = 3
+
+const props = withDefaults(
+  defineProps<{
+    embedded?: boolean
+    equipmentId?: string
+  }>(),
+  {
+    embedded: false,
+    equipmentId: '',
+  },
+)
+
 const route = useRoute()
+const deviceTreeStore = useDeviceTreeStore()
 
 /** 分析页不在 PageLayout 内，需自行 provide，避免 CommonEcharts inject 告警 */
 const backgroundMode = ref<'image' | 'navy' | 'solid'>('solid')
 provide('backgroundMode', backgroundMode)
 
 const initialEquipmentId = computed(() => {
+  const fromProp = props.equipmentId?.trim()
+  if (fromProp) return fromProp
   const q = route.query.equipmentId
   const fromQuery = Array.isArray(q) ? q[0] : q
   if (typeof fromQuery === 'string' && fromQuery.trim()) return fromQuery.trim()
@@ -160,7 +250,10 @@ const deviceImageUrls = ref<string[]>([])
 const queriedEquipmentName = ref('')
 const rmsRows = ref<PointRmsRow[]>([])
 const analysisPoints = ref<AnalysisPointItem[]>([])
+/** 用户勾选的点位 receiverId，仅展示已选点位 */
+const selectedPointIds = ref<string[]>([])
 const pointMenuCollapsed = ref(false)
+const selectedBySelectAll = ref(false)
 
 const equipmentLoading = ref(false)
 const equipmentOptions = ref<EquipmentOption[]>([])
@@ -170,16 +263,111 @@ const equipmentOptionsById = computed<Record<string, EquipmentOption>>(() => {
   for (const o of equipmentOptions.value) map[o.equipmentId] = o
   return map
 })
+const selectedPointIdSet = computed(() => new Set(selectedPointIds.value))
+
+const visibleAnalysisPoints = computed(() =>
+  analysisPoints.value.filter((p) => selectedPointIdSet.value.has(p.receiverId)),
+)
+
+const visibleRmsRows = computed(() =>
+  rmsRows.value.filter((r) => selectedPointIdSet.value.has(r.receiverId)),
+)
+
+const isAllPointsSelected = computed(
+  () =>
+    analysisPoints.value.length > 0 &&
+    selectedPointIds.value.length === analysisPoints.value.length,
+)
+
+const shouldThrottleChartLoads = computed(
+  () => isAllPointsSelected.value || selectedPointIds.value.length > VA_POINT_FLOAT_MENU_MIN,
+)
+
+provideVaPointChartLoadScheduler(() => shouldThrottleChartLoads.value)
+
+const chartsEager = computed(() => {
+  if (!props.embedded) return false
+  if (isAllPointsSelected.value || selectedBySelectAll.value) return false
+  const count = selectedPointIds.value.length
+  return count > 0 && count <= VA_POINT_EAGER_MAX
+})
+
+const chartsLazyRootMargin = computed(() =>
+  shouldThrottleChartLoads.value ? '48px 0px' : '120px 0px',
+)
+
+const showPointFloatMenu = computed(
+  () => selectedPointIds.value.length > VA_POINT_FLOAT_MENU_MIN,
+)
+
 const pointMenuItems = computed(() =>
-  analysisPoints.value.map((p) => ({
+  visibleAnalysisPoints.value.map((p) => ({
     receiverId: p.receiverId,
-    label: String(p.pointName || p.receiverId || '').trim() || p.receiverId,
+    label: formatPointOptionLabel(p),
   })),
 )
 
+const formatPointOptionLabel = (p: AnalysisPointItem) => {
+  const name = String(p.pointName || '').trim()
+  return name || p.receiverId
+}
+
+const selectAllPoints = () => {
+  selectedBySelectAll.value = true
+  selectedPointIds.value = analysisPoints.value.map((p) => p.receiverId)
+}
+
+const clearSelectedPoints = () => {
+  selectedBySelectAll.value = false
+  selectedPointIds.value = []
+}
+
+const togglePointSelection = (receiverId: string, checked: string | number | boolean) => {
+  selectedBySelectAll.value = false
+  const id = String(receiverId ?? '').trim()
+  if (!id) return
+  const next = new Set(selectedPointIds.value)
+  if (checked === true) next.add(id)
+  else next.delete(id)
+  selectedPointIds.value = Array.from(next)
+}
+
+watch(selectedPointIds, (ids) => {
+  const total = analysisPoints.value.length
+  if (total > 0 && ids.length === total) return
+  if (ids.length < total) selectedBySelectAll.value = false
+})
+
+const resolveEquipmentDisplayName = (equipmentId: string): string => {
+  const id = String(equipmentId ?? '').trim()
+  if (!id) return ''
+
+  const fromOptions = equipmentOptionsById.value[id]?.equipmentName?.trim()
+  if (fromOptions) return fromOptions
+
+  const tree = deviceTreeStore.deviceTreeData
+  const fromTree = resolveEquipmentNameFromTree(tree, id)
+  if (fromTree) return fromTree
+
+  const firstPoint = analysisPoints.value[0]
+  if (firstPoint) {
+    const equipFromPoint = resolveEquipmentIdFromPointReceiver(tree, firstPoint.receiverId)
+    if (equipFromPoint) {
+      const name = resolveEquipmentNameFromTree(tree, equipFromPoint)
+      if (name) return name
+    }
+  }
+
+  return ''
+}
+
 const queriedEquipmentLabel = computed(() => {
-  if (queriedEquipmentName.value) return queriedEquipmentName.value
-  return equipmentOptionsById.value[queriedEquipmentId.value]?.equipmentName ?? queriedEquipmentId.value
+  const cached = queriedEquipmentName.value?.trim()
+  if (cached) return cached
+  const resolved = resolveEquipmentDisplayName(queriedEquipmentId.value)
+  if (resolved) return resolved
+  const id = String(queriedEquipmentId.value ?? '').trim()
+  return id || '当前设备'
 })
 
 const rmsTableTitle = computed(() => {
@@ -190,7 +378,7 @@ const rmsTableTitle = computed(() => {
 
 const loadDeviceImageSection = async (equipmentId: string) => {
   deviceImageUrls.value = []
-  queriedEquipmentName.value = equipmentOptionsById.value[equipmentId]?.equipmentName ?? ''
+  queriedEquipmentName.value = resolveEquipmentDisplayName(equipmentId)
   if (!equipmentId) return
 
   const [imageUrls] = await Promise.allSettled([fetchEquipmentImageUrls(equipmentId)])
@@ -261,6 +449,7 @@ const runQuery = async (equipmentId: string) => {
     const tenantId = getTenantId()
     if (!tenantId) {
       analysisPoints.value = []
+      selectedPointIds.value = []
       rmsRows.value = []
       deviceImageUrls.value = []
       queriedEquipmentId.value = equipmentId
@@ -269,24 +458,31 @@ const runQuery = async (equipmentId: string) => {
       return
     }
 
+    const tree = deviceTreeStore.deviceTreeData
     const pointRes = await getCheckPointsByEquipmentId({ tenantId, equipmentId })
-    const rawPoints = Array.isArray(pointRes.ret) ? pointRes.ret : []
+    const rawPoints =
+      pointRes?.rc === 0 ? normalizeEquipmentCheckPointList(pointRes.ret) : []
     const points: AnalysisPointItem[] = sortAnalysisPoints(
       rawPoints
       .map((p) => {
-        const receiverId = String(p.receiverId ?? '').trim()
+        const receiverId = getCheckPointReceiverId(p)
         if (!receiverId) return null
+        const pointDeviceId = resolvePointDeviceIdFromTree(tree, receiverId) || receiverId
+        const treePointName = resolvePointDisplayNameFromTree(tree, receiverId)
+        const apiName = getCheckPointDisplayName(p)
         return {
           receiverId,
-          pointName: String(p.pointName ?? receiverId).trim() || receiverId,
-          // 你确认 receiverId 就是 pointDeviceId
-          pointDeviceId: receiverId,
+          pointName: treePointName || apiName || receiverId,
+          pointDeviceId,
         } satisfies AnalysisPointItem
       })
       .filter((p): p is AnalysisPointItem => Boolean(p))
     )
 
     analysisPoints.value = points
+    queriedEquipmentName.value = resolveEquipmentDisplayName(equipmentId)
+    selectedPointIds.value = []
+    selectedBySelectAll.value = false
     rmsRows.value = buildMockPointRmsRows(points)
     await loadDeviceImageSection(equipmentId)
     queriedEquipmentId.value = equipmentId
@@ -294,6 +490,7 @@ const runQuery = async (equipmentId: string) => {
   } catch {
     ElMessage.error('加载设备振动分析数据失败')
     analysisPoints.value = []
+    selectedPointIds.value = []
     rmsRows.value = []
     deviceImageUrls.value = []
   } finally {
@@ -307,15 +504,14 @@ const handleQueryClick = () => {
 
 const pointAnchorId = (receiverId: string) => `va-point-${String(receiverId || '').replace(/[^\w-]/g, '_')}`
 
+const pointFreqAnchorId = (receiverId: string) => `${pointAnchorId(receiverId)}-freq`
+
 const scrollToPoint = (receiverId: string) => {
-  const el = document.getElementById(pointAnchorId(receiverId))
+  const el =
+    document.getElementById(pointFreqAnchorId(receiverId)) ||
+    document.getElementById(pointAnchorId(receiverId))
   if (!el) return
-  const top = window.scrollY + el.getBoundingClientRect().top - 76
-  const targetTop = Math.max(0, top)
-  const distance = Math.abs((window.scrollY || 0) - targetTop)
-  // 远距离跳转用 auto，避免 smooth 经过中间区域触发大量懒加载
-  const behavior: ScrollBehavior = distance > 900 ? 'auto' : 'smooth'
-  window.scrollTo({ top: targetTop, behavior })
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 const VA_PAGE_ROOT_CLASS = 'va-page-active'
@@ -332,11 +528,38 @@ const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+const bootstrapEmbeddedQuery = async () => {
+  const defaultId = initialEquipmentId.value
+  if (!defaultId) return
+  draftEquipmentId.value = defaultId
+  if (!deviceTreeStore.deviceTreeData.length) {
+    await deviceTreeStore.loadDeviceTreeData()
+  }
+  await runQuery(defaultId)
+}
+
+watch(
+  () => props.equipmentId,
+  (id) => {
+    if (!props.embedded) return
+    const next = id?.trim()
+    if (!next || next === queriedEquipmentId.value) return
+    void bootstrapEmbeddedQuery()
+  },
+)
+
 onMounted(async () => {
-  document.documentElement.classList.add(VA_PAGE_ROOT_CLASS)
-  document.body.classList.add(VA_PAGE_ROOT_CLASS)
-  updateBackToTopVisible()
-  window.addEventListener('scroll', updateBackToTopVisible, { passive: true })
+  if (!props.embedded) {
+    document.documentElement.classList.add(VA_PAGE_ROOT_CLASS)
+    document.body.classList.add(VA_PAGE_ROOT_CLASS)
+    updateBackToTopVisible()
+    window.addEventListener('scroll', updateBackToTopVisible, { passive: true })
+  }
+
+  if (props.embedded) {
+    await bootstrapEmbeddedQuery()
+    return
+  }
 
   await loadEquipmentOptions()
   const defaultId =
@@ -345,14 +568,19 @@ onMounted(async () => {
     ''
   draftEquipmentId.value = defaultId
   if (defaultId) {
+    if (!deviceTreeStore.deviceTreeData.length) {
+      await deviceTreeStore.loadDeviceTreeData()
+    }
     await runQuery(defaultId)
   }
 })
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', updateBackToTopVisible)
-  document.documentElement.classList.remove(VA_PAGE_ROOT_CLASS)
-  document.body.classList.remove(VA_PAGE_ROOT_CLASS)
+  if (!props.embedded) {
+    window.removeEventListener('scroll', updateBackToTopVisible)
+    document.documentElement.classList.remove(VA_PAGE_ROOT_CLASS)
+    document.body.classList.remove(VA_PAGE_ROOT_CLASS)
+  }
 })
 </script>
 

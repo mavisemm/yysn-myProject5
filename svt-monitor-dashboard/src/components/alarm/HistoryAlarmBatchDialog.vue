@@ -18,7 +18,7 @@
             popper-class="alarm-batch-datetime-popper" @update:model-value="onEndModelValue" @change="onEndTimeChange"
             @panel-change="onEndPanelChange" @calendar-change="onEndCalendarChange" />
         </el-form-item>
-        <el-form-item label="听音器名称：">
+        <el-form-item label="设备名称：">
           <el-select-v2 v-model="store.historyAlarmQuery.deviceId" :options="deviceOptions" filterable clearable
             size="small" class="alarm-filter-control" popper-class="alarm-batch-popper"
             :popper-options="sameWidthPopperOptions" :loading="store.dropdownsLoading" :item-height="28" :height="280"
@@ -58,43 +58,11 @@
     </div>
 
     <div class="table-wrapper" v-loading="store.historyAlarmLoading">
-      <el-table :data="store.historyAlarmRows" row-key="id" border height="100%" virtualized :row-height="32"
-        @selection-change="onSelectionChange">
-        <el-table-column type="selection" width="50" />
-        <el-table-column label="设备名称" min-width="180">
-          <template #default="{ row }">
-            <div class="device-cell">
-              <div class="device-name">{{ getDeviceMainName(row) || '-' }}</div>
-              <div v-if="getDeviceSubName(row)" class="device-sub">
-                ({{ getDeviceSubName(row) }})
-              </div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="点位名称" min-width="160">
-          <template #default="{ row }">{{ getPointName(row) || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="听筒名称" min-width="80">
-          <template #default="{ row }">{{ getReceiverName(row) || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="报警类型" min-width="160">
-          <template #default="{ row }">{{ row?.eventType?.name || '-' }}</template>
-        </el-table-column>
-        <el-table-column prop="warningAxis" label="报警轴向" min-width="100" />
-        <el-table-column prop="statusText" label="状态" min-width="120" />
-        <el-table-column label="报警时间" min-width="180">
-          <template #default="{ row }">{{ row._timeText || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="90" fixed="right">
-          <template #default="{ row }">
-            <div class="operation-cell">
-              <el-button link type="primary" class="operation-link" @click="$emit('view', row)">
-                查看
-              </el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+      <VibrationAlarmBatchTreeTable
+        :rows="store.historyAlarmRows"
+        @selection-change="onSelectionChange"
+        @view="$emit('view', $event)"
+      />
     </div>
 
     <div class="pager">
@@ -111,12 +79,12 @@ import {
   confirmVibrationDeleteAll,
   useAlarmBatchDropdownOptions,
   useAlarmBatchEndTimePicker,
-  useAlarmBatchRowLabels,
   useDialogOpenEffect,
   useResponsiveDialogWidth,
   useUiPageIndex,
   type BatchConfirmType,
 } from './alarmBatchDialogUtils'
+import VibrationAlarmBatchTreeTable from './VibrationAlarmBatchTreeTable.vue'
 
 defineEmits<{ (e: 'view', row: any): void }>()
 
@@ -159,13 +127,8 @@ const {
   },
 )
 
-const { getDeviceMainName, getDeviceSubName, getPointName, getReceiverName } =
-  useAlarmBatchRowLabels({ parseDataJson: false })
-
-
-
-const onSelectionChange = (rows: any[]) => {
-  store.historyAlarmSelectedRowKeys = rows.map((r) => String(r.id)) as any
+const onSelectionChange = (eventIds: string[]) => {
+  store.historyAlarmSelectedRowKeys = eventIds as any
 }
 
 const onPageChange = (page: number) => {

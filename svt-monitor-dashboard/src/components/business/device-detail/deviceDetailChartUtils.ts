@@ -19,13 +19,47 @@ export interface DeviceTrendChartLayout {
 export function formatTrendYAxisTick(v: number | string): string {
   const n = Number(v)
   if (!Number.isFinite(n)) return ''
-  return String(Number(n.toFixed(2)))
+  return n.toFixed(2)
 }
 
 export function extractTrendTimeLabel(dt: string): string {
   if (dt.includes(' ')) return (dt.split(' ')[1] || dt).trim().substring(0, 8)
   if (dt.includes('T')) return (dt.split('T')[1] || dt).substring(0, 8)
   return dt || ''
+}
+
+const trendPad2 = (n: number) => String(n).padStart(2, '0')
+
+/** 解析趋势图接口返回的时间字符串 */
+export function parseTrendDateTime(dt: string): Date | null {
+  const raw = String(dt ?? '').trim()
+  if (!raw) return null
+  const normalized = raw.includes(' ') && !raw.includes('T') ? raw.replace(' ', 'T') : raw
+  const date = new Date(normalized)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const trendDayKey = (date: Date) =>
+  `${date.getFullYear()}-${trendPad2(date.getMonth() + 1)}-${trendPad2(date.getDate())}`
+
+const formatTrendTimeWithMonthDay = (date: Date) =>
+  `${trendPad2(date.getMonth() + 1)}-${trendPad2(date.getDate())} ${trendPad2(date.getHours())}:${trendPad2(date.getMinutes())}`
+
+/**
+ * 声振温趋势 X 轴：数据均在同一自然日内仅显示时刻；跨天则带上月-日。
+ */
+export function mapTrendTimeLabels(rawTimes: string[]): string[] {
+  const parsed = rawTimes.map((raw) => ({ raw, date: parseTrendDateTime(raw) }))
+  const dayKeys = new Set(
+    parsed.map((item) => item.date).filter((d): d is Date => d != null).map(trendDayKey),
+  )
+  const multiDay = dayKeys.size > 1
+
+  return parsed.map(({ raw, date }) => {
+    if (!date) return extractTrendTimeLabel(raw)
+    if (multiDay) return formatTrendTimeWithMonthDay(date)
+    return extractTrendTimeLabel(raw)
+  })
 }
 
 export function normalizeTrendApiList(response: unknown): any[] {

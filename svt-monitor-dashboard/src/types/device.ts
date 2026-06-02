@@ -5,6 +5,8 @@ export interface DeviceNode {
   status?: 'normal' | 'warning' | 'alarm' | 'offline'
   children?: DeviceNode[]
   deviceCount?: number
+  /** 所属工厂设备总数（车间节点展示 y/x 台时使用） */
+  factoryDeviceCount?: number
   pointCount?: number
   parentId?: string
   workshopName?: string

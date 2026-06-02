@@ -110,6 +110,62 @@ html.va-page-active.va-triple-fs-open body {
     }
   }
 
+  .va-point-select-card {
+    .va-point-select-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .va-point-select {
+      width: 100%;
+      max-width: 640px;
+
+      :deep(.el-select__wrapper) {
+        background-color: #fff !important;
+        color: #303133 !important;
+        box-shadow: 0 0 0 1px #dcdfe6 inset;
+      }
+
+      :deep(.el-select__selected-item),
+      :deep(.el-select__input),
+      :deep(.el-select__input-calculator) {
+        color: #303133 !important;
+      }
+
+      :deep(.el-select__placeholder) {
+        color: #a8abb2 !important;
+      }
+
+      :deep(.el-tag) {
+        --el-tag-text-color: #303133;
+        --el-tag-bg-color: #f0f2f5;
+        --el-tag-border-color: #e4e7ed;
+        color: #303133 !important;
+      }
+
+      :deep(.el-tag .el-tag__content) {
+        color: #303133 !important;
+      }
+
+      :deep(.el-select__caret) {
+        color: #909399 !important;
+      }
+    }
+
+    .va-point-select-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+    }
+
+    .va-point-select-hint {
+      font-size: 0.85rem;
+      color: #6c757d;
+    }
+  }
+
   .va-query-btn {
     min-width: 120px;
     height: 32px;
@@ -293,7 +349,13 @@ html.va-page-active.va-triple-fs-open body {
     position: fixed;
     right: 24px;
     top: 110px;
-    z-index: 1000;
+    z-index: 2200;
+
+    &--embedded {
+      top: auto;
+      bottom: 24px;
+      right: 16px;
+    }
     width: 210px;
     border: 1px solid #dbe4ff;
     border-radius: 10px;
@@ -456,19 +518,149 @@ html.va-page-active.va-triple-fs-open body {
   }
 }
 
+/* 点位悬浮菜单 Teleport 到 body，样式需独立于 .vibration-analysis-page */
+.va-point-float-menu {
+  position: fixed;
+  right: 24px;
+  top: 110px;
+  z-index: 2200;
+  width: 210px;
+  border: 1px solid #dbe4ff;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(67, 97, 238, 0.18);
+  overflow: hidden;
+  box-sizing: border-box;
+
+  &--embedded {
+    top: auto;
+    bottom: 24px;
+    right: 16px;
+  }
+
+  &.is-collapsed {
+    width: auto;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+  }
+}
+
+.va-point-float-menu__toggle {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #edf2ff;
+  padding: 8px 10px;
+  color: #2b3a67;
+  background: linear-gradient(180deg, #f8faff 0%, #f2f6ff 100%);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.va-point-float-menu.is-collapsed .va-point-float-menu__toggle {
+  border: 1px solid #dbe4ff;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(67, 97, 238, 0.16);
+}
+
+.va-point-float-menu__toggle-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.va-point-float-menu__toggle-text {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.va-point-float-menu__body {
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.va-point-float-menu__title {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.va-point-float-menu__item {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  padding: 7px 8px;
+  margin-bottom: 6px;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+
+  &:hover {
+    border-color: #a5b4fc;
+    color: #1e3a8a;
+    background: #f8faff;
+  }
+}
+
+@media (max-width: 900px) {
+  .va-point-float-menu {
+    right: 16px;
+    top: auto;
+    bottom: 86px;
+    width: 180px;
+  }
+
+  .va-point-float-menu__body {
+    max-height: min(45vh, 320px);
+  }
+}
+
 /* 下拉面板 teleported 到 body，需独立选择器 */
-.va-equipment-select-popper {
+.va-equipment-select-popper,
+.va-point-select-popper {
   .el-select-dropdown__item {
-    color: #212529;
+    color: #303133 !important;
   }
 
   .el-select-dropdown__item.is-selected {
-    color: #212529;
+    color: #303133 !important;
     font-weight: 600;
   }
 
   .el-select-dropdown__item.is-hovering {
-    color: #212529;
+    color: #303133 !important;
+    background-color: #f5f7fa;
+  }
+
+  .va-point-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    color: #303133;
+  }
+
+  .va-point-option__label {
+    flex: 1;
+    min-width: 0;
+    color: #303133;
+    font-size: 14px;
+  }
+
+  .el-checkbox {
+    height: auto;
+    margin-right: 0;
+  }
+
+  .el-checkbox__label {
+    display: none;
   }
 }
 

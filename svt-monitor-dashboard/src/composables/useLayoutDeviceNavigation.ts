@@ -29,7 +29,7 @@ export function useLayoutDeviceNavigation() {
     if (equipmentId) {
       void router.push({ name: 'DeviceDetail', params: { id: equipmentId } })
     } else {
-      void router.push('/dashboard')
+      void router.push({ name: 'DeviceCockpit' })
     }
   }
 

@@ -1,4 +1,20 @@
+import { parsePointNum } from '@/stores/alarmOverviewLogic'
 import type { DeviceDetailPointInfo } from './deviceDetailTypes'
+
+/** 按点位序号 1、2、3… 排序（从名称解析数字，与设备树一致） */
+export function sortPointsByPointOrder(list: DeviceDetailPointInfo[]): DeviceDetailPointInfo[] {
+  return [...list]
+    .map((point, index) => ({ point, index }))
+    .sort((a, b) => {
+      const orderA = parsePointNum(a.point.name)
+      const orderB = parsePointNum(b.point.name)
+      if (orderA != null && orderB != null) return orderA - orderB
+      if (orderA != null) return -1
+      if (orderB != null) return 1
+      return a.index - b.index
+    })
+    .map(({ point }) => point)
+}
 
 export function warningTypeToDisplay(t: string): string {
   const s = String(t || '').toLowerCase()

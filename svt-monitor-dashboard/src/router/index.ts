@@ -9,14 +9,48 @@ const routes: RouteRecordRaw[] = [
     component: PageLayout,
     children: [
       {
-        path: 'dashboard',
-        name: 'Dashboard',
-        component: () => import('@/views/Dashboard.vue'),
-        meta: { title: 'Dashboard' },
+        path: 'home',
+        name: 'Home',
+        component: () => import('@/views/HomeEntry.vue'),
+        meta: { title: '首页', layoutShell: 'classic' },
       },
       {
         path: '',
-        redirect: 'dashboard',
+        redirect: { name: 'DeviceCockpit' },
+      },
+      {
+        path: 'device-cockpit',
+        name: 'DeviceCockpit',
+        component: () => import('@/views/Dashboard.vue'),
+        meta: { title: '设备驾驶舱' },
+      },
+      {
+        path: 'dashboard',
+        redirect: { name: 'DeviceCockpit' },
+      },
+      {
+        path: 'alarm-management',
+        name: 'AlarmManagement',
+        component: () => import('@/views/AlarmManagementHome.vue'),
+        meta: { title: '报警管理' },
+      },
+      {
+        path: 'status-management',
+        name: 'StatusManagement',
+        component: () => import('@/views/ModulePlaceholder.vue'),
+        meta: { title: '状态管理' },
+      },
+      {
+        path: 'notice-management',
+        name: 'NoticeManagement',
+        component: () => import('@/views/ModulePlaceholder.vue'),
+        meta: { title: '通知单管理' },
+      },
+      {
+        path: 'device-monitor',
+        name: 'DeviceMonitor',
+        component: () => import('@/views/ModulePlaceholder.vue'),
+        meta: { title: '设备监控' },
       },
       {
         path: 'device-detail/:id',
@@ -67,7 +101,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/dashboard',
+    redirect: '/home',
   },
 ]
 

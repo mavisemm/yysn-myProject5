@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard">
     <div class="dashboard-box dashboard-box-stats">
-      <DashboardStats :stats="statsData" @click-trend-warning="showTrendWarningModal = true"
+      <DashboardStats variant="default" :stats="statsData" @click-trend-warning="showTrendWarningModal = true"
         @click-fault-warning="showFaultWarningModal = true" />
     </div>
     <div class="dashboard-box dashboard-box-alarm">
@@ -168,11 +168,11 @@ onMounted(() => {
 
   void nextTick(async () => {
     await router.isReady()
-    if (router.currentRoute.value.name !== 'Dashboard') return
+    if (router.currentRoute.value.name !== 'DeviceCockpit') return
 
     const deviceTreeStore = useDeviceTreeStore()
     await deviceTreeStore.loadDeviceTreeData()
-    if (router.currentRoute.value.name !== 'Dashboard') return
+    if (router.currentRoute.value.name !== 'DeviceCockpit') return
     deviceTreeStore.setSelectedDeviceId(null)
 
     // 首页核心数据优先：先加载排行与统计，弹窗预热放在最后执行，避免抢占首屏资源

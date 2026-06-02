@@ -15,14 +15,22 @@ import {
   apiDeleteEvents,
   apiDeleteVibrationAlarm,
   apiFindEvents,
+  apiFindEventTree,
   apiGetDeviceNameDropdownList,
   apiGetEventTypeDropdownList,
   type DropdownItem,
   type EventRow,
+  type EventTreeEquipment,
+  type EventTreePoint,
   type FilterProperty,
   type FindVibrationAlarmByConditionBody,
-  type VibrationAlarmDeleteAllBody
+  type VibrationAlarmDeleteAllBody,
 } from '@/api/modules/alarmBatch'
+import {
+  buildSoundAlarmTreeRows,
+  unwrapVibrationAlarmEquipments,
+  type AlarmBatchTreeRow,
+} from '@/utils/alarmBatchTree'
 
 type AlarmCode = 'ACCURATE_YES' | 'ACCURATE_NOT'
 
@@ -116,28 +124,28 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const realtimeAlarmQuery = ref<AlarmQuery>({})
   const historyAlarmQuery = ref<AlarmQuery>({})
 
-  const realtimeRows = ref<EventRow[]>([])
+  const realtimeRows = ref<AlarmBatchTreeRow[]>([])
   const realtimeTotal = ref(0)
   const realtimePageIndex = ref(0)
   const realtimePageSize = ref(30)
   const realtimeSelectedRowKeys = ref<string[]>([])
   const realtimeLoading = ref(false)
 
-  const historyRows = ref<EventRow[]>([])
+  const historyRows = ref<AlarmBatchTreeRow[]>([])
   const historyTotal = ref(0)
   const historyPageIndex = ref(0)
   const historyPageSize = ref(30)
   const historySelectedRowKeys = ref<string[]>([])
   const historyLoading = ref(false)
 
-  const realtimeAlarmRows = ref<EventRow[]>([])
+  const realtimeAlarmRows = ref<AlarmBatchTreeRow[]>([])
   const realtimeAlarmTotal = ref(0)
   const realtimeAlarmPageIndex = ref(0)
   const realtimeAlarmPageSize = ref(30)
   const realtimeAlarmSelectedRowKeys = ref<string[]>([])
   const realtimeAlarmLoading = ref(false)
 
-  const historyAlarmRows = ref<EventRow[]>([])
+  const historyAlarmRows = ref<AlarmBatchTreeRow[]>([])
   const historyAlarmTotal = ref(0)
   const historyAlarmPageIndex = ref(0)
   const historyAlarmPageSize = ref(30)
@@ -150,15 +158,16 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const HISTORY_LIST_CACHE_TTL_MS = 60_000
   const MAX_LIST_CACHE_ENTRIES = 5
 
-  type ListCacheEntry = { rows: EventRow[]; total: number; fetchedAt: number }
-  const realtimeListCache = new Map<string, ListCacheEntry>()
-  const historyListCache = new Map<string, ListCacheEntry>()
-  const realtimeAlarmListCache = new Map<string, ListCacheEntry>()
-  const historyAlarmListCache = new Map<string, ListCacheEntry>()
+  type SoundListCacheEntry = { rows: AlarmBatchTreeRow[]; total: number; fetchedAt: number }
+  type VibrationListCacheEntry = { rows: AlarmBatchTreeRow[]; total: number; fetchedAt: number }
+  const realtimeListCache = new Map<string, SoundListCacheEntry>()
+  const historyListCache = new Map<string, SoundListCacheEntry>()
+  const realtimeAlarmListCache = new Map<string, VibrationListCacheEntry>()
+  const historyAlarmListCache = new Map<string, VibrationListCacheEntry>()
   const pointMessageStore = usePointMessageStore()
   let pointMessagePromise: Promise<void> | null = null
 
-  const evictOldestIfNeeded = (cache: Map<string, ListCacheEntry>) => {
+  const evictOldestIfNeeded = <T extends { fetchedAt: number }>(cache: Map<string, T>) => {
     if (cache.size <= MAX_LIST_CACHE_ENTRIES) return
     const firstKey = cache.keys().next().value
     if (firstKey != null) cache.delete(firstKey)
@@ -228,8 +237,6 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
     })
   }
 
-  const normalizeAlarmRows = (rows: EventRow[]) => rows.map(normalizeAlarmRow)
-
   const normalizeRows = (rows: EventRow[]) => rows.map(normalizeOneRow)
 
   
@@ -252,6 +259,39 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   }
 
   const normalizeRowsLight = (rows: EventRow[]) => rows.map(normalizeOneRowLight)
+
+  const normalizeTreeEvent = (
+    event: EventRow,
+    equipment: EventTreeEquipment,
+    point: EventTreePoint,
+  ): EventRow =>
+    normalizeOneRowLight({
+      ...event,
+      id: String(event.id ?? ''),
+      deviceName: String(equipment.equipmentName ?? event.equipmentName ?? ''),
+      pointName: String(point.alarmObject ?? event.alarmObject ?? ''),
+      receiverName: String(event.deviceName ?? event.alarmObject ?? ''),
+    })
+
+  const buildTreeRowsFromEquipments = (items: EventTreeEquipment[]) =>
+    buildSoundAlarmTreeRows(items, normalizeTreeEvent)
+
+  const normalizeTreeVibrationEvent = (
+    event: EventRow,
+    equipment: EventTreeEquipment,
+    point: EventTreePoint,
+  ): EventRow =>
+    normalizeAlarmRow({
+      ...event,
+      id: String(event.id ?? ''),
+      equipmentName: equipment.equipmentName,
+      deviceName: String(equipment.equipmentName ?? event.equipmentName ?? ''),
+      alarmObject: point.alarmObject ?? event.alarmObject,
+      pointName: String(point.alarmObject ?? event.alarmObject ?? ''),
+    })
+
+  const buildVibrationTreeRowsFromEquipments = (items: EventTreeEquipment[]) =>
+    buildSoundAlarmTreeRows(items, normalizeTreeVibrationEvent)
 
   const normalizeRowsYielding = async (rows: EventRow[], budgetMs = 8) => {
     
@@ -362,6 +402,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const buildRealtimeCacheKey = (pageIndex: number) => {
     const q = realtimeQuery.value ?? {}
     return JSON.stringify({
+      treeShape: 'equipment-event-v2',
       tenantId: readTenantIdFromStorageOrAddressBar(),
       pageIndex,
       pageSize: realtimePageSize.value,
@@ -400,20 +441,15 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
 
     const promise = (async () => {
       try {
-        const res = await apiFindEvents({
+        const res = await apiFindEventTree({
           filterPropertyMap: [{ code: 'statusCode', operate: 'EQ', value: 'VALID' }, ...buildCommonFilters(realtimeQuery.value)],
           pageIndex,
           pageSize: realtimePageSize.value,
-          sortValueMap: [{ code: 'time', sort: 'desc' }]
+          sortValueMap: [{ code: 'time', sort: 'desc' }],
         })
         if (token !== realtimeFetchToken) return
-        const items = res?.ret?.items ?? []
-        const normalized =
-          normalizeMode === 'light'
-            ? normalizeRowsLight(items)
-            : normalizeMode === 'yield'
-              ? await normalizeRowsYielding(items)
-              : normalizeRows(items)
+        const items = (res?.ret?.items ?? []) as EventTreeEquipment[]
+        const normalized = buildTreeRowsFromEquipments(items)
         const total = Number(res?.ret?.rowCount ?? res?.ret?.total ?? items.length ?? 0)
         realtimeRows.value = normalized
         realtimeTotal.value = total
@@ -438,6 +474,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   const buildHistoryCacheKey = (pageIndex: number) => {
     const q = historyQuery.value ?? { alarmCode: 'ACCURATE_YES' as AlarmCode }
     return JSON.stringify({
+      treeShape: 'equipment-event-v2',
       tenantId: readTenantIdFromStorageOrAddressBar(),
       pageIndex,
       pageSize: historyPageSize.value,
@@ -477,23 +514,18 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
 
     const promise = (async () => {
       try {
-        const res = await apiFindEvents({
+        const res = await apiFindEventTree({
           filterPropertyMap: [
             { code: 'alarmType', operate: 'EQ', value: 'NORMAL' },
-            ...buildCommonFilters(historyQuery.value)
+            ...buildCommonFilters(historyQuery.value),
           ],
           pageIndex,
           pageSize: historyPageSize.value,
-          sortValueMap: [{ code: 'createTime', sort: 'desc' }]
+          sortValueMap: [{ code: 'createTime', sort: 'desc' }],
         })
         if (token !== historyFetchToken) return
-        const items = res?.ret?.items ?? []
-        const normalized =
-          normalizeMode === 'light'
-            ? normalizeRowsLight(items)
-            : normalizeMode === 'yield'
-              ? await normalizeRowsYielding(items)
-              : normalizeRows(items)
+        const items = (res?.ret?.items ?? []) as EventTreeEquipment[]
+        const normalized = buildTreeRowsFromEquipments(items)
         const total = Number(res?.ret?.rowCount ?? res?.ret?.total ?? items.length ?? 0)
         historyRows.value = normalized
         historyTotal.value = total
@@ -516,6 +548,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   let realtimeAlarmFetchToken = 0
   const realtimeAlarmFetchInFlight = new Map<string, Promise<void>>()
   const buildRealtimeAlarmCacheKey = (pageIndex: number) => JSON.stringify({
+    treeShape: 'vibration-equipment-alarm-v1',
     tenantId: readTenantIdFromStorageOrAddressBar(),
     pageIndex,
     pageSize: realtimeAlarmPageSize.value,
@@ -556,9 +589,9 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
       try {
         const res = await apiFindVibrationAlarmByCondition(body)
         if (token !== realtimeAlarmFetchToken) return
-        const items = (res?.ret?.items ?? []) as EventRow[]
-        const normalized = normalizeAlarmRows(items)
-        const total = Number(res?.ret?.rowCount ?? res?.ret?.total ?? normalized.length ?? 0)
+        const equipments = unwrapVibrationAlarmEquipments(res?.ret?.items)
+        const normalized = buildVibrationTreeRowsFromEquipments(equipments)
+        const total = Number(res?.ret?.rowCount ?? res?.ret?.total ?? equipments.length ?? 0)
         realtimeAlarmRows.value = normalized
         realtimeAlarmTotal.value = total
         realtimeAlarmListCache.set(cacheKey, { rows: normalized, total, fetchedAt: Date.now() })
@@ -578,6 +611,7 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
   let historyAlarmFetchToken = 0
   const historyAlarmFetchInFlight = new Map<string, Promise<void>>()
   const buildHistoryAlarmCacheKey = (pageIndex: number) => JSON.stringify({
+    treeShape: 'vibration-equipment-alarm-v1',
     tenantId: readTenantIdFromStorageOrAddressBar(),
     pageIndex,
     pageSize: historyAlarmPageSize.value,
@@ -618,9 +652,9 @@ export const useAlarmBatchStore = defineStore('alarmBatch', () => {
       try {
         const res = await apiFindVibrationAlarmByCondition(body)
         if (token !== historyAlarmFetchToken) return
-        const items = (res?.ret?.items ?? []) as EventRow[]
-        const normalized = normalizeAlarmRows(items)
-        const total = Number(res?.ret?.rowCount ?? res?.ret?.total ?? normalized.length ?? 0)
+        const equipments = unwrapVibrationAlarmEquipments(res?.ret?.items)
+        const normalized = buildVibrationTreeRowsFromEquipments(equipments)
+        const total = Number(res?.ret?.rowCount ?? res?.ret?.total ?? equipments.length ?? 0)
         historyAlarmRows.value = normalized
         historyAlarmTotal.value = total
         historyAlarmListCache.set(cacheKey, { rows: normalized, total, fetchedAt: Date.now() })

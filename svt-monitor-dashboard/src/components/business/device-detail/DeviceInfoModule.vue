@@ -1,16 +1,16 @@
 <template>
-  <div class="device-info-module">
-    <div class="module-header">
+  <div class="device-info-module" :class="{ 'device-info-module--embedded': embedded }">
+    <div v-if="!embedded" class="module-header">
       <div class="header-main">
         <h3 class="module-title app-section-title">设备详情</h3>
       </div>
     </div>
     <div class="device-main">
-      <div v-if="deviceImageUrls.length" class="device-image-container">
+      <div v-if="!hideImages && deviceImageUrls.length" class="device-image-container">
         <EquipmentImageGallery variant="detail" :urls="deviceImageUrls" alt="设备图片" />
       </div>
 
-      <div class="health-gauge-container">
+      <div v-if="!hideHealthGauges" class="health-gauge-container">
         <div class="gauge-block">
           <!-- <div class="gauge-block-topbar">
             <el-button
@@ -52,7 +52,8 @@
         </el-button>
       </div>
 
-      <div v-if="!hasDeviceInfo" class="device-no-data">暂无数据</div>
+      <div v-if="!isDeviceInfoLoaded" class="device-no-data">加载中</div>
+      <div v-else-if="!hasDeviceInfo" class="device-no-data">暂无数据</div>
       <div v-else class="device-basic-info">
         <div class="info-row">
           <div class="info-item">
@@ -148,9 +149,22 @@ interface DeviceInfo {
   deviceNewInfo?: Array<{ label: string; value: string }>
 }
 
-const props = defineProps<{
-  deviceId: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    deviceId: string
+    /** 嵌入设备大屏下半区：去掉侧栏宽度与顶部标题 */
+    embedded?: boolean
+    /** 设备图由外部区域展示 */
+    hideImages?: boolean
+    /** 不展示声音/振动健康度仪表 */
+    hideHealthGauges?: boolean
+  }>(),
+  {
+    embedded: false,
+    hideImages: false,
+    hideHealthGauges: false,
+  },
+)
 
 const hasDeviceInfo = ref(true)
 const manageDialogVisible = ref(false)
@@ -299,24 +313,33 @@ const loadDeviceDataParallel = async () => {
   deviceImageUrls.value = []
 
   try {
-    const [infoResult, soundHealthResult, vibrationHealthResult, imagesResult] =
-      await Promise.allSettled([
-        getDeviceInfoByEquipmentId(props.deviceId),
-        getEquipmentHealth({ equipmentId: props.deviceId, type: 'sound' }),
-        getEquipmentHealth({ equipmentId: props.deviceId, type: 'vibration' }),
-        getEquipmentImages({ equipmentId: props.deviceId }),
-      ])
+    const settled = await Promise.allSettled([
+      getDeviceInfoByEquipmentId(props.deviceId),
+      props.hideHealthGauges
+        ? Promise.resolve(null)
+        : getEquipmentHealth({ equipmentId: props.deviceId, type: 'sound' }),
+      props.hideHealthGauges
+        ? Promise.resolve(null)
+        : getEquipmentHealth({ equipmentId: props.deviceId, type: 'vibration' }),
+      props.hideImages
+        ? Promise.resolve(null)
+        : getEquipmentImages({ equipmentId: props.deviceId }),
+    ])
+    const [infoResult, soundHealthResult, vibrationHealthResult, imagesResult] = settled
 
     const infoResponse = infoResult.status === 'fulfilled' ? infoResult.value : null
     const soundHealthResponse = soundHealthResult.status === 'fulfilled' ? soundHealthResult.value : null
     const vibrationHealthResponse =
       vibrationHealthResult.status === 'fulfilled' ? vibrationHealthResult.value : null
-    const imagesResponse = imagesResult.status === 'fulfilled' ? imagesResult.value : null
+    const imagesResponse =
+      imagesResult.status === 'fulfilled' ? imagesResult.value : null
 
     if (requestId !== currentDeviceInfoRequestId) return
 
-    if (imagesResponse?.rc === 0) {
+    if (!props.hideImages && imagesResponse?.rc === 0) {
       deviceImageUrls.value = extractEquipmentImageUrls(imagesResponse.ret)
+    } else if (props.hideImages) {
+      deviceImageUrls.value = []
     }
 
     if (infoResponse?.rc === 0 && infoResponse.ret) {
@@ -327,29 +350,31 @@ const loadDeviceDataParallel = async () => {
       ElMessage.error('获取设备信息失败')
     }
 
-    if (soundHealthResponse?.rc === 0 && soundHealthResponse.ret) {
-      const parsed = parseSoundHealthRet(soundHealthResponse.ret)
-      hasSoundHealthData.value = parsed.hasData
-      soundHealthScore.value = parsed.score
-      soundHealthGrade.value = parsed.grade
-    } else {
-      hasSoundHealthData.value = false
-      soundHealthScore.value = 0
-      soundHealthGrade.value = ''
-    }
+    if (!props.hideHealthGauges) {
+      if (soundHealthResponse?.rc === 0 && soundHealthResponse.ret) {
+        const parsed = parseSoundHealthRet(soundHealthResponse.ret)
+        hasSoundHealthData.value = parsed.hasData
+        soundHealthScore.value = parsed.score
+        soundHealthGrade.value = parsed.grade
+      } else {
+        hasSoundHealthData.value = false
+        soundHealthScore.value = 0
+        soundHealthGrade.value = ''
+      }
 
-    if (vibrationHealthResponse?.rc === 0 && vibrationHealthResponse.ret) {
-      const parsed = parseVibrationHealthRet(vibrationHealthResponse.ret)
-      hasVibrationHealthData.value = parsed.hasData
-      vibrationHealthGrade.value = parsed.grade
-      vibrationHealthScore.value = parsed.score
-    } else {
-      hasVibrationHealthData.value = false
-      vibrationHealthGrade.value = ''
-      vibrationHealthScore.value = 0
-    }
+      if (vibrationHealthResponse?.rc === 0 && vibrationHealthResponse.ret) {
+        const parsed = parseVibrationHealthRet(vibrationHealthResponse.ret)
+        hasVibrationHealthData.value = parsed.hasData
+        vibrationHealthGrade.value = parsed.grade
+        vibrationHealthScore.value = parsed.score
+      } else {
+        hasVibrationHealthData.value = false
+        vibrationHealthGrade.value = ''
+        vibrationHealthScore.value = 0
+      }
 
-    nextTick(() => initGaugeCharts())
+      nextTick(() => initGaugeCharts())
+    }
   } catch {
     ElMessage.error('获取设备数据失败')
   } finally {
@@ -443,6 +468,7 @@ const setupParentResizeObserver = () => {
 }
 
 onMounted(() => {
+  if (props.hideHealthGauges) return
   nextTick(() => {
     initGaugeCharts()
     setupGaugeResizeObserver()
@@ -474,6 +500,22 @@ onUnmounted(() => {
   min-width: 200px;
   max-width: 400px;
   flex: 0 0 auto;
+
+  &--embedded {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    flex: 1;
+    height: 100%;
+
+    .device-main .device-basic-info {
+      margin-top: 8px;
+    }
+
+    .header-actions {
+      margin-top: 8px;
+    }
+  }
   border-radius: 8px;
   display: flex;
   flex-direction: column;

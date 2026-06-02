@@ -2,7 +2,8 @@
   <div class="login-page">
     <div class="login-container">
       <div class="left-title">
-        <h2 class="sub-title">声振温在线监测平台</h2>
+        <h1 class="main-title">云音声脑</h1>
+        <h2 class="sub-title">在线监测预警平台</h2>
       </div>
 
       <div class="right-login">
@@ -135,7 +136,7 @@ const handleLogin = async () => {
     }
     localStorage.setItem('tenantId', tenantId)
 
-    await router.push({ name: 'Dashboard', query: { tenantId } })
+    await router.push({ name: 'DeviceCockpit', query: { tenantId } })
 
     ElMessage.success('登录成功')
   } catch (error) {
@@ -175,15 +176,22 @@ const handleLogin = async () => {
       align-items: flex-start;
       gap: 30px;
 
+      .main-title,
       .sub-title {
-        font-size: 3rem;
         color: #00ffff;
         font-weight: 500;
         margin: 0;
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        line-height: 1.2;
+      }
+
+      .main-title {
+        font-size: 3.5rem;
+      }
+
+      .sub-title {
+        font-size: 3rem;
         white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
     }
 

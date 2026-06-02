@@ -21,6 +21,7 @@ export const buildVibrationPayload = (
   receiverId: string,
   axis: string,
   alarmTime?: number,
+  timeRange?: { startTime?: string; endTime?: string },
 ) => {
   const payload: Record<string, unknown> = {
     tenantId: getTenantId(),
@@ -30,5 +31,7 @@ export const buildVibrationPayload = (
   }
   const at = alarmTime == null ? NaN : Number(alarmTime)
   if (Number.isFinite(at) && at > 0) payload.alarmTime = at
+  if (timeRange?.startTime) payload.startTime = timeRange.startTime
+  if (timeRange?.endTime) payload.endTime = timeRange.endTime
   return payload
 }

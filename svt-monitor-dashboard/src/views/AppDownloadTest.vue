@@ -16,9 +16,13 @@
 
 <script setup lang="ts">
 import { ElButton } from 'element-plus'
-import apkUrl from '@/assets/__UNI__D2BE80A__20260529113654.apk?url'
 
+/** APK 放在 public 目录，避免构建时打包进 assets（大文件且可能未提交仓库） */
 const apkFileName = '__UNI__D2BE80A__20260529113654.apk'
+const base = import.meta.env.BASE_URL.endsWith('/')
+  ? import.meta.env.BASE_URL
+  : `${import.meta.env.BASE_URL}/`
+const apkUrl = `${base}${apkFileName}`
 
 function handleDownload() {
   const anchor = document.createElement('a')

@@ -198,7 +198,7 @@ import {
 } from '@/api/modules/alarmDetail'
 import {
   askAIModel,
-  getLatestFrequencyByReceiver,
+  findLatestFrequencyById,
   getLatestFrequencyByReceiverNoScene,
   getWavByFreqGroupIdUrl,
 } from '@/api/modules/voiceSound'
@@ -531,64 +531,6 @@ const toSafeNumber = (
   return Number(n.toFixed(opts.fixed))
 }
 
-const renderEnergyDensityChartsFromFrequency = async (bins: Array<any>) => {
-  if (!energyChartRef.value || !densityChartRef.value) return
-  disposeCharts()
-  await nextTick()
-  energyChart.value = echarts.init(energyChartRef.value)
-  densityChart.value = echarts.init(densityChartRef.value)
-  energyChart.value.group = chartLinkGroup
-  densityChart.value.group = chartLinkGroup
-  echarts.connect(chartLinkGroup)
-
-  const xArr: string[] = []
-  const nowDbArr: (number | undefined)[] = []
-  const nowDensityArr: (number | undefined)[] = []
-
-  for (const item of bins ?? []) {
-    const f1 = Number(item?.freq1 ?? 0)
-    const f2 = Number(item?.freq2 ?? 0)
-    xArr.push(Number(Math.sqrt(f1 * f2)).toFixed(0))
-    nowDbArr.push(toSafeNumber(item?.db, { min: -2000, max: 2000, fixed: 2 }))
-    nowDensityArr.push(toSafeNumber(item?.density, { min: -2000, max: 2000, fixed: 4 }))
-  }
-
-  const baseGrid = { left: 40, right: 20, top: 30, bottom: 50 }
-  const dataZoom = [
-    { type: 'inside', xAxisIndex: [0], filterMode: 'filter' },
-    { type: 'slider', xAxisIndex: [0], bottom: 10, height: 20, filterMode: 'filter' },
-  ]
-
-  energyChart.value.setOption({
-    tooltip: { trigger: 'axis', appendToBody: true, extraCssText: 'z-index:99999 !important;' },
-    grid: baseGrid,
-    legend: { show: false },
-    xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
-    yAxis: [{ type: 'value', name: '能量', axisLabel: { formatter: formatYAxisTick } }],
-    dataZoom,
-    series: [
-      { name: '能量', type: 'line', data: nowDbArr, symbolSize: 1, lineStyle: { width: 1 } },
-    ],
-  })
-
-  densityChart.value.setOption({
-    tooltip: { trigger: 'axis', appendToBody: true, extraCssText: 'z-index:99999 !important;' },
-    grid: baseGrid,
-    legend: { show: false },
-    xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
-    yAxis: [{ type: 'value', name: '密度', axisLabel: { formatter: formatYAxisTick } }],
-    dataZoom,
-    series: [
-      { name: '密度', type: 'line', data: nowDensityArr, symbolSize: 1, lineStyle: { width: 1 } },
-    ],
-  })
-
-  enableMouseWheelZoom(energyChart.value)
-  enableMouseWheelZoom(densityChart.value)
-  hasVibrationFrequencyData.value = false
-  hasVibrationTimeData.value = false
-}
-
 const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
   if (!energyChartRef.value || !densityChartRef.value) return
   disposeCharts()
@@ -602,15 +544,10 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
   const soundFrequencyDtoList = Array.isArray(ret?.soundFrequencyDtoList)
     ? ret.soundFrequencyDtoList
     : []
-  const soundAvgFrequencyDtoList = Array.isArray(ret?.soundAvgFrequencyDtoList)
-    ? ret.soundAvgFrequencyDtoList
-    : []
 
   const xArr: string[] = []
   const nowDbArr: (number | undefined)[] = []
   const nowDensityArr: (number | undefined)[] = []
-  const avgDbArr: (number | undefined)[] = []
-  const avgDensityArr: (number | undefined)[] = []
 
   for (const item of soundFrequencyDtoList) {
     const f1 = Number(item?.freq1 ?? 0)
@@ -618,11 +555,6 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
     xArr.push(Number(Math.sqrt(f1 * f2)).toFixed(0))
     nowDbArr.push(toSafeNumber(item?.db, { min: -2000, max: 2000, fixed: 2 }))
     nowDensityArr.push(toSafeNumber(item?.density, { min: -2000, max: 2000, fixed: 4 }))
-  }
-
-  for (const item of soundAvgFrequencyDtoList) {
-    avgDbArr.push(toSafeNumber(item?.db, { min: -2000, max: 2000, fixed: 2 }))
-    avgDensityArr.push(toSafeNumber(item?.density, { min: -2000, max: 2000, fixed: 4 }))
   }
 
   const baseGrid = { left: 40, right: 20, top: 30, bottom: 50 }
@@ -638,20 +570,7 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
     xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
     yAxis: [{ type: 'value', name: '能量', axisLabel: { formatter: formatYAxisTick } }],
     dataZoom,
-    series: [
-      { name: '能量', type: 'line', data: nowDbArr, symbolSize: 1, lineStyle: { width: 1 } },
-      ...(avgDbArr.length > 0
-        ? [
-          {
-            name: '标准能量线',
-            type: 'line',
-            data: avgDbArr,
-            symbolSize: 1,
-            lineStyle: { width: 1 },
-          },
-        ]
-        : []),
-    ],
+    series: [{ name: '能量', type: 'line', data: nowDbArr, symbolSize: 1, lineStyle: { width: 1 } }],
   })
 
   densityChart.value.setOption({
@@ -661,24 +580,39 @@ const renderEnergyDensityChartsFromNoScene = async (ret: any) => {
     xAxis: [{ type: 'category', data: xArr, boundaryGap: false }],
     yAxis: [{ type: 'value', name: '密度', axisLabel: { formatter: formatYAxisTick } }],
     dataZoom,
-    series: [
-      { name: '密度', type: 'line', data: nowDensityArr, symbolSize: 1, lineStyle: { width: 1 } },
-      ...(avgDensityArr.length > 0
-        ? [
-          {
-            name: '标准密度线',
-            type: 'line',
-            data: avgDensityArr,
-            symbolSize: 1,
-            lineStyle: { width: 1 },
-          },
-        ]
-        : []),
-    ],
+    series: [{ name: '密度', type: 'line', data: nowDensityArr, symbolSize: 1, lineStyle: { width: 1 } }],
   })
 
   enableMouseWheelZoom(energyChart.value)
   enableMouseWheelZoom(densityChart.value)
+}
+
+/** 声音预警能量/密度图 */
+const loadSoundWarningFrequencyCharts = async () => {
+  const recordId = currentFreqGroupId.value
+  if (recordId) {
+    try {
+      const r = await findLatestFrequencyById({ id: recordId, type: 2 })
+      const ret = (r as { ret?: unknown })?.ret ?? r
+      logFrequencyDebugInfo('findLatestFrequencyById soundFrequencyDtoList', (ret as any)?.soundFrequencyDtoList ?? [])
+      await renderEnergyDensityChartsFromNoScene(ret)
+      return
+    } catch {
+      // 回退 no-scene 接口
+    }
+  }
+
+  const rid = receiverId.value
+  if (!rid) {
+    disposeCharts()
+    return
+  }
+
+  const r = await getLatestFrequencyByReceiverNoScene({ receiverId: String(rid), type: 2 })
+  nosceneVoiceRet.value = (r as { ret?: unknown })?.ret ?? null
+  const ret = nosceneVoiceRet.value ?? {}
+  logFrequencyDebugInfo('getLatestFrequencyByReceiverNoScene soundFrequencyDtoList', (ret as any)?.soundFrequencyDtoList ?? [])
+  await renderEnergyDensityChartsFromNoScene(ret)
 }
 
 const loadEvent = async () => {
@@ -723,32 +657,15 @@ const loadEvent = async () => {
   const code = currentEventTypeCode.value
   const rid = receiverId.value
 
-  // 声音预警：沿用原有声音频谱接口
+  // 声音预警：能量/密度图需带标准线（findLatestFrequencyById 或 no-scene 接口）
   if (isWarningEvent.value) {
-    if (rid && code === 'FREQUENCY_SOUND_WARN') {
-      const r = await getLatestFrequencyByReceiver({ receiverId: String(rid), type: 2 })
-      logFrequencyDebugInfo('FREQUENCY_SOUND_WARN response', (r as any)?.ret ?? [])
-      await renderEnergyDensityChartsFromFrequency((r as any)?.ret ?? [])
-      return
-    }
-    if (rid && code === 'SOUND_HISTORY_WARN') {
-      const r = await getLatestFrequencyByReceiver({ receiverId: String(rid), type: 2 })
-      logFrequencyDebugInfo('SOUND_HISTORY_WARN response', (r as any)?.ret ?? [])
-      await renderEnergyDensityChartsFromFrequency((r as any)?.ret ?? [])
-      return
-    }
-    if (rid && code === 'NO_SCENE_SOUND_WARN') {
-      const r = await getLatestFrequencyByReceiverNoScene({ receiverId: String(rid), type: 2 })
-      nosceneVoiceRet.value = (r as any)?.ret ?? null
-      logFrequencyDebugInfo(
-        'NO_SCENE_SOUND_WARN response.soundFrequencyDtoList',
-        (r as any)?.ret?.soundFrequencyDtoList ?? [],
-      )
-      logFrequencyDebugInfo(
-        'NO_SCENE_SOUND_WARN response.soundAvgFrequencyDtoList',
-        (r as any)?.ret?.soundAvgFrequencyDtoList ?? [],
-      )
-      await renderEnergyDensityChartsFromNoScene((r as any)?.ret ?? {})
+    if (
+      rid &&
+      (code === 'FREQUENCY_SOUND_WARN' ||
+        code === 'SOUND_HISTORY_WARN' ||
+        code === 'NO_SCENE_SOUND_WARN')
+    ) {
+      await loadSoundWarningFrequencyCharts()
       return
     }
     disposeCharts()

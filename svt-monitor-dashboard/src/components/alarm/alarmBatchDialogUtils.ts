@@ -282,7 +282,7 @@ export function buildVibrationDeleteAllConfirmMessage(
   if (query.endTime) lines.push(`结束时间：${query.endTime}`)
   if (query.deviceId) {
     const label = deviceOptions.find((o) => o.value === String(query.deviceId))?.label
-    lines.push(`听音器名称：${label ?? query.deviceId}`)
+    lines.push(`设备名称：${label ?? query.deviceId}`)
   }
   if (query.eventTypeCode) {
     const label = typeOptions.find((o) => o.value === String(query.eventTypeCode))?.label

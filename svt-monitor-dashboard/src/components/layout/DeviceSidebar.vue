@@ -62,42 +62,55 @@
         <div v-if="!deviceTreeStore.loading && displayTreeData.length === 0" class="no-data">
           <CommonEmptyState size="small" />
         </div>
-        <el-tree v-else ref="deviceTreeRef" :data="displayTreeData" :props="treeProps" :expand-on-click-node="false"
-          :highlight-current="false" :default-expanded-keys="expandedKeys" :current-node-key="treeCurrentKey"
-          node-key="id" @node-click="handleNodeClick">
+        <el-tree
+          v-else
+          ref="deviceTreeRef"
+          :data="displayTreeData"
+          :props="treeProps"
+          :expand-on-click-node="false"
+          :highlight-current="false"
+          :current-node-key="treeCurrentKey"
+          node-key="id"
+          @node-click="handleNodeClick"
+          @node-expand="onTreeExpandChange"
+          @node-collapse="onTreeExpandChange"
+        >
           <template #default="{ node, data }">
             <div class="tree-node" :data-type="data.type" :class="{ 'is-selected': isNodeSelected(data) }">
-              <el-icon v-if="node.childNodes && node.childNodes.length > 0" class="expand-icon no-select"
-                @mousedown.prevent @click.stop="handleExpandIconClick(node)">
+              <el-icon
+                v-if="node.childNodes && node.childNodes.length > 0"
+                class="expand-icon no-select"
+                @mousedown.prevent
+                @click.stop="handleExpandIconClick(node)"
+              >
                 <arrow-down v-if="node.expanded" />
                 <arrow-right v-else />
               </el-icon>
+              <span v-else class="expand-icon expand-icon--placeholder" aria-hidden="true" />
 
-              <div class="node-icon">
-                <el-icon v-if="data.type === 'factory'">
-                  <OfficeBuilding />
-                </el-icon>
-                <el-icon v-else-if="data.type === 'workshop'">
-                  <HomeFilled />
-                </el-icon>
-                <el-icon v-else-if="data.type === 'device'">
-                  <Cpu />
-                </el-icon>
-                <el-icon v-else>
-                  <Location />
-                </el-icon>
+              <div
+                class="tree-node__body"
+                @click.stop="handleTreeNodeBodyClick(data, node)"
+              >
+                <div class="node-icon">
+                  <el-icon v-if="data.type === 'factory'">
+                    <OfficeBuilding />
+                  </el-icon>
+                  <el-icon v-else-if="data.type === 'workshop'">
+                    <HomeFilled />
+                  </el-icon>
+                  <el-icon v-else-if="data.type === 'device'">
+                    <Cpu />
+                  </el-icon>
+                  <el-icon v-else>
+                    <Location />
+                  </el-icon>
+                </div>
+
+                <span class="node-label" :title="formatTreeNodeLabel(data)">
+                  {{ formatTreeNodeLabel(data) }}
+                </span>
               </div>
-
-              <span class="node-label" :title="data.type === 'device' && data.customerDeviceId
-                ? `${data.name} (${data.customerDeviceId})`
-                : node.label
-                ">
-                {{
-                  data.type === 'device' && data.customerDeviceId
-                    ? `${data.name} (${data.customerDeviceId})`
-                    : node.label
-                }}
-              </span>
 
               <!-- <span v-if="(data.type === 'factory' || data.type === 'workshop') && data.deviceCount" class="node-count">
                 <el-tag size="small" type="info">
@@ -139,7 +152,14 @@ import {
 import { useDebounce } from '@/composables/useDebounce'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
-import { findAncestorKeysForNodeId, getCssEscaped } from '@/components/layout/deviceSidebarTreeUtils'
+import {
+  buildExpandedKeysForSelection,
+  collectExpandedKeysFromTree,
+  collapseTreeNodeDeep,
+  findAncestorKeysForNodeId,
+  findNodeById,
+  getCssEscaped,
+} from '@/components/layout/deviceSidebarTreeUtils'
 
 const router = useRouter()
 
@@ -240,39 +260,45 @@ const scrollSelectedNodeIntoView = (key?: string | null) => {
   }
 }
 
-/** 与 Element Plus 内部一致：展开目标节点的直接父链（expandParent=true 会一路展开到根） */
-const expandAncestorsViaTreeApi = (treeKey: string) => {
+/** 按 keys 自上而下展开，避免 expandParent 连带展开同车间下其它设备 */
+const expandKeysViaTreeApi = (keys: string[]) => {
   const tree = deviceTreeRef.value
   if (!tree || typeof tree.getNode !== 'function') return
-  try {
-    const node = tree.getNode(treeKey)
-    const parent = node?.parent
-    if (parent && parent.level > 0 && typeof parent.expand === 'function') {
-      parent.expand(null, true)
+  for (const key of keys) {
+    try {
+      const node = tree.getNode(key)
+      if (node && typeof node.expand === 'function') {
+        node.expand(false, false)
+      }
+    } catch (e) {
+      console.warn('展开树节点失败:', key, e)
     }
-  } catch (e) {
-    console.warn('通过树 API 展开祖先节点失败:', e)
   }
 }
 
 const updateSelection = async (newId: string | null) => {
-  if (newId) {
-    const ancestors = findAncestorKeysForNodeId(deviceTreeStore.deviceTreeData, newId)
-    if (ancestors?.length) {
-      const merged = [...new Set([...(deviceTreeStore.expandedKeys ?? []), ...ancestors])]
-      deviceTreeStore.setExpandedKeys(merged)
-    }
-  }
-  await nextTick()
-  await nextTick()
+  const treeData = deviceTreeStore.deviceTreeData
   const tree = deviceTreeRef.value
+
+  await nextTick()
   if (!tree || typeof tree.setCurrentKey !== 'function') return
   try {
     if (newId) {
-      expandAncestorsViaTreeApi(newId)
+      const targetNode = findNodeById(treeData, newId)
+      const ancestors = findAncestorKeysForNodeId(treeData, newId) ?? []
+      // 仅临时展开路径上的父级以便看见选中项，不写死到 store
+      const keysToExpand =
+        targetNode?.type === 'device'
+          ? ancestors.filter((k) => findNodeById(treeData, k)?.type !== 'device')
+          : ancestors
+      expandKeysViaTreeApi(keysToExpand)
       await nextTick()
+      const liveExpanded = collectExpandedKeysFromTree(treeData, tree)
+      const nextKeys = buildExpandedKeysForSelection(treeData, newId, liveExpanded)
+      deviceTreeStore.setExpandedKeys(nextKeys)
+      applyExpandedKeysToTree(nextKeys)
     }
-    tree.setCurrentKey(newId || null, true)
+    tree.setCurrentKey(newId || null, false)
     await nextTick()
     const doScroll = () => scrollSelectedNodeIntoView(newId)
     requestAnimationFrame(() => {
@@ -301,6 +327,7 @@ onMounted(async () => {
       if (firstFactoryId) keys.push(firstFactoryId)
       if (firstWorkshopId) keys.push(firstWorkshopId)
       deviceTreeStore.setExpandedKeys(keys)
+      nextTick(() => applyExpandedKeysToTree(keys))
     }, 100)
   }
 
@@ -320,6 +347,16 @@ onMounted(async () => {
   }
 
   watch(selectedDeviceId, updateSelection, { immediate: true })
+
+  watch(
+    () => displayTreeData.value.length,
+    (len) => {
+      if (!len) return
+      const keys = deviceTreeStore.expandedKeys ?? []
+      if (!keys.length) return
+      nextTick(() => applyExpandedKeysToTree(keys))
+    },
+  )
 })
 
 const workshopSearchText = ref<string>('')
@@ -333,7 +370,31 @@ const debouncedWorkshopSearch = useDebounce(workshopSearchText, 400)
 const debouncedDeviceSearch = useDebounce(deviceSearchText, 400)
 
 const deviceTreeRef = ref<any>(null)
-const expandedKeys = computed(() => deviceTreeStore.expandedKeys)
+
+const persistExpandedKeysFromTree = () => {
+  const tree = deviceTreeRef.value
+  const treeData = deviceTreeStore.deviceTreeData
+  if (!tree || !treeData.length) return
+  deviceTreeStore.setExpandedKeys(collectExpandedKeysFromTree(treeData, tree))
+}
+
+/** 将 store 中的展开 keys 应用到树（不使用 default-expanded-keys，避免与子节点状态冲突） */
+const applyExpandedKeysToTree = (keys: string[]) => {
+  const tree = deviceTreeRef.value
+  const treeData = deviceTreeStore.deviceTreeData
+  if (!tree || !keys.length) return
+  for (const key of keys) {
+    try {
+      const node = tree.getNode(key)
+      if (node?.expanded) continue
+      if (node && typeof node.expand === 'function') {
+        node.expand(false, false)
+      }
+    } catch {
+      //
+    }
+  }
+}
 
 const treeCurrentKey = computed(() => {
   const id = deviceTreeStore.selectedDeviceId
@@ -344,6 +405,21 @@ const treeCurrentKey = computed(() => {
 const treeProps = {
   label: 'name',
   children: 'children',
+}
+
+const formatTreeNodeLabel = (data: DeviceNode): string => {
+  if (data.type === 'factory') {
+    return `${data.name}（${data.deviceCount ?? 0}台）`
+  }
+  if (data.type === 'workshop') {
+    const workshopCount = data.deviceCount ?? 0
+    const factoryTotal = data.factoryDeviceCount ?? 0
+    return `${data.name}（${workshopCount}台/${factoryTotal}台）`
+  }
+  if (data.type === 'device' && data.customerDeviceId) {
+    return `${data.name} (${data.customerDeviceId})`
+  }
+  return data.name
 }
 
 const allWorkshops = computed<Workshop[]>(() => {
@@ -441,6 +517,11 @@ const displayTreeData = computed<DeviceNode[]>(() => {
             node.deviceCount = totalDeviceCount
             node.pointCount = totalPointCount
           }
+          node.children.forEach((workshop) => {
+            if (workshop.type === 'workshop') {
+              workshop.factoryDeviceCount = totalDeviceCount
+            }
+          })
         } else if (node.type === 'workshop') {
           const devices = node.children.filter((child) => child.type === 'device')
           const deviceCount = devices.length
@@ -666,6 +747,7 @@ const updateExpandedKeys = () => {
 
     if (persistedKeys.length > 0) {
       deviceTreeStore.setExpandedKeys(persistedKeys)
+      nextTick(() => applyExpandedKeysToTree(persistedKeys))
       return
     }
 
@@ -697,61 +779,86 @@ const updateExpandedKeys = () => {
   }
 
   deviceTreeStore.setExpandedKeys(keys)
+  nextTick(() => applyExpandedKeysToTree(keys))
 }
 
-const toggleNode = (node: Node) => {
+const toggleNode = async (node: Node) => {
   if (node.expanded) {
-    node.collapse()
+    collapseTreeNodeDeep(node)
   } else {
     node.expand()
   }
+  await nextTick()
+  persistExpandedKeysFromTree()
+}
 
-  syncExpandedKeys()
+const onTreeExpandChange = () => {
+  nextTick(() => persistExpandedKeysFromTree())
 }
 
 const syncExpandedKeys = () => {
-  nextTick(() => {
-    if (deviceTreeRef.value && deviceTreeRef.value.getExpandedKeys) {
-      const currentExpandedKeys = deviceTreeRef.value.getExpandedKeys()
-      deviceTreeStore.setExpandedKeys(currentExpandedKeys)
-    }
-  })
+  nextTick(() => persistExpandedKeysFromTree())
 }
 
 const handleExpandIconClick = (node: Node) => {
   toggleNode(node)
 }
 
-const handleNodeClick = (data: DeviceNode, node: Node) => {
+/** 仅图标负责展开/收起；行内其它区域走跳转或车间/工厂切换 */
+const handleTreeNodeBodyClick = (data: DeviceNode, node: Node) => {
   if (data.type === 'factory' || data.type === 'workshop') {
     toggleNode(node)
     return
   }
 
   if (data.type === 'device') {
-    deviceTreeStore.setSelectedDeviceId(data.id)
-    router.push({
-      name: 'DeviceDetail',
-      params: { id: data.id },
-    })
+    navigateToDevice(data.id)
+    return
   }
 
   if (data.type === 'point') {
-    deviceTreeStore.setSelectedDeviceId(data.id)
-    const receiverId = data.receiverId ?? ''
-    if (!receiverId) {
-      ElMessage.warning('该点位缺少 receiverId，无法进入点位页')
-      return
-    }
-
-    const equipmentId = node.parent?.data?.id || ''
-    router.push({
-      name: 'SoundPoint',
-
-      params: { receiverId },
-      query: { equipmentId },
-    })
+    navigateToPoint(data, node)
   }
+}
+
+const navigateToDevice = (deviceId: string) => {
+  syncExpandedKeys()
+  deviceTreeStore.setSelectedDeviceId(deviceId)
+  void router.replace({
+    name: 'DeviceDetail',
+    params: { id: deviceId },
+    query: { tab: 'screen' },
+  })
+}
+
+const navigateToPoint = (data: DeviceNode, node: Node) => {
+  syncExpandedKeys()
+  deviceTreeStore.setSelectedDeviceId(data.id)
+  const receiverId = data.receiverId ?? ''
+  if (!receiverId) {
+    ElMessage.warning('该点位缺少 receiverId，无法进入点位页')
+    return
+  }
+
+  const equipmentId = node.parent?.data?.id || ''
+  if (!equipmentId) {
+    ElMessage.warning('无法定位所属设备')
+    return
+  }
+  void router.push({
+    name: 'DeviceDetail',
+    params: { id: equipmentId },
+    query: {
+      tab: 'trend',
+      subView: 'svt-trend',
+      receiverId,
+    },
+  })
+}
+
+/** 阻止 el-tree 对设备/点位行的默认点击展开 */
+const handleNodeClick = (data: DeviceNode) => {
+  if (data.type === 'device' || data.type === 'point') return
 }
 
 const isNodeSelected = (data: DeviceNode): boolean => {
@@ -793,16 +900,9 @@ watch(
   },
 )
 
-watch(
-  displayTreeData,
-  () => {
-    if (selectedDeviceId.value) {
-      void updateSelection(selectedDeviceId.value)
-    }
-    updateExpandedKeys()
-  },
-  { deep: true },
-)
+watch(displayTreeData, () => {
+  updateExpandedKeys()
+})
 
 onUnmounted(() => {
   if (timeoutId) {
@@ -828,6 +928,12 @@ onUnmounted(() => {
   min-width: 200px;
   max-width: 400px;
   height: 100%;
+
+  &.device-sidebar--in-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1020,10 +1126,26 @@ onUnmounted(() => {
     color: rgba(255, 255, 255, 1);
 
     .expand-icon {
+      flex-shrink: 0;
       cursor: pointer;
       transition: transform 0.2s;
-
       color: rgba(255, 255, 255, 1) !important;
+
+      &--placeholder {
+        display: inline-block;
+        width: 1em;
+        cursor: default;
+        visibility: hidden;
+      }
+    }
+
+    &__body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
     }
 
     .no-select {

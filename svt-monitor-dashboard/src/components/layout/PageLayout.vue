@@ -2,22 +2,73 @@
   <div class="page-layout" :class="{
     'page-layout--navy': backgroundMode === 'navy',
     'page-layout--solid': backgroundMode === 'solid',
+    'page-layout--shell-classic': layoutShell === 'classic',
+    'page-layout--shell-modern': layoutShell === 'modern',
   }">
     <MainHeader :current-background="backgroundMode" @change-background="handleChangeBackground" />
     <div class="main-content">
-      <DeviceSidebar class="device-sidebar--desktop" />
+      <div class="layout-panel layout-panel--nav" :style="navPanelStyle">
+        <AppNavRail
+          class="app-nav-rail--desktop"
+          :collapsed="navCollapsed"
+          @update:collapsed="setNavCollapsed"
+        />
+        <div
+          v-if="!navCollapsed"
+          class="layout-panel__resize-handle"
+          title="拖动调整菜单宽度"
+          @mousedown="navResize.onMouseDown"
+        />
+      </div>
+      <div
+        v-if="showDeviceSidebar && !isMobile"
+        class="device-panel-shell"
+        :class="{ 'device-panel-shell--collapsed': deviceHidden }"
+        :style="deviceShellStyle"
+      >
+        <div
+          class="layout-panel layout-panel--device"
+          :class="{ 'layout-panel--device-hidden': deviceHidden }"
+          :style="devicePanelStyle"
+        >
+          <DeviceSidebar
+            v-show="!deviceHidden"
+            class="device-sidebar--desktop device-sidebar--in-panel"
+          />
+          <div
+            v-if="!deviceHidden"
+            class="layout-panel__resize-handle"
+            title="拖动调整设备列表宽度"
+            @mousedown="deviceResize.onMouseDown"
+          />
+        </div>
+        <button
+          type="button"
+          class="layout-panel__edge-toggle"
+          :title="deviceHidden ? '展开设备列表' : '收起设备列表'"
+          @click="toggleDevicePanel"
+        >
+          <el-icon :size="14">
+            <DArrowRight v-if="deviceHidden" />
+            <DArrowLeft v-else />
+          </el-icon>
+        </button>
+      </div>
       <div v-if="isMobile" class="mobile-top-actions">
         <div class="device-sidebar-drawer-trigger" @click="mobileDeviceDrawerVisible = true">
           <span class="device-sidebar-drawer-trigger__icon">≡</span>
-          <span class="device-sidebar-drawer-trigger__text mobile-font-nav">设备</span>
+          <span class="device-sidebar-drawer-trigger__text mobile-font-nav">{{
+            showDeviceSidebar ? '设备' : '菜单'
+          }}</span>
         </div>
         <div v-if="showHomeButton" class="mobile-nav-btn mobile-font-nav" @click="goHome">首页</div>
         <div v-if="showReturnDeviceButton" class="mobile-nav-btn mobile-font-nav" @click="goToDevice">返回设备</div>
         <SoundVibrationSegment v-if="showPointTypeSwitch" variant="mobile" class="mobile-sound-vib-segment" />
       </div>
-      <el-drawer v-if="isMobile" v-model="mobileDeviceDrawerVisible" direction="ltr" size="82vw" :with-header="false"
+      <el-drawer v-if="isMobile" v-model="mobileDeviceDrawerVisible" direction="ltr" size="min(92vw, 520px)" :with-header="false"
         :append-to-body="true" class="device-sidebar-drawer">
-        <DeviceSidebar class="device-sidebar--drawer" />
+        <AppNavRail in-drawer class="app-nav-rail--drawer" />
+        <DeviceSidebar v-if="showDeviceSidebar" class="device-sidebar--drawer" />
       </el-drawer>
       <div class="content-wrapper">
         <RouterView />
@@ -42,11 +93,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import MainHeader from './MainHeader.vue'
+import AppNavRail from './AppNavRail.vue'
 import SoundVibrationSegment from './SoundVibrationSegment.vue'
 import DeviceSidebar from './DeviceSidebar.vue'
+import { resolveLayoutShell } from './layoutNavMenu'
 import { RouterView } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
 import { ElDrawer } from 'element-plus'
+import { DArrowLeft, DArrowRight } from '@element-plus/icons-vue'
 import RealtimeBatchDialog from '@/components/alarm/RealtimeBatchDialog.vue'
 import HistoryBatchDialog from '@/components/alarm/HistoryBatchDialog.vue'
 import RealtimeAlarmBatchDialog from '@/components/alarm/RealtimeAlarmBatchDialog.vue'
@@ -69,6 +123,179 @@ import {
 } from '@/components/layout/layoutIncomingAlarm'
 import { useAlarmReminderStore } from '@/stores/alarmReminder'
 import { useLayoutDeviceNavigation } from '@/composables/useLayoutDeviceNavigation'
+import { useLayoutModuleHome } from '@/composables/useLayoutModuleHome'
+import { clampWidth, loadStoredPanelWidth, saveStoredPanelWidth, useDragResize } from '@/composables/useDragResize'
+import {
+  LAYOUT_DEVICE_WIDTH_DEFAULT,
+  LAYOUT_DEVICE_WIDTH_MAX,
+  LAYOUT_DEVICE_WIDTH_MIN,
+  LAYOUT_DEVICE_WIDTH_STORAGE,
+  LAYOUT_DEVICE_HIDDEN_STORAGE,
+  LAYOUT_DEVICE_TOGGLE_WIDTH,
+  LAYOUT_NAV_EXPANDED_STORAGE,
+  LAYOUT_NAV_WIDTH_DEFAULT,
+  LAYOUT_NAV_WIDTH_MAX,
+  LAYOUT_NAV_WIDTH_MIN,
+  LAYOUT_NAV_WIDTH_STORAGE,
+} from '@/components/layout/layoutPanelSizes'
+
+const route = useRoute()
+const router = useRouter()
+
+const storedNavWidth = loadStoredPanelWidth(
+  LAYOUT_NAV_WIDTH_STORAGE,
+  LAYOUT_NAV_WIDTH_DEFAULT,
+  LAYOUT_NAV_WIDTH_MIN,
+  LAYOUT_NAV_WIDTH_MAX,
+)
+const navExpandedWidth = ref(
+  loadStoredPanelWidth(
+    LAYOUT_NAV_EXPANDED_STORAGE,
+    storedNavWidth > LAYOUT_NAV_WIDTH_MIN ? storedNavWidth : LAYOUT_NAV_WIDTH_DEFAULT,
+    LAYOUT_NAV_WIDTH_MIN + 1,
+    LAYOUT_NAV_WIDTH_MAX,
+  ),
+)
+/** 每次进入页面默认收起主导航；展开宽度仍记住上次拖拽结果 */
+const navCollapsed = ref(true)
+const navWidth = ref(LAYOUT_NAV_WIDTH_MIN)
+const navExpandToMaxOnOpen = ref(false)
+
+const deviceHidden = ref(localStorage.getItem(LAYOUT_DEVICE_HIDDEN_STORAGE) === '1')
+const deviceWidth = ref(
+  loadStoredPanelWidth(
+    LAYOUT_DEVICE_WIDTH_STORAGE,
+    LAYOUT_DEVICE_WIDTH_DEFAULT,
+    LAYOUT_DEVICE_WIDTH_MIN,
+    LAYOUT_DEVICE_WIDTH_MAX,
+  ),
+)
+
+const navPanelStyle = computed(() => {
+  const w = navCollapsed.value ? LAYOUT_NAV_WIDTH_MIN : navWidth.value
+  return { width: `${w}px`, minWidth: `${w}px`, flexShrink: '0' }
+})
+
+const deviceShellStyle = computed(() => {
+  if (deviceHidden.value) {
+    return {
+      width: `${LAYOUT_DEVICE_TOGGLE_WIDTH}px`,
+      minWidth: `${LAYOUT_DEVICE_TOGGLE_WIDTH}px`,
+      flexShrink: '0',
+    }
+  }
+  const total = deviceWidth.value + LAYOUT_DEVICE_TOGGLE_WIDTH
+  return {
+    width: `${total}px`,
+    minWidth: `${total}px`,
+    flexShrink: '0',
+  }
+})
+
+const devicePanelStyle = computed(() => {
+  if (deviceHidden.value) {
+    return {
+      width: '0',
+      minWidth: '0',
+      flexShrink: '0',
+      overflow: 'hidden',
+    }
+  }
+  return {
+    width: `${deviceWidth.value}px`,
+    minWidth: `${deviceWidth.value}px`,
+    flexShrink: '0',
+  }
+})
+
+function hideDevicePanel() {
+  if (!deviceHidden.value) {
+    saveStoredPanelWidth(LAYOUT_DEVICE_WIDTH_STORAGE, deviceWidth.value)
+  }
+  deviceHidden.value = true
+  try {
+    localStorage.setItem(LAYOUT_DEVICE_HIDDEN_STORAGE, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+function showDevicePanel() {
+  deviceHidden.value = false
+  deviceWidth.value = LAYOUT_DEVICE_WIDTH_DEFAULT
+  saveStoredPanelWidth(LAYOUT_DEVICE_WIDTH_STORAGE, LAYOUT_DEVICE_WIDTH_DEFAULT)
+  try {
+    localStorage.setItem(LAYOUT_DEVICE_HIDDEN_STORAGE, '0')
+  } catch {
+    /* ignore */
+  }
+}
+
+function toggleDevicePanel() {
+  if (deviceHidden.value) showDevicePanel()
+  else hideDevicePanel()
+}
+
+function setNavCollapsed(collapsed: boolean) {
+  if (collapsed) {
+    if (navWidth.value > LAYOUT_NAV_WIDTH_MIN) {
+      navExpandedWidth.value = navWidth.value
+      saveStoredPanelWidth(LAYOUT_NAV_EXPANDED_STORAGE, navExpandedWidth.value)
+      navExpandToMaxOnOpen.value = false
+    } else {
+      navExpandToMaxOnOpen.value = true
+    }
+    navCollapsed.value = true
+    navWidth.value = LAYOUT_NAV_WIDTH_MIN
+    saveStoredPanelWidth(LAYOUT_NAV_WIDTH_STORAGE, LAYOUT_NAV_WIDTH_MIN)
+    return
+  }
+  navCollapsed.value = false
+  const target = navExpandToMaxOnOpen.value
+    ? LAYOUT_NAV_WIDTH_MAX
+    : clampWidth(navExpandedWidth.value, LAYOUT_NAV_WIDTH_MIN + 1, LAYOUT_NAV_WIDTH_MAX)
+  navWidth.value = target
+  navExpandedWidth.value = target
+  navExpandToMaxOnOpen.value = false
+  saveStoredPanelWidth(LAYOUT_NAV_WIDTH_STORAGE, navWidth.value)
+  saveStoredPanelWidth(LAYOUT_NAV_EXPANDED_STORAGE, target)
+}
+
+const navResize = useDragResize({
+  getWidth: () => navWidth.value,
+  setWidth: (w) => {
+    const next = clampWidth(w, LAYOUT_NAV_WIDTH_MIN, LAYOUT_NAV_WIDTH_MAX)
+    if (next <= LAYOUT_NAV_WIDTH_MIN) {
+      navExpandToMaxOnOpen.value = true
+      setNavCollapsed(true)
+      return
+    }
+    navExpandToMaxOnOpen.value = false
+    navCollapsed.value = false
+    navWidth.value = next
+    navExpandedWidth.value = next
+    saveStoredPanelWidth(LAYOUT_NAV_EXPANDED_STORAGE, next)
+  },
+  min: LAYOUT_NAV_WIDTH_MIN,
+  max: LAYOUT_NAV_WIDTH_MAX,
+  storageKey: LAYOUT_NAV_WIDTH_STORAGE,
+})
+
+const deviceResize = useDragResize({
+  getWidth: () => deviceWidth.value,
+  setWidth: (w) => {
+    deviceWidth.value = clampWidth(w, LAYOUT_DEVICE_WIDTH_MIN, LAYOUT_DEVICE_WIDTH_MAX)
+  },
+  min: LAYOUT_DEVICE_WIDTH_MIN,
+  max: LAYOUT_DEVICE_WIDTH_MAX,
+  storageKey: LAYOUT_DEVICE_WIDTH_STORAGE,
+})
+
+const layoutShell = computed(() => resolveLayoutShell(route.name))
+provide('layoutShell', layoutShell)
+
+/** 菜单「首页」等场景不展示设备列表 */
+const showDeviceSidebar = computed(() => route.name !== 'Home')
 
 const backgroundMode = ref<'image' | 'navy' | 'solid'>('solid')
 provide('backgroundMode', backgroundMode)
@@ -87,8 +314,9 @@ const showHomeButton = computed(() => layoutShowHomeButton(route.name))
 const showReturnDeviceButton = computed(() => layoutShowReturnDevice(route.name))
 const showPointTypeSwitch = computed(() => layoutShowPointTypeSwitch(route.name))
 
+const { goModuleHome } = useLayoutModuleHome()
 const goHome = () => {
-  router.push('/dashboard')
+  goModuleHome()
 }
 
 const { goToDevice } = useLayoutDeviceNavigation()
@@ -110,8 +338,6 @@ const handleHistoryView = (row: any) => openAlarmView(row)
 const handleRealtimeAlarmView = (row: any) => openAlarmView(row)
 const handleHistoryAlarmView = (row: any) => openAlarmView(row)
 
-const route = useRoute()
-const router = useRouter()
 const alarmOverviewStore = useAlarmOverviewStore()
 const alarmBatchStore = useAlarmBatchStore()
 const deviceTreeStore = useDeviceTreeStore()
@@ -130,7 +356,7 @@ async function goToDashboardWithTarget(item: IncomingAlarmPreview) {
     deviceOptions: (alarmBatchStore.deviceNameList ?? []) as any[],
   })
 
-  await router.push({ name: 'Dashboard' })
+  await router.push({ name: 'AlarmManagement' })
   alarmBatchStore.closeRealtime()
   alarmBatchStore.closeHistory()
   alarmBatchStore.closeRealtimeAlarm()
@@ -221,37 +447,13 @@ onUnmounted(() => {
   flex-direction: column;
   position: relative;
   overflow: hidden;
+  padding-right: 1vw;
   background-color: #091428;
   background-image: image-set(url('@/assets/images/background/背景图.avif') type('image/avif'),
       url('@/assets/images/background/背景图.webp') type('image/webp'));
   background-repeat: no-repeat;
   background-position: center center;
   background-size: 100vw 100vh;
-  padding: 0 1.5vw;
-
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  &::before {
-    left: -0.3vw;
-    width: 5vw;
-    background: url('@/assets/images/background/left背景.webp') no-repeat center center;
-    background-size: 100% 100%;
-  }
-
-  &::after {
-    right: -0.2vw;
-    width: 5vw;
-    background: url('@/assets/images/background/right背景.webp') no-repeat center center;
-    background-size: 100% 100%;
-  }
 
   :deep(.alarm-overview),
   :deep(.metrics-area),
@@ -320,10 +522,75 @@ onUnmounted(() => {
     flex: 1;
     height: auto;
     display: flex;
+    align-items: stretch;
     overflow: hidden;
     min-height: 0;
     position: relative;
     z-index: 1;
+
+    .device-panel-shell {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      height: 100%;
+      flex-shrink: 0;
+      overflow: visible;
+      transition: width 0.2s ease, min-width 0.2s ease;
+
+      .layout-panel--device {
+        height: 100%;
+        align-self: stretch;
+      }
+
+      .layout-panel__edge-toggle {
+        flex-shrink: 0;
+        align-self: center;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 48px;
+        margin-left: 0;
+        padding: 0;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 0 6px 6px 0;
+        background: rgba(19, 44, 106, 0.92);
+        color: rgba(255, 255, 255, 0.92);
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        transition: background 0.15s ease;
+
+        &:hover {
+          background: rgba(37, 99, 235, 0.85);
+        }
+      }
+    }
+
+    .layout-panel {
+      position: relative;
+      display: flex;
+      align-items: stretch;
+      height: 100%;
+      flex-shrink: 0;
+      transition: width 0.2s ease, min-width 0.2s ease;
+
+      &__resize-handle {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+        margin-right: -3px;
+        z-index: 5;
+        cursor: col-resize;
+        touch-action: none;
+
+        &:hover,
+        &:active {
+          background: rgba(147, 197, 253, 0.35);
+        }
+      }
+    }
 
     .content-wrapper {
       flex: 1;
@@ -366,7 +633,6 @@ onUnmounted(() => {
 
 @media (max-width: 800px) {
   .page-layout {
-    padding: 0 10px;
     overflow-x: hidden;
     overflow-y: visible;
     min-height: 100vh;
@@ -376,7 +642,9 @@ onUnmounted(() => {
       min-width: 0;
       overflow: visible;
 
-      .device-sidebar--desktop {
+      .layout-panel--nav,
+      .device-panel-shell,
+      .layout-panel--device {
         display: none;
       }
 
@@ -451,11 +719,6 @@ onUnmounted(() => {
   }
 }
 
-@media (max-width: 500px) {
-  .page-layout {
-    padding: 0 8px;
-  }
-}
 </style>
 
 <style lang="scss">
@@ -468,7 +731,21 @@ onUnmounted(() => {
     .el-drawer__body {
       background: #132668 !important;
       padding: 0;
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      overflow: hidden;
+    }
+
+    .app-nav-rail--drawer {
+      flex-shrink: 0;
+    }
+
+    .device-sidebar--drawer {
+      flex: 1;
+      min-width: 0;
     }
   }
 }
 </style>
+

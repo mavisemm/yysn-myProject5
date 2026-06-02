@@ -1,1051 +1,356 @@
 <template>
   <div class="charts-analysis-module">
-    <div ref="chartGridRef" class="charts-grid">
-      <div class="chart-item">
-        <div class="chart-header">
-          <span class="chart-title app-section-title">烈度随时间变化</span>
-          <span class="chart-unit special-font-color vib-trend-unit">（单位：mm/s）</span>
-        </div>
-        <div class="chart">
-          <CommonEcharts :option="vibOption" :enable-data-zoom="false" :not-merge="true" :tooltip-follow-mouse="true"
-            :linkage-group="normalLinkageGroup" :enable-linkage-zoom="true" :enable-wheel-zoom="true"
-            :auto-y-axis-on-zoom="true" />
-        </div>
-      </div>
-
-      <div class="chart-item">
-        <div class="chart-header">
-          <span class="chart-title app-section-title">偏差值随时间变化</span>
-        </div>
-        <div class="chart">
-          <CommonEcharts :option="soundOption" :enable-data-zoom="false" :not-merge="true" :tooltip-follow-mouse="true"
-            :linkage-group="normalLinkageGroup" :enable-linkage-zoom="true" :enable-wheel-zoom="true"
-            :auto-y-axis-on-zoom="true" />
-        </div>
-      </div>
-
-      <div class="chart-item chart-item--wide">
-        <div class="chart-header">
-          <span class="chart-title app-section-title">温度随时间变化</span>
-          <div class="chart-header-right">
-            <span class="realtime-temp-inline">
-              实时温度：<span class="realtime-temp-value special-font-color">{{ realtimeTempValueText }}</span>
-            </span>
-            <span class="chart-unit special-font-color">（单位：℃）</span>
-            <el-button class="temp-fullscreen-btn" text size="small" :disabled="!hasAnyChartData"
-              @click="openDeviceChartsFullscreen">
-              全屏显示
-              <el-icon>
-                <FullScreen />
-              </el-icon>
-            </el-button>
-          </div>
-        </div>
-        <div class="chart">
-          <CommonEcharts :option="tempOption" :enable-data-zoom="false" :not-merge="true" :tooltip-follow-mouse="true"
-            :linkage-group="normalLinkageGroup" :enable-linkage-zoom="true" :enable-wheel-zoom="true"
-            :auto-y-axis-on-zoom="true" />
-        </div>
+    <div class="charts-analysis-toolbar" @mousedown.stop @wheel.stop>
+      <div class="charts-analysis-toolbar__actions">
+        <CommonDateTimePicker v-model="dateRange" class="charts-analysis-date-picker" width="400px" enable-presets />
+        <el-tooltip v-for="item in viewToolItems" :key="item.key" :content="item.label" placement="bottom">
+          <button type="button" class="charts-analysis-tool-btn"
+            :class="{ 'charts-analysis-tool-btn--active': activeViewKey === item.key }" :aria-label="item.label"
+            @click="openView(item.key)">
+            <el-icon :size="20">
+              <component :is="item.icon" />
+            </el-icon>
+          </button>
+        </el-tooltip>
       </div>
     </div>
 
-    <el-dialog v-model="deviceChartsFullscreenVisible" title="随时间变化曲线" fullscreen destroy-on-close append-to-body
-      :modal-append-to-body="true" align-center class="device-detail-charts-fullscreen-dialog"
-      modal-class="common-echarts-fullscreen-modal" @opened="onDeviceChartsFullscreenOpened"
-      @closed="onDeviceChartsFullscreenClosed">
-      <div class="device-detail-charts-fullscreen-content">
-        <div class="device-detail-charts-fullscreen-toolbar" @mousedown.stop @wheel.stop>
-          <el-checkbox v-model="fullscreenChartVisible.vib">烈度随时间变化</el-checkbox>
-          <el-checkbox v-model="fullscreenChartVisible.sound">偏差值随时间变化</el-checkbox>
-          <el-checkbox v-model="fullscreenChartVisible.temp">温度随时间变化</el-checkbox>
-        </div>
+    <div v-if="openTabs.length" class="charts-analysis-subtabs">
+      <button v-for="tab in openTabs" :key="tab.id" type="button" class="charts-analysis-subtab"
+        :class="{ 'charts-analysis-subtab--active': tab.id === activeTabId }" @click="activeTabId = tab.id">
+        <span class="charts-analysis-subtab__label">{{ tab.label }}</span>
+        <el-icon class="charts-analysis-subtab__close" aria-label="关闭" @click.stop="closeTab(tab.id)">
+          <Close />
+        </el-icon>
+      </button>
+      <button v-if="openTabs.length > 3" type="button" class="charts-analysis-close-all" @click="closeAllTabs">
+        关闭所有标签
+      </button>
+    </div>
 
-        <div class="device-detail-charts-fullscreen-stack">
-          <template v-if="hasAnyFullscreenChartSelected">
-            <div
-              v-if="fullscreenChartVisible.vib"
-              class="device-detail-chart-fs-pane device-detail-chart-fs-pane--vib"
-            >
-              <div class="chart-header">
-                <span class="chart-title app-section-title">烈度随时间变化</span>
-                <span class="chart-unit special-font-color vib-trend-unit">（单位：mm/s）</span>
-              </div>
-              <div class="chart-host">
-                <CommonEcharts ref="vibFullscreenChartRef" :option="vibOption" :enable-data-zoom="false"
-                  :not-merge="true" :tooltip-follow-mouse="true" :linkage-group="fullscreenLinkageGroup"
-                  :enable-linkage-zoom="true" :enable-wheel-zoom="true" :auto-y-axis-on-zoom="true" />
-              </div>
-            </div>
-
-            <div v-if="fullscreenChartVisible.sound" class="device-detail-chart-fs-pane">
-              <div class="chart-header">
-                <span class="chart-title app-section-title">偏差值随时间变化</span>
-              </div>
-              <div class="chart-host">
-                <CommonEcharts ref="soundFullscreenChartRef" :option="soundOption" :enable-data-zoom="false"
-                  :not-merge="true" :tooltip-follow-mouse="true" :linkage-group="fullscreenLinkageGroup"
-                  :enable-linkage-zoom="true" :enable-wheel-zoom="true" :auto-y-axis-on-zoom="true" />
-              </div>
-            </div>
-
-            <div
-              v-if="fullscreenChartVisible.temp"
-              class="device-detail-chart-fs-pane device-detail-chart-fs-pane--temp"
-            >
-              <div class="chart-header">
-                <span class="chart-title app-section-title">温度随时间变化</span>
-                <div class="chart-header-right">
-                  <span class="realtime-temp-inline">
-                    实时温度：<span class="special-font-color">{{ realtimeTempValueText }}</span>
-                  </span>
-                  <span class="chart-unit special-font-color">（单位：℃）</span>
-                </div>
-              </div>
-              <div class="chart-host">
-                <CommonEcharts ref="tempFullscreenChartRef" :option="tempOption" :enable-data-zoom="false"
-                  :not-merge="true" :tooltip-follow-mouse="true" :linkage-group="fullscreenLinkageGroup"
-                  :enable-linkage-zoom="true" :enable-wheel-zoom="true" :auto-y-axis-on-zoom="true" />
-              </div>
-            </div>
-          </template>
-
-          <div v-else class="device-detail-charts-empty">
-            请至少选择一个图表
-          </div>
-        </div>
+    <div class="charts-analysis-body">
+      <template v-if="activeTab">
+        <DeviceSvtTrendPanel v-if="activeTab.viewKey === 'svt-trend'" :key="`svt-${activeTab.receiverId}`"
+          :receiver-id="activeTab.receiverId" :date-range="dateRange" />
+        <DeviceSpectrumPanel v-else-if="activeTab.viewKey === 'spectrum'" :key="`spectrum-${activeTab.receiverId}`"
+          :receiver-id="activeTab.receiverId" :date-range="dateRange" />
+        <DeviceSoundTrendEmbed v-else-if="activeTab.viewKey === 'sound-trend'"
+          :key="`sound-trend-${activeTab.receiverId}`" :receiver-id="activeTab.receiverId"
+          :point-name="activeTab.pointName" />
+        <DeviceVibrationAnalysisEmbed v-else-if="activeTab.viewKey === 'vibration-analysis'"
+          :key="`vibration-${equipmentId}`" :equipment-id="equipmentId" />
+        <DeviceWaterfallEmbed v-else-if="activeTab.viewKey === 'waterfall'" :key="`waterfall-${activeTab.receiverId}`"
+          :receiver-id="activeTab.receiverId" :equipment-id="equipmentId" :date-range="dateRange" />
+      </template>
+      <div v-else class="charts-analysis-empty">
+        请点击上方图标打开分析视图
       </div>
-    </el-dialog>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch, computed } from 'vue'
-import { ElButton, ElDialog, ElCheckbox, ElIcon } from 'element-plus'
-import { FullScreen } from '@element-plus/icons-vue'
+import { ref, computed, watch } from 'vue'
+import { ElIcon, ElTooltip } from 'element-plus'
 import {
-  getTemperatureRealTime,
-  getTemperatureTrend,
-  getVibrationTrend,
-  getSoundTrend,
-} from '@/api/modules/hardware'
-import { CommonEcharts } from '@/components/common/chart'
-import type { DeviceDetailPointInfo, DeviceTrendChartData } from './deviceDetailTypes'
+  Close,
+  DataLine,
+  Histogram,
+  TrendCharts,
+  Odometer,
+  Grid,
+} from '@element-plus/icons-vue'
+import CommonDateTimePicker from '@/components/common/ui/CommonDateTimePicker.vue'
+import type { DeviceDetailPointInfo } from './deviceDetailTypes'
+import DeviceSvtTrendPanel from './DeviceSvtTrendPanel.vue'
+import DeviceSpectrumPanel from './DeviceSpectrumPanel.vue'
+import DeviceSoundTrendEmbed from './DeviceSoundTrendEmbed.vue'
+import DeviceVibrationAnalysisEmbed from './DeviceVibrationAnalysisEmbed.vue'
+import DeviceWaterfallEmbed from './DeviceWaterfallEmbed.vue'
 import {
-  buildDeviceTrendChartOption,
-  computeSoundTrendYAxisRange,
-  computeTempTrendYAxisRange,
-  computeVibTrendYAxisRange,
-  extractTrendTimeLabel,
-  normalizeTrendApiList,
-  type DeviceTrendChartKind,
-} from './deviceDetailChartUtils'
+  type ChartsAnalysisViewKey,
+  type ChartsAnalysisTab,
+  type ChartsAnalysisSessionPayload,
+  CHARTS_ANALYSIS_VIEW_META,
+  buildChartsAnalysisTabId,
+} from './chartsAnalysisTypes'
 
 const props = defineProps<{
   pointList: DeviceDetailPointInfo[]
   selectedPointId?: string
+  equipmentId?: string | null
 }>()
 
-const tempChartData = ref<DeviceTrendChartData | null>(null)
-const vibChartData = ref<DeviceTrendChartData | null>(null)
-const soundChartData = ref<DeviceTrendChartData | null>(null)
+const emit = defineEmits<{
+  'update:selectedPointId': [pointId: string]
+  'session-change': [payload: ChartsAnalysisSessionPayload]
+}>()
 
-const realtimeTempValue = ref<number | null>(null)
-const realtimeTempReqSeq = ref(0)
-const lastRealtimeReceiverId = ref<string>('')
+const dateRange = ref<[string, string] | null>(null)
+const openTabs = ref<ChartsAnalysisTab[]>([])
+const activeTabId = ref('')
 
-const realtimeTempValueText = computed(() => {
-  if (realtimeTempValue.value == null) return '—'
-  const num = Number(realtimeTempValue.value)
-  if (Number.isNaN(num)) return '—'
-  return String(num)
-})
+const equipmentId = computed(() => props.equipmentId?.trim() || '')
 
-const chartAxisColor = computed(() => '#fff')
-const chartSplitLineColor = computed(() => 'rgba(150,150,150, 0.2)')
-
-const normalLinkageGroup = 'device-detail-charts-normal'
-const fullscreenLinkageGroup = 'device-detail-charts-fullscreen'
-
-const deviceChartsFullscreenVisible = ref(false)
-const fullscreenChartVisible = ref({ vib: true, sound: true, temp: true })
-
-const FULLSCREEN_DATAZOOM_SLIDER_HEIGHT_PX = 20
-const fullscreenDataZoomSliderHeight = computed(() =>
-  deviceChartsFullscreenVisible.value ? FULLSCREEN_DATAZOOM_SLIDER_HEIGHT_PX : '10%',
-)
-
-const fullscreenGridTop = computed(() => (deviceChartsFullscreenVisible.value ? 30 : '10%'))
-const fullscreenGridBottom = computed(() => (deviceChartsFullscreenVisible.value ? 35 : '15%'))
-const fullscreenDataZoomBottom = computed(() => (deviceChartsFullscreenVisible.value ? 10 : '5%'))
-
-const trendChartLayout = computed(() => ({
-  gridBottom: fullscreenGridBottom.value,
-  gridTop: fullscreenGridTop.value,
-  dataZoomBottom: fullscreenDataZoomBottom.value,
-  dataZoomSliderHeight: fullscreenDataZoomSliderHeight.value,
-}))
-
-const buildTrendOption = (kind: DeviceTrendChartKind, data: DeviceTrendChartData | null) =>
-  buildDeviceTrendChartOption({
-    kind,
-    data,
-    layout: trendChartLayout.value,
-    axisColor: chartAxisColor.value,
-    splitLineColor: chartSplitLineColor.value,
-  })
-
-const tempOption = computed(() => buildTrendOption('temp', tempChartData.value))
-const vibOption = computed(() => buildTrendOption('vib', vibChartData.value))
-const soundOption = computed(() => buildTrendOption('sound', soundChartData.value))
-
-const hasAnyChartData = computed(() => {
-  const vibLen = vibChartData.value?.values?.length ?? 0
-  const soundLen = soundChartData.value?.values?.length ?? 0
-  const tempLen = tempChartData.value?.values?.length ?? 0
-  return vibLen > 0 || soundLen > 0 || tempLen > 0
-})
-
-const hasAnyFullscreenChartSelected = computed(
-  () =>
-    fullscreenChartVisible.value.vib
-    || fullscreenChartVisible.value.sound
-    || fullscreenChartVisible.value.temp,
-)
-
-const openDeviceChartsFullscreen = () => {
-  fullscreenChartVisible.value = { vib: true, sound: true, temp: true }
-  deviceChartsFullscreenVisible.value = true
+const resolveReceiverId = (receiverId?: string) => {
+  const explicit = receiverId?.trim()
+  if (explicit) return explicit
+  return props.selectedPointId?.trim() || props.pointList?.[0]?.id?.trim() || ''
 }
 
-watch(
-  () => fullscreenChartVisible.value,
-  async () => {
-    if (!deviceChartsFullscreenVisible.value) return
-    await nextTick()
-    resizeVisibleFullscreenCharts()
+const resolvePointName = (receiverId: string) => {
+  const found = props.pointList.find((p) => p.id === receiverId)
+  return found?.name?.trim() || receiverId
+}
+
+const viewToolItems: { key: ChartsAnalysisViewKey; label: string; icon: typeof DataLine }[] = [
+  { key: 'svt-trend', label: CHARTS_ANALYSIS_VIEW_META['svt-trend'].label, icon: DataLine },
+  { key: 'spectrum', label: CHARTS_ANALYSIS_VIEW_META.spectrum.label, icon: Histogram },
+  { key: 'sound-trend', label: CHARTS_ANALYSIS_VIEW_META['sound-trend'].label, icon: TrendCharts },
+  {
+    key: 'vibration-analysis',
+    label: CHARTS_ANALYSIS_VIEW_META['vibration-analysis'].label,
+    icon: Odometer,
   },
-  { deep: true },
+  { key: 'waterfall', label: CHARTS_ANALYSIS_VIEW_META.waterfall.label, icon: Grid },
+]
+
+const activeTab = computed(() => openTabs.value.find((t) => t.id === activeTabId.value) ?? null)
+
+const activeViewKey = computed<ChartsAnalysisViewKey | null>(
+  () => activeTab.value?.viewKey ?? null,
 )
 
-const vibFullscreenChartRef = ref<InstanceType<typeof CommonEcharts> | null>(null)
-const soundFullscreenChartRef = ref<InstanceType<typeof CommonEcharts> | null>(null)
-const tempFullscreenChartRef = ref<InstanceType<typeof CommonEcharts> | null>(null)
-
-const resizeVisibleFullscreenCharts = () => {
-  requestAnimationFrame(() => {
-    try {
-      if (fullscreenChartVisible.value.vib) {
-        ;(vibFullscreenChartRef.value as { chartInstance?: { resize?: () => void } } | null)
-          ?.chartInstance?.resize?.()
-      }
-      if (fullscreenChartVisible.value.sound) {
-        ;(soundFullscreenChartRef.value as { chartInstance?: { resize?: () => void } } | null)
-          ?.chartInstance?.resize?.()
-      }
-      if (fullscreenChartVisible.value.temp) {
-        ;(tempFullscreenChartRef.value as { chartInstance?: { resize?: () => void } } | null)
-          ?.chartInstance?.resize?.()
-      }
-    } catch {
-      // ignore
-    }
-  })
+const buildTabLabel = (viewKey: ChartsAnalysisViewKey, pointName: string) => {
+  const meta = CHARTS_ANALYSIS_VIEW_META[viewKey]
+  return `${meta.label} · ${pointName}`
 }
 
-const onDeviceChartsFullscreenOpened = async () => {
-  await nextTick()
-  resizeVisibleFullscreenCharts()
-  setTimeout(resizeVisibleFullscreenCharts, 50)
+const syncSelectedPoint = (receiverId: string) => {
+  if (!receiverId) return
+  emit('update:selectedPointId', receiverId)
 }
 
-const onDeviceChartsFullscreenClosed = () => {}
+const emitSessionChange = () => {
+  const tab = activeTab.value
+  if (!tab?.receiverId || !tab.viewKey) return
+  emit('session-change', { receiverId: tab.receiverId, viewKey: tab.viewKey })
+}
 
-const activeReceiverId = computed(() => props.selectedPointId || props.pointList?.[0]?.id || '')
+const getActiveSession = () => {
+  const tab = activeTab.value
+  return {
+    receiverId: tab?.receiverId ?? '',
+    viewKey: tab?.viewKey ?? null,
+    activeTabId: activeTabId.value,
+    hasTabs: openTabs.value.length > 0,
+  }
+}
 
-const loadTemperatureRealTime = async (receiverId: string) => {
-  if (!receiverId) {
-    realtimeTempValue.value = null
+const openView = (viewKey: ChartsAnalysisViewKey, receiverId?: string) => {
+  const rid = resolveReceiverId(receiverId)
+  if (!rid) return
+  const pointName = resolvePointName(rid)
+  const id = buildChartsAnalysisTabId(viewKey, rid)
+  const existing = openTabs.value.find((t) => t.id === id)
+  if (existing) {
+    activeTabId.value = existing.id
+    syncSelectedPoint(rid)
+    emitSessionChange()
     return
   }
-  const seq = ++realtimeTempReqSeq.value
-  try {
-    const res = await getTemperatureRealTime({ receiverId })
-    if (seq !== realtimeTempReqSeq.value) return
-    if (res?.rc === 0) {
-      const raw = res.ret as number | { temperature?: number } | undefined
-      const value = typeof raw === 'number' ? raw : Number(raw?.temperature)
-      realtimeTempValue.value = Number.isFinite(value) ? value : null
-    } else {
-      realtimeTempValue.value = null
-    }
-  } catch {
-    if (seq !== realtimeTempReqSeq.value) return
-    realtimeTempValue.value = null
+  const tab: ChartsAnalysisTab = {
+    id,
+    viewKey,
+    receiverId: rid,
+    pointName,
+    label: buildTabLabel(viewKey, pointName),
+  }
+  openTabs.value.push(tab)
+  activeTabId.value = tab.id
+  syncSelectedPoint(rid)
+  emitSessionChange()
+}
+
+watch(activeTabId, () => {
+  const tab = activeTab.value
+  if (tab?.receiverId) {
+    syncSelectedPoint(tab.receiverId)
+    emitSessionChange()
+  }
+})
+
+const closeTab = (tabId: string) => {
+  const index = openTabs.value.findIndex((t) => t.id === tabId)
+  if (index < 0) return
+  openTabs.value.splice(index, 1)
+  if (activeTabId.value === tabId) {
+    const next = openTabs.value[index] ?? openTabs.value[index - 1]
+    activeTabId.value = next?.id ?? ''
+    emitSessionChange()
   }
 }
 
-const loadTemperatureData = async (receiverId: string) => {
-  if (!receiverId) return
-  try {
-    const response = await getTemperatureTrend({ receiverId })
-    if (response.rc === 0 && Array.isArray(response.ret) && response.ret.length > 0) {
-      const timeData = response.ret.map((item: { dateTime?: string; time?: string }) =>
-        extractTrendTimeLabel(item.dateTime || item.time || ''),
-      )
-      const tempData = response.ret.map((item: { temperature: number }) => item.temperature)
-      const dataMin = tempData.length ? Math.min(...tempData) : 0
-      const dataMax = tempData.length ? Math.max(...tempData) : 100
-      const { min: yMin, max: yMax } = computeTempTrendYAxisRange(dataMin, dataMax)
-      tempChartData.value = { timeLabels: timeData, values: tempData, yMin, yMax }
-    } else {
-      tempChartData.value = null
-    }
-  } catch (error) {
-    console.error('加载温度趋势数据失败:', error)
-    tempChartData.value = null
-  }
+const closeAllTabs = () => {
+  openTabs.value = []
+  activeTabId.value = ''
 }
 
-const loadVibrationData = async (receiverId: string) => {
-  if (!receiverId) return
-  try {
-    const response = await getVibrationTrend({ receiverId })
-    const list = normalizeTrendApiList(response)
-    if (list.length > 0) {
-      const timeData = list.map((item: { time?: string }) => extractTrendTimeLabel(item.time || ''))
-      const vibData = list.map((item: { sumRms: number }) => item.sumRms)
-      const dataMin = vibData.length ? Math.min(...vibData) : 0
-      const dataMax = vibData.length ? Math.max(...vibData) : 20
-      const { min: yMin, max: yMax } = computeVibTrendYAxisRange(dataMin, dataMax)
-      vibChartData.value = { timeLabels: timeData, values: vibData, yMin, yMax }
-    } else {
-      vibChartData.value = null
-    }
-  } catch (error) {
-    console.error('加载振动趋势数据失败:', error)
-    vibChartData.value = null
-  }
-}
-
-const loadSoundData = async (receiverId: string) => {
-  if (!receiverId) return
-  try {
-    const response = await getSoundTrend({ receiverId })
-    const list = normalizeTrendApiList(response)
-    if (list.length > 0) {
-      const timeData = list.map((item: { time?: string; dateTime?: string }) =>
-        extractTrendTimeLabel(item.time || item.dateTime || ''),
-      )
-      const soundData = list.map(
-        (item: { value?: number; soundLevel?: number }) => item.value ?? item.soundLevel ?? 0,
-      )
-      const dataMin = soundData.length ? Math.min(...soundData) : 0
-      const dataMax = soundData.length ? Math.max(...soundData) : 100
-      const { min: yMin, max: yMax } = computeSoundTrendYAxisRange(dataMin, dataMax)
-      soundChartData.value = { timeLabels: timeData, values: soundData, yMin, yMax }
-    } else {
-      soundChartData.value = null
-    }
-  } catch (error) {
-    console.error('加载响度趋势数据失败:', error)
-    soundChartData.value = null
-  }
-}
-
-const loadChartsForReceiver = (receiverId: string) => {
-  if (!receiverId) return
-  void loadTemperatureData(receiverId)
-  void loadVibrationData(receiverId)
-  void loadSoundData(receiverId)
-}
-
-const chartGridRef = ref<HTMLDivElement>()
-const chartsInitialized = ref(false)
-
-watch(
-  () => props.pointList,
-  (newList, oldList) => {
-    if (!chartsInitialized.value || !newList?.length) return
-    const oldLen = oldList?.length ?? 0
-    if ((oldLen === 0 && newList.length > 0) || (!props.selectedPointId && newList.length > 0)) {
-      const receiverId = newList[0]?.id
-      if (receiverId) loadChartsForReceiver(receiverId)
-    }
-  },
-  { deep: true },
-)
-
-watch(
-  () => props.selectedPointId,
-  (newPointId, oldPointId) => {
-    if (chartsInitialized.value && newPointId && newPointId !== oldPointId) {
-      loadChartsForReceiver(newPointId)
-    }
-  },
-)
-
-watch(
-  () => activeReceiverId.value,
-  (receiverId) => {
-    if (!receiverId || receiverId === lastRealtimeReceiverId.value) return
-    lastRealtimeReceiverId.value = receiverId
-    void loadTemperatureRealTime(receiverId)
-  },
-  { immediate: true },
-)
-
-onMounted(() => {
-  nextTick(() => {
-    setTimeout(() => {
-      chartsInitialized.value = true
-      const receiverId = props.selectedPointId || props.pointList?.[0]?.id
-      if (receiverId) loadChartsForReceiver(receiverId)
-    }, 150)
-  })
+defineExpose({
+  openView,
+  getActiveSession,
 })
 </script>
 
 <style lang="scss" scoped>
 .charts-analysis-module {
-  height: 50%;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   overflow: hidden;
-
-  .charts-grid {
-    height: 100%;
-    flex: 1;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: 10px;
-    min-height: 0;
-    overflow: auto;
-
-    .chart-item {
-      border-radius: 8px;
-      padding: 10px 10px 0 10px;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-      min-height: 0;
-
-      min-width: 0;
-
-      .chart-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-        flex: 0 0 auto;
-
-        gap: 10px;
-
-        .chart-title {
-          font-size: 1rem;
-          font-weight: 500;
-          color: #fff;
-        }
-
-        .chart-unit {
-          font-size: 0.9rem;
-          color: #fff;
-        }
-
-        /* 烈度随时间变化：单位字号固定 0.8rem */
-        .vib-trend-unit {
-          font-size: 0.8rem;
-          color: #fff;
-        }
-
-        .chart-header-right {
-          display: inline-flex;
-          align-items: center;
-          justify-content: flex-end;
-          gap: 10px;
-          min-width: 0;
-          flex: 0 0 auto;
-          white-space: nowrap;
-        }
-
-        .realtime-temp-inline {
-          font-size: 0.8rem;
-          font-weight: 500;
-          color: #fff;
-        }
-
-        .realtime-temp-unit {
-          font-size: 0.8rem;
-          font-weight: 500;
-          color: #fff;
-        }
-
-        /* 仅温度标题栏右侧单位：固定 0.8rem */
-        .chart-header-right .chart-unit {
-          font-size: 0.8rem;
-          color: #fff;
-        }
-      }
-
-      .chart {
-        flex: 1;
-        min-height: 0;
-        min-width: 0;
-
-        :deep(.common-echarts-wrapper) {
-          height: 100%;
-          min-height: inherit;
-        }
-
-        :deep(.common-echarts-inner) {
-          min-height: inherit;
-        }
-      }
-    }
-
-    .chart-item--wide {
-      grid-column: 1 / -1;
-    }
-
-    .analysis-item {
-      border-radius: 8px;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-
-      min-height: 0;
-
-      min-width: 0;
-
-      .module-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-        flex: 0 0 auto;
-
-        .module-title {
-          font-weight: 500;
-          font-size: 1rem;
-          color: white;
-        }
-      }
-
-      .module-content {
-        flex: 1;
-        min-height: 0;
-
-        overflow-y: auto;
-
-        .analysis-form {
-          flex: 1;
-          min-height: 0;
-
-          .form-row {
-            display: flex;
-            gap: 10px;
-          }
-
-          .el-form {
-            .el-form-item {
-              margin-bottom: 12px;
-
-              :deep(.el-form-item__label) {
-                color: #fff;
-                font-size: 0.8rem;
-              }
-            }
-          }
-        }
-
-        .analysis-result {
-          margin-top: 10px;
-          padding-top: 10px;
-          border-top: 1px solid #e4e7ed;
-
-          .result-row {
-            display: flex;
-            justify-content: flex-start;
-            margin-bottom: 8px;
-
-            .result-label {
-              font-size: 0.8rem;
-              color: #fff;
-              font-weight: 500;
-            }
-
-            .result-value {
-              font-size: 0.8rem;
-              color: white;
-              font-weight: 500;
-
-              &.clickable {
-                cursor: pointer;
-                text-decoration: underline;
-
-                &:hover {
-                  color: #409eff;
-                }
-              }
-            }
-          }
-        }
-      }
-
-      .trend-charts-container {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        min-height: 400px;
-
-        .chart-wrapper {
-          flex-shrink: 0;
-
-          .chart-title {
-            font-size: 1rem !important;
-            text-align: center;
-            font-weight: 500;
-            color: #fff;
-            margin-bottom: 10px;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 4px;
-          }
-
-          .chart-box {
-            width: 100%;
-            height: 350px;
-            min-height: 300px;
-            background: transparent;
-            border-radius: 4px;
-            border: 1px solid #e4e7ed;
-          }
-        }
-      }
-    }
-  }
+  gap: 8px;
 }
 
-@media (max-width: 800px) {
-  .charts-analysis-module {
-    height: auto;
-
-    .charts-grid {
-      display: flex;
-      flex-direction: column;
-      overflow: visible;
-    }
-
-    .charts-grid .chart-item {
-      height: 220px;
-      min-height: 220px;
-    }
-
-    .charts-grid .chart-item .chart-header .chart-title {
-      font-size: 1.1rem;
-    }
-
-    /* 手机端：“xx随时间变化”单位/实时温度字号统一为 0.9rem（含烈度/温度，全屏/非全屏） */
-    .charts-grid .chart-item .chart-header .chart-unit,
-    .charts-grid .chart-item .chart-header .vib-trend-unit,
-    .charts-grid .chart-item .chart-header .realtime-temp-inline,
-    .charts-grid .chart-item .chart-header .realtime-temp-value {
-      font-size: 0.9rem !important;
-    }
-
-    .device-detail-chart-fs-pane .chart-header .chart-unit,
-    .device-detail-chart-fs-pane .chart-header-right .chart-unit,
-    .device-detail-chart-fs-pane .vib-trend-unit,
-    .device-detail-chart-fs-pane .realtime-temp-inline,
-    .device-detail-chart-fs-pane .realtime-temp-value {
-      font-size: 0.9rem !important;
-    }
-
-    /* 手机端：烈度标题栏单位不允许换行 */
-    .charts-grid .chart-item .chart-header .vib-trend-unit {
-      white-space: nowrap !important;
-      flex-wrap: nowrap !important;
-    }
-
-    .charts-grid .chart-item--wide {
-      grid-column: auto;
-    }
-
-
-  }
-
-  /* 手机端：温度模块表头右侧（全屏按钮/单位）视觉垂直对齐 */
-  .charts-grid .chart-item--wide .chart-header-right {
-    align-items: center !important;
-  }
-
-  .charts-grid .chart-item--wide .realtime-temp-inline {
-    display: inline-flex !important;
-    align-items: center !important;
-    line-height: 1 !important;
-  }
-
-  .charts-grid .chart-item--wide .chart-unit {
-    display: inline-flex !important;
-    align-items: center !important;
-    line-height: 1 !important;
-  }
-
-  .charts-grid .chart-item--wide .temp-fullscreen-btn {
-    align-items: center !important;
-    line-height: 1 !important;
-    font-size: 0.9rem !important;
-  }
-
-  .charts-grid .chart-item--wide .temp-fullscreen-btn {
-    :deep(.el-button__content),
-    :deep(.el-button__text) {
-      line-height: 1 !important;
-      font-size: 0.9rem !important;
-    }
-
-    :deep(.el-icon) {
-      align-self: center !important;
-      line-height: 1 !important;
-      font-size: 0.9rem !important;
-    }
-  }
-
-  /* 全屏多图：移动端排版（toolbar/表头换行） */
-  .device-detail-charts-fullscreen-toolbar {
-    justify-content: flex-start !important;
-    flex-wrap: wrap !important;
-    gap: 12px !important;
-    margin-bottom: 8px !important;
-  }
-
-  .device-detail-chart-fs-pane {
-    .chart-header {
-      flex-direction: column !important;
-      align-items: flex-start !important;
-      gap: 6px !important;
-    }
-
-    .chart-header-right {
-      white-space: normal !important;
-      flex-wrap: wrap !important;
-      gap: 8px !important;
-    }
-  }
-
-  /* 移动端：温度全屏表头保持“标题 + 单行（单位+实时温度）”，不允许换行 */
-  .device-detail-chart-fs-pane--temp {
-    .chart-header {
-      flex-direction: row !important;
-      align-items: center !important;
-      gap: 10px !important;
-    }
-
-    .chart-header-right {
-      white-space: nowrap !important;
-      flex-wrap: nowrap !important;
-      gap: 10px !important;
-    }
-
-    .realtime-temp-inline {
-      white-space: nowrap !important;
-    }
-  }
-
-  /* 移动端：烈度全屏表头保持“标题 + 单位”一行，不允许换行 */
-  .device-detail-chart-fs-pane--vib {
-    .chart-header {
-      flex-direction: row !important;
-      align-items: center !important;
-      gap: 10px !important;
-      flex-wrap: nowrap !important;
-      white-space: nowrap !important;
-    }
-
-    .vib-trend-unit {
-      white-space: nowrap !important;
-    }
-  }
-}
-
-/*
-:global(.page-layout--gray) .charts-analysis-module {
-    .analysis-form {
-        :deep(.el-form-item__label) {
-            color: #000 !important;
-        }
-    }
-}*/
-
-:global(.trend-chart-dialog) {
-  width: 70vw !important;
-  height: 95vh !important;
-  margin-top: 2.5vh !important;
+.charts-analysis-toolbar {
+  flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
-  background-color: #ffffff !important;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 2px;
 
-  .el-dialog__body {
-    flex: 1;
-    overflow: hidden;
-    padding: 0 20px 20px;
+  &__actions {
     display: flex;
-    flex-direction: column;
-    min-height: 0;
-    background-color: #ffffff;
-  }
-
-  .trend-charts-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    min-height: 0;
-  }
-
-  .chart-wrapper {
-    flex: 0 0 40vh;
-    min-height: 40vh;
-    display: flex;
-    flex-direction: column;
-    background-color: #ffffff;
-  }
-
-  .chart-wrapper .chart-box {
-    flex: 1;
-    min-height: 0;
-    width: 100%;
-    background: transparent;
-    border: 1px solid #e4e7ed;
-    border-radius: 4px;
-  }
-
-  :deep(.el-dialog__header.show-close) {
-    font-weight: 500 !important;
-    letter-spacing: 1.22px !important;
-    color: #333333 !important;
-    background-color: #ffffff !important;
-    border-bottom: 1px solid #e4e7ed;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 }
 
-/* Fullscreen multi-chart dialog (device detail) */
-.temp-fullscreen-btn {
+.charts-analysis-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.2);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+
+  &:hover {
+    border-color: rgba(153, 240, 255, 0.6);
+    color: #fff;
+  }
+
+  &--active {
+    border-color: var(--special-font-color, #99f0ff);
+    background: rgba(153, 240, 255, 0.15);
+    color: var(--special-font-color, #99f0ff);
+  }
+}
+
+.charts-analysis-subtabs {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 32px;
+  padding: 0 2px;
+}
+
+.charts-analysis-close-all {
+  flex: 0 0 auto;
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 120, 120, 0.45);
+  background: rgba(255, 80, 80, 0.12);
+  color: rgba(255, 200, 200, 0.95);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+
+  &:hover {
+    border-color: rgba(255, 140, 140, 0.8);
+    background: rgba(255, 80, 80, 0.22);
+    color: #fff;
+  }
+}
+
+.charts-analysis-subtab {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  white-space: nowrap;
-  padding: 0 !important;
-  color: rgba(255, 255, 255, 0.95) !important;
-  font-size: 0.8rem;
+  max-width: min(360px, 100%);
+  padding: 4px 8px 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.15);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 
-  /* element-plus：text button hover/focus/active 的底色（避免出现白底） */
-  &:hover,
-  &:focus,
-  &:active,
-  &.is-disabled:hover {
-    background-color: transparent !important;
-    background: transparent !important;
+  &--active {
+    border-color: var(--special-font-color, #99f0ff);
+    background: rgba(153, 240, 255, 0.12);
+    color: var(--special-font-color, #99f0ff);
   }
 
-  &:hover::before,
-  &:hover::after,
-  &:focus::before,
-  &:focus::after,
-  &:active::before,
-  &:active::after {
-    background-color: transparent !important;
-    background: transparent !important;
-  }
-
-  :deep(.el-button__content),
-  :deep(.el-button__text) {
-    color: rgba(255, 255, 255, 0.95) !important;
-  }
-
-  :deep(.el-icon) {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.95) !important;
-    margin-left: 4px;
-  }
-
-  &:hover :deep(.el-icon),
-  &:focus :deep(.el-icon),
-  &:active :deep(.el-icon) {
-    color: #ffffff !important;
-  }
-}
-
-.device-detail-charts-fullscreen-content {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.device-detail-charts-fullscreen-toolbar {
-  flex: 0 0 auto;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 10px;
-
-  :deep(.el-checkbox__label) {
-    color: rgba(255, 255, 255, 0.92);
-  }
-
-  :deep(.el-checkbox__inner) {
-    border-color: rgba(255, 255, 255, 0.65);
-  }
-}
-
-.device-detail-charts-fullscreen-stack {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
-}
-
-.device-detail-chart-fs-pane {
-  flex: 1;
-  min-height: 0;
-  border-radius: 8px;
-  padding: 0;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  background: rgba(0, 0, 0, 0.1);
-
-  /* 全屏内：单位/实时温度强制白色 */
-  .realtime-temp-inline {
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: #fff;
-  }
-
-  .realtime-temp-unit {
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: #fff;
-  }
-
-  .realtime-temp-value {
-    color: #fff !important;
-  }
-
-  .chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    gap: 10px;
-    flex: 0 0 auto;
-    min-width: 0;
-
-    .chart-title {
-      font-size: 1rem !important;
-    }
-  }
-
-  .chart-header-right {
-    display: inline-flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-    min-width: 0;
-    flex: 0 0 auto;
+  &__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  /* 全屏：烈度标题栏单位仍保持白色/0.8rem */
-  .vib-trend-unit {
-    font-size: 0.8rem;
-    color: #fff !important;
-  }
+  &__close {
+    flex: 0 0 auto;
+    font-size: 14px;
+    opacity: 0.75;
 
-  /* 全屏：温度标题栏右侧单位强制白色/字号一致 */
-  .chart-header-right .chart-unit {
-    font-size: 0.8rem;
-    color: #fff !important;
-  }
-
-  .chart-host {
-    flex: 1;
-    min-height: 0;
-    min-width: 0;
-
-    :deep(.common-echarts-wrapper) {
-      height: 100%;
-      min-height: inherit;
-    }
-
-    :deep(.common-echarts-inner) {
-      min-height: inherit;
+    &:hover {
+      opacity: 1;
     }
   }
 }
 
-.device-detail-charts-empty {
+.charts-analysis-body {
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.charts-analysis-empty {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
   border-radius: 8px;
-  border: 1px dashed rgba(255, 255, 255, 0.3);
 }
 
-:global(.device-detail-charts-fullscreen-dialog .el-dialog__body) {
-  /* 防止 body padding 挤压/覆盖全屏图表顶部区域 */
-  padding: 0 !important;
-}
-</style>
-
-<style lang="scss">
-:root {
-  --dialog-title-weight: 500;
-  --dialog-title-spacing: 1.22px;
-  --dialog-title-color: #333333;
-  --dialog-title-size: clamp(22px, 3vw, 26px);
+.charts-analysis-date-picker {
+  flex: 0 0 auto;
 }
 
-.trend-chart-dialog,
-.el-dialog.trend-chart-dialog,
-.el-overlay-dialog .trend-chart-dialog {
-
-  .el-dialog__header,
-  .el-dialog__header.show-close {
-    .el-dialog__title {
-      font-weight: var(--dialog-title-weight) !important;
-      letter-spacing: var(--dialog-title-spacing) !important;
-      color: var(--dialog-title-color) !important;
-      font-size: var(--dialog-title-size) !important;
-    }
-  }
-}
-
-.el-dialog__title {
-  &.trend-chart-title {
-    font-weight: 500 !important;
-    letter-spacing: 1.22px !important;
-    color: #333333 !important;
-  }
-}
-
-.trend-chart-dialog-header {
-  .trend-chart-title {
-    font-weight: 500 !important;
-    letter-spacing: 1.22px !important;
-    color: #333333 !important;
+@media (max-width: 800px) {
+  .charts-analysis-toolbar__actions {
+    justify-content: flex-start;
   }
 }
 </style>

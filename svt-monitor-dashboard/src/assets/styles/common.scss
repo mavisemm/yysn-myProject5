@@ -99,6 +99,86 @@ body {
   background-image: url('@/assets/images/background/首页-设备监测标题背景.webp');
 }
 
+/* 设备监测 / 预警总览：标题栏批量操作按钮（桌面 + 移动端） */
+.home-title--device-monitor .batch-actions,
+.alarm-overview .header-controls-mobile .batch-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+
+    .batch-btn {
+      flex: 1 1 0;
+      width: 100%;
+      min-width: 0;
+      max-width: 9.5em;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: rgba(255, 255, 255) !important;
+
+      .el-button__text {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .el-button + .el-button {
+      margin-left: 0;
+    }
+
+    /* 设备监测：标题栏按钮内「文字 + 数字」 */
+    .batch-btn--with-count .el-button__text {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 100%;
+    }
+
+    .batch-btn__text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .batch-btn__count {
+      flex: 0 0 auto;
+      margin-left: 14px;
+      font-weight: 600;
+      line-height: 1;
+
+      &--warning {
+        color: #e6a23c !important;
+      }
+
+      &--alarm {
+        color: #f56c6c !important;
+      }
+    }
+
+    .batch-btn--alert .batch-btn__count {
+      animation: dashboard-batch-count-blink 1.5s ease-in-out infinite;
+    }
+}
+
+@keyframes dashboard-batch-count-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}
+
 .home-title--ranking {
   background-image: url('@/assets/images/background/首页-设备列表标题背景.webp');
 }

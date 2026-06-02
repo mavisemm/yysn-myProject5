@@ -16,7 +16,7 @@
       <el-button size="small" @click="resetRange">重置</el-button>
     </div>
     <div v-if="loading" class="common-echarts-loading">
-      <span class="loading-text">加载中...</span>
+      <span class="loading-text">加载中</span>
     </div>
     <div v-if="resolvedEmpty && !loading" class="common-echarts-empty">
       <CommonEmptyState :text="emptyText" size="small" />

@@ -57,16 +57,14 @@ export const getLatestDeviationByReceiver = (params?: {
   receiverId?: string
   startTime?: string
   endTime?: string
-}): Promise<SoundDeviationItem[]> => {
-  const now = Date.now()
-  return request.get('/taicang/device/sound/data/findLatestDeviationByReceiver/no-scene', {
+}): Promise<SoundDeviationItem[]> =>
+  request.get('/taicang/device/sound/data/findLatestDeviationByReceiver/no-scene', {
     params: withTenantQuery({
       ...(params?.receiverId ? { receiverId: params.receiverId } : {}),
-      startTime: params?.startTime ?? String(now - 24 * 60 * 60 * 1000),
-      endTime: params?.endTime ?? String(now),
+      ...(params?.startTime ? { startTime: params.startTime } : {}),
+      ...(params?.endTime ? { endTime: params.endTime } : {}),
     }),
   })
-}
 
 export interface FindLatestFrequencyByIdRet {
   soundFrequencyDtoList?: Array<{ freq1: number; freq2: number; db?: number; density?: number }>

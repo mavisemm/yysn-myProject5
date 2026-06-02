@@ -56,6 +56,41 @@ export interface FindResponse {
   err: string | null
 }
 
+export interface EventTreePoint {
+  pointId?: number | string
+  alarmObject?: string
+  eventList?: EventRow[]
+  /** 振动报警接口点位下的报警列表 */
+  alarmList?: EventRow[]
+}
+
+export interface EventTreeEquipment {
+  equipmentId?: string
+  equipmentName?: string
+  pointList?: EventTreePoint[]
+}
+
+export interface FindTreeResponse {
+  rc: number
+  ret?: {
+    items?: EventTreeEquipment[]
+    rowCount?: number
+    total?: number
+  }
+  err: string | null
+}
+
+/** findVibrationAlarmByCondition：items 可能为设备数组或设备数组的嵌套分页块 */
+export interface VibrationAlarmFindResponse {
+  rc: number
+  ret?: {
+    items?: (EventTreeEquipment | EventTreeEquipment[])[]
+    rowCount?: number
+    total?: number
+  }
+  err: string | null
+}
+
 export interface FindVibrationAlarmByConditionBody {
   alarmLevel: 'ALARM' | string
   alarmType: 'MACHINE_VIBRATION' | string
@@ -102,8 +137,13 @@ const postEvent = <T>(url: string, body: unknown, showLoading: boolean) =>
 export const apiFindEvents = (body: FindBody) =>
   request.post<FindResponse>(TAICANG_EVENT_FIND_URL, body, { showLoading: false })
 
+export const apiFindEventTree = (body: FindBody) =>
+  request.post<FindTreeResponse>('/taicang/event/findTree', body, { showLoading: false })
+
 export const apiFindVibrationAlarmByCondition = (body: FindVibrationAlarmByConditionBody) =>
-  request.post<FindResponse>('/taicang/event/findVibrationAlarmByCondition', body, { showLoading: false })
+  request.post<VibrationAlarmFindResponse>('/taicang/event/findVibrationAlarmByCondition', body, {
+    showLoading: false,
+  })
 
 export const apiSoundAlarmFind = (body: FindSoundAlarmBody) =>
   request.post<FindResponse>('/taicang/event/soundAlarmFind', body, { showLoading: false })

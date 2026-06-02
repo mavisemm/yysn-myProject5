@@ -28,9 +28,10 @@ export const getVibrationFrequencyData = (
   axis: VibrationAxis = 'X',
   alarmTime?: number,
   dataSize: number = 0,
+  timeRange?: { startTime?: string; endTime?: string },
 ): Promise<NewApiResponse<VibrationFrequencyData>> =>
   request.post('/device/vibration/data/frequency', {
-    ...buildVibrationPayload(deviceId, receiverId, axis, alarmTime),
+    ...buildVibrationPayload(deviceId, receiverId, axis, alarmTime, timeRange),
     dataSize: Number.isFinite(Number(dataSize)) ? Number(dataSize) : 0,
   })
 
@@ -92,5 +93,9 @@ export const getVibrationTimeDomainData = (
   receiverId: string,
   axis: VibrationAxis = 'X',
   alarmTime?: number,
+  timeRange?: { startTime?: string; endTime?: string },
 ): Promise<NewApiResponse<VibrationTimeDomainData>> =>
-  request.post('/device/vibration/data/time', buildVibrationPayload(deviceId, receiverId, axis, alarmTime))
+  request.post(
+    '/device/vibration/data/time',
+    buildVibrationPayload(deviceId, receiverId, axis, alarmTime, timeRange),
+  )

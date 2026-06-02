@@ -122,7 +122,7 @@
           )" :key="item.pointNum" :class="[
             'point-item',
             getPointStyleClass(item.point.status, getDeviceDisplayStatus(alarm)),
-          ]" @click.stop="handlePointItemClick(alarm, item)">
+          ]" @click.stop="handlePointItemClick(alarm)">
             {{ formatAlarmCardPointLabel(item.point, item.pointNum) }}
           </div>
         </div>
@@ -160,7 +160,6 @@ import {
   getDisplayPoints,
   getPointStyleClass,
 } from './alarmOverviewView'
-import { openRealtimeBatchForPoint } from './dashboardViewUtils'
 
 const alarmBatchStore = useAlarmBatchStore()
 const openRealtimeBatch = () => {
@@ -261,20 +260,8 @@ onUnmounted(() => {
   clearDisplayPointsCache()
 })
 
-const handlePointItemClick = async (
-  alarm: AlarmItem,
-  clicked: { point: { status: string; name: string }; pointNum: number },
-) => {
-  const point = clicked?.point
-  if (!point || (point.status !== 'alarm' && point.status !== 'warning')) return
-  await openRealtimeBatchForPoint({
-    alarmBatchStore,
-    deviceTreeData: deviceTreeStore.deviceTreeData ?? [],
-    deviceId: String(alarm.id ?? ''),
-    pointNum: Number(clicked?.pointNum ?? 0),
-    pointName: point.name,
-    mode: point.status === 'warning' ? 'sound-warning' : 'vibration-alarm',
-  })
+const handlePointItemClick = (alarm: AlarmItem) => {
+  goToDeviceDetail(alarm)
 }
 
 const goToDeviceDetail = (alarm: AlarmItem) => {
@@ -345,38 +332,6 @@ const goToDeviceDetail = (alarm: AlarmItem) => {
       flex-shrink: 0;
       margin-left: auto;
       align-self: flex-end;
-    }
-
-    .batch-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      white-space: nowrap;
-      flex: 1 1 auto;
-      min-width: 0;
-      overflow: hidden;
-
-      .batch-btn {
-        flex: 1 1 0;
-        width: 100%;
-        min-width: 0;
-        max-width: 9.5em;
-        font-size: 0.8rem;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        color: rgba(255, 255, 255) !important;
-
-        :deep(.el-button__text) {
-          display: block;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-      }
-
-      :deep(.el-button + .el-button) {
-        margin-left: 0;
-      }
     }
 
     .search-section {

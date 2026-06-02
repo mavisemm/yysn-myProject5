@@ -31,11 +31,27 @@ export const getTotalDeviceCount = () =>
 export const getWarningDeviceCount = () =>
   getOverviewNumber('/taicang/hardware/device/overview/healthy/number')
 
+export interface DeviceWaringDetailPointItem {
+  receiverId?: string
+  pointId?: string
+  pointName?: string
+  alarmObject?: string
+  metricValue?: number
+  triggerValue?: number
+  alarmTime?: number
+  eventList?: DeviceWaringDetailItem[]
+  alarmList?: DeviceWaringDetailItem[]
+  [key: string]: unknown
+}
+
 export interface DeviceWaringDetailItem {
   equipmentId: string
   equipmentName: string
-  receiverId: string
-  pointName: string
+  receiverId?: string
+  pointName?: string
+  /** 树形返回：设备下的点位列表 */
+  pointList?: DeviceWaringDetailPointItem[]
+  children?: DeviceWaringDetailPointItem[]
   warningSource?: string
   eventTypeCode?: string
   eventTypeName?: string
@@ -43,6 +59,7 @@ export interface DeviceWaringDetailItem {
   metricValue?: number
   triggerValue?: number
   alarmTime?: number
+  [key: string]: unknown
 }
 
 export interface DeviceWaringDetailRet {
@@ -62,7 +79,8 @@ export const getDeviceWaringDetail = (): Promise<{
 
 export const getSoundDeviceWaringDetail = (): Promise<{
   rc: number
-  ret: DeviceWaringDetailItem[]
+  /** 多为设备数组（含 pointList），少数环境为扁平点位列表 */
+  ret: DeviceWaringDetailItem[] | DeviceWaringDetailRet
   err: string | null
 }> =>
   request.get('/taicang/hardware/device/sound/device/waring/detail/sound', {

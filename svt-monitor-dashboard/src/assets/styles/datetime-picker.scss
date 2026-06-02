@@ -139,6 +139,75 @@
   }
 }
 
+/* 快捷项与「清空」「确定」同一行（趋势频谱图等，由 JS 移入 footer） */
+.custom-datepicker-popper--presets-footer {
+  .el-date-range-picker {
+    overflow: visible !important;
+  }
+
+  .el-picker-panel__footer {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 8px 10px !important;
+    border-top: 1px solid rgba(150, 150, 150, 0.35);
+  }
+
+  .el-picker-panel__sidebar--in-footer,
+  .common-datetime-picker__presets {
+    flex: 0 1 auto;
+    min-width: 0;
+    width: auto !important;
+    max-width: calc(100% - 120px);
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    box-sizing: border-box;
+  }
+
+  .common-datetime-picker__footer-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .el-picker-panel__shortcut {
+    width: auto;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 2px 4px;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 20px;
+    border-radius: 2px;
+    text-align: center;
+    color: #000 !important;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:hover {
+      color: #000 !important;
+      background: rgba(0, 0, 0, 0.06);
+    }
+  }
+
+  .common-datetime-picker__footer-actions .el-picker-panel__link-btn,
+  .common-datetime-picker__footer-actions > .el-button {
+    flex: 0 0 auto;
+    margin-left: 0 !important;
+  }
+}
+
 @media (max-width: 800px) {
   .custom-datepicker-popper {
     width: calc(100vw - 2px) !important;

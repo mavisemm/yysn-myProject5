@@ -1,5 +1,11 @@
 <template>
-  <div class="charts-section">
+  <div
+    class="charts-section"
+    :class="{
+      'charts-section--title-left': titleAlignLeft,
+      'charts-section--pair-vertical': pairLayout === 'vertical',
+    }"
+  >
     <div class="charts-row">
       <div class="chart-item">
         <div class="chart-title-row">
@@ -30,20 +36,20 @@
       </div>
     </div>
 
-    <div v-if="true" class="range-controls-bar" @mousedown.stop @wheel.stop>
-      <span class="controls-label">频率范围：</span>
-      <el-input-number v-model="rangeMin" class="range-input" size="small" :min="safeRangeDataMin"
-        :max="safeRangeDataMax" :step="0.1" :precision="1" controls-position="right" :disabled="rangeControlsDisabled"
-        @change="applyRangeIfEnabled" />
-      <span class="controls-sep">~</span>
-      <el-input-number v-model="rangeMax" class="range-input" size="small" :min="safeRangeDataMin"
-        :max="safeRangeDataMax" :step="0.1" :precision="1" controls-position="right" :disabled="rangeControlsDisabled"
-        @change="applyRangeIfEnabled" />
-      <span class="controls-unit">Hz</span>
-      <el-button size="small" class="reset-btn" :disabled="rangeControlsDisabled"
-        @click="resetRangeIfEnabled">重置</el-button>
-      <el-button type="primary" size="small" class="trend-analysis-btn" @mousedown.stop @wheel.stop
-        @click="handleTrendAnalysisClick">
+    <div
+      v-if="!hideTrendButton"
+      class="range-controls-bar"
+      @mousedown.stop
+      @wheel.stop
+    >
+      <el-button
+        type="primary"
+        size="small"
+        class="trend-analysis-btn"
+        @mousedown.stop
+        @wheel.stop
+        @click="handleTrendAnalysisClick"
+      >
         点位数据趋势分析
       </el-button>
     </div>
@@ -55,16 +61,40 @@
     <div class="energy-fs-dialog-inner">
       <div class="energy-fs-controls-top" @mousedown.stop @wheel.stop>
         <span class="controls-label">频率范围：</span>
-        <el-input-number v-model="fullscreenRangeMin" class="range-input" size="small" :min="safeFullscreenRangeDataMin"
-          :max="safeFullscreenRangeDataMax" :step="0.1" :precision="1" controls-position="right"
-          :disabled="fullscreenRangeControlsDisabled" @change="applyFullscreenRangeIfEnabled" />
+        <el-input-number
+          v-model="fullscreenRangeMin"
+          class="range-input"
+          size="small"
+          :min="safeFullscreenRangeDataMin"
+          :max="safeFullscreenRangeDataMax"
+          :step="0.1"
+          :precision="1"
+          controls-position="right"
+          :disabled="fullscreenRangeControlsDisabled"
+          @change="applyFullscreenRangeIfEnabled"
+        />
         <span class="controls-sep">~</span>
-        <el-input-number v-model="fullscreenRangeMax" class="range-input" size="small" :min="safeFullscreenRangeDataMin"
-          :max="safeFullscreenRangeDataMax" :step="0.1" :precision="1" controls-position="right"
-          :disabled="fullscreenRangeControlsDisabled" @change="applyFullscreenRangeIfEnabled" />
+        <el-input-number
+          v-model="fullscreenRangeMax"
+          class="range-input"
+          size="small"
+          :min="safeFullscreenRangeDataMin"
+          :max="safeFullscreenRangeDataMax"
+          :step="0.1"
+          :precision="1"
+          controls-position="right"
+          :disabled="fullscreenRangeControlsDisabled"
+          @change="applyFullscreenRangeIfEnabled"
+        />
         <span class="controls-unit">Hz</span>
-        <el-button size="small" class="reset-btn" :disabled="fullscreenRangeControlsDisabled"
-          @click="resetFullscreenRangeIfEnabled">重置</el-button>
+        <el-button
+          size="small"
+          class="reset-btn"
+          :disabled="fullscreenRangeControlsDisabled"
+          @click="resetFullscreenRangeIfEnabled"
+        >
+          重置
+        </el-button>
       </div>
       <div class="energy-fs-charts-stack">
         <div class="energy-fs-chart-pane">
@@ -89,14 +119,32 @@ import { CommonEcharts } from '@/components/common/chart'
 import { useRangeControls } from '@/composables/useRangeControls'
 import { getTenantId } from '@/api/tenant'
 import { observeResize, enableMouseWheelZoom } from '@/utils/chart'
-import { formatChartYAxisTick2 } from '@/utils/chartAxis'
+import { formatChartXAxisTick1, formatChartYAxisTick2, roundChartYValues2 } from '@/utils/chartAxis'
 
 const emit = defineEmits(['chart-init'])
-const props = defineProps<{
-  deviationList: any[]
-  pointList: any[]
-  selectedPointId?: string
-}>()
+const SPECTRUM_CHART_GRID = { left: 30, right: 30, top: 40, bottom: 35, containLabel: true }
+
+const props = withDefaults(
+  defineProps<{
+    deviationList: any[]
+    pointList: any[]
+    selectedPointId?: string
+    /** 嵌入设备详情时隐藏「点位数据趋势分析」按钮 */
+    hideTrendButton?: boolean
+    /** 标题左对齐（设备详情频谱图与振动图统一） */
+    titleAlignLeft?: boolean
+    /** 能量/密度图排列：horizontal 左右；vertical 上下 */
+    pairLayout?: 'horizontal' | 'vertical'
+    /** 与设备分析振动图统一 grid 边距 */
+    spectrumAlign?: boolean
+  }>(),
+  {
+    hideTrendButton: false,
+    titleAlignLeft: false,
+    pairLayout: 'horizontal',
+    spectrumAlign: false,
+  },
+)
 
 const handleTrendAnalysisClick = () => {
   const base = import.meta.env.BASE_URL || '/'
@@ -166,8 +214,6 @@ const hasDensityData = computed(() => {
   )
 })
 const hasAnyChartData = computed(() => hasEnergyData.value || hasDensityData.value)
-const rangeControlsDisabled = computed(() => !hasAnyChartData.value)
-
 const freqsRaw = computed<any[]>(() => selectedItemsWithColor.value[0]?.freqs || [])
 const commonOptionBase = computed(() => {
   const c = chartAxisColor.value
@@ -206,7 +252,9 @@ const commonOptionBase = computed(() => {
         color: c,
       },
     },
-    grid: { left: 30, right: 30, top: 40, bottom: 35, containLabel: true },
+    grid: props.spectrumAlign
+      ? SPECTRUM_CHART_GRID
+      : { left: 30, right: 30, top: 40, bottom: 35, containLabel: true },
     legend: { show: false },
     dataZoom: [
       { type: 'inside', xAxisIndex: [0], filterMode: 'none' },
@@ -231,6 +279,7 @@ const commonOptionBase = computed(() => {
         margin: 8,
         showMaxLabel: true,
         hideOverlap: true,
+        formatter: formatChartXAxisTick1,
       },
       axisTick: { alignWithLabel: true },
     },
@@ -263,7 +312,7 @@ const energyOption = computed<EChartsOption>(() => {
     .map((item: any) => ({
       name: item.time,
       type: 'line',
-      data: item.dbArr,
+      data: roundChartYValues2(item.dbArr),
       itemStyle: { color: item.color },
       smooth: true,
       symbolSize: 1,
@@ -290,7 +339,7 @@ const densityOption = computed<EChartsOption>(() => {
     .map((item: any) => ({
       name: item.time,
       type: 'line',
-      data: item.densityArr,
+      data: roundChartYValues2(item.densityArr),
       itemStyle: { color: item.color },
       smooth: true,
       symbolSize: 1,
@@ -341,19 +390,9 @@ const updateCharts = () => { }
 
 defineExpose({ updateCharts })
 
-const {
-  showResolvedRangeControls,
-  rangeMin,
-  rangeMax,
-  rangeDataMin,
-  rangeDataMax,
-  applyRange,
-  resetRange,
-  handleDataZoom,
-  dispose: disposeRangeControls,
-} = useRangeControls({
+const { handleDataZoom, dispose: disposeRangeControls } = useRangeControls({
   option: energyOption,
-  showRangeControls: computed(() => true),
+  showRangeControls: computed(() => false),
   rangeControlsData: computed(() => freqsRaw.value || []),
   rangeControlsXAxisIndex: computed(() => 0),
   rangeControlsMin: computed(() => undefined),
@@ -391,7 +430,7 @@ const {
   dispose: disposeFullscreenRangeControls,
 } = useRangeControls({
   option: energyOption,
-  showRangeControls: computed(() => true),
+  showRangeControls: computed(() => false),
   rangeControlsData: computed(() => freqsRaw.value || []),
   rangeControlsXAxisIndex: computed(() => 0),
   rangeControlsMin: computed(() => undefined),
@@ -418,15 +457,6 @@ const {
   },
 })
 
-const safeRangeDataMin = computed(() => {
-  const v = Number(rangeDataMin.value)
-  return Number.isFinite(v) ? v : 0
-})
-const safeRangeDataMax = computed(() => {
-  const v = Number(rangeDataMax.value)
-  if (Number.isFinite(v) && v >= safeRangeDataMin.value) return v
-  return safeRangeDataMin.value
-})
 const safeFullscreenRangeDataMin = computed(() => {
   const v = Number(fullscreenRangeDataMin.value)
   return Number.isFinite(v) ? v : 0
@@ -436,15 +466,6 @@ const safeFullscreenRangeDataMax = computed(() => {
   if (Number.isFinite(v) && v >= safeFullscreenRangeDataMin.value) return v
   return safeFullscreenRangeDataMin.value
 })
-
-const applyRangeIfEnabled = () => {
-  if (rangeControlsDisabled.value) return
-  applyRange()
-}
-const resetRangeIfEnabled = () => {
-  if (rangeControlsDisabled.value) return
-  resetRange()
-}
 const fullscreenRangeControlsDisabled = computed(() => !hasAnyChartData.value)
 const applyFullscreenRangeIfEnabled = () => {
   if (fullscreenRangeControlsDisabled.value) return
@@ -608,6 +629,10 @@ onUnmounted(() => {
     min-height: 0;
   }
 
+  &.charts-section--pair-vertical .charts-row {
+    flex-direction: column;
+  }
+
   .range-controls-bar {
     display: flex;
     align-items: center;
@@ -723,6 +748,32 @@ onUnmounted(() => {
 
     .chart-container {
       padding: 10px 10px 0 10px;
+    }
+  }
+
+  &.charts-section--title-left {
+    .chart-item .chart-title-row {
+      justify-content: flex-start;
+    }
+
+    .chart-item .chart-title {
+      text-align: left;
+    }
+
+    .chart-item .chart-title-row .energy-fullscreen-btn {
+      position: static;
+      transform: none;
+      margin-left: auto;
+    }
+
+    .charts-row .chart-item:first-child .chart-title-row,
+    .charts-row .chart-item:first-child .chart-container {
+      padding: 10px 10px 0 12px;
+    }
+
+    .charts-row .chart-item:last-child .chart-title-row,
+    .charts-row .chart-item:last-child .chart-container {
+      padding: 10px 12px 0 12px;
     }
   }
 }

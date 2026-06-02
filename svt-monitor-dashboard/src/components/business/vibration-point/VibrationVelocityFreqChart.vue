@@ -196,6 +196,8 @@ import {
   type EchartsPersistentPoint,
 } from '@/utils/echartsPointMarker'
 import { patchChartSeriesById, scheduleChartSetOption } from '@/utils/chart'
+import { formatChartXAxisTick1 } from '@/utils/chartAxis'
+import { dateRangeToEpochMs } from '@/utils/datetime'
 
 const FREQ_MAIN_SERIES_ID = 'freq-series'
 
@@ -206,6 +208,7 @@ const props = withDefaults(
     /** 设备 id(已解析) */
     pointDeviceId: string
     alarmTime?: number
+    dateRange?: [string, string] | null
     chartTitle?: string
     fullscreenTitle?: string
     /** 小图坐标轴配色：light 适合白底卡片内嵌；全屏仍为深色底 */
@@ -214,6 +217,10 @@ const props = withDefaults(
     fixedAxis?: VibrationAxis
     /** 振动分析页：全屏时 X/Y/Z 三轴上下堆叠（仅分析页传入） */
     analysisTripleFullscreen?: boolean
+    /** 与能量/密度图统一 grid 边距 */
+    spectrumAlign?: boolean
+    /** Y 轴刻度小数位 */
+    yAxisTickDecimals?: 2 | 5
   }>(),
   {
     alarmTime: 0,
@@ -222,7 +229,17 @@ const props = withDefaults(
     inlineChartTheme: 'dark',
     fixedAxis: undefined,
     analysisTripleFullscreen: false,
+    spectrumAlign: false,
+    yAxisTickDecimals: 2,
   },
+)
+
+const SPECTRUM_CHART_GRID = { left: 30, right: 30, top: 40, bottom: 35, containLabel: true }
+
+const inlineFreqChartGrid = computed(() =>
+  props.spectrumAlign
+    ? SPECTRUM_CHART_GRID
+    : { top: 30, left: 20, right: 40, bottom: 35, containLabel: true },
 )
 
 const axisLocked = computed(() => {
@@ -633,10 +650,13 @@ const FREQ_FILTER_STEP = 1
 const FREQ_Y_AXIS_PRECISION = 5
 const FREQ_Y_AXIS_STEP = 0.00001
 
-// 频域图 y 轴刻度：固定显示到小数点后 5 位
+// 频域图 y 轴刻度
 const formatFreqYAxisTick = (v: number | string) => {
   const n = Number(v)
   if (!Number.isFinite(n)) return ''
+  if (props.yAxisTickDecimals === 2) {
+    return n.toFixed(2)
+  }
   return n.toFixed(5)
 }
 
@@ -1460,7 +1480,7 @@ const freqOption = computed<EChartsOption>(() => {
           ? { top: 30, left: 0, width: 118, bottom: 35, containLabel: true }
           : { top: 30, right: 16, width: 140, bottom: 35, containLabel: true },
       ]
-      : { top: 30, left: 20, right: 40, bottom: 35, containLabel: true },
+      : inlineFreqChartGrid.value,
     xAxis: showRmsBars
       ? [
         {
@@ -1474,6 +1494,7 @@ const freqOption = computed<EChartsOption>(() => {
             margin: 8,
             showMaxLabel: true,
             hideOverlap: true,
+            formatter: formatChartXAxisTick1,
           },
           axisLine: { lineStyle: { color: c } },
           splitLine: { show: false },
@@ -1506,6 +1527,7 @@ const freqOption = computed<EChartsOption>(() => {
           margin: 8,
           showMaxLabel: true,
           hideOverlap: true,
+          formatter: formatChartXAxisTick1,
         },
         axisLine: { lineStyle: { color: c } },
         splitLine: { show: false },
@@ -2157,6 +2179,7 @@ const loadFreqData = async () => {
       freqAxis.value,
       vibrationAlarmTimeArg.value,
       freqDataSizeCommitted.value,
+      dateRangeToEpochMs(props.dateRange ?? null),
     )
     if (freqResponse.rc === 0 && freqResponse.ret) {
       const { frequency, freqSpeedData } = freqResponse.ret
@@ -2166,7 +2189,10 @@ const loadFreqData = async () => {
         frequency.length > 0 &&
         freqSpeedData.length > 0
       ) {
-        freqData.value = { frequency, freqSpeedData }
+        freqData.value = {
+          frequency,
+          freqSpeedData: freqSpeedData.map((v) => Number(Number(v).toFixed(2))),
+        }
       } else {
         freqData.value = { frequency: [], freqSpeedData: [] }
       }
@@ -2209,7 +2235,7 @@ const loadFreqChartData = async () => {
 }
 
 watch(
-  [receiverIdResolved, pointDeviceId, () => props.alarmTime],
+  [receiverIdResolved, pointDeviceId, () => props.alarmTime, () => props.dateRange?.[0], () => props.dateRange?.[1]],
   ([rid, pid]) => {
     if (!rid || !pid) return
     clearAllPinnedPoints()

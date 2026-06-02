@@ -2,7 +2,12 @@ import type { Router } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
 const TENANT_ROUTE_NAMES = new Set([
-  'Dashboard',
+  'Home',
+  'DeviceCockpit',
+  'AlarmManagement',
+  'StatusManagement',
+  'NoticeManagement',
+  'DeviceMonitor',
   'DeviceDetail',
   'DeviceDetailQueryLegacy',
   'SoundPoint',

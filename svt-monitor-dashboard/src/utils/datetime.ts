@@ -39,6 +39,51 @@ export function getRollingWeekDateRange(): [string, string] {
   return [formatDateTime(start), formatDateTime(end)]
 }
 
+export type DateRangePresetKey = 'today' | 'yesterday' | 'last3' | 'last7' | 'lastMonth'
+
+/** 时间选择器 footer 快捷范围（今天 / 昨天 / 近三天…） */
+export function getDateRangeByPreset(key: DateRangePresetKey): [string, string] {
+  const end = new Date()
+  const start = new Date()
+
+  switch (key) {
+    case 'today':
+      start.setHours(0, 0, 0, 0)
+      break
+    case 'yesterday': {
+      end.setDate(end.getDate() - 1)
+      end.setHours(23, 59, 59, 999)
+      start.setDate(start.getDate() - 1)
+      start.setHours(0, 0, 0, 0)
+      break
+    }
+    case 'last3':
+      start.setTime(end.getTime() - 3 * 24 * 60 * 60 * 1000)
+      break
+    case 'last7':
+      start.setTime(end.getTime() - 7 * 24 * 60 * 60 * 1000)
+      break
+    case 'lastMonth':
+      start.setMonth(start.getMonth() - 1)
+      break
+    default:
+      break
+  }
+
+  return [formatDateTime(start), formatDateTime(end)]
+}
+
+export function dateRangeToEpochMs(range: [string, string] | null | undefined): {
+  startTime?: string
+  endTime?: string
+} {
+  if (!range?.[0] || !range?.[1]) return {}
+  const startMs = new Date(range[0]).getTime()
+  const endMs = new Date(range[1]).getTime()
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return {}
+  return { startTime: String(startMs), endTime: String(endMs) }
+}
+
 export function disabledFutureDate(time: Date): boolean {
   return time.getTime() > Date.now()
 }

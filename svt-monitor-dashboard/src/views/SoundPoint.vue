@@ -33,7 +33,7 @@ import { ref, onMounted, onUnmounted, nextTick, shallowRef, computed, watch } fr
 import * as echarts from 'echarts'
 import { ElMessage, ElDialog } from 'element-plus'
 import { enableMouseWheelZoom } from '@/utils/chart'
-import { formatChartYAxisTick2 } from '@/utils/chartAxis'
+import { formatChartXAxisTick1, formatChartYAxisTick2, roundChartYValues2 } from '@/utils/chartAxis'
 import { usePointMessageStore } from '@/stores/pointMessage'
 import { usePointPageRoute } from '@/composables/usePointPageRoute'
 
@@ -196,8 +196,8 @@ const normalizeDeviationList = (list: SoundDeviationItem[]): DeviationListItem[]
       deviationValue: Number(item.deviationValue || 0),
       visible: index === 0,
       color: index === 0 ? colors[0] : undefined,
-      dbArr: item.dbArray ?? [],
-      densityArr: item.densityArray ?? [],
+      dbArr: roundChartYValues2(item.dbArray ?? []),
+      densityArr: roundChartYValues2(item.densityArray ?? []),
       freqs,
       filePath: item.filePath,
       receiverId: item.receiverId,
@@ -382,8 +382,8 @@ const applyFrequencyResponse = (
       return false
     })
     if (!target) return
-    const dbArr = Array.isArray(res.dbArray) ? res.dbArray : []
-    const densityArr = Array.isArray(res.densityArray) ? res.densityArray : []
+    const dbArr = roundChartYValues2(Array.isArray(res.dbArray) ? res.dbArray : [])
+    const densityArr = roundChartYValues2(Array.isArray(res.densityArray) ? res.densityArray : [])
     const sourceArr = mode === 'energy' ? dbArr : densityArr
     const xFreqs =
       freqs.length > 0
@@ -463,14 +463,14 @@ const viewDetails = async (row: any) => {
       const f1 = Number(item?.freq1 ?? 0)
       const f2 = Number(item?.freq2 ?? 0)
       XARR.push(Number(Math.sqrt(f1 * f2)).toFixed(1))
-      nowdbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 6 }))
-      nowdensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 6 }))
+      nowdbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 2 }))
+      nowdensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 2 }))
     }
     if (Array.isArray(soundAvgFrequencyDtoList)) {
       for (let i = 0; i < soundAvgFrequencyDtoList.length; i++) {
         const item = soundAvgFrequencyDtoList[i]
-        avgdbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 6 }))
-        avgdensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 6 }))
+        avgdbArr.push(toSafeNumber(item?.db, { min: -200, max: 200, fixed: 2 }))
+        avgdensityArr.push(toSafeNumber(item?.density, { min: 0, max: 1_000_000, fixed: 2 }))
       }
     }
 
@@ -536,7 +536,13 @@ const viewDetails = async (row: any) => {
               type: 'category',
               data: XARR,
               boundaryGap: false,
-              axisLabel: { fontSize: 12, margin: 8, showMaxLabel: true, hideOverlap: true },
+              axisLabel: {
+                fontSize: 12,
+                margin: 8,
+                showMaxLabel: true,
+                hideOverlap: true,
+                formatter: formatChartXAxisTick1,
+              },
             },
           ],
           yAxis: [{ type: 'value', name: '能量', axisLabel: { formatter: formatYAxisTick } }],
@@ -579,7 +585,13 @@ const viewDetails = async (row: any) => {
               type: 'category',
               data: XARR,
               boundaryGap: false,
-              axisLabel: { fontSize: 10, margin: 8, showMaxLabel: true, hideOverlap: true },
+              axisLabel: {
+                fontSize: 10,
+                margin: 8,
+                showMaxLabel: true,
+                hideOverlap: true,
+                formatter: formatChartXAxisTick1,
+              },
             },
           ],
           yAxis: [{ type: 'value', name: '密度', axisLabel: { formatter: formatYAxisTick } }],

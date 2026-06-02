@@ -3,8 +3,9 @@
     <h3 class="va-point-title">{{ pointName || receiverId }}</h3>
     <template v-if="visible">
       <div
+        :id="freqAnchorId"
         v-show="!tripleFsDialogVisible"
-        class="va-point-charts-row va-point-charts-row--triple"
+        class="va-point-charts-row va-point-charts-row--triple va-point-freq-anchor"
       >
         <VibrationVelocityFreqChart
           v-for="axis in VIBRATION_AXES"
@@ -14,6 +15,7 @@
           :fixed-axis="axis"
           :chart-title="chartTitle(pointName, axis, 'freq')"
           :fullscreen-title="tripleFreqFullscreenTitle"
+          :y-axis-tick-decimals="2"
           inline-chart-theme="light"
           analysis-triple-fullscreen
         />
@@ -30,6 +32,7 @@
           :fixed-axis="axis"
           :chart-title="chartTitle(pointName, axis, 'time')"
           :fullscreen-title="tripleTimeFullscreenTitle"
+          :y-axis-tick-decimals="2"
           inline-chart-theme="light"
           analysis-triple-fullscreen
         />
@@ -74,10 +77,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, shallowRef, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, shallowRef, onMounted, onUnmounted } from 'vue'
 import type { ComponentPublicInstance, ShallowRef } from 'vue'
 import type { VibrationAxis } from '@/api/modules/device'
-import { useLazyVisible } from '@/composables/useLazyVisible'
+import { useVaPointChartLoadScheduler } from '@/composables/useVaPointChartLoadScheduler'
 import { provideVaTripleAxisFullscreen } from '@/composables/useVaTripleAxisFullscreen'
 import {
   vibrationAnalysisChartTitle,
@@ -94,10 +97,101 @@ const props = defineProps<{
   pointDeviceId: string
   pointName: string
   queryGeneration: number
+  /** 嵌入设备分析 Tab 且勾选较少点位时可立即加载 */
+  eager?: boolean
+  /** 频域图锚点 id，供右侧悬浮菜单定位 */
+  freqAnchorId?: string
+  /** 全选/多点位时缩小预加载视口，降低同时触发的接口数 */
+  lazyRootMargin?: string
 }>()
 
 const sectionRef = ref<HTMLElement | null>(null)
-const { visible } = useLazyVisible(sectionRef)
+const loadScheduler = useVaPointChartLoadScheduler()
+const eagerVisible = ref(Boolean(props.eager))
+const lazyReady = ref(false)
+const visible = computed(() => eagerVisible.value || lazyReady.value)
+
+const freqAnchorId = computed(
+  () =>
+    props.freqAnchorId ||
+    `va-point-${String(props.receiverId || '').replace(/[^\w-]/g, '_')}-freq`,
+)
+
+let intersectionObserver: IntersectionObserver | null = null
+let loadSlotHeld = false
+
+const releaseLoadSlot = () => {
+  if (!loadSlotHeld || !loadScheduler) return
+  loadSlotHeld = false
+  loadScheduler.release()
+}
+
+const activateLazySection = async () => {
+  if (lazyReady.value || eagerVisible.value) return
+  if (loadScheduler) {
+    await loadScheduler.acquire()
+    loadSlotHeld = true
+  }
+  lazyReady.value = true
+}
+
+const disconnectObserver = () => {
+  intersectionObserver?.disconnect()
+  intersectionObserver = null
+}
+
+const observeSection = async () => {
+  await nextTick()
+  disconnectObserver()
+  if (lazyReady.value || eagerVisible.value) return
+  const el = sectionRef.value
+  if (!el) return
+  intersectionObserver = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        disconnectObserver()
+        void activateLazySection()
+      }
+    },
+    {
+      root: null,
+      rootMargin: props.lazyRootMargin ?? '120px 0px',
+      threshold: 0.01,
+    },
+  )
+  intersectionObserver.observe(el)
+}
+
+watch(
+  () => props.eager,
+  (v) => {
+    if (v) {
+      disconnectObserver()
+      releaseLoadSlot()
+      eagerVisible.value = true
+    } else {
+      eagerVisible.value = false
+      if (!lazyReady.value) void observeSection()
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => props.lazyRootMargin,
+  () => {
+    if (!eagerVisible.value && !lazyReady.value) void observeSection()
+  },
+)
+
+onMounted(() => {
+  if (!props.eager) void observeSection()
+})
+
+onUnmounted(() => {
+  disconnectObserver()
+  releaseLoadSlot()
+})
 
 const tripleFs = provideVaTripleAxisFullscreen()
 const tripleFsToolbarRef = ref<HTMLElement | null>(null)

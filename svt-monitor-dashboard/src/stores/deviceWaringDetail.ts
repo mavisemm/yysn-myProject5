@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { getDeviceWaringDetail, getSoundDeviceWaringDetail, type DeviceWaringDetailItem } from '@/api/modules/stats'
+import { parseDeviceWaringDetailList } from '@/utils/deviceWaringDetailTree'
 
 const CACHE_TTL_MS = 60_000
 
@@ -31,13 +32,13 @@ export const useDeviceWaringDetailStore = defineStore('deviceWaringDetail', () =
       try {
         if (mode === 'trend') {
           const soundRes = await getSoundDeviceWaringDetail()
-          sound.value = Array.isArray(soundRes?.ret) ? soundRes.ret : []
+          sound.value = parseDeviceWaringDetailList(soundRes?.ret)
           lastFetchedAtByMode.value = { ...lastFetchedAtByMode.value, trend: Date.now() }
           return
         }
 
         const allRes = await getDeviceWaringDetail()
-        vibration.value = Array.isArray(allRes?.ret?.vibration) ? allRes.ret.vibration : []
+        vibration.value = parseDeviceWaringDetailList(allRes?.ret?.vibration)
         lastFetchedAtByMode.value = { ...lastFetchedAtByMode.value, fault: Date.now() }
       } finally {
         loading.value = false

@@ -106,15 +106,49 @@ export const getProductionEquipmentList = (payload: {
   )
 }
 
-export interface EquipmentCheckPointDto {
-  pointName: string
-  receiverId: string
+export interface SoundFrequencyGroupDto {
+  receiverId?: string
+  pointName?: string | null
+  deviationValue?: number | null
+  temperature?: number | null
+  [key: string]: unknown
 }
+
+export interface VibrationRmsDto {
+  collectTime?: string
+  xvelocityRms?: number | null
+  yvelocityRms?: number | null
+  zvelocityRms?: number | null
+  xvelocityMax?: number | null
+  yvelocityMax?: number | null
+  zvelocityMax?: number | null
+  [key: string]: unknown
+}
+
+/** 设备详情 /taicang/hardware/device/check-point/find/ById 单条点位 */
+export interface EquipmentCheckPointDetailDto {
+  receiverId?: string
+  pointName?: string
+  soundFrequencyGroupDto?: SoundFrequencyGroupDto | null
+  vibrationRmsDTO?: VibrationRmsDto | null
+  temperature?: number | null
+}
+
+/** @deprecated 使用 EquipmentCheckPointDetailDto */
+export type EquipmentCheckPointDto = EquipmentCheckPointDetailDto
 
 export interface EquipmentCheckPointListResponse {
   rc: number
-  ret: EquipmentCheckPointDto[]
+  ret: EquipmentCheckPointDetailDto[]
   err: string | null
+}
+
+export function normalizeEquipmentCheckPointList(ret: unknown): EquipmentCheckPointDetailDto[] {
+  if (Array.isArray(ret)) return ret
+  if (ret && typeof ret === 'object' && ('receiverId' in ret || 'soundFrequencyGroupDto' in ret)) {
+    return [ret as EquipmentCheckPointDetailDto]
+  }
+  return []
 }
 
 /** 获取该设备下全部点位 */
@@ -223,7 +257,11 @@ export interface TemperatureTrendResponse {
   err: string | null
 }
 
-export const getTemperatureTrend = (params: { receiverId: string }): Promise<TemperatureTrendResponse> =>
+export const getTemperatureTrend = (params: {
+  receiverId: string
+  startTime?: string
+  endTime?: string
+}): Promise<TemperatureTrendResponse> =>
   request.get('/taicang/hardware/device/info/vibration/temperature/trend', {
     params,
     showLoading: false,
@@ -256,6 +294,8 @@ export interface VibrationTrendResponse {
 
 export const getVibrationTrend = (params: {
   receiverId: string
+  startTime?: string
+  endTime?: string
 }): Promise<VibrationTrendResponse | VibrationTrendItem[]> =>
   request.get('/taicang/hardware/device/info/vibration/trend', {
     params,
@@ -277,6 +317,8 @@ export interface SoundTrendResponse {
 
 export const getSoundTrend = (params: {
   receiverId: string
+  startTime?: string
+  endTime?: string
 }): Promise<SoundTrendResponse | SoundTrendItem[]> =>
   request.get('/taicang/hardware/device/info/vibration/sound/trend', {
     params,

@@ -1,9 +1,21 @@
 <template>
-  <div class="bottom-row">
-    <VibrationVelocityFreqChart :receiver-id="receiverIdResolved" :point-device-id="pointDeviceId"
-      :alarm-time="props.alarmTime" />
-    <VibrationVelocityTimeChart :receiver-id="receiverIdResolved" :point-device-id="pointDeviceId"
-      :alarm-time="props.alarmTime" />
+  <div class="bottom-row" :class="{ 'bottom-row--stack': stackLayout }">
+    <VibrationVelocityFreqChart
+      :receiver-id="receiverIdResolved"
+      :point-device-id="pointDeviceId"
+      :alarm-time="props.alarmTime"
+      :date-range="props.dateRange"
+      :spectrum-align="spectrumAlign"
+      :y-axis-tick-decimals="yAxisTickDecimals"
+    />
+    <VibrationVelocityTimeChart
+      :receiver-id="receiverIdResolved"
+      :point-device-id="pointDeviceId"
+      :alarm-time="props.alarmTime"
+      :date-range="props.dateRange"
+      :spectrum-align="spectrumAlign"
+      :y-axis-tick-decimals="yAxisTickDecimals"
+    />
   </div>
 </template>
 
@@ -20,11 +32,21 @@ const props = withDefaults(
     receiverId?: string
     deviceId?: string
     alarmTime?: number
+    dateRange?: [string, string] | null
+    /** 频域/时域上下排列（设备分析页左右栏） */
+    stackLayout?: boolean
+    /** 与能量/密度图统一 grid 边距 */
+    spectrumAlign?: boolean
+    /** Y 轴刻度小数位 */
+    yAxisTickDecimals?: 2 | 5
   }>(),
   {
     receiverId: '',
     deviceId: '',
     alarmTime: 0,
+    stackLayout: false,
+    spectrumAlign: false,
+    yAxisTickDecimals: 2,
   },
 )
 
@@ -49,11 +71,28 @@ const pointDeviceId = computed(() => {
   height: 45%;
   gap: 10px;
   min-height: 0;
+
+  &--stack {
+    flex-direction: column;
+    height: 100%;
+
+    > :first-child,
+    > :nth-child(2) {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+    }
+  }
 }
 
 .bottom-row > :first-child,
 .bottom-row > :nth-child(2) {
   width: 50%;
+}
+
+.bottom-row--stack > :first-child,
+.bottom-row--stack > :nth-child(2) {
+  width: 100%;
 }
 
 @media (max-width: 800px) {

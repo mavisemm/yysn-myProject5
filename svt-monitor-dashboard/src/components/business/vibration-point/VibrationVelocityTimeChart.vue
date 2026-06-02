@@ -47,15 +47,24 @@ import { CommonEcharts } from '@/components/common/chart'
 import { getVibrationTimeDomainData, type VibrationAxis } from '@/api/modules/device'
 import { FullScreen } from '@element-plus/icons-vue'
 import { enableMouseWheelZoom } from '@/utils/chart'
-import { formatChartYAxisTick5 } from '@/utils/chartAxis'
+import {
+  formatChartXAxisTick1,
+  formatChartYAxisTick2,
+  formatChartYAxisTick5,
+  roundChartYValues2,
+} from '@/utils/chartAxis'
+
+const SPECTRUM_CHART_GRID = { left: 30, right: 30, top: 40, bottom: 35, containLabel: true }
 import { useVibrationInlineChartTheme, VIBRATION_AXIS_OPTIONS } from './vibrationPointUtils'
 import { useVaTripleAxisFullscreen } from '@/composables/useVaTripleAxisFullscreen'
+import { dateRangeToEpochMs } from '@/utils/datetime'
 
 const props = withDefaults(
   defineProps<{
     receiverId: string
     pointDeviceId: string
     alarmTime?: number
+    dateRange?: [string, string] | null
     chartTitle?: string
     fullscreenTitle?: string
     /** 小图坐标轴配色：light 适合白底卡片内嵌；全屏仍为深色底白字 */
@@ -63,6 +72,10 @@ const props = withDefaults(
     fixedAxis?: VibrationAxis
     /** 振动分析页：全屏时 X/Y/Z 三轴上下堆叠（仅分析页传入） */
     analysisTripleFullscreen?: boolean
+    /** 与能量/密度图统一 grid 边距 */
+    spectrumAlign?: boolean
+    /** Y 轴刻度小数位 */
+    yAxisTickDecimals?: 2 | 5
   }>(),
   {
     alarmTime: 0,
@@ -71,6 +84,8 @@ const props = withDefaults(
     inlineChartTheme: 'dark',
     fixedAxis: undefined,
     analysisTripleFullscreen: false,
+    spectrumAlign: false,
+    yAxisTickDecimals: 2,
   },
 )
 
@@ -141,7 +156,14 @@ const { chartAxisColor, chartSplitLineColor } = useVibrationInlineChartTheme(
   inlineChartThemeRef,
   timeFullscreenUiActive,
 )
-const formatYAxisTick = formatChartYAxisTick5
+const formatYAxisTick = (v: unknown) =>
+  props.yAxisTickDecimals === 2 ? formatChartYAxisTick2(v) : formatChartYAxisTick5(v)
+
+const timeChartGrid = computed(() =>
+  props.spectrumAlign
+    ? SPECTRUM_CHART_GRID
+    : { top: 30, left: 20, right: 40, bottom: 35, containLabel: true },
+)
 
 const timeOption = computed<EChartsOption>(() => {
   if (timeDomainData.value.length === 0) return {}
@@ -165,7 +187,7 @@ const timeOption = computed<EChartsOption>(() => {
       borderColor: 'rgba(50, 50, 50, 0.9)',
       textStyle: { color: '#fff' },
     },
-    grid: { top: 30, left: 20, right: 40, bottom: 35, containLabel: true },
+    grid: timeChartGrid.value,
     xAxis: {
       type: 'value',
       name: 's',
@@ -177,6 +199,7 @@ const timeOption = computed<EChartsOption>(() => {
         margin: 8,
         showMaxLabel: true,
         hideOverlap: true,
+        formatter: formatChartXAxisTick1,
       },
       axisLine: { lineStyle: { color: c } },
       splitLine: { show: false },
@@ -250,6 +273,7 @@ const loadTimeData = async () => {
       props.receiverId,
       timeAxis.value,
       props.alarmTime > 0 ? props.alarmTime : undefined,
+      dateRangeToEpochMs(props.dateRange ?? null),
     )
     if (timeResponse.rc === 0 && timeResponse.ret) {
       try {
@@ -268,7 +292,7 @@ const loadTimeData = async () => {
           typeof timeResponse.ret.time === 'number' &&
           timeResponse.ret.time > 0
         ) {
-          timeDomainData.value = timeDomainArray
+          timeDomainData.value = roundChartYValues2(timeDomainArray)
           totalTime.value = timeResponse.ret.time
         } else {
           timeDomainData.value = []
@@ -307,7 +331,13 @@ const onTimeFullscreenClosed = () => {
 }
 
 watch(
-  [() => props.receiverId, () => props.pointDeviceId, () => props.alarmTime],
+  [
+    () => props.receiverId,
+    () => props.pointDeviceId,
+    () => props.alarmTime,
+    () => props.dateRange?.[0],
+    () => props.dateRange?.[1],
+  ],
   ([rid, pid]) => {
     if (!rid || !pid) return
     void loadTimeData()

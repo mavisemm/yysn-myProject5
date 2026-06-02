@@ -1,11 +1,11 @@
 <template>
-  <div class="card-item waterfall-card">
+  <div class="card-item waterfall-card" :class="{ 'waterfall-card--embedded': embedded }">
     <div class="card-header">
       <div class="card-header-leading">
         <div class="card-title-stack">
           <div class="card-title app-section-title">频域瀑布图</div>
           <el-button
-            v-if="equipmentId"
+            v-if="!embedded && equipmentIdResolved"
             type="primary"
             size="small"
             class="vibration-analysis-entry-btn"
@@ -34,7 +34,7 @@
             </el-icon>
           </el-button>
         </div>
-        <CommonDateTimePicker v-model="dateRange" width="320px" />
+        <CommonDateTimePicker v-if="!embedded" v-model="dateRange" width="320px" />
       </div>
     </div>
     <div class="chart-container">
@@ -55,7 +55,7 @@
                 placeholder="小时" controls-position="right" class="interval-num" />
               <span class="interval-unit">小时</span>
             </div>
-            <CommonDateTimePicker v-model="dateRange" width="320px" />
+            <CommonDateTimePicker v-if="!embedded" v-model="dateRange" width="320px" />
             <span class="waterfall-filter-divider" aria-hidden="true" />
             <div class="freq-filter">
               <span class="freq-filter-label">频率范围：</span>
@@ -92,19 +92,34 @@ import { resolvePointDeviceIdFromTree } from './vibrationPointUtils'
 // 与 echarts-gl Grid3DView 一致：底面射线求交 + pointToData（仅类型外依赖，运行时用 chart 内部视图）
 import graphicGL from 'echarts-gl/lib/util/graphicGL.js'
 
+const props = withDefaults(
+  defineProps<{
+    embedded?: boolean
+    receiverId?: string
+    equipmentId?: string
+    dateRange?: [string, string] | null
+  }>(),
+  {
+    embedded: false,
+    receiverId: '',
+    equipmentId: '',
+  },
+)
+
 const waterfallChartRef = ref<InstanceType<typeof CommonEcharts>>()
 const route = useRoute()
 const router = useRouter()
 
-const equipmentId = computed(() => {
+const equipmentIdResolved = computed(() => {
+  const fromProp = props.equipmentId?.trim()
+  if (fromProp) return fromProp
   const q = route.query.equipmentId
   const fromQuery = Array.isArray(q) ? q[0] : q
-  const id = typeof fromQuery === 'string' ? fromQuery.trim() : ''
-  return id
+  return typeof fromQuery === 'string' ? fromQuery.trim() : ''
 })
 
 const openVibrationAnalysis = () => {
-  const id = equipmentId.value
+  const id = equipmentIdResolved.value
   if (!id) return
   const tenantId = getTenantId()
   const query: Record<string, string> = { equipmentId: id }
@@ -591,10 +606,21 @@ const waterfallData = ref<{
 let waterfallReloadTimer: ReturnType<typeof setTimeout> | null = null
 
 const receiverIdFromParams = computed(() => {
+  const fromProp = props.receiverId?.trim()
+  if (fromProp) return fromProp
   const rid = route.params.receiverId
   const resolved = Array.isArray(rid) ? rid[0] : rid
   return (typeof resolved === 'string' ? resolved : '') || ''
 })
+
+watch(
+  () => props.dateRange,
+  (range) => {
+    if (!props.embedded || !range?.[0] || !range?.[1]) return
+    dateRange.value = range
+  },
+  { deep: true, immediate: true },
+)
 
 const pointDeviceId = computed(() =>
   resolvePointDeviceIdFromTree(deviceTreeStore.deviceTreeData, receiverIdFromParams.value),
@@ -684,10 +710,16 @@ const formatTimeLabel = (timeStr: string) => {
 
 const loadWaterfallData = async () => {
   if (!pointDeviceId.value || !receiverIdFromParams.value) return
-  const [startStr, endStr] =
-    dateRange.value && dateRange.value[0] && dateRange.value[1]
-      ? dateRange.value
-      : getRollingWeekDateRange()
+
+  const externalRange =
+    props.embedded && props.dateRange?.[0] && props.dateRange?.[1]
+      ? props.dateRange
+      : null
+  const internalRange =
+    dateRange.value?.[0] && dateRange.value?.[1] ? dateRange.value : null
+
+  // 嵌入且未选时间时与振动点位页一致：默认近一周滚动范围
+  const [startStr, endStr] = externalRange ?? internalRange ?? getRollingWeekDateRange()
   try {
     const res = await getVibrationFrequencyWaterfallData(
       pointDeviceId.value,
@@ -976,6 +1008,20 @@ watch(intervalHours, () => {
 watch(
   dateRange,
   (newRange, oldRange) => {
+    if (props.embedded) return
+    if (!receiverIdFromParams.value || !pointDeviceId.value) return
+    const newKey = Array.isArray(newRange) ? `${newRange[0] || ''}|${newRange[1] || ''}` : ''
+    const oldKey = Array.isArray(oldRange) ? `${oldRange[0] || ''}|${oldRange[1] || ''}` : ''
+    if (newKey === oldKey) return
+    scheduleLoadWaterfallData()
+  },
+  { deep: true },
+)
+
+watch(
+  () => props.dateRange,
+  (newRange, oldRange) => {
+    if (!props.embedded) return
     if (!receiverIdFromParams.value || !pointDeviceId.value) return
     const newKey = Array.isArray(newRange) ? `${newRange[0] || ''}|${newRange[1] || ''}` : ''
     const oldKey = Array.isArray(oldRange) ? `${oldRange[0] || ''}|${oldRange[1] || ''}` : ''
@@ -1114,6 +1160,10 @@ onUnmounted(() => {
 
 .waterfall-card {
   width: 66.66%;
+
+  &--embedded {
+    width: 100%;
+  }
 }
 
 @media (max-width: 800px) {
