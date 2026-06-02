@@ -7,56 +7,79 @@
       <CommonEmptyState text="暂无数据" size="small" />
     </div>
     <template v-else>
-      <div class="device-point-cards__grid-wrap">
-      <div
-        class="device-point-cards__grid"
-        :class="{ 'device-point-cards__grid--loading': pointsLoading === true }"
-      >
-        <div
-          v-for="point in pagedPoints"
-          :key="point.id"
-          class="point-card"
-          :class="{ 'point-card--active': point.id === selectedPointId }"
-          @click="emit('select', point.id)"
-        >
-          <div class="point-card__title" :title="point.name">{{ point.name }}</div>
-          <div class="point-card__metrics">
-            <div class="metric-row">
-              <span class="metric-label">声音偏差值：</span>
-              <span class="metric-value">{{ metricOf(point.id).soundDeviation }}</span>
-            </div>
-            <div class="metric-row">
-              <span class="metric-label">X轴(A)速度有效值：</span>
-              <span class="metric-value">{{ metricOf(point.id).xVelocityRms }}</span>
-            </div>
-            <div class="metric-row">
-              <span class="metric-label">Y轴(H)速度有效值：</span>
-              <span class="metric-value">{{ metricOf(point.id).yVelocityRms }}</span>
-            </div>
-            <div class="metric-row">
-              <span class="metric-label">Z轴(V)速度有效值：</span>
-              <span class="metric-value">{{ metricOf(point.id).zVelocityRms }}</span>
-            </div>
-            <div class="metric-row">
-              <span class="metric-label">温度：</span>
-              <span class="metric-value">{{ metricOf(point.id).temperature }}</span>
-            </div>
+      <div class="device-point-cards__content">
+        <div class="device-summary-card">
+          <div class="device-summary-card__title">设备汇总</div>
+          <div class="device-summary-card__row">
+            <span class="device-summary-card__label">点位总数</span>
+            <span class="device-summary-card__value">{{ pointSummary.totalPoints }}</span>
+          </div>
+          <div class="device-summary-card__row">
+            <span class="device-summary-card__label">预警点位</span>
+            <span class="device-summary-card__value device-summary-card__value--warning">
+              {{ pointSummary.warningPoints }}
+            </span>
+          </div>
+          <div class="device-summary-card__row">
+            <span class="device-summary-card__label">报警点位</span>
+            <span class="device-summary-card__value device-summary-card__value--alarm">
+              {{ pointSummary.alarmPoints }}
+            </span>
           </div>
         </div>
-      </div>
-      <div v-if="pointsLoading" class="device-point-cards__loading-mask">
-        <AsyncStatusText text="加载中" size="small" />
-      </div>
-      </div>
-      <div v-if="totalPages > 1" class="device-point-cards__pagination">
-        <span class="pagination-page-meta">共 {{ totalPages }} 页，第 {{ currentPage }} 页</span>
-        <el-pagination
-          layout="prev, pager, next"
-          :current-page="currentPage"
-          :page-size="pageSize"
-          :total="sortedPoints.length"
-          @current-change="onPageChange"
-        />
+        <div class="device-point-cards__main">
+          <div class="device-point-cards__grid-wrap">
+            <div
+              class="device-point-cards__grid"
+              :class="{ 'device-point-cards__grid--loading': pointsLoading === true }"
+            >
+              <div
+                v-for="point in pagedPoints"
+                :key="point.id"
+                class="point-card"
+                :class="{ 'point-card--active': point.id === selectedPointId }"
+                @click="emit('select', point.id)"
+              >
+                <div class="point-card__title" :title="point.name">{{ point.name }}</div>
+                <div class="point-card__metrics">
+                  <div class="metric-row">
+                    <span class="metric-label">声音偏差值：</span>
+                    <span class="metric-value">{{ metricOf(point.id).soundDeviation }}</span>
+                  </div>
+                  <div class="metric-row">
+                    <span class="metric-label">X轴(A)速度有效值：</span>
+                    <span class="metric-value">{{ metricOf(point.id).xVelocityRms }}</span>
+                  </div>
+                  <div class="metric-row">
+                    <span class="metric-label">Y轴(H)速度有效值：</span>
+                    <span class="metric-value">{{ metricOf(point.id).yVelocityRms }}</span>
+                  </div>
+                  <div class="metric-row">
+                    <span class="metric-label">Z轴(V)速度有效值：</span>
+                    <span class="metric-value">{{ metricOf(point.id).zVelocityRms }}</span>
+                  </div>
+                  <div class="metric-row">
+                    <span class="metric-label">温度：</span>
+                    <span class="metric-value">{{ metricOf(point.id).temperature }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-if="pointsLoading" class="device-point-cards__loading-mask">
+              <AsyncStatusText text="加载中" size="small" />
+            </div>
+          </div>
+          <div v-if="totalPages > 1" class="device-point-cards__pagination">
+            <span class="pagination-page-meta">共 {{ totalPages }} 页，第 {{ currentPage }} 页</span>
+            <el-pagination
+              layout="prev, pager, next"
+              :current-page="currentPage"
+              :page-size="pageSize"
+              :total="sortedPoints.length"
+              @current-change="onPageChange"
+            />
+          </div>
+        </div>
       </div>
     </template>
   </div>
@@ -70,6 +93,7 @@ import AsyncStatusText from '@/components/common/ui/AsyncStatusText.vue'
 import { sortPointsByPointOrder } from './deviceDetailPoints'
 import type { DeviceDetailPointInfo } from './deviceDetailTypes'
 import { EMPTY_POINT_CARD_METRICS, type PointCardMetrics } from './devicePointMetrics'
+import type { DevicePointSummary } from '@/stores/devicePointData'
 
 const COLUMNS_PER_ROW = 4
 const ROWS_PER_PAGE = 2
@@ -79,6 +103,7 @@ const props = defineProps<{
   points: DeviceDetailPointInfo[]
   selectedPointId?: string
   pointMetricsMap?: Record<string, PointCardMetrics>
+  pointSummary?: DevicePointSummary
   /** 点位列表/指标接口请求中 */
   pointsLoading?: boolean
 }>()
@@ -103,6 +128,14 @@ const pagedPoints = computed(() => {
 
 const metricOf = (pointId: string): PointCardMetrics =>
   props.pointMetricsMap?.[pointId] ?? EMPTY_POINT_CARD_METRICS
+const pointSummary = computed<DevicePointSummary>(() => {
+  const raw = props.pointSummary
+  return {
+    totalPoints: Number(raw?.totalPoints ?? sortedPoints.value.length),
+    warningPoints: Number(raw?.warningPoints ?? 0),
+    alarmPoints: Number(raw?.alarmPoints ?? 0),
+  }
+})
 
 const onPageChange = (page: number) => {
   if (page === currentPage.value) return
@@ -125,6 +158,21 @@ watch(totalPages, (pages) => {
 
 <style lang="scss" scoped>
 .device-point-cards {
+  &__content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    gap: 8px;
+  }
+
+  &__main {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -186,6 +234,50 @@ watch(totalPages, (pages) => {
   }
 }
 
+.device-summary-card {
+  width: 150px;
+  flex: 0 0 150px;
+  align-self: flex-start;
+  height: calc((100% - 8px) / 2);
+  border-radius: 8px;
+  border: 1px solid rgba(100, 180, 255, 0.25);
+  background: rgba(15, 40, 70, 0.65);
+  padding: 10px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &__title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--special-font-color, #99f0ff);
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82rem;
+  }
+
+  &__label {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  &__value {
+    color: #fff;
+    font-weight: 600;
+  }
+
+  &__value--warning {
+    color: #ffd35a;
+  }
+
+  &__value--alarm {
+    color: #ff7a7a;
+  }
+}
+
 .pagination-page-meta {
   color: #fff;
   font-size: 0.9rem;
@@ -219,7 +311,8 @@ watch(totalPages, (pages) => {
 
   &__title {
     flex: 0 0 auto;
-    font-size: clamp(0.65rem, 11cqh, 0.95rem);
+    /* fallback：避免部分浏览器不支持 cqh 导致 font-size 失效回退到 16px（进而挤出底部“温度”行） */
+    font-size: clamp(0.68rem, 1.2vh, 0.95rem);
     font-weight: 600;
     margin-bottom: clamp(2px, 4%, 8px);
     line-height: 1.2;
@@ -244,7 +337,8 @@ watch(totalPages, (pages) => {
   align-items: center;
   flex: 0 1 auto;
   min-height: 0;
-  font-size: clamp(0.58rem, 8.5cqh, 0.78rem);
+  /* fallback：同上，优先保证内容“能放下” */
+  font-size: clamp(0.6rem, 1vh, 0.78rem);
   line-height: 1.15;
   min-width: 0;
   white-space: nowrap;
@@ -263,6 +357,17 @@ watch(totalPages, (pages) => {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+}
+
+/* 当浏览器支持容器查询单位时，再启用 cqh 精细自适应 */
+@supports (font-size: 1cqh) {
+  .point-card__title {
+    font-size: clamp(0.65rem, 11cqh, 0.95rem);
+  }
+
+  .metric-row {
+    font-size: clamp(0.58rem, 8.5cqh, 0.78rem);
   }
 }
 

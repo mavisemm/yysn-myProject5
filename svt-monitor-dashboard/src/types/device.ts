@@ -1,7 +1,7 @@
 export interface DeviceNode {
   id: string
   name: string
-  type: 'factory' | 'workshop' | 'device' | 'point'
+  type: 'factory' | 'workshop' | 'device' | 'point' | 'pointMetric'
   status?: 'normal' | 'warning' | 'alarm' | 'offline'
   children?: DeviceNode[]
   deviceCount?: number

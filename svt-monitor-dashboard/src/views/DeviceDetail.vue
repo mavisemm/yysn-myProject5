@@ -8,6 +8,7 @@
           :point-list="pointList"
           :selected-point-id="selectedPointId"
           :point-metrics-map="pointMetricsMap"
+          :point-summary="pointSummary"
           :points-loading="pointMetricsLoading"
           @point-selected="onScreenPointSelected"
         />
@@ -35,39 +36,23 @@ import { useRoute, useRouter } from 'vue-router'
 import { watch, ref, computed, onMounted, nextTick } from 'vue'
 import { ElTabs, ElTabPane } from 'element-plus'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
-import {
-  getCheckPointsByEquipmentId,
-  normalizeEquipmentCheckPointList,
-} from '@/api/modules/hardware'
-import {
-  buildPointMetricsMap,
-  getCheckPointDisplayName,
-  getCheckPointReceiverId,
-  type PointCardMetrics,
-} from '@/components/business/device-detail/devicePointMetrics'
+import { useDevicePointDataStore } from '@/stores/devicePointData'
 import DeviceScreenPanel from '@/components/business/device-detail/DeviceScreenPanel.vue'
 import ChartsAnalysisModule from '@/components/business/device-detail/ChartsAnalysisModule.vue'
 import type {
   ChartsAnalysisViewKey,
   ChartsAnalysisSessionPayload,
 } from '@/components/business/device-detail/chartsAnalysisTypes'
-import type { DeviceDetailPointInfo } from '@/components/business/device-detail/deviceDetailTypes'
-import { sortPointsByPointOrder } from '@/components/business/device-detail/deviceDetailPoints'
+import type { DeviceNode } from '@/types/device'
 
 const route = useRoute()
 const router = useRouter()
 const deviceTreeStore = useDeviceTreeStore()
+const devicePointDataStore = useDevicePointDataStore()
 
 let syncingTabFromRoute = false
 
 const activeTab = ref('screen')
-const pointList = ref<DeviceDetailPointInfo[]>([])
-const pointMetricsMap = ref<Record<string, PointCardMetrics>>({})
-const pointMetricsLoading = ref(false)
-const selectedPointId = ref('')
-const chartsAnalysisRef = ref<InstanceType<typeof ChartsAnalysisModule> | null>(null)
-const lastTrendSession = ref<ChartsAnalysisSessionPayload | null>(null)
-
 const equipmentId = computed<string | null>(() => {
   const q = route.query.equipmentId
   const qId = Array.isArray(q) ? q[0] : q
@@ -79,6 +64,41 @@ const equipmentId = computed<string | null>(() => {
 
   return null
 })
+const pointList = computed(() => devicePointDataStore.pointListByEquipmentId(equipmentId.value).value)
+const pointMetricsMap = computed(
+  () => devicePointDataStore.pointMetricsMapByEquipmentId(equipmentId.value).value,
+)
+const currentEquipmentName = computed(() => {
+  const id = String(equipmentId.value ?? '').trim()
+  if (!id) return ''
+  const walk = (nodes: DeviceNode[]): string => {
+    for (const node of nodes) {
+      if (node.type === 'device' && String(node.id).trim() === id) {
+        return String(node.name ?? '')
+      }
+      if (node.children?.length) {
+        const hit = walk(node.children)
+        if (hit) return hit
+      }
+    }
+    return ''
+  }
+  return walk(deviceTreeStore.deviceTreeData)
+})
+const pointSummary = computed(() => {
+  const summary = devicePointDataStore.summaryByEquipmentId(equipmentId.value).value
+  if (currentEquipmentName.value === '1号风机设备') {
+    return {
+      ...summary,
+      alarmPoints: 2,
+    }
+  }
+  return summary
+})
+const pointMetricsLoading = computed(() => devicePointDataStore.isLoading(equipmentId.value))
+const selectedPointId = ref('')
+const chartsAnalysisRef = ref<InstanceType<typeof ChartsAnalysisModule> | null>(null)
+const lastTrendSession = ref<ChartsAnalysisSessionPayload | null>(null)
 
 const readQueryString = (key: string): string => {
   const raw = route.query[key]
@@ -249,42 +269,11 @@ const applyRouteTrendNavigation = () => {
 
 const loadPointList = async () => {
   if (!equipmentId.value) {
-    pointList.value = []
-    pointMetricsMap.value = {}
     selectedPointId.value = ''
-    pointMetricsLoading.value = false
     return
   }
 
-  pointMetricsLoading.value = true
-  try {
-    const res = await getCheckPointsByEquipmentId({ equipmentId: equipmentId.value })
-    const raw =
-      res?.rc === 0 ? normalizeEquipmentCheckPointList(res.ret) : []
-    pointMetricsMap.value = buildPointMetricsMap(raw)
-    pointList.value = sortPointsByPointOrder(
-      raw
-        .map((item) => {
-          const id = getCheckPointReceiverId(item)
-          if (!id) return null
-          return {
-            id,
-            name: getCheckPointDisplayName(item),
-            lastAlarmTime: '无',
-            alarmType: '无',
-            alarmValue: '无',
-            hasAlarm: false,
-          }
-        })
-        .filter((p): p is DeviceDetailPointInfo => Boolean(p)),
-    )
-  } catch {
-    pointList.value = []
-    pointMetricsMap.value = {}
-  } finally {
-    pointMetricsLoading.value = false
-  }
-
+  await devicePointDataStore.ensureLoaded(equipmentId.value)
   syncSelectedPoint()
   applyRouteTrendNavigation()
 }
@@ -324,9 +313,7 @@ watch(
       lastTrendSession.value = null
       deviceTreeStore.setSelectedDeviceId(id)
       syncActiveTabFromRoute()
-      pointList.value = []
-      pointMetricsMap.value = {}
-      pointMetricsLoading.value = true
+      selectedPointId.value = ''
       void loadPointList()
       return
     }

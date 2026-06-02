@@ -62,36 +62,20 @@
         <div v-if="!deviceTreeStore.loading && displayTreeData.length === 0" class="no-data">
           <CommonEmptyState size="small" />
         </div>
-        <el-tree
-          v-else
-          ref="deviceTreeRef"
-          :data="displayTreeData"
-          :props="treeProps"
-          :expand-on-click-node="false"
-          :highlight-current="false"
-          :current-node-key="treeCurrentKey"
-          node-key="id"
-          @node-click="handleNodeClick"
-          @node-expand="onTreeExpandChange"
-          @node-collapse="onTreeExpandChange"
-        >
+        <el-tree v-else ref="deviceTreeRef" :data="displayTreeData" :props="treeProps" :expand-on-click-node="false"
+          :highlight-current="false" :current-node-key="treeCurrentKey" node-key="id" @node-click="handleNodeClick"
+          @node-expand="onTreeExpandChange" @node-collapse="onTreeExpandChange">
           <template #default="{ node, data }">
-            <div class="tree-node" :data-type="data.type" :class="{ 'is-selected': isNodeSelected(data) }">
-              <el-icon
-                v-if="node.childNodes && node.childNodes.length > 0"
-                class="expand-icon no-select"
-                @mousedown.prevent
-                @click.stop="handleExpandIconClick(node)"
-              >
+            <div class="tree-node" :data-type="data.type"
+              :class="[{ 'is-selected': isNodeSelected(data) }, `tree-node--${data.type}`]">
+              <el-icon v-if="node.childNodes && node.childNodes.length > 0" class="expand-icon no-select"
+                @mousedown.prevent @click.stop="handleExpandIconClick(node)">
                 <arrow-down v-if="node.expanded" />
                 <arrow-right v-else />
               </el-icon>
               <span v-else class="expand-icon expand-icon--placeholder" aria-hidden="true" />
 
-              <div
-                class="tree-node__body"
-                @click.stop="handleTreeNodeBodyClick(data, node)"
-              >
+              <div class="tree-node__body" @click.stop="handleTreeNodeBodyClick(data, node)">
                 <div class="node-icon">
                   <el-icon v-if="data.type === 'factory'">
                     <OfficeBuilding />
@@ -102,6 +86,7 @@
                   <el-icon v-else-if="data.type === 'device'">
                     <Cpu />
                   </el-icon>
+                  <span v-else-if="data.type === 'pointMetric'" class="node-icon--empty" />
                   <el-icon v-else>
                     <Location />
                   </el-icon>
@@ -134,10 +119,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import type Node from 'element-plus/es/components/tree/src/model/node'
 import {
-  List,
   OfficeBuilding,
   HomeFilled,
   Cpu,
@@ -151,6 +134,7 @@ import {
 
 import { useDebounce } from '@/composables/useDebounce'
 import { useDeviceTreeStore } from '@/stores/deviceTree'
+import { useDevicePointDataStore } from '@/stores/devicePointData'
 import CommonEmptyState from '@/components/common/ui/CommonEmptyState.vue'
 import {
   buildExpandedKeysForSelection,
@@ -160,6 +144,9 @@ import {
   findNodeById,
   getCssEscaped,
 } from '@/components/layout/deviceSidebarTreeUtils'
+import {
+  EMPTY_POINT_CARD_METRICS,
+} from '@/components/business/device-detail/devicePointMetrics'
 
 const router = useRouter()
 
@@ -210,6 +197,7 @@ const selectDeviceNode = (deviceId: string) => {
 import type { DeviceNode, Workshop, Device } from '@/types/device'
 
 const deviceTreeStore = useDeviceTreeStore()
+const devicePointDataStore = useDevicePointDataStore()
 const deviceTreeData = computed(() => deviceTreeStore.deviceTreeData)
 const selectedDeviceId = computed(() => deviceTreeStore.selectedDeviceId)
 
@@ -416,10 +404,68 @@ const formatTreeNodeLabel = (data: DeviceNode): string => {
     const factoryTotal = data.factoryDeviceCount ?? 0
     return `${data.name}（${workshopCount}台/${factoryTotal}台）`
   }
-  if (data.type === 'device' && data.customerDeviceId) {
-    return `${data.name} (${data.customerDeviceId})`
+  if (data.type === 'device') {
+    const pointCount = data.pointCount ?? data.children?.filter((child) => child.type === 'point').length ?? 0
+    if (data.customerDeviceId) {
+      return `${data.name} (${data.customerDeviceId})（${pointCount}点位）`
+    }
+    return `${data.name}（${pointCount}点位）`
   }
   return data.name
+}
+
+const pointMetricChildrenOf = (equipmentId: string, receiverId: string, baseId: string): DeviceNode[] => {
+  const metrics =
+    devicePointDataStore.getEquipmentData(equipmentId).pointMetricsMap[receiverId] ?? EMPTY_POINT_CARD_METRICS
+  return [
+    {
+      id: `${baseId}__metric_sound`,
+      name: `声音偏差值: ${metrics.soundDeviation}`,
+      type: 'pointMetric',
+      status: 'normal',
+    },
+    {
+      id: `${baseId}__metric_x`,
+      name: `X轴(A)速度有效值: ${metrics.xVelocityRms}`,
+      type: 'pointMetric',
+      status: 'normal',
+    },
+    {
+      id: `${baseId}__metric_y`,
+      name: `Y轴(H)速度有效值: ${metrics.yVelocityRms}`,
+      type: 'pointMetric',
+      status: 'normal',
+    },
+    {
+      id: `${baseId}__metric_z`,
+      name: `Z轴(V)速度有效值: ${metrics.zVelocityRms}`,
+      type: 'pointMetric',
+      status: 'normal',
+    },
+    {
+      id: `${baseId}__metric_t`,
+      name: `温度: ${metrics.temperature}`,
+      type: 'pointMetric',
+      status: 'normal',
+    },
+  ]
+}
+
+const attachPointMetricChildren = (nodes: DeviceNode[]) => {
+  for (const n of nodes) {
+    if (n.type === 'device' && n.children?.length) {
+      for (const p of n.children) {
+        if (p.type !== 'point') continue
+        const receiverId = String(p.receiverId ?? p.id ?? '').trim()
+        p.children = receiverId
+          ? pointMetricChildrenOf(String(n.id), receiverId, String(p.id))
+          : []
+      }
+    }
+    if (n.children?.length) {
+      attachPointMetricChildren(n.children)
+    }
+  }
 }
 
 const allWorkshops = computed<Workshop[]>(() => {
@@ -555,6 +601,7 @@ const displayTreeData = computed<DeviceNode[]>(() => {
   }
 
   calculateCounts(fullData)
+  attachPointMetricChildren(fullData)
 
   if (!workshopSearch && !deviceSearch && !selectedWorkshop.value && !selectedDevice.value) {
     return fullData
@@ -563,6 +610,7 @@ const displayTreeData = computed<DeviceNode[]>(() => {
   const resultData = JSON.parse(JSON.stringify(deviceTreeData.value))
 
   calculateCounts(resultData)
+  attachPointMetricChildren(resultData)
 
   resultData.forEach((factory: DeviceNode) => {
     if (!factory.children) return
@@ -818,12 +866,18 @@ const handleTreeNodeBodyClick = (data: DeviceNode, node: Node) => {
 
   if (data.type === 'point') {
     navigateToPoint(data, node)
+    return
+  }
+
+  if (data.type === 'pointMetric') {
+    return
   }
 }
 
 const navigateToDevice = (deviceId: string) => {
   syncExpandedKeys()
   deviceTreeStore.setSelectedDeviceId(deviceId)
+  void devicePointDataStore.ensureLoaded(deviceId)
   void router.replace({
     name: 'DeviceDetail',
     params: { id: deviceId },
@@ -832,20 +886,14 @@ const navigateToDevice = (deviceId: string) => {
 }
 
 const navigateToPoint = (data: DeviceNode, node: Node) => {
-  syncExpandedKeys()
-  deviceTreeStore.setSelectedDeviceId(data.id)
-  const receiverId = data.receiverId ?? ''
-  if (!receiverId) {
-    ElMessage.warning('该点位缺少 receiverId，无法进入点位页')
-    return
-  }
+  const equipmentId = String(node.parent?.data?.id ?? '').trim()
+  const receiverId = String(data.receiverId ?? data.id ?? '').trim()
+  if (!equipmentId || !receiverId) return
 
-  const equipmentId = node.parent?.data?.id || ''
-  if (!equipmentId) {
-    ElMessage.warning('无法定位所属设备')
-    return
-  }
-  void router.push({
+  syncExpandedKeys()
+  deviceTreeStore.setSelectedDeviceId(String(data.id))
+  void devicePointDataStore.ensureLoaded(equipmentId)
+  void router.replace({
     name: 'DeviceDetail',
     params: { id: equipmentId },
     query: {
@@ -858,7 +906,7 @@ const navigateToPoint = (data: DeviceNode, node: Node) => {
 
 /** 阻止 el-tree 对设备/点位行的默认点击展开 */
 const handleNodeClick = (data: DeviceNode) => {
-  if (data.type === 'device' || data.type === 'point') return
+  if (data.type === 'device' || data.type === 'point' || data.type === 'pointMetric') return
 }
 
 const isNodeSelected = (data: DeviceNode): boolean => {
@@ -934,6 +982,7 @@ onUnmounted(() => {
     min-width: 0;
     max-width: none;
   }
+
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1139,6 +1188,18 @@ onUnmounted(() => {
       }
     }
 
+    &--pointMetric {
+      margin-left: -24px;
+
+      .expand-icon--placeholder {
+        width: 0;
+      }
+
+      .node-label {
+        font-size: 0.8rem;
+      }
+    }
+
     &__body {
       flex: 1;
       min-width: 0;
@@ -1170,6 +1231,12 @@ onUnmounted(() => {
 
       .el-icon {
         color: inherit !important;
+      }
+
+      &--empty {
+        display: inline-block;
+        width: 0;
+        height: 0;
       }
     }
 

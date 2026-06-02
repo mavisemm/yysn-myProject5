@@ -39,7 +39,12 @@ export function mapCheckPointsFromApi(rawList: unknown[]): DeviceDetailPointInfo
     warningY: item.warningY,
     warningZ: item.warningZ,
     deviceId: item.deviceId,
-    hasAlarm: item.isAlarm === 0,
+    // 后端常见约定：1/true 表示报警，0/false 表示非报警
+    hasAlarm:
+      item?.isAlarm === 1 ||
+      item?.isAlarm === '1' ||
+      item?.isAlarm === true ||
+      item?.isAlarm === 'true',
   }))
 }
 

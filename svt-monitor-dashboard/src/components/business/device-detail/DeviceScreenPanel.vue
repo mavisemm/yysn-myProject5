@@ -5,6 +5,7 @@
         :points="pointList"
         :selected-point-id="selectedPointId"
         :point-metrics-map="pointMetricsMap"
+        :point-summary="pointSummary"
         :points-loading="pointsLoading"
         @select="emit('point-selected', $event)"
       />
@@ -36,12 +37,14 @@ import DeviceImageCarousel from './DeviceImageCarousel.vue'
 import { extractEquipmentImageUrls } from './deviceImageUtils'
 import type { DeviceDetailPointInfo } from './deviceDetailTypes'
 import type { PointCardMetrics } from './devicePointMetrics'
+import type { DevicePointSummary } from '@/stores/devicePointData'
 
 const props = defineProps<{
   equipmentId: string | null
   pointList: DeviceDetailPointInfo[]
   selectedPointId?: string
   pointMetricsMap?: Record<string, PointCardMetrics>
+  pointSummary?: DevicePointSummary
   pointsLoading?: boolean
 }>()
 
@@ -90,6 +93,8 @@ watch(
   height: 100%;
   min-height: 0;
   gap: 10px;
+  container-type: size;
+  container-name: device-screen-panel;
 
   &__points {
     flex: 5.5;
@@ -122,7 +127,7 @@ watch(
   }
 }
 
-@media (max-height: 860px) {
+@container device-screen-panel (max-height: 860px) {
   .device-screen-panel {
     gap: 6px;
 
@@ -137,7 +142,7 @@ watch(
   }
 }
 
-@media (max-height: 720px) {
+@container device-screen-panel (max-height: 720px) {
   .device-screen-panel {
     &__points {
       flex: 1.25;
