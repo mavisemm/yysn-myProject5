@@ -1,15 +1,15 @@
 <template>
-  <div
-    class="charts-section"
-    :class="{
-      'charts-section--title-left': titleAlignLeft,
-      'charts-section--pair-vertical': pairLayout === 'vertical',
-    }"
-  >
+  <div class="charts-section" :class="{
+    'charts-section--title-left': titleAlignLeft,
+    'charts-section--pair-vertical': pairLayout === 'vertical',
+  }">
     <div class="charts-row">
       <div class="chart-item">
         <div class="chart-title-row">
-          <div class="chart-title app-section-title">能量曲线</div>
+          <div class="chart-title app-section-title">
+            <span>能量曲线</span>
+            <span v-if="soundChartTime" class="chart-collect-time">{{ soundChartTime }}</span>
+          </div>
           <el-button class="energy-fullscreen-btn" text size="large" :disabled="!hasAnyChartData"
             @click="energyFullscreenVisible = true">
             全屏显示
@@ -26,7 +26,9 @@
       </div>
       <div class="chart-item">
         <div class="chart-title-row">
-          <div class="chart-title app-section-title">密度曲线</div>
+          <div class="chart-title app-section-title">
+            <span>密度曲线</span>
+          </div>
         </div>
         <div class="chart-container">
           <CommonEcharts ref="densityChartRef" :option="densityOption" linkage-group="sound-point-charts"
@@ -36,20 +38,9 @@
       </div>
     </div>
 
-    <div
-      v-if="!hideTrendButton"
-      class="range-controls-bar"
-      @mousedown.stop
-      @wheel.stop
-    >
-      <el-button
-        type="primary"
-        size="small"
-        class="trend-analysis-btn"
-        @mousedown.stop
-        @wheel.stop
-        @click="handleTrendAnalysisClick"
-      >
+    <div v-if="!hideTrendButton" class="range-controls-bar" @mousedown.stop @wheel.stop>
+      <el-button type="primary" size="small" class="trend-analysis-btn" @mousedown.stop @wheel.stop
+        @click="handleTrendAnalysisClick">
         点位数据趋势分析
       </el-button>
     </div>
@@ -61,48 +52,31 @@
     <div class="energy-fs-dialog-inner">
       <div class="energy-fs-controls-top" @mousedown.stop @wheel.stop>
         <span class="controls-label">频率范围：</span>
-        <el-input-number
-          v-model="fullscreenRangeMin"
-          class="range-input"
-          size="small"
-          :min="safeFullscreenRangeDataMin"
-          :max="safeFullscreenRangeDataMax"
-          :step="0.1"
-          :precision="1"
-          controls-position="right"
-          :disabled="fullscreenRangeControlsDisabled"
-          @change="applyFullscreenRangeIfEnabled"
-        />
+        <el-input-number v-model="fullscreenRangeMin" class="range-input" size="small" :min="safeFullscreenRangeDataMin"
+          :max="safeFullscreenRangeDataMax" :step="0.1" :precision="1" controls-position="right"
+          :disabled="fullscreenRangeControlsDisabled" @change="applyFullscreenRangeIfEnabled" />
         <span class="controls-sep">~</span>
-        <el-input-number
-          v-model="fullscreenRangeMax"
-          class="range-input"
-          size="small"
-          :min="safeFullscreenRangeDataMin"
-          :max="safeFullscreenRangeDataMax"
-          :step="0.1"
-          :precision="1"
-          controls-position="right"
-          :disabled="fullscreenRangeControlsDisabled"
-          @change="applyFullscreenRangeIfEnabled"
-        />
+        <el-input-number v-model="fullscreenRangeMax" class="range-input" size="small" :min="safeFullscreenRangeDataMin"
+          :max="safeFullscreenRangeDataMax" :step="0.1" :precision="1" controls-position="right"
+          :disabled="fullscreenRangeControlsDisabled" @change="applyFullscreenRangeIfEnabled" />
         <span class="controls-unit">Hz</span>
-        <el-button
-          size="small"
-          class="reset-btn"
-          :disabled="fullscreenRangeControlsDisabled"
-          @click="resetFullscreenRangeIfEnabled"
-        >
+        <el-button size="small" class="reset-btn" :disabled="fullscreenRangeControlsDisabled"
+          @click="resetFullscreenRangeIfEnabled">
           重置
         </el-button>
       </div>
       <div class="energy-fs-charts-stack">
         <div class="energy-fs-chart-pane">
-          <div class="energy-fs-chart-title app-section-title">能量曲线</div>
+          <div class="energy-fs-chart-title app-section-title">
+            <span>能量曲线</span>
+            <span v-if="soundChartTime" class="chart-collect-time">{{ soundChartTime }}</span>
+          </div>
           <div ref="energyFullscreenChartEl" class="energy-fs-chart-host" />
         </div>
         <div class="energy-fs-chart-pane">
-          <div class="energy-fs-chart-title app-section-title">密度曲线</div>
+          <div class="energy-fs-chart-title app-section-title">
+            <span>密度曲线</span>
+          </div>
           <div ref="densityFullscreenChartEl" class="energy-fs-chart-host" />
         </div>
       </div>
@@ -176,6 +150,13 @@ const handleTrendAnalysisClick = () => {
 
 const selectedPointId = computed(() => props.selectedPointId || (props.pointList?.[0]?.id ?? ''))
 const pointList = computed(() => props.pointList || [])
+
+/** 当前展示记录的时间（findLatestDeviationByReceiver 返回的 time） */
+const soundChartTime = computed(() => {
+  const visible = props.deviationList.find((item) => item.visible)
+  const item = visible ?? props.deviationList[0]
+  return String(item?.time ?? '').trim()
+})
 
 const energyChartRef = ref<InstanceType<typeof CommonEcharts>>()
 const densityChartRef = ref<InstanceType<typeof CommonEcharts>>()
@@ -712,7 +693,18 @@ onUnmounted(() => {
       }
 
       .chart-title {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
         text-align: center;
+      }
+
+      .chart-collect-time {
+        font-size: 0.8rem;
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.75);
+        line-height: 1.2;
       }
     }
 
@@ -852,10 +844,22 @@ onUnmounted(() => {
 
 .energy-fs-chart-title {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
   text-align: center;
   font-size: 1rem;
   padding: 4px 8px 8px;
   opacity: 0.95;
+
+  .chart-collect-time {
+    font-size: 0.85rem;
+    font-weight: 400;
+    opacity: 0.85;
+  }
 }
 
 .energy-fs-chart-host {

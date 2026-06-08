@@ -2,7 +2,10 @@
   <div class="card-item freq-card" :class="{ 'freq-card--inline-light': inlineChartTheme === 'light' }">
     <div class="card-header">
       <div class="card-header-leading">
-        <div class="card-title app-section-title">{{ chartTitle }}</div>
+        <div class="card-title app-section-title">
+          <span>{{ chartTitle }}</span>
+          <span v-if="vibrationCollectTime" class="chart-collect-time">{{ vibrationCollectTime }}</span>
+        </div>
         <el-select v-if="!axisLocked" v-model="freqAxis" class="vibration-axis-select" size="small" teleported
           :show-arrow="false" popper-class="vibration-axis-select-dropdown vibration-axis-select-dropdown--inline">
           <el-option v-for="opt in axisOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
@@ -591,6 +594,8 @@ const freqData = ref<{ frequency: number[]; freqSpeedData: number[] }>({
   freqSpeedData: [],
 })
 const metricData = ref<VibrationMetricData>({})
+
+const vibrationCollectTime = computed(() => String(metricData.value.collectTime ?? '').trim())
 
 const axisOptions = VIBRATION_AXIS_OPTIONS
 const getVibrationAxisDisplayLabel = vibrationAxisLabel
@@ -2409,6 +2414,10 @@ const safeFullscreenRangeDataMax = computed(() => {
 
   .card-title {
     color: rgba(0, 0, 0, 0.72);
+
+    .chart-collect-time {
+      color: rgba(0, 0, 0, 0.55);
+    }
   }
 
   :deep(.freq-fullscreen-btn) {
@@ -2449,10 +2458,21 @@ const safeFullscreenRangeDataMax = computed(() => {
     }
 
     .card-title {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
       color: #fff;
       flex: 0 1 auto;
       min-width: 0;
       line-height: 1.25;
+    }
+
+    .chart-collect-time {
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.75);
+      line-height: 1.2;
     }
 
     .card-header-spacer {
